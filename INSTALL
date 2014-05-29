@@ -1,0 +1,23 @@
+Copy right 2010 Happy Fish / YuQing
+
+libfastcommon may be copied only under the terms of the Less GNU General
+Public License(LGPL).
+Please visit the libfastcommon Home Page for more detail.
+English language: http://code.google.com/p/libfastcommon/
+Chinese language: http://linux.chinaunix.net/bbs/forum-75-1.html
+
+
+#step 1. download libfastcommon source package and unpack it, 
+tar xzf libfastcommon_v1.x.tar.gz
+#for example:
+tar xzf libfastcommon_v1.3.tar.gz
+
+#step 2. enter the libfastcommon dir
+cd libfastcommon
+
+#step 3. make
+./make.sh
+
+#step 4. make install
+./make.sh install
+

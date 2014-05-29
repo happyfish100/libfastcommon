@@ -1,0 +1,27 @@
+
+Version 1.06  2014-05-28
+  * update source code from FastDFS V5.02
+
+Version 1.05  2012-07-08
+  * update source code from FastDFS V3.09
+
+Version 1.04  2011-01-31
+  * update source code from FastDFS V2.08
+
+Version 1.03  2010-11-16
+  * add local ip functions local_ip_func.c
+
+Version 1.02  2010-07-02
+  * sockopt.c: tcprecvfile and tcpdiscard add parameter total_recv_bytes
+  * sockopt.h add non-block connect function connectserverbyip_nb
+  * log_init set log to cache to false (no cache)
+
+Version 1.01  2010-05-15
+  * source file move to directory src
+  * header files add comments
+  * logger.h: correct function name from log_destory_ex to log_destroy_ex
+  * shared_func.h: getExeAbsolutePath change to getAbsolutePath
+
+Version 1.00  2010-05-08
+  * first version
+
