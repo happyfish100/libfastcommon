@@ -1,6 +1,7 @@
 
-Version 1.06  2014-05-28
+Version 1.06  2014-05-30
   * update source code from FastDFS V5.02
+  * add function short2buff and buff2short
 
 Version 1.05  2012-07-08
   * update source code from FastDFS V3.09
