@@ -37,8 +37,9 @@ struct nio_thread_data
 {
 	struct ioevent_puller ev_puller;
 	struct fast_timer timer;
-        int pipe_fds[2];
+	int pipe_fds[2];
 	struct fast_task_info *deleted_list;
+	void *arg;   //extra argument pointer
 };
 
 struct fast_task_info
