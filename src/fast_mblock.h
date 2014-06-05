@@ -40,6 +40,10 @@ struct fast_mblock_man
 	pthread_mutex_t lock;     //the lock for read / write free node chain
 };
 
+#define fast_mblock_to_node_ptr(data_ptr) \
+        (struct fast_mblock_node *)(data_ptr - ((size_t)(char *) \
+                    &((struct fast_mblock_node *)0)->data))
+
 #ifdef __cplusplus
 extern "C" {
 #endif
