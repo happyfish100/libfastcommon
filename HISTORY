@@ -1,8 +1,9 @@
 
-Version 1.06  2014-06-05
+Version 1.06  2014-06-06
   * update source code from FastDFS V5.02
   * add function short2buff and buff2short
   * add object memory pool (fast_mblock.h and fast_mblock.c)
+  * add member thread_loop_callback in nio_thread_data
 
 Version 1.05  2012-07-08
   * update source code from FastDFS V3.09
