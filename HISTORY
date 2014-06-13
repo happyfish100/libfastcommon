@@ -1,9 +1,12 @@
 
-Version 1.06  2014-06-06
+Version 1.06  2014-06-13
   * update source code from FastDFS V5.02
   * add function short2buff and buff2short
   * add object memory pool (fast_mblock.h and fast_mblock.c)
   * add member thread_loop_callback in nio_thread_data
+  * bug fixed: ini_file_reader.c can't include relative path sub config,
+    such as #include ../../conf/common.conf
+  * add get_url_content_ex to support buffer passed by caller
 
 Version 1.05  2012-07-08
   * update source code from FastDFS V3.09
