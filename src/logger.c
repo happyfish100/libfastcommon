@@ -73,6 +73,7 @@ int log_init_ex(LogContext *pContext)
 	pContext->log_to_cache = false;
 	pContext->rotate_immediately = false;
 	pContext->time_precision = LOG_TIME_PRECISION_SECOND;
+    strcpy(pContext->rotate_time_format, "%Y%m%d_%H%M%S");
 
 	pContext->log_buff = (char *)malloc(LOG_BUFF_SIZE);
 	if (pContext->log_buff == NULL)
@@ -148,6 +149,13 @@ void log_set_time_precision(LogContext *pContext, const int time_precision)
 	pContext->time_precision = time_precision;
 }
 
+void log_set_rotate_time_format(LogContext *pContext, const char *time_format)
+{
+    snprintf(pContext->rotate_time_format,
+            sizeof(pContext->rotate_time_format),
+            "%s", time_format);
+}
+
 void log_destroy_ex(LogContext *pContext)
 {
 	if (pContext->log_fd >= 0 && pContext->log_fd != STDERR_FILENO)
@@ -193,6 +201,7 @@ static int log_rotate(LogContext *pContext)
 {
 	struct tm tm;
 	time_t current_time;
+    int len;
 	char new_filename[MAX_PATH_SIZE + 32];
 
 	if (*(pContext->log_filename) == '\0')
@@ -204,11 +213,18 @@ static int log_rotate(LogContext *pContext)
 
 	current_time = get_current_time();
 	localtime_r(&current_time, &tm);
-	sprintf(new_filename, "%s.%04d%02d%02d_%02d%02d%02d", \
-			pContext->log_filename, \
-			tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday, \
-			tm.tm_hour, tm.tm_min, tm.tm_sec);
-	if (rename(pContext->log_filename, new_filename) != 0)
+
+    memset(new_filename, 0, sizeof(new_filename));
+	len = sprintf(new_filename, "%s", pContext->log_filename);
+    strftime(new_filename + len, sizeof(new_filename) - len,
+            pContext->rotate_time_format, &tm);
+    if (access(new_filename, F_OK) == 0)
+    {
+		fprintf(stderr, "file: "__FILE__", line: %d, " \
+			"file: %s already exist, rotate file fail",
+			__LINE__, new_filename);
+    }
+    else if (rename(pContext->log_filename, new_filename) != 0)
 	{
 		fprintf(stderr, "file: "__FILE__", line: %d, " \
 			"rename %s to %s fail, errno: %d, error info: %s", \
@@ -426,7 +442,7 @@ static void doLogEx(LogContext *pContext, struct timeval *tv, \
 	}
 }
 
-static void doLog(LogContext *pContext, const char *caption, \
+void log_it_ex2(LogContext *pContext, const char *caption, \
 		const char *text, const int text_len, const bool bNeedSync)
 {
 	struct timeval tv;
@@ -490,7 +506,7 @@ void log_it_ex1(LogContext *pContext, const int priority, \
 			break;
 	}
 
-	doLog(pContext, caption, text, text_len, bNeedSync);
+	log_it_ex2(pContext, caption, text, text_len, bNeedSync);
 }
 
 void log_it_ex(LogContext *pContext, const int priority, const char *format, ...)
@@ -545,7 +561,7 @@ void log_it_ex(LogContext *pContext, const int priority, const char *format, ...
 			break;
 	}
 
-	doLog(pContext, caption, text, len, bNeedSync);
+	log_it_ex2(pContext, caption, text, len, bNeedSync);
 }
 
 
@@ -565,7 +581,7 @@ void log_it_ex(LogContext *pContext, const int priority, const char *format, ...
 	va_end(ap); \
 	} \
 \
-	doLog(pContext, caption, text, len, bNeedSync); \
+	log_it_ex2(pContext, caption, text, len, bNeedSync); \
 
 
 void logEmergEx(LogContext *pContext, const char *format, ...)
