@@ -8,13 +8,13 @@ FAST_SHARED_OBJS = hash.lo chain.lo shared_func.lo ini_file_reader.lo \
                    logger.lo sockopt.lo base64.lo sched_thread.lo \
                    http_func.lo md5.lo pthread_func.lo local_ip_func.lo \
                    avl_tree.lo ioevent.lo ioevent_loop.lo fast_task_queue.lo \
-                   fast_timer.lo process_ctrl.lo fast_mblock.lo
+                   fast_timer.lo process_ctrl.lo fast_mblock.lo connection_pool.lo
 
 HEADER_FILES = common_define.h hash.h chain.h logger.h base64.h \
                shared_func.h pthread_func.h ini_file_reader.h _os_bits.h \
                sockopt.h sched_thread.h http_func.h md5.h local_ip_func.h \
                avl_tree.h ioevent.h ioevent_loop.h fast_task_queue.h \
-               fast_timer.h process_ctrl.h fast_mblock.h
+               fast_timer.h process_ctrl.h fast_mblock.h connection_pool.h
 
 ALL_OBJS = $(STATIC_OBJS) $(FAST_SHARED_OBJS)
 
