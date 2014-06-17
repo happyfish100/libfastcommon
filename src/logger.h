@@ -22,6 +22,11 @@ extern "C" {
 #define LOG_TIME_PRECISION_MSECOND	'm'  //millisecond
 #define LOG_TIME_PRECISION_USSECOND	'u'  //microsecond
 
+struct log_context;
+
+//log header line callback
+typedef void (*LogHeaderCallback)(struct log_context *pContext);
+
 typedef struct log_context
 {
 	/* log level value please see: sys/syslog.h
@@ -66,6 +71,11 @@ typedef struct log_context
      * default: %Y%m%d_%H%M%S
      * */
     char rotate_time_format[32];
+
+    /*
+     * log the header (title line) callback
+     * */
+    LogHeaderCallback print_header_callback;
 } LogContext;
 
 extern LogContext g_log_context;
@@ -135,6 +145,15 @@ void log_set_time_precision(LogContext *pContext, const int time_precision);
 */
 void log_set_rotate_time_format(LogContext *pContext, const char *time_format);
 
+
+/** set print header callback
+ *  parameters:
+ *           pContext: the log context
+ *           header_callback: the callback
+ *  return: none
+*/
+void log_set_header_callback(LogContext *pContext, LogHeaderCallback header_callback);
+
 /** destroy function
  *  parameters:
  *           pContext: the log context
@@ -175,7 +194,8 @@ void log_it_ex1(LogContext *pContext, const int priority, \
  *  return: none
 */
 void log_it_ex2(LogContext *pContext, const char *caption, \
-		const char *text, const int text_len, const bool bNeedSync);
+		const char *text, const int text_len, \
+        const bool bNeedSync, const bool bNeedLock);
 
 
 /** sync log buffer to log file

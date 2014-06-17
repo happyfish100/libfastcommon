@@ -9,6 +9,7 @@ Version 1.06  2014-06-17
   * add get_url_content_ex to support buffer passed by caller
   * logger can set rotate time format
   * add connection pool
+  * logger can log header line
 
 Version 1.05  2012-07-08
   * update source code from FastDFS V3.09

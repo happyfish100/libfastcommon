@@ -113,6 +113,10 @@ static int log_open(LogContext *pContext)
 			pContext->log_filename, errno, STRERROR(errno));
 		return errno != 0 ? errno : EACCES;
 	}
+    if (pContext->current_size == 0 && pContext->print_header_callback != NULL)
+    {
+        pContext->print_header_callback(pContext);
+    }
 
 	return 0;
 }
@@ -154,6 +158,20 @@ void log_set_rotate_time_format(LogContext *pContext, const char *time_format)
     snprintf(pContext->rotate_time_format,
             sizeof(pContext->rotate_time_format),
             "%s", time_format);
+}
+
+void log_set_header_callback(LogContext *pContext, LogHeaderCallback header_callback)
+{
+	pContext->print_header_callback = header_callback;
+    if (pContext->print_header_callback != NULL)
+    {
+		pthread_mutex_lock(&(pContext->log_thread_lock));
+        if (pContext->current_size == 0)
+        {
+          pContext->print_header_callback(pContext);
+        }
+		pthread_mutex_unlock(&(pContext->log_thread_lock));
+    }
 }
 
 void log_destroy_ex(LogContext *pContext)
@@ -356,7 +374,7 @@ static int log_fsync(LogContext *pContext, const bool bNeedLock)
 
 static void doLogEx(LogContext *pContext, struct timeval *tv, \
 		const char *caption, const char *text, const int text_len, \
-		const bool bNeedSync)
+		const bool bNeedSync, const bool bNeedLock)
 {
 	struct tm tm;
 	int time_fragment;
@@ -380,7 +398,7 @@ static void doLogEx(LogContext *pContext, struct timeval *tv, \
 	}
 
 	localtime_r(&tv->tv_sec, &tm);
-	if ((result=pthread_mutex_lock(&pContext->log_thread_lock)) != 0)
+	if (bNeedLock && (result=pthread_mutex_lock(&pContext->log_thread_lock)) != 0)
 	{
 		fprintf(stderr, "file: "__FILE__", line: %d, " \
 			"call pthread_mutex_lock fail, " \
@@ -393,7 +411,10 @@ static void doLogEx(LogContext *pContext, struct timeval *tv, \
 		fprintf(stderr, "file: "__FILE__", line: %d, " \
 			"log buff size: %d < log text length: %d ", \
 			__LINE__, LOG_BUFF_SIZE, text_len + 64);
-		pthread_mutex_unlock(&(pContext->log_thread_lock));
+        if (bNeedLock)
+        {
+		    pthread_mutex_unlock(&(pContext->log_thread_lock));
+        }
 		return;
 	}
 
@@ -433,7 +454,7 @@ static void doLogEx(LogContext *pContext, struct timeval *tv, \
 		log_fsync(pContext, false);
 	}
 
-	if ((result=pthread_mutex_unlock(&(pContext->log_thread_lock))) != 0)
+	if (bNeedLock && (result=pthread_mutex_unlock(&(pContext->log_thread_lock))) != 0)
 	{
 		fprintf(stderr, "file: "__FILE__", line: %d, " \
 			"call pthread_mutex_unlock fail, " \
@@ -443,7 +464,8 @@ static void doLogEx(LogContext *pContext, struct timeval *tv, \
 }
 
 void log_it_ex2(LogContext *pContext, const char *caption, \
-		const char *text, const int text_len, const bool bNeedSync)
+		const char *text, const int text_len, \
+        const bool bNeedSync, const bool bNeedLock)
 {
 	struct timeval tv;
 
@@ -457,7 +479,7 @@ void log_it_ex2(LogContext *pContext, const char *caption, \
 		gettimeofday(&tv, NULL);
 	}
 
-	doLogEx(pContext, &tv, caption, text, text_len, bNeedSync);
+	doLogEx(pContext, &tv, caption, text, text_len, bNeedSync, bNeedLock);
 }
 
 void log_it_ex1(LogContext *pContext, const int priority, \
@@ -506,7 +528,7 @@ void log_it_ex1(LogContext *pContext, const int priority, \
 			break;
 	}
 
-	log_it_ex2(pContext, caption, text, text_len, bNeedSync);
+	log_it_ex2(pContext, caption, text, text_len, bNeedSync, true);
 }
 
 void log_it_ex(LogContext *pContext, const int priority, const char *format, ...)
@@ -561,7 +583,7 @@ void log_it_ex(LogContext *pContext, const int priority, const char *format, ...
 			break;
 	}
 
-	log_it_ex2(pContext, caption, text, len, bNeedSync);
+	log_it_ex2(pContext, caption, text, len, bNeedSync, true);
 }
 
 
@@ -581,7 +603,7 @@ void log_it_ex(LogContext *pContext, const int priority, const char *format, ...
 	va_end(ap); \
 	} \
 \
-	log_it_ex2(pContext, caption, text, len, bNeedSync); \
+	log_it_ex2(pContext, caption, text, len, bNeedSync, true); \
 
 
 void logEmergEx(LogContext *pContext, const char *format, ...)
@@ -635,7 +657,7 @@ void logAccess(LogContext *pContext, struct timeval *tvStart, \
 	len = vsnprintf(text, sizeof(text), format, ap);
 	va_end(ap);
 
-	doLogEx(pContext, tvStart, NULL, text, len, false);
+	doLogEx(pContext, tvStart, NULL, text, len, false, true);
 }
 
 #ifndef LOG_FORMAT_CHECK
