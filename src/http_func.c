@@ -52,7 +52,7 @@ int get_url_content_ex(const char *url, const int url_len,
     else
     {
         bNeedAlloc = false;
-        alloc_size = *content_len;
+        alloc_size = *content_len - 1;
     }
 	*content_len = 0;
 
@@ -205,8 +205,11 @@ int get_url_content_ex(const char *url, const int url_len,
 
     do
     {
-        if (result != ENOTCONN)
+        if (result == ENOTCONN)
         {
+            result = 0;
+        }
+        else {
             sprintf(error_info, "file: "__FILE__", line: %d, " \
                     "recv data from %s:%d fail, errno: %d, " \
                     "error info: %s", __LINE__, domain_name, \
