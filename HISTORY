@@ -1,5 +1,5 @@
 
-Version 1.06  2014-06-17
+Version 1.06  2014-06-18
   * update source code from FastDFS V5.02
   * add function short2buff and buff2short
   * add object memory pool (fast_mblock.h and fast_mblock.c)
@@ -10,6 +10,7 @@ Version 1.06  2014-06-17
   * logger can set rotate time format
   * add connection pool
   * logger can log header line
+  * #include <stdbool.h> to use C99 bool
 
 Version 1.05  2012-07-08
   * update source code from FastDFS V3.09
