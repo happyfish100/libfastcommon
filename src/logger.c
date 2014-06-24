@@ -70,8 +70,6 @@ int log_init_ex(LogContext *pContext)
 	memset(pContext, 0, sizeof(LogContext));
 	pContext->log_level = LOG_INFO;
 	pContext->log_fd = STDERR_FILENO;
-	pContext->log_to_cache = false;
-	pContext->rotate_immediately = false;
 	pContext->time_precision = LOG_TIME_PRECISION_SECOND;
     strcpy(pContext->rotate_time_format, "%Y%m%d_%H%M%S");
 
@@ -160,6 +158,11 @@ void log_set_rotate_time_format(LogContext *pContext, const char *time_format)
             "%s", time_format);
 }
 
+void log_set_keep_days(LogContext *pContext, const int keep_days)
+{
+	pContext->keep_days = keep_days;
+}
+
 void log_set_header_callback(LogContext *pContext, LogHeaderCallback header_callback)
 {
 	pContext->print_header_callback = header_callback;
@@ -215,12 +218,59 @@ int log_notify_rotate(void *args)
 	return 0;
 }
 
+int log_delete_old_files(void *args)
+{
+    LogContext *pContext;
+	char old_filename[MAX_PATH_SIZE + 32];
+    int len;
+	struct tm tm;
+	time_t the_time;
+
+	if (args == NULL)
+	{
+		return EINVAL;
+	}
+
+	pContext = (LogContext *)args;
+	if (*(pContext->log_filename) == '\0' || \
+            *(pContext->rotate_time_format) == '\0')
+	{
+		return EINVAL;
+	}
+
+    if (pContext->keep_days <= 0) {
+        return 0;
+    }
+
+	the_time = get_current_time() - pContext->keep_days * 86400;
+    while (1) {
+        the_time -= 86400;
+        localtime_r(&the_time, &tm);
+        memset(old_filename, 0, sizeof(old_filename));
+        len = sprintf(old_filename, "%s", pContext->log_filename);
+        strftime(old_filename + len, sizeof(old_filename) - len,
+                pContext->rotate_time_format, &tm);
+        if (unlink(old_filename) != 0)
+        {
+            if (errno != ENOENT)
+            {
+                fprintf(stderr, "file: "__FILE__", line: %d, " \
+                        "unlink %s fail, errno: %d, error info: %s\n", \
+                        __LINE__, old_filename, errno, STRERROR(errno));
+            }
+            break;
+        }
+    }
+
+	return 0;
+}
+
 static int log_rotate(LogContext *pContext)
 {
 	struct tm tm;
 	time_t current_time;
     int len;
-	char new_filename[MAX_PATH_SIZE + 32];
+	char old_filename[MAX_PATH_SIZE + 32];
 
 	if (*(pContext->log_filename) == '\0')
 	{
@@ -232,21 +282,21 @@ static int log_rotate(LogContext *pContext)
 	current_time = get_current_time();
 	localtime_r(&current_time, &tm);
 
-    memset(new_filename, 0, sizeof(new_filename));
-	len = sprintf(new_filename, "%s", pContext->log_filename);
-    strftime(new_filename + len, sizeof(new_filename) - len,
+    memset(old_filename, 0, sizeof(old_filename));
+	len = sprintf(old_filename, "%s", pContext->log_filename);
+    strftime(old_filename + len, sizeof(old_filename) - len,
             pContext->rotate_time_format, &tm);
-    if (access(new_filename, F_OK) == 0)
+    if (access(old_filename, F_OK) == 0)
     {
 		fprintf(stderr, "file: "__FILE__", line: %d, " \
-			"file: %s already exist, rotate file fail",
-			__LINE__, new_filename);
+			"file: %s already exist, rotate file fail\n",
+			__LINE__, old_filename);
     }
-    else if (rename(pContext->log_filename, new_filename) != 0)
+    else if (rename(pContext->log_filename, old_filename) != 0)
 	{
 		fprintf(stderr, "file: "__FILE__", line: %d, " \
-			"rename %s to %s fail, errno: %d, error info: %s", \
-			__LINE__, pContext->log_filename, new_filename, \
+			"rename %s to %s fail, errno: %d, error info: %s\n", \
+			__LINE__, pContext->log_filename, old_filename, \
 			errno, STRERROR(errno));
 	}
 

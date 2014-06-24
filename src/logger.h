@@ -72,6 +72,9 @@ typedef struct log_context
      * */
     char rotate_time_format[32];
 
+    /* keep days for rotated log files */
+    int keep_days;
+
     /*
      * log the header (title line) callback
      * */
@@ -145,6 +148,13 @@ void log_set_time_precision(LogContext *pContext, const int time_precision);
 */
 void log_set_rotate_time_format(LogContext *pContext, const char *time_format);
 
+/** set keep days
+ *  parameters:
+ *           pContext: the log context
+ *           keep_days: the keep days
+ *  return: none
+*/
+void log_set_keep_days(LogContext *pContext, const int keep_days);
 
 /** set print header callback
  *  parameters:
@@ -211,6 +221,13 @@ int log_sync_func(void *args);
  *  return: error no, 0 for success, != 0 fail
 */
 int log_notify_rotate(void *args);
+
+/** delete old log files
+ *  parameters:
+ *           args: should be (LogContext *)
+ *  return: error no, 0 for success, != 0 fail
+*/
+int log_delete_old_files(void *args);
 
 void logEmergEx(LogContext *pContext, const char *format, ...);
 void logCritEx(LogContext *pContext, const char *format, ...);
