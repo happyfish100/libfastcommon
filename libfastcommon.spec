@@ -5,7 +5,7 @@ Summary: c common functions library extracted from my open source projects FastD
 License: GPL
 Group: Arch/Tech
 URL:  http://github.com/happyfish100/libfastcommon/
-Source: http://github.com/happyfish100/libfastcommon/
+Source: http://github.com/happyfish100/libfastcommon/%{name}-%{version}.tar.gz
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n) 
 
