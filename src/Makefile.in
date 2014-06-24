@@ -33,11 +33,13 @@ libfastcommon.so.1:
 .c.lo:
 	$(COMPILE) -c -fPIC -o $@ $<  $(INC_PATH)
 install:
-	cp -f $(ALL_LIBS) /usr/local/lib/
-	mkdir -p /usr/local/include/fastcommon
-	cp -f $(HEADER_FILES) /usr/local/include/fastcommon
-	ln -fs /usr/local/lib/libfastcommon.so.1 /usr/local/lib/libfastcommon.so
-	sh ./fast_link_library.sh
+	mkdir -p $(DESTDIR)/usr/local/lib
+	install -m 755 $(ALL_LIBS) $(DESTDIR)/usr/local/lib/
+	mkdir -p $(DESTDIR)/usr/local/include/fastcommon
+	install -m 644 $(HEADER_FILES) $(DESTDIR)/usr/local/include/fastcommon
+	cd $(DESTDIR)/usr/local/lib && ln -fs libfastcommon.so.1 libfastcommon.so
+#	ln -fs $(DESTDIR)/usr/local/lib/libfastcommon.so.1 $(DESTDIR)/usr/local/lib/libfastcommon.so
+#	sh ./fast_link_library.sh
 clean:
 	rm -f $(ALL_OBJS) $(ALL_PRGS) $(ALL_LIBS)
 
