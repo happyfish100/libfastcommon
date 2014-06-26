@@ -10,11 +10,8 @@ Source: http://github.com/happyfish100/libfastcommon/%{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n) 
 
 #Requires: /sbin/chkconfig
-#Requires: sh-utils textutils grep fileutils /etc/cron.d
 #BuildRequires: perl %{_includedir}/linux/if.h gettext
 Requires: %__cp %__mv %__chmod %__grep %__mkdir %__install %__id
-
-
 
 %description
 c common functions library extracted from my open source projects FastDFS.
@@ -34,19 +31,11 @@ This pakcage provides the header files of libfastcommon
 %setup -q
 
 %build
-# FIXME: I need to fix the upstream Makefile to use LIBDIR et al. properly and
-# send the upstream maintainer a patch.
-# add DOCDIR to the configure part
 ./make.sh
 
 %install
 rm -rf %{buildroot}
 DESTDIR=$RPM_BUILD_ROOT ./make.sh install
-#make install IGNORE_MAN_GROUP=y DOC_DIR=%{_docdir}/%{name}-%{version} INIT_DIR=%{_initrddir}
-
-#install -m 0644 sysstat.crond %{buildroot}/%{_sysconfdir}/cron.d/sysstat
-
-#%find_lang %{name}
 
 %post
 ln -fs /usr/local/lib/libfastcommon.so.1 %{_libdir}/libfastcommon.so
@@ -64,8 +53,7 @@ rm -rf %{buildroot}
 %files
 %defattr(-,root,root,-)
 /usr/local/lib/libfastcommon.so*
-#/usr/local/include/*
-#%{_libdir}/libfastcommon.*
+
 %files devel
 %defattr(-,root,root,-)
 /usr/local/include/*
