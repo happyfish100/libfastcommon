@@ -247,7 +247,7 @@ int log_delete_old_files(void *args)
         the_time -= 86400;
         localtime_r(&the_time, &tm);
         memset(old_filename, 0, sizeof(old_filename));
-        len = sprintf(old_filename, "%s", pContext->log_filename);
+        len = sprintf(old_filename, "%s.", pContext->log_filename);
         strftime(old_filename + len, sizeof(old_filename) - len,
                 pContext->rotate_time_format, &tm);
         if (unlink(old_filename) != 0)
@@ -283,7 +283,7 @@ static int log_rotate(LogContext *pContext)
 	localtime_r(&current_time, &tm);
 
     memset(old_filename, 0, sizeof(old_filename));
-	len = sprintf(old_filename, "%s", pContext->log_filename);
+	len = sprintf(old_filename, "%s.", pContext->log_filename);
     strftime(old_filename + len, sizeof(old_filename) - len,
             pContext->rotate_time_format, &tm);
     if (access(old_filename, F_OK) == 0)
