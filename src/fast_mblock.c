@@ -44,6 +44,7 @@ int fast_mblock_init(struct fast_mblock_man *mblock, const int element_size, \
 
 	mblock->malloc_chain_head = NULL;
 	mblock->free_chain_head = NULL;
+    mblock->total_count = 0;
 
 	return 0;
 }
@@ -90,6 +91,7 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
 
 	pMallocNode->next = mblock->malloc_chain_head;
 	mblock->malloc_chain_head = pMallocNode;
+    mblock->total_count += mblock->alloc_elements_once;
 
 	return 0;
 }
@@ -189,7 +191,7 @@ int fast_mblock_free(struct fast_mblock_man *mblock, \
 	return 0;
 }
 
-int fast_mblock_count(struct fast_mblock_man *mblock)
+int fast_mblock_free_count(struct fast_mblock_man *mblock)
 {
 	struct fast_mblock_node *pNode;
 	int count;
