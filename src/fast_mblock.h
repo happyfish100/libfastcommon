@@ -42,7 +42,7 @@ struct fast_mblock_man
 };
 
 #define fast_mblock_to_node_ptr(data_ptr) \
-        (struct fast_mblock_node *)(data_ptr - ((size_t)(char *) \
+        (struct fast_mblock_node *)((char *)data_ptr - ((size_t)(char *) \
                     &((struct fast_mblock_node *)0)->data))
 
 #ifdef __cplusplus
