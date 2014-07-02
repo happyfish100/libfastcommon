@@ -391,6 +391,7 @@ static int log_fsync(LogContext *pContext, const bool bNeedLock)
 		break;
 	}
 
+    /*
 	if (pContext->log_fd != STDERR_FILENO)
 	{
 		if (fsync(pContext->log_fd) != 0)
@@ -402,6 +403,7 @@ static int log_fsync(LogContext *pContext, const bool bNeedLock)
 			break;
 		}
 	}
+    */
 
 	if (pContext->rotate_immediately)
 	{

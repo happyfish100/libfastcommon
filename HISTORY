@@ -1,5 +1,5 @@
 
-Version 1.06  2014-06-27
+Version 1.06  2014-07-02
   * update source code from FastDFS V5.02
   * add function short2buff and buff2short
   * add object memory pool (fast_mblock.h and fast_mblock.c)
@@ -14,6 +14,7 @@ Version 1.06  2014-06-27
   * add libfastcommon.spec for building RPM
   * logger can delete old rotated files
   * bug fixed: connection pool should NOT increase counter when connect fail
+  * logger.c do NOT call fsync after write
 
 Version 1.05  2012-07-08
   * update source code from FastDFS V3.09
