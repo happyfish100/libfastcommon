@@ -268,6 +268,12 @@ int tcpsenddata(int sock, void* data, const int size, const int timeout)
 int tcprecvdata_nb_ex(int sock, void *data, const int size, \
 		const int timeout, int *count)
 {
+    return tcprecvdata_nb_ms(sock, data, size, timeout * 1000, count);
+}
+
+int tcprecvdata_nb_ms(int sock, void *data, const int size, \
+		const int timeout_ms, int *count)
+{
 	int left_bytes;
 	int read_bytes;
 	int res;
@@ -304,7 +310,6 @@ int tcprecvdata_nb_ex(int sock, void *data, const int size, \
 
 		if (read_bytes < 0)
 		{
-
 			if (!(errno == EAGAIN || errno == EWOULDBLOCK))
 			{
 				ret_code = errno != 0 ? errno : EINTR;
@@ -324,12 +329,12 @@ int tcprecvdata_nb_ex(int sock, void *data, const int size, \
 		}
 		else
 		{
-			t.tv_usec = 0;
-			t.tv_sec = timeout;
+			t.tv_usec = timeout_ms * 1000;
+			t.tv_sec = timeout_ms / 1000;
 			res = select(sock+1, &read_set, NULL, NULL, &t);
 		}
 #else
-		res = poll(&pollfds, 1, 1000 * timeout);
+		res = poll(&pollfds, 1, timeout_ms);
 		if (pollfds.revents & POLLHUP)
 		{
 			ret_code = ENOTCONN;
