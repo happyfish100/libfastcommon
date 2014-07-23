@@ -54,7 +54,7 @@ struct fast_task_info
 	int size;   //alloc size
 	int length; //data length
 	int offset; //current offset
-	int req_count; //request count
+	int64_t req_count; //request count
 	TaskFinishCallback finish_callback;
 	struct nio_thread_data *thread_data;
 	struct fast_task_info *next;
