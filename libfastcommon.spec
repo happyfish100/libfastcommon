@@ -1,5 +1,5 @@
 Name: libfastcommon
-Version: 1.0.6
+Version: 1.0.0
 Release: 1%{?dist}
 Summary: c common functions library extracted from my open source projects FastDFS
 License: GPL
@@ -38,25 +38,21 @@ rm -rf %{buildroot}
 DESTDIR=$RPM_BUILD_ROOT ./make.sh install
 
 %post
-ln -fs /usr/local/lib/libfastcommon.so.1 %{_libdir}/libfastcommon.so
-/sbin/ldconfig
 
 %preun
 
 %postun
-rm -f %{_libdir}/libfastcommon.so
-/sbin/ldconfig
 
 %clean
 rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root,-)
-/usr/local/lib/libfastcommon.so*
+/usr/lib64/libfastcommon.so*
 
 %files devel
 %defattr(-,root,root,-)
-/usr/local/include/*
+/usr/include/fastcommon/*
 
 %changelog
 * Mon Jun 23 2014  Zaixue Liao <liaozaixue@yongche.com>

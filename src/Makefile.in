@@ -19,10 +19,10 @@ HEADER_FILES = common_define.h hash.h chain.h logger.h base64.h \
 ALL_OBJS = $(STATIC_OBJS) $(FAST_SHARED_OBJS)
 
 ALL_PRGS = 
-ALL_LIBS = libfastcommon.so.1
+ALL_LIBS = libfastcommon.so
 
 all: $(ALL_OBJS) $(ALL_PRGS) $(ALL_LIBS)
-libfastcommon.so.1:
+libfastcommon.so:
 	$(COMPILE) -o $@ $< -shared $(FAST_SHARED_OBJS) $(LIB_PATH)
 .o:
 	$(COMPILE) -o $@ $<  $(STATIC_OBJS) $(LIB_PATH) $(INC_PATH)
@@ -33,11 +33,11 @@ libfastcommon.so.1:
 .c.lo:
 	$(COMPILE) -c -fPIC -o $@ $<  $(INC_PATH)
 install:
-	mkdir -p $(DESTDIR)/usr/local/lib
-	install -m 755 $(ALL_LIBS) $(DESTDIR)/usr/local/lib/
-	mkdir -p $(DESTDIR)/usr/local/include/fastcommon
-	install -m 644 $(HEADER_FILES) $(DESTDIR)/usr/local/include/fastcommon
-	cd $(DESTDIR)/usr/local/lib && ln -fs libfastcommon.so.1 libfastcommon.so
+	mkdir -p $(DESTDIR)/usr/lib64
+	install -m 755 $(ALL_LIBS) $(DESTDIR)/usr/lib64
+	mkdir -p $(DESTDIR)/usr/include/fastcommon
+	install -m 644 $(HEADER_FILES) $(DESTDIR)/usr/include/fastcommon
+#	cd $(DESTDIR)/usr/lib64 && ln -fs libfastcommon.so.1 libfastcommon.so
 #	ln -fs $(DESTDIR)/usr/local/lib/libfastcommon.so.1 $(DESTDIR)/usr/local/lib/libfastcommon.so
 #	sh ./fast_link_library.sh
 clean:
