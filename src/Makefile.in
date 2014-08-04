@@ -10,6 +10,12 @@ FAST_SHARED_OBJS = hash.lo chain.lo shared_func.lo ini_file_reader.lo \
                    avl_tree.lo ioevent.lo ioevent_loop.lo fast_task_queue.lo \
                    fast_timer.lo process_ctrl.lo fast_mblock.lo connection_pool.lo
 
+FAST_STATIC_OBJS = hash.o chain.o shared_func.o ini_file_reader.o \
+                   logger.o sockopt.o base64.o sched_thread.o \
+                   http_func.o md5.o pthread_func.o local_ip_func.o \
+                   avl_tree.o ioevent.o ioevent_loop.o fast_task_queue.o \
+                   fast_timer.o process_ctrl.o fast_mblock.o connection_pool.o
+
 HEADER_FILES = common_define.h hash.h chain.h logger.h base64.h \
                shared_func.h pthread_func.h ini_file_reader.h _os_bits.h \
                sockopt.h sched_thread.h http_func.h md5.h local_ip_func.h \
@@ -19,11 +25,15 @@ HEADER_FILES = common_define.h hash.h chain.h logger.h base64.h \
 ALL_OBJS = $(STATIC_OBJS) $(FAST_SHARED_OBJS)
 
 ALL_PRGS = 
-ALL_LIBS = libfastcommon.so
+SHARED_LIBS = libfastcommon.so
+STATIC_LIBS = libfastcommon.a
+ALL_LIBS = $(SHARED_LIBS) $(STATIC_LIBS)
 
 all: $(ALL_OBJS) $(ALL_PRGS) $(ALL_LIBS)
 libfastcommon.so:
-	$(COMPILE) -o $@ $< -shared $(FAST_SHARED_OBJS) $(LIB_PATH)
+	$(COMPILE) -o $@ $< -shared $(FAST_SHARED_OBJS)
+libfastcommon.a: $(FAST_STATIC_OBJS)
+	ar rcs $@ $<
 .o:
 	$(COMPILE) -o $@ $<  $(STATIC_OBJS) $(LIB_PATH) $(INC_PATH)
 .c:
@@ -34,7 +44,7 @@ libfastcommon.so:
 	$(COMPILE) -c -fPIC -o $@ $<  $(INC_PATH)
 install:
 	mkdir -p $(DESTDIR)/usr/lib64
-	install -m 755 $(ALL_LIBS) $(DESTDIR)/usr/lib64
+	install -m 755 $(SHARED_LIBS) $(DESTDIR)/usr/lib64
 	mkdir -p $(DESTDIR)/usr/include/fastcommon
 	install -m 644 $(HEADER_FILES) $(DESTDIR)/usr/include/fastcommon
 #	cd $(DESTDIR)/usr/lib64 && ln -fs libfastcommon.so.1 libfastcommon.so
