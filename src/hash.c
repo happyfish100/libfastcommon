@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <inttypes.h>
 #include "pthread_func.h"
 #include "hash.h"
 
@@ -757,12 +758,12 @@ int64_t hash_inc_value(const HashData *old_data, const int inc,
 		{
 			n = inc;
 		}
-		*new_value_len = sprintf(new_value, INT64_PRINTF_FORMAT, n);
+		*new_value_len = sprintf(new_value, "%"PRId64, n);
 	}
 	else
 	{
 		n = inc;
-		*new_value_len = sprintf(new_value, INT64_PRINTF_FORMAT, n);
+		*new_value_len = sprintf(new_value, "%"PRId64, n);
 	}
 
 	return n;
