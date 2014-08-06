@@ -137,6 +137,11 @@ int log_set_prefix_ex(LogContext *pContext, const char *base_path, \
 
 int log_set_filename_ex(LogContext *pContext, const char *log_filename)
 {
+    if (log_filename == NULL) {
+		fprintf(stderr, "file: "__FILE__", line: %d, " \
+                "log_filename is NULL!\n", __LINE__);
+        return EINVAL;
+    }
 	snprintf(pContext->log_filename, MAX_PATH_SIZE, "%s", log_filename);
 	return log_open(pContext);
 }
