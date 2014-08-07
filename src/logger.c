@@ -63,6 +63,18 @@ int log_init()
 	return log_init_ex(&g_log_context);
 }
 
+int log_init2()
+{
+    int result;
+    if ((result=log_init()) != 0) {
+        return result;
+    }
+
+    log_take_over_stderr();
+    log_take_over_stdout();
+    return 0;
+}
+
 int log_init_ex(LogContext *pContext)
 {
 	int result;
@@ -97,17 +109,33 @@ static int log_open(LogContext *pContext)
 				O_CREAT | O_APPEND, 0644)) < 0)
 	{
 		fprintf(stderr, "open log file \"%s\" to write fail, " \
-			"errno: %d, error info: %s", \
+			"errno: %d, error info: %s\n", \
 			pContext->log_filename, errno, STRERROR(errno));
 		pContext->log_fd = STDERR_FILENO;
 		return errno != 0 ? errno : EACCES;
 	}
 
+    if (pContext->take_over_stderr) {
+        if (dup2(pContext->log_fd, STDERR_FILENO) < 0) {
+            fprintf(stderr, "file: "__FILE__", line: %d, "
+                    "call dup2 fail, errno: %d, error info: %s\n",
+                    __LINE__, errno, STRERROR(errno));
+        }
+    }
+
+    if (pContext->take_over_stdout) {
+        if (dup2(pContext->log_fd, STDOUT_FILENO) < 0) {
+            fprintf(stderr, "file: "__FILE__", line: %d, "
+                    "call dup2 fail, errno: %d, error info: %s\n",
+                    __LINE__, errno, STRERROR(errno));
+        }
+    }
+
 	pContext->current_size = lseek(pContext->log_fd, 0, SEEK_END);
 	if (pContext->current_size < 0)
 	{
 		fprintf(stderr, "lseek file \"%s\" fail, " \
-			"errno: %d, error info: %s", \
+			"errno: %d, error info: %s\n", \
 			pContext->log_filename, errno, STRERROR(errno));
 		return errno != 0 ? errno : EACCES;
 	}
@@ -180,6 +208,16 @@ void log_set_header_callback(LogContext *pContext, LogHeaderCallback header_call
         }
 		pthread_mutex_unlock(&(pContext->log_thread_lock));
     }
+}
+
+void log_take_over_stderr_ex(LogContext *pContext)
+{
+    pContext->take_over_stderr = true;
+}
+
+void log_take_over_stdout_ex(LogContext *pContext)
+{
+    pContext->take_over_stdout = true;
 }
 
 void log_destroy_ex(LogContext *pContext)
