@@ -1109,6 +1109,9 @@ int tcpsendfile_ex(int sock, const char *filename, const int64_t file_offset, \
 	off_t offset;
 	#ifdef OS_LINUX
 	int64_t remain_bytes;
+    #elif defined(DARWIN)
+	int64_t remain_bytes;
+	off_t len;
 	#endif
    #endif
 #else
@@ -1183,7 +1186,21 @@ int tcpsendfile_ex(int sock, const char *filename, const int64_t file_offset, \
 #else
 #ifdef OS_FREEBSD
 	offset = file_offset;
-	if (sendfile(fd, sock, offset, file_bytes, NULL, NULL, 0) != 0)
+#if defined(DARWIN)
+	result = 0;
+	remain_bytes = file_bytes;
+	while (remain_bytes > 0)
+	{
+        len = remain_bytes;
+        if (sendfile(fd, sock, offset, &len, NULL, 0) != 0) {
+			result = errno != 0 ? errno : EIO;
+			break;
+        }
+		remain_bytes -= len;
+    }
+	*total_send_bytes = file_bytes - remain_bytes;
+#else
+	if (sendfile(fd, sock, offset, file_offset, NULL, NULL, 0) != 0)
 	{
 		*total_send_bytes = 0;
 		result = errno != 0 ? errno : EIO;
@@ -1193,6 +1210,7 @@ int tcpsendfile_ex(int sock, const char *filename, const int64_t file_offset, \
 		*total_send_bytes = file_bytes;
 		result = 0;
 	}
+#endif
 #endif
 #endif
 

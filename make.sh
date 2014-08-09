@@ -5,8 +5,8 @@ cat <<EOF > $tmp_src_filename
 #include <fcntl.h>
 int main()
 {
-	printf("%d\n", sizeof(long));
-	printf("%d\n", sizeof(off_t));
+	printf("%d\n", (int)sizeof(long));
+	printf("%d\n", (int)sizeof(off_t));
 	return 0;
 }
 EOF
@@ -69,8 +69,11 @@ LIBS=''
 uname=`uname`
 if [ "$uname" = "Linux" ]; then
   CFLAGS="$CFLAGS -DOS_LINUX -DIOEVENT_USE_EPOLL"
-elif [ "$uname" = "FreeBSD"] || [ "$uname" = "Darwin"]; then
+elif [ "$uname" = "FreeBSD" ] || [ "$uname" = "Darwin" ]; then
   CFLAGS="$CFLAGS -DOS_FREEBSD -DIOEVENT_USE_KQUEUE"
+  if [ "$uname" = "Darwin" ]; then
+    CFLAGS="$CFLAGS -DDARWIN"
+  fi
 elif [ "$uname" = "SunOS" ]; then
   CFLAGS="$CFLAGS -DOS_SUNOS -D_THREAD_SAFE -DIOEVENT_USE_PORT"
   LIBS="$LIBS -lsocket -lnsl -lresolv"
@@ -84,7 +87,7 @@ fi
 
 if [ -f /usr/lib/libpthread.so ] || [ -f /usr/local/lib/libpthread.so ] || [ -f /usr/lib64/libpthread.so ] || [ -f /usr/lib/libpthread.a ] || [ -f /usr/local/lib/libpthread.a ] || [ -f /usr/lib64/libpthread.a ]; then
   LIBS="$LIBS -lpthread"
-else
+elif [ -f /usr/lib/libc_r.so ]; then
   line=`nm -D /usr/lib/libc_r.so | grep pthread_create | grep -w T`
   if [ -n "$line" ]; then
     LIBS="$LIBS -lc_r"
