@@ -69,7 +69,7 @@ LIBS=''
 uname=`uname`
 if [ "$uname" = "Linux" ]; then
   CFLAGS="$CFLAGS -DOS_LINUX -DIOEVENT_USE_EPOLL"
-elif [ "$uname" = "FreeBSD" ]; then
+elif [ "$uname" = "FreeBSD"] || [ "$uname" = "Darwin"]; then
   CFLAGS="$CFLAGS -DOS_FREEBSD -DIOEVENT_USE_KQUEUE"
 elif [ "$uname" = "SunOS" ]; then
   CFLAGS="$CFLAGS -DOS_SUNOS -D_THREAD_SAFE -DIOEVENT_USE_PORT"
