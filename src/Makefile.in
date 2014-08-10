@@ -22,7 +22,7 @@ HEADER_FILES = common_define.h hash.h chain.h logger.h base64.h \
                avl_tree.h ioevent.h ioevent_loop.h fast_task_queue.h \
                fast_timer.h process_ctrl.h fast_mblock.h connection_pool.h
 
-ALL_OBJS = $(STATIC_OBJS) $(FAST_SHARED_OBJS)
+ALL_OBJS = $(FAST_STATIC_OBJS) $(FAST_SHARED_OBJS)
 
 ALL_PRGS = 
 SHARED_LIBS = libfastcommon.so
@@ -35,9 +35,9 @@ libfastcommon.so:
 libfastcommon.a: $(FAST_STATIC_OBJS)
 	ar rcs $@ $<
 .o:
-	$(COMPILE) -o $@ $<  $(STATIC_OBJS) $(LIB_PATH) $(INC_PATH)
+	$(COMPILE) -o $@ $<  $(FAST_STATIC_OBJS) $(LIB_PATH) $(INC_PATH)
 .c:
-	$(COMPILE) -o $@ $<  $(STATIC_OBJS) $(LIB_PATH) $(INC_PATH)
+	$(COMPILE) -o $@ $<  $(FAST_STATIC_OBJS) $(LIB_PATH) $(INC_PATH)
 .c.o:
 	$(COMPILE) -c -o $@ $<  $(INC_PATH)
 .c.lo:

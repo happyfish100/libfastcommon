@@ -100,3 +100,6 @@ perl -pi -e "s#\\\$\(CFLAGS\)#$CFLAGS#g" Makefile
 perl -pi -e "s#\\\$\(LIBS\)#$LIBS#g" Makefile
 make $1 $2
 
+if [ "$1" = "clean" ]; then
+  /bin/rm -f Makefile _os_bits.h
+fi
