@@ -1,5 +1,5 @@
 
-Version 1.06  2014-07-23
+Version 1.06  2014-08-10
   * update source code from FastDFS V5.02
   * add function short2buff and buff2short
   * add object memory pool (fast_mblock.h and fast_mblock.c)
@@ -17,6 +17,10 @@ Version 1.06  2014-07-23
   * logger.c do NOT call fsync after write
   * sockopt.c add tcprecvdata_nb_ms to support millisecond timeout
   * change req_count from int to int64_t
+  * logger can take over stderr and stdout
+  * replace INT64_PRINTF_FORMAT with PRId64
+  * support OS Darwin
+  * socket send and recv ignore erno EINTR
 
 Version 1.05  2012-07-08
   * update source code from FastDFS V3.09
