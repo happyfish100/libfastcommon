@@ -381,6 +381,7 @@ int http_parse_query_ex(char *url, const int url_len,
 			continue;
 		}
 
+        *pKeyEnd = '\0';
         pCurrent->key_len = (int)(pKeyEnd - pCurrent->key);
 		if (pCurrent->key_len == 0) //empty key
 		{
