@@ -275,8 +275,8 @@ int http_parse_query(char *url, KeyValuePair *params, const int max_count)
 	KeyValuePair *pEnd;
 	char *pParamStart;
 	char *p;
-	char *pStrEnd;
-	int value_len;
+	char *pKeyEnd;
+	char *pValueEnd;
 
 	pParamStart = strchr(url, '?');
 	if (pParamStart == NULL)
@@ -297,32 +297,34 @@ int http_parse_query(char *url, KeyValuePair *params, const int max_count)
 		}
 
 		pCurrent->key = p;
-		pStrEnd = strchr(p, '&');
-		if (pStrEnd == NULL)
+		pValueEnd = strchr(p, '&');
+		if (pValueEnd == NULL)
 		{
+            pValueEnd = p + strlen(p);
 			p = NULL;
 		}
 		else
 		{
-			*pStrEnd = '\0';
-			p = pStrEnd + 1;
+			*pValueEnd = '\0';
+			p = pValueEnd + 1;
 		}
 
-		pStrEnd = strchr(pCurrent->key, '=');
-		if (pStrEnd == NULL)
+		pKeyEnd = strchr(pCurrent->key, '=');
+		if (pKeyEnd == NULL)  //no =
 		{
 			continue;
 		}
 
-		*pStrEnd = '\0';
-		pCurrent->value = pStrEnd + 1;
-		if (*pCurrent->key == '\0')
+		*pKeyEnd = '\0';
+        pCurrent->key_len = (int)(pKeyEnd - pCurrent->key);
+		if (pCurrent->key_len == 0) //empty key
 		{
 			continue;
 		}
 
-		urldecode(pCurrent->value, strlen(pCurrent->value), \
-			pCurrent->value, &value_len);
+		pCurrent->value = pKeyEnd + 1;
+		urldecode(pCurrent->value, (int)(pValueEnd - pCurrent->value),
+			pCurrent->value, &pCurrent->value_len);
 		pCurrent++;
 	}
 

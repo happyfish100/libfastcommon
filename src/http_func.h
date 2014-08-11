@@ -57,7 +57,7 @@ int get_url_content(const char *url, const int connect_timeout, \
 /**
 parse url
 params:
-	url: the url to parse
+	url: the url to parse, the url be modified after parse
 	params: params array to store param and it's value
 	max_count: max param count
 return: param count
