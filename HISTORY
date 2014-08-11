@@ -21,7 +21,7 @@ Version 1.06  2014-08-11
   * replace INT64_PRINTF_FORMAT with PRId64
   * support OS Darwin
   * socket send and recv ignore erno EINTR
-  * http_parse_query set both lengths of key and name
+  * http_parse_query_ex support binary buffer, and set both lengths of key and name
 
 Version 1.05  2012-07-08
   * update source code from FastDFS V3.09

@@ -277,6 +277,7 @@ int http_parse_query(char *url, KeyValuePair *params, const int max_count)
 	char *p;
 	char *pKeyEnd;
 	char *pValueEnd;
+    int value_len;
 
 	pParamStart = strchr(url, '?');
 	if (pParamStart == NULL)
@@ -316,6 +317,70 @@ int http_parse_query(char *url, KeyValuePair *params, const int max_count)
 		}
 
 		*pKeyEnd = '\0';
+		if (*pCurrent->key == '\0') //empty key
+		{
+			continue;
+		}
+
+		pCurrent->value = pKeyEnd + 1;
+		urldecode(pCurrent->value, (int)(pValueEnd - pCurrent->value),
+			pCurrent->value, &value_len);
+		pCurrent++;
+	}
+
+	return pCurrent - params;
+}
+
+int http_parse_query_ex(char *url, const int url_len,
+        int *uri_len, KeyValuePairEx *params, const int max_count)
+{
+	KeyValuePairEx *pCurrent;
+	KeyValuePairEx *pEnd;
+	char *pParamStart;
+	char *p;
+	char *pStrEnd;
+	char *pKeyEnd;
+	char *pValueEnd;
+
+	pParamStart = (char *)memchr(url, '?', url_len);
+	if (pParamStart == NULL)
+	{
+        *uri_len = url_len;
+		return 0;
+	}
+
+    *uri_len = pParamStart - url;
+    pStrEnd = url + url_len;
+
+	pEnd = params + max_count;
+	pCurrent = params;
+	p = pParamStart + 1;
+	while (p < pStrEnd)
+	{
+		if (pCurrent >= pEnd)
+		{
+			return pCurrent - params;
+		}
+
+		pCurrent->key = p;
+		pValueEnd = (char *)memchr(p, '&', pStrEnd - p);
+		if (pValueEnd == NULL)
+		{
+            pValueEnd = pStrEnd;
+			p = pStrEnd;
+		}
+		else
+		{
+			p = pValueEnd + 1;
+		}
+
+		pKeyEnd = (char *)memchr(pCurrent->key, '=',
+                pStrEnd - pCurrent->key);
+		if (pKeyEnd == NULL)  //no =
+		{
+			continue;
+		}
+
         pCurrent->key_len = (int)(pKeyEnd - pCurrent->key);
 		if (pCurrent->key_len == 0) //empty key
 		{
@@ -323,7 +388,7 @@ int http_parse_query(char *url, KeyValuePair *params, const int max_count)
 		}
 
 		pCurrent->value = pKeyEnd + 1;
-		urldecode(pCurrent->value, (int)(pValueEnd - pCurrent->value),
+		urldecode_ex(pCurrent->value, (int)(pValueEnd - pCurrent->value),
 			pCurrent->value, &pCurrent->value_len);
 		pCurrent++;
 	}

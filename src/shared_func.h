@@ -240,7 +240,7 @@ int buffer_memcpy(BufferInfo *pBuff, const char *buff, const int len);
 */
 char *urlencode(const char *src, const int src_len, char *dest, int *dest_len);
 
-/** url decode
+/** url decode, terminated with \0
  *  parameters:
  *  	src: the source string to decode
  *  	src_len: source string length
@@ -249,6 +249,16 @@ char *urlencode(const char *src, const int src_len, char *dest, int *dest_len);
  *  return: error no, 0 success, != 0 fail
 */
 char *urldecode(const char *src, const int src_len, char *dest, int *dest_len);
+
+/** url decode, no terminate with \0
+ *  parameters:
+ *  	src: the source string to decode
+ *  	src_len: source string length
+ *  	dest: store dest string
+ *  	dest_len: store the dest string length
+ *  return: error no, 0 success, != 0 fail
+*/
+char *urldecode_ex(const char *src, const int src_len, char *dest, int *dest_len);
 
 /** get char occurs count
  *  parameters:

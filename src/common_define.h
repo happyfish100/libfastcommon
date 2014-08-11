@@ -136,9 +136,15 @@ typedef struct
 {
 	char *key;
 	char *value;
+} KeyValuePair;
+
+typedef struct
+{
+	char *key;
+	char *value;
     int key_len;
     int value_len;
-} KeyValuePair;
+} KeyValuePairEx;
 
 typedef struct
 {
