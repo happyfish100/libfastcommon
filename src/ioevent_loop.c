@@ -2,18 +2,50 @@
 #include "logger.h"
 #include "ioevent_loop.h"
 
-static void deal_ioevents(IOEventPoller *ioevent, const int count)
+static void deal_ioevents(IOEventPoller *ioevent)
 {
-	int i;
 	int event;
 	IOEventEntry *pEntry;
-	for (i=0; i<count; i++)
-	{
-		event = IOEVENT_GET_EVENTS(ioevent, i);
-		pEntry = (IOEventEntry *)IOEVENT_GET_DATA(ioevent, i);
 
-		pEntry->callback(pEntry->fd, event, pEntry->timer.data);
+	for (ioevent->iterator.index=0; ioevent->iterator.index < ioevent->iterator.
+            count; ioevent->iterator.index++)
+	{
+		event = IOEVENT_GET_EVENTS(ioevent, ioevent->iterator.index);
+		pEntry = (IOEventEntry *)IOEVENT_GET_DATA(ioevent,
+                ioevent->iterator.index);
+        if (pEntry != NULL) {
+            pEntry->callback(pEntry->fd, event, pEntry->timer.data);
+        }
 	}
+}
+
+int ioevent_remove(IOEventPoller *ioevent, void *data)
+{
+	IOEventEntry *pEntry;
+    int index;
+
+    if (ioevent->iterator.index >= ioevent->iterator.count)
+    {
+        return ENOENT;
+    }
+
+    pEntry = (IOEventEntry *)IOEVENT_GET_DATA(ioevent,
+            ioevent->iterator.index);
+    if (pEntry != NULL && pEntry->timer.data == data) {
+        return 0;  //do NOT clear current entry
+    }
+
+    for (index=ioevent->iterator.index + 1; index < ioevent->iterator.count;
+            index++)
+    {
+        pEntry = (IOEventEntry *)IOEVENT_GET_DATA(ioevent, index);
+        if (pEntry != NULL && pEntry->timer.data == data) {
+            IOEVENT_CLEAR_DATA(ioevent, index);
+            return 0;
+        }
+    }
+
+    return ENOENT;
 }
 
 static void deal_timeouts(FastTimerEntry *head)
@@ -67,12 +99,12 @@ int ioevent_loop(struct nio_thread_data *pThreadData,
 	while (*continue_flag)
 	{
 		pThreadData->deleted_list = NULL;
-		count = ioevent_poll(&pThreadData->ev_puller);
-		if (count > 0)
+		pThreadData->ev_puller.iterator.count = ioevent_poll(&pThreadData->ev_puller);
+		if (pThreadData->ev_puller.iterator.count > 0)
 		{
-			deal_ioevents(&pThreadData->ev_puller, count);
+			deal_ioevents(&pThreadData->ev_puller);
 		}
-		else if (count < 0)
+		else if (pThreadData->ev_puller.iterator.count < 0)
 		{
 			result = errno != 0 ? errno : EINVAL;
 			if (result != EINTR)

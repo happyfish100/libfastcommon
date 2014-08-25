@@ -11,6 +11,9 @@ int ioevent_loop(struct nio_thread_data *pThreadData,
 	IOEventCallback recv_notify_callback, TaskCleanUpCallback
 	clean_up_callback, volatile bool *continue_flag);
 
+//remove entry from ready list
+int ioevent_remove(IOEventPoller *ioevent, void *data);
+
 int ioevent_set(struct fast_task_info *pTask, struct nio_thread_data *pThread,
 	int sock, short event, IOEventCallback callback, const int timeout);
 

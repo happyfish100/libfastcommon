@@ -36,6 +36,8 @@ int ioevent_init(IOEventPoller *ioevent, const int size,
 
   ioevent->size = size;
   ioevent->extra_events = extra_events;
+  ioevent->iterator.index = 0;
+  ioevent->iterator.count = 0;
 
 #if IOEVENT_USE_EPOLL
   ioevent->timeout = timeout;

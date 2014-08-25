@@ -52,6 +52,11 @@ typedef struct ioevent_puller {
     int extra_events;
     int poll_fd;
 
+    struct {
+        int index;
+        int count;
+    } iterator;  //for deal event loop
+
 #if IOEVENT_USE_EPOLL
     struct epoll_event *events;
     int timeout;
@@ -86,6 +91,19 @@ typedef struct ioevent_puller {
 #elif IOEVENT_USE_PORT
   #define IOEVENT_GET_DATA(ioevent, index)  \
       ioevent->events[index].portev_user
+#else
+#error port me
+#endif
+
+#if IOEVENT_USE_EPOLL
+  #define IOEVENT_CLEAR_DATA(ioevent, index)  \
+      ioevent->events[index].data.ptr = NULL
+#elif IOEVENT_USE_KQUEUE
+  #define IOEVENT_CLEAR_DATA(ioevent, index)  \
+      ioevent->events[index].udata = NULL
+#elif IOEVENT_USE_PORT
+  #define IOEVENT_CLEAR_DATA(ioevent, index)  \
+      ioevent->events[index].portev_user = NULL
 #else
 #error port me
 #endif
