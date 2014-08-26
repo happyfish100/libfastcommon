@@ -147,6 +147,20 @@ static int log_open(LogContext *pContext)
 	return 0;
 }
 
+int log_reopen_ex(LogContext *pContext)
+{
+	if (*(pContext->log_filename) == '\0')
+	{
+		return ENOENT;
+	}
+
+    if (pContext->log_fd >= 0 && pContext->log_fd != STDERR_FILENO)
+    {
+        close(pContext->log_fd);
+    }
+    return log_open(pContext);
+}
+
 int log_set_prefix_ex(LogContext *pContext, const char *base_path, \
 		const char *filename_prefix)
 {

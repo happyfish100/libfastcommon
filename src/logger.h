@@ -99,6 +99,8 @@ int log_init();
 */
 int log_init2();
 
+#define log_reopen() log_reopen_ex(&g_log_context)
+
 #define log_set_prefix(base_path, filename_prefix) \
 	log_set_prefix_ex(&g_log_context, base_path, filename_prefix)
 
@@ -118,6 +120,13 @@ int log_init2();
  *  return: 0 for success, != 0 fail
 */
 int log_init_ex(LogContext *pContext);
+
+/** reopen the log file
+ *  parameters:
+ *           pContext: the log context
+ *  return: 0 for success, != 0 fail
+*/
+int log_reopen_ex(LogContext *pContext);
 
 /** set log filename prefix, such as "tracker", the log filename will be 
  *  ${base_path}/logs/tracker.log

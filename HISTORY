@@ -1,5 +1,5 @@
 
-Version 1.06  2014-08-25
+Version 1.06  2014-08-26
   * update source code from FastDFS V5.02
   * add function short2buff and buff2short
   * add object memory pool (fast_mblock.h and fast_mblock.c)
@@ -23,6 +23,7 @@ Version 1.06  2014-08-25
   * socket send and recv ignore erno EINTR
   * http_parse_query_ex support binary buffer, and set both lengths of key and name
   * add function ioevent_remove
+  * add function log_reopen_ex
 
 Version 1.05  2012-07-08
   * update source code from FastDFS V3.09
