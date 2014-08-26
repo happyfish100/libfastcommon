@@ -255,6 +255,14 @@ int log_sync_func(void *args);
 */
 int log_notify_rotate(void *args);
 
+
+/** rotate log file
+ *  parameters:
+ *           pContext: the log context
+ *  return: error no, 0 for success, != 0 fail
+*/
+int log_rotate(LogContext *pContext);
+
 /** delete old log files
  *  parameters:
  *           args: should be (LogContext *)

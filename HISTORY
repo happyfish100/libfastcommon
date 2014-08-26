@@ -24,6 +24,7 @@ Version 1.06  2014-08-26
   * http_parse_query_ex support binary buffer, and set both lengths of key and name
   * add function ioevent_remove
   * add function log_reopen_ex
+  * extern function log_rotate
 
 Version 1.05  2012-07-08
   * update source code from FastDFS V3.09

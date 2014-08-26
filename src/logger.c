@@ -322,7 +322,7 @@ int log_delete_old_files(void *args)
 	return 0;
 }
 
-static int log_rotate(LogContext *pContext)
+int log_rotate(LogContext *pContext)
 {
 	struct tm tm;
 	time_t current_time;
