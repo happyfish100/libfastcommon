@@ -106,7 +106,7 @@ int log_init_ex(LogContext *pContext)
 static int log_open(LogContext *pContext)
 {
 	if ((pContext->log_fd = open(pContext->log_filename, O_WRONLY | \
-				O_CREAT | O_APPEND, 0644)) < 0)
+				O_CREAT | O_APPEND | pContext->fd_flags, 0644)) < 0)
 	{
 		fprintf(stderr, "open log file \"%s\" to write fail, " \
 			"errno: %d, error info: %s\n", \
@@ -232,6 +232,11 @@ void log_take_over_stderr_ex(LogContext *pContext)
 void log_take_over_stdout_ex(LogContext *pContext)
 {
     pContext->take_over_stdout = true;
+}
+
+void log_set_fd_flags(LogContext *pContext, const int flags)
+{
+    pContext->fd_flags = flags;
 }
 
 void log_destroy_ex(LogContext *pContext)

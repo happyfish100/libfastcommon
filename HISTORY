@@ -1,5 +1,5 @@
 
-Version 1.06  2014-08-26
+Version 1.06  2014-08-27
   * update source code from FastDFS V5.02
   * add function short2buff and buff2short
   * add object memory pool (fast_mblock.h and fast_mblock.c)
@@ -25,6 +25,7 @@ Version 1.06  2014-08-26
   * add function ioevent_remove
   * add function log_reopen_ex
   * extern function log_rotate
+  * add function log_set_fd_flags
 
 Version 1.05  2012-07-08
   * update source code from FastDFS V3.09

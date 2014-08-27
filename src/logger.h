@@ -81,6 +81,9 @@ typedef struct log_context
     /* keep days for rotated log files */
     int keep_days;
 
+    /* log fd flags */
+    int fd_flags;
+
     /*
      * log the header (title line) callback
      * */
@@ -196,6 +199,14 @@ void log_take_over_stderr_ex(LogContext *pContext);
  *  return: none
 */
 void log_take_over_stdout_ex(LogContext *pContext);
+
+/** set log fd flags
+ *  parameters:
+ *           pContext: the log context
+ *           flags: the fd flags
+ *  return: none
+*/
+void log_set_fd_flags(LogContext *pContext, const int flags);
 
 /** destroy function
  *  parameters:
