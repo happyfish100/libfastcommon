@@ -54,28 +54,81 @@ typedef struct tagConnectionPool {
 
 	/*
 	connections whose the idle time exceeds this time will be closed
+    unit: second
 	*/
 	int max_idle_time;
 } ConnectionPool;
 
+/**
+*   init function
+*   parameters:
+*      cp: the ConnectionPool
+*      connect_timeout: the connect timeout in seconds
+*      max_count_per_entry: max connection count per host:port
+*      max_idle_time: reconnect the server after max idle time in seconds
+*   return 0 for success, != 0 for error
+*/
 int conn_pool_init(ConnectionPool *cp, int connect_timeout, \
 	const int max_count_per_entry, const int max_idle_time);
+
+/**
+*   destroy function
+*   parameters:
+*      cp: the ConnectionPool
+*   return none
+**/
 void conn_pool_destroy(ConnectionPool *cp);
 
+/**
+*   get connection from the pool
+*   parameters:
+*      cp: the ConnectionPool
+*      conn: the connection
+*      err_no: return the the errno, 0 for success
+*   return != NULL for success, NULL for error
+*/
 ConnectionInfo *conn_pool_get_connection(ConnectionPool *cp, 
 	const ConnectionInfo *conn, int *err_no);
 
 #define conn_pool_close_connection(cp, conn) \
 	conn_pool_close_connection_ex(cp, conn, false)
 
+/**
+*   push back the connection to pool
+*   parameters:
+*      cp: the ConnectionPool
+*      conn: the connection
+*      bForce: set true to close the socket, else only push back to connection pool
+*   return 0 for success, != 0 for error
+*/
 int conn_pool_close_connection_ex(ConnectionPool *cp, ConnectionInfo *conn, 
 	const bool bForce);
 
+/**
+*   disconnect from the server
+*   parameters:
+*      pConnection: the connection
+*   return 0 for success, != 0 for error
+*/
 void conn_pool_disconnect_server(ConnectionInfo *pConnection);
 
+/**
+*   connect to the server
+*   parameters:
+*      pConnection: the connection
+*      connect_timeout: the connect timeout in seconds
+*   NOTE: pConnection->sock will be closed when it >= 0 before connect
+*   return 0 for success, != 0 for error
+*/
 int conn_pool_connect_server(ConnectionInfo *pConnection, \
 		const int connect_timeout);
 
+/**
+*   get connection count of the pool
+*   parameters:
+*      cp: the ConnectionPool
+*   return current connection count
+*/
 int conn_pool_get_connection_count(ConnectionPool *cp);
 
 #ifdef __cplusplus
