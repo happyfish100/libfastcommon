@@ -66,9 +66,12 @@ struct fast_task_queue
 	struct fast_task_info *tail;
 	pthread_mutex_t lock;
 	int max_connections;
+	int current_connections;
+    int alloc_task_once;
 	int min_buff_size;
 	int max_buff_size;
 	int arg_size;
+	int block_size;
 	bool malloc_whole_block;
 };
 
@@ -78,6 +81,9 @@ extern "C" {
 
 int free_queue_init(const int max_connections, const int min_buff_size, \
 		const int max_buff_size, const int arg_size);
+int free_queue_init_ex(const int max_connections, const int init_connections,
+        const int alloc_task_once, const int min_buff_size,
+        const int max_buff_size, const int arg_size);
 
 void free_queue_destroy();
 
