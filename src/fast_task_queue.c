@@ -127,9 +127,11 @@ int free_queue_init_ex(const int max_connections, const int init_connections,
         const int alloc_task_once, const int min_buff_size,
         const int max_buff_size, const int arg_size)
 {
+#define MAX_DATA_SIZE  (256 * 1024 * 1024)
 	int64_t total_size;
 	struct mpool_node *mpool;
 	int alloc_size;
+    int alloc_once;
 	int result;
 	int loop_count;
 	int aligned_min_size;
@@ -170,14 +172,14 @@ int free_queue_init_ex(const int max_connections, const int init_connections,
 		}
 		if (rlimit_data.rlim_cur == RLIM_INFINITY)
 		{
-			max_data_size = 256 * 1024 * 1024;
+			max_data_size = MAX_DATA_SIZE;
 		}
 		else
 		{
 			max_data_size = rlimit_data.rlim_cur;
-			if (max_data_size > 256 * 1024 * 1024)
+			if (max_data_size > MAX_DATA_SIZE)
 			{
-				max_data_size = 256 * 1024 * 1024;
+				max_data_size = MAX_DATA_SIZE;
 			}
 		}
 
@@ -202,6 +204,11 @@ int free_queue_init_ex(const int max_connections, const int init_connections,
     if (alloc_task_once <= 0)
     {
         g_free_queue.alloc_task_once = 256;
+		alloc_once = MAX_DATA_SIZE / g_free_queue.block_size;
+        if (g_free_queue.alloc_task_once > alloc_once)
+        {
+            g_free_queue.alloc_task_once = alloc_once;
+        }
     }
     else
     {
@@ -219,8 +226,7 @@ int free_queue_init_ex(const int max_connections, const int init_connections,
         g_free_queue.alloc_task_once, aligned_min_size, aligned_max_size,
         g_free_queue.block_size, aligned_arg_size, (int)max_data_size, total_size);
 
-	if ((!g_free_queue.malloc_whole_block) || \
-		(total_size <= max_data_size))
+	if ((!g_free_queue.malloc_whole_block) || (total_size <= max_data_size))
 	{
 		loop_count = 1;
 		mpool = malloc_mpool(total_size);
@@ -234,7 +240,6 @@ int free_queue_init_ex(const int max_connections, const int init_connections,
 	else
 	{
 		int remain_count;
-		int alloc_once;
 		int current_count;
 		int current_alloc_size;
 
@@ -243,7 +248,7 @@ int free_queue_init_ex(const int max_connections, const int init_connections,
 		alloc_once = max_data_size / g_free_queue.block_size;
 		while (remain_count > 0)
 		{
-			current_count = (remain_count > alloc_once) ? \
+			current_count = (remain_count > alloc_once) ?
 					alloc_once : remain_count;
 			current_alloc_size = g_free_queue.block_size * current_count;
 			mpool = malloc_mpool(current_alloc_size);
@@ -308,7 +313,7 @@ void free_queue_destroy()
 		char *pCharEnd;
 		struct fast_task_info *pTask;
 
-		pCharEnd = ((char *)g_mpool.head->blocks) + g_free_queue.block_size * \
+		pCharEnd = ((char *)g_mpool.head->blocks) + g_free_queue.block_size *
 				g_free_queue.current_connections;
 		for (p=(char *)g_mpool.head->blocks; p<pCharEnd; p += g_free_queue.block_size)
 		{
@@ -343,24 +348,21 @@ static int free_queue_realloc()
 	int remain_count;
 	int current_count;
 	int current_alloc_size;
-    int total_alloc_count;
 
     head = tail = NULL;
-	total_alloc_count = 0;
 	remain_count = g_free_queue.max_connections -
         g_free_queue.current_connections;
-	while (remain_count > 0)
+    current_count = (remain_count > g_free_queue.alloc_task_once) ?
+        g_free_queue.alloc_task_once : remain_count;
+    if (current_count > 0)
 	{
-		current_count = (remain_count > g_free_queue.alloc_task_once) ?
-				g_free_queue.alloc_task_once : remain_count;
 		current_alloc_size = g_free_queue.block_size * current_count;
 		mpool = malloc_mpool(current_alloc_size);
 		if (mpool == NULL)
 		{
-            break;
+            return ENOMEM;
 		}
 
-        total_alloc_count += current_count;
 		if (g_mpool.tail == NULL)
 		{
 			g_mpool.head = mpool;
@@ -380,6 +382,9 @@ static int free_queue_realloc()
 
 		remain_count -= current_count;
 	}
+    else {
+        return ENOSPC;
+    }
 
     if (g_free_queue.head == NULL)
     {
@@ -391,18 +396,13 @@ static int free_queue_realloc()
     }
     g_free_queue.tail = tail;
 
-	logDebug("file: "__FILE__", line: %d, "
-		"alloc %d elements", __LINE__, total_alloc_count);
+    g_free_queue.current_connections += current_count;
 
-    if (total_alloc_count > 0)
-    {
-        g_free_queue.current_connections += total_alloc_count;
-        return 0;
-    }
-    else
-    {
-        return ENOMEM;
-    }
+	logDebug("file: "__FILE__", line: %d, "
+		"current_connections: %d, realloc %d elements", __LINE__,
+        g_free_queue.current_connections, current_count);
+
+    return 0;
 }
 
 struct fast_task_info *free_queue_pop()

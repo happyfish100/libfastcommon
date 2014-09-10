@@ -1,4 +1,7 @@
 
+Version 1.07  2014-09-10
+  * increment alloc task buffer
+
 Version 1.06  2014-08-27
   * update source code from FastDFS V5.02
   * add function short2buff and buff2short
