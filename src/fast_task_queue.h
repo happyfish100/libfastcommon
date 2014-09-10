@@ -90,7 +90,7 @@ void free_queue_destroy();
 int free_queue_push(struct fast_task_info *pTask);
 struct fast_task_info *free_queue_pop();
 int free_queue_count();
-
+int free_queue_current_connections();
 
 int task_queue_init(struct fast_task_queue *pQueue);
 int task_queue_push(struct fast_task_queue *pQueue, \

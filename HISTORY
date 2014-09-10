@@ -1,6 +1,7 @@
 
 Version 1.07  2014-09-10
   * increment alloc task buffer
+  * add function free_queue_current_connections
 
 Version 1.06  2014-08-27
   * update source code from FastDFS V5.02

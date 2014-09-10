@@ -500,6 +500,11 @@ int free_queue_count()
 	return task_queue_count(&g_free_queue);
 }
 
+int free_queue_current_connections()
+{
+    return g_free_queue.current_connections;
+}
+
 int task_queue_push(struct fast_task_queue *pQueue, \
 		struct fast_task_info *pTask)
 {
