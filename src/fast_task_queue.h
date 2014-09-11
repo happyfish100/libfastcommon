@@ -66,7 +66,7 @@ struct fast_task_queue
 	struct fast_task_info *tail;
 	pthread_mutex_t lock;
 	int max_connections;
-	int current_connections;
+	int alloc_connections;
     int alloc_task_once;
 	int min_buff_size;
 	int max_buff_size;
@@ -90,7 +90,7 @@ void free_queue_destroy();
 int free_queue_push(struct fast_task_info *pTask);
 struct fast_task_info *free_queue_pop();
 int free_queue_count();
-int free_queue_current_connections();
+int free_queue_alloc_connections();
 
 int task_queue_init(struct fast_task_queue *pQueue);
 int task_queue_push(struct fast_task_queue *pQueue, \

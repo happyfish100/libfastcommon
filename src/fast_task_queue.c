@@ -200,7 +200,7 @@ int free_queue_init_ex(const int max_connections, const int init_connections,
 	}
 
 	g_free_queue.max_connections = max_connections;
-	g_free_queue.current_connections = init_connections;
+	g_free_queue.alloc_connections = init_connections;
     if (alloc_task_once <= 0)
     {
         g_free_queue.alloc_task_once = 256;
@@ -240,7 +240,7 @@ int free_queue_init_ex(const int max_connections, const int init_connections,
 	else
 	{
 		int remain_count;
-		int current_count;
+		int alloc_count;
 		int current_alloc_size;
 
 		loop_count = 0;
@@ -248,9 +248,9 @@ int free_queue_init_ex(const int max_connections, const int init_connections,
 		alloc_once = max_data_size / g_free_queue.block_size;
 		while (remain_count > 0)
 		{
-			current_count = (remain_count > alloc_once) ?
+			alloc_count = (remain_count > alloc_once) ?
 					alloc_once : remain_count;
-			current_alloc_size = g_free_queue.block_size * current_count;
+			current_alloc_size = g_free_queue.block_size * alloc_count;
 			mpool = malloc_mpool(current_alloc_size);
 			if (mpool == NULL)
 			{
@@ -269,7 +269,7 @@ int free_queue_init_ex(const int max_connections, const int init_connections,
 			}
             g_mpool.tail = mpool;
 
-			remain_count -= current_count;
+			remain_count -= alloc_count;
 			loop_count++;
 		}
 
@@ -314,7 +314,7 @@ void free_queue_destroy()
 		struct fast_task_info *pTask;
 
 		pCharEnd = ((char *)g_mpool.head->blocks) + g_free_queue.block_size *
-				g_free_queue.current_connections;
+				g_free_queue.alloc_connections;
 		for (p=(char *)g_mpool.head->blocks; p<pCharEnd; p += g_free_queue.block_size)
 		{
 			pTask = (struct fast_task_info *)p;
@@ -346,17 +346,17 @@ static int free_queue_realloc()
 	struct fast_task_info *head;
 	struct fast_task_info *tail;
 	int remain_count;
-	int current_count;
+	int alloc_count;
 	int current_alloc_size;
 
     head = tail = NULL;
 	remain_count = g_free_queue.max_connections -
-        g_free_queue.current_connections;
-    current_count = (remain_count > g_free_queue.alloc_task_once) ?
+        g_free_queue.alloc_connections;
+    alloc_count = (remain_count > g_free_queue.alloc_task_once) ?
         g_free_queue.alloc_task_once : remain_count;
-    if (current_count > 0)
+    if (alloc_count > 0)
 	{
-		current_alloc_size = g_free_queue.block_size * current_count;
+		current_alloc_size = g_free_queue.block_size * alloc_count;
 		mpool = malloc_mpool(current_alloc_size);
 		if (mpool == NULL)
 		{
@@ -380,7 +380,7 @@ static int free_queue_realloc()
         }
         tail = mpool->last_block;
 
-		remain_count -= current_count;
+		remain_count -= alloc_count;
 	}
     else {
         return ENOSPC;
@@ -396,11 +396,11 @@ static int free_queue_realloc()
     }
     g_free_queue.tail = tail;
 
-    g_free_queue.current_connections += current_count;
+    g_free_queue.alloc_connections += alloc_count;
 
 	logDebug("file: "__FILE__", line: %d, "
-		"current_connections: %d, realloc %d elements", __LINE__,
-        g_free_queue.current_connections, current_count);
+		"alloc_connections: %d, realloc %d elements", __LINE__,
+        g_free_queue.alloc_connections, alloc_count);
 
     return 0;
 }
@@ -413,13 +413,13 @@ struct fast_task_info *free_queue_pop()
         return pTask;
     }
 
-    if (g_free_queue.current_connections >= g_free_queue.max_connections)
+    if (g_free_queue.alloc_connections >= g_free_queue.max_connections)
     {
         return NULL;
     }
 
 	pthread_mutex_lock(&g_free_queue.lock);
-    if (g_free_queue.current_connections >= g_free_queue.max_connections)
+    if (g_free_queue.alloc_connections >= g_free_queue.max_connections)
     {
         if (g_free_queue.head == NULL)
         {
@@ -500,9 +500,9 @@ int free_queue_count()
 	return task_queue_count(&g_free_queue);
 }
 
-int free_queue_current_connections()
+int free_queue_alloc_connections()
 {
-    return g_free_queue.current_connections;
+    return g_free_queue.alloc_connections;
 }
 
 int task_queue_push(struct fast_task_queue *pQueue, \
