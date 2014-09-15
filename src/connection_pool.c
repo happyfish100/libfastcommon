@@ -31,9 +31,35 @@ int conn_pool_init(ConnectionPool *cp, int connect_timeout, \
 	return hash_init(&(cp->hash_array), simple_hash, 1024, 0.75);
 }
 
+int coon_pool_close_connections(const int index, const HashData *data, void *args)
+{
+    ConnectionManager *cm;
+
+    cm = (ConnectionManager *)data->value;
+    if (cm != NULL)
+    {
+        ConnectionNode *node;
+        ConnectionNode *deleted;
+
+        node = cm->head;
+        while (node != NULL)
+        {
+            deleted = node;
+            node = node->next;
+
+            conn_pool_disconnect_server(deleted->conn);
+            free(deleted);
+        }
+        free(cm);
+    }
+
+    return 0;
+}
+
 void conn_pool_destroy(ConnectionPool *cp)
 {
 	pthread_mutex_lock(&cp->lock);
+    hash_walk(&(cp->hash_array), coon_pool_close_connections, NULL);
 	hash_destroy(&(cp->hash_array));
 	pthread_mutex_unlock(&cp->lock);
 
@@ -174,7 +200,7 @@ ConnectionInfo *conn_pool_get_connection(ConnectionPool *cp,
 				return NULL;
 			}
 
-			bytes = sizeof(ConnectionInfo) + sizeof(ConnectionNode);
+			bytes = sizeof(ConnectionNode) + sizeof(ConnectionInfo);
 			p = (char *)malloc(bytes);
 			if (p == NULL)
 			{
@@ -187,8 +213,8 @@ ConnectionInfo *conn_pool_get_connection(ConnectionPool *cp,
 				return NULL;
 			}
 
-			node = (ConnectionNode *)(p + sizeof(ConnectionInfo));
-			node->conn = (ConnectionInfo *)p;
+			node = (ConnectionNode *)p;
+			node->conn = (ConnectionInfo *)(p + sizeof(ConnectionNode));
 			node->manager = cm;
 			node->next = NULL;
 			node->atime = 0;
