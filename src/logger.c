@@ -103,6 +103,24 @@ int log_init_ex(LogContext *pContext)
 	return 0;
 }
 
+static int log_print_header(LogContext *pContext)
+{
+    usleep(100 * 1000);
+    pContext->current_size = lseek(pContext->log_fd, 0, SEEK_END);
+    if (pContext->current_size < 0)
+    {
+        fprintf(stderr, "lseek file \"%s\" fail, " \
+                "errno: %d, error info: %s\n", \
+                pContext->log_filename, errno, STRERROR(errno));
+        return errno != 0 ? errno : EACCES;
+    }
+    if (pContext->current_size == 0)
+    {
+        pContext->print_header_callback(pContext);
+    }
+    return 0;
+}
+
 static int log_open(LogContext *pContext)
 {
 	if ((pContext->log_fd = open(pContext->log_filename, O_WRONLY | \
@@ -141,7 +159,7 @@ static int log_open(LogContext *pContext)
 	}
     if (pContext->current_size == 0 && pContext->print_header_callback != NULL)
     {
-        pContext->print_header_callback(pContext);
+        log_print_header(pContext);
     }
 
 	return 0;
@@ -215,12 +233,15 @@ void log_set_header_callback(LogContext *pContext, LogHeaderCallback header_call
 	pContext->print_header_callback = header_callback;
     if (pContext->print_header_callback != NULL)
     {
+        int64_t current_size;
+
 		pthread_mutex_lock(&(pContext->log_thread_lock));
-        if (pContext->current_size == 0)
-        {
-          pContext->print_header_callback(pContext);
-        }
+        current_size = pContext->current_size;
 		pthread_mutex_unlock(&(pContext->log_thread_lock));
+        if (current_size == 0)
+        {
+            log_print_header(pContext);
+        }
     }
 }
 
@@ -429,9 +450,9 @@ static int log_fsync(LogContext *pContext, const bool bNeedLock)
 			__LINE__, lock_res, STRERROR(lock_res));
 	}
 
+    pContext->current_size += write_bytes;
 	if (pContext->rotate_size > 0)
 	{
-		pContext->current_size += write_bytes;
 		if (pContext->current_size > pContext->rotate_size)
 		{
 			pContext->rotate_immediately = true;
