@@ -266,7 +266,7 @@ ConnectionInfo *conn_pool_get_connection(ConnectionPool *cp,
 					cm->free_count);
 
 				conn_pool_disconnect_server(ci);
-				free(ci);
+				free(node);
 				continue;
 			}
 
@@ -328,7 +328,7 @@ int conn_pool_close_connection_ex(ConnectionPool *cp, ConnectionInfo *conn,
 			conn->sock, cm->total_count, cm->free_count);
 
 		conn_pool_disconnect_server(conn);
-		free(conn);
+		free(node);
 	}
 	else
 	{
