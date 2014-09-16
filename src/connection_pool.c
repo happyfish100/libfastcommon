@@ -307,7 +307,7 @@ int conn_pool_close_connection_ex(ConnectionPool *cp, ConnectionInfo *conn,
 		return ENOENT;
 	}
 
-	node = (ConnectionNode *)(((char *)conn) + sizeof(ConnectionInfo));
+	node = (ConnectionNode *)(((char *)conn) - sizeof(ConnectionInfo));
 	if (node->manager != cm)
 	{
 		logError("file: "__FILE__", line: %d, " \
