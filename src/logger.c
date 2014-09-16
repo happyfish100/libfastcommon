@@ -13,6 +13,7 @@
 #include <string.h>
 #include <time.h>
 #include <fcntl.h>
+#include <dirent.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/types.h>
@@ -301,13 +302,102 @@ int log_notify_rotate(void *args)
 	return 0;
 }
 
+static int log_delete_matched_old_files(LogContext *pContext,
+        const int prefix_len)
+{
+    char rotate_time_format_prefix[32];
+	char log_filepath[MAX_PATH_SIZE];
+	char filename_prefix[MAX_PATH_SIZE + 32];
+	char full_filename[MAX_PATH_SIZE + 32];
+    int prefix_filename_len;
+    int result;
+    int len;
+    char *p;
+    char *log_filename;
+    DIR *dir;
+    struct dirent ent;
+    struct dirent *pEntry;
+    time_t the_time;
+	struct tm tm;
+
+    p = strrchr(pContext->log_filename, '/');
+    if (p == NULL)
+    {
+        *log_filepath = '.';
+        *(log_filepath + 1) = '/';
+        *(log_filepath + 2) = '\0';
+        log_filename = pContext->log_filename;
+    }
+    else
+    {
+        int path_len;
+        path_len = (p - pContext->log_filename) + 1;
+        memcpy(log_filepath, pContext->log_filename, path_len);
+        *(log_filepath + path_len) = '\0';
+        log_filename = p + 1;
+    }
+
+    memcpy(rotate_time_format_prefix, pContext->rotate_time_format, prefix_len);
+    *(rotate_time_format_prefix + prefix_len) = '\0';
+
+    dir = opendir(log_filepath);
+    if (dir == NULL)
+    {
+        fprintf(stderr, "file: "__FILE__", line: %d, " \
+                "opendir %s fail, errno: %d, error info: %s\n", \
+                __LINE__, log_filepath, errno, STRERROR(errno));
+        return errno != 0 ? errno : ENOENT;
+    }
+
+    result = 0;
+    the_time = get_current_time() - (pContext->keep_days + 1) * 86400;
+    localtime_r(&the_time, &tm);
+    memset(filename_prefix, 0, sizeof(filename_prefix));
+    len = sprintf(filename_prefix, "%s.", log_filename);
+    strftime(filename_prefix + len, sizeof(filename_prefix) - len,
+            rotate_time_format_prefix, &tm);
+    prefix_filename_len = strlen(filename_prefix);
+    while (readdir_r(dir, &ent, &pEntry) == 0)
+    {
+        if (pEntry == NULL)
+        {
+            break;
+        }
+
+        if ((int)strlen(pEntry->d_name) >= prefix_filename_len &&
+                memcmp(pEntry->d_name, filename_prefix,
+                    prefix_filename_len) == 0)
+        {
+            snprintf(full_filename, sizeof(full_filename), "%s%s",
+                    log_filepath, pEntry->d_name);
+            fprintf(stderr, "full_filename: %s\n", full_filename);
+            if (unlink(full_filename) != 0)
+            {
+                if (errno != ENOENT)
+                {
+                    fprintf(stderr, "file: "__FILE__", line: %d, " \
+                            "unlink %s fail, errno: %d, error info: %s\n", \
+                            __LINE__, full_filename, errno, STRERROR(errno));
+                    result = errno != 0 ? errno : EPERM;
+                    break;
+                }
+            }
+        }
+    }
+
+    closedir(dir);
+    return result;
+}
+
 int log_delete_old_files(void *args)
 {
     LogContext *pContext;
+    char *p;
 	char old_filename[MAX_PATH_SIZE + 32];
+    int full_len;
+    int prefix_len;
     int len;
 	struct tm tm;
-	time_t the_time;
 
 	if (args == NULL)
 	{
@@ -325,27 +415,62 @@ int log_delete_old_files(void *args)
         return 0;
     }
 
-	the_time = get_current_time() - pContext->keep_days * 86400;
-    while (1) {
-        the_time -= 86400;
-        localtime_r(&the_time, &tm);
-        memset(old_filename, 0, sizeof(old_filename));
-        len = sprintf(old_filename, "%s.", pContext->log_filename);
-        strftime(old_filename + len, sizeof(old_filename) - len,
-                pContext->rotate_time_format, &tm);
-        if (unlink(old_filename) != 0)
+    full_len = strlen(pContext->rotate_time_format);
+    p = pContext->rotate_time_format + full_len - 1;
+    while (p > pContext->rotate_time_format)
+    {
+        if (*(p-1) != '%')
         {
-            if (errno != ENOENT)
-            {
-                fprintf(stderr, "file: "__FILE__", line: %d, " \
-                        "unlink %s fail, errno: %d, error info: %s\n", \
-                        __LINE__, old_filename, errno, STRERROR(errno));
-            }
             break;
         }
+        if (*p == 'd' || *p == 'm' || *p == 'Y' || *p == 'y')
+        {
+            break;
+        }
+
+        p -= 2;
     }
 
-	return 0;
+    prefix_len = (p - pContext->rotate_time_format) + 1;
+    if (prefix_len == 0)
+    {
+        return EINVAL;
+    }
+
+    if (prefix_len == full_len)
+    {
+        time_t the_time;
+
+        the_time = get_current_time() - pContext->keep_days * 86400;
+        while (1) {
+            the_time -= 86400;
+            localtime_r(&the_time, &tm);
+            memset(old_filename, 0, sizeof(old_filename));
+            len = sprintf(old_filename, "%s.", pContext->log_filename);
+            strftime(old_filename + len, sizeof(old_filename) - len,
+                    pContext->rotate_time_format, &tm);
+            if (unlink(old_filename) != 0)
+            {
+                if (errno != ENOENT)
+                {
+                    fprintf(stderr, "file: "__FILE__", line: %d, " \
+                            "unlink %s fail, errno: %d, error info: %s\n", \
+                            __LINE__, old_filename, errno, STRERROR(errno));
+                    return errno != 0 ? errno : EPERM;
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+
+        return 0;
+    }
+    else
+    {
+        return log_delete_matched_old_files(pContext, prefix_len);
+    }
 }
 
 int log_rotate(LogContext *pContext)

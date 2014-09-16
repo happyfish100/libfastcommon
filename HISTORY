@@ -1,9 +1,10 @@
 
-Version 1.07  2014-09-15
+Version 1.07  2014-09-16
   * increment alloc task buffer
   * add function free_queue_alloc_connections
   * check file size before log access header
   * conn_pool_destroy close connections and free memory
+  * delete log old files with any time format affix
 
 Version 1.06  2014-08-27
   * update source code from FastDFS V5.02
