@@ -1,3 +1,5 @@
+Version 1.08  2014-10-08
+  * sched_thread.c: calculate next_call_time correctly
 
 Version 1.07  2014-09-16
   * increment alloc task buffer

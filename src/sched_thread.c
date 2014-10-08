@@ -320,8 +320,10 @@ static void *sched_thread_entrance(void *args)
 		{
 			//fprintf(stderr, "exec task id=%d\n", pCurrent->id);
 			pCurrent->task_func(pCurrent->func_args);
-			pCurrent->next_call_time = g_current_time + \
-						pCurrent->interval;
+            do
+            {
+                pCurrent->next_call_time += pCurrent->interval;
+            } while (pCurrent->next_call_time <= g_current_time);
 			pCurrent = pCurrent->next;
 			exec_count++;
 		}
