@@ -269,7 +269,6 @@ static void *sched_thread_entrance(void *args)
 	ScheduleEntry *pUntil;
 	int exec_count;
 	int i;
-	int sleep_time;
 
 	pContext = (ScheduleContext *)args;
 	if (sched_init_entries(&(pContext->scheduleArray)) != 0)
@@ -291,22 +290,16 @@ static void *sched_thread_entrance(void *args)
 		}
 
 		g_current_time = time(NULL);
-		sleep_time = pContext->head->next_call_time - g_current_time;
-
-		/*
-		//fprintf(stderr, "count=%d, sleep_time=%d\n", \
-			pContext->scheduleArray.count, sleep_time);
-		*/
-		while (sleep_time > 0 && *(pContext->pcontinue_flag))
-		{
-			sleep(1);
-			g_current_time = time(NULL);
-			if (sched_check_waiting(pContext) == 0)
-			{
-				break;
-			}
-			sleep_time--;
-		}
+        while (pContext->head->next_call_time > g_current_time &&
+                *(pContext->pcontinue_flag))
+        {
+            sleep(1);
+            g_current_time = time(NULL);
+            if (sched_check_waiting(pContext) == 0)
+            {
+                break;
+            }
+        }
 
 		if (!(*(pContext->pcontinue_flag)))
 		{
