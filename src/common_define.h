@@ -130,6 +130,7 @@ typedef struct
 {
 	char major;
 	char minor;
+    char patch;
 } Version;
 
 typedef struct
