@@ -1736,6 +1736,10 @@ int gethostaddrs(char **if_alias_prefixes, const int prefix_count, \
 		ret = ioctl(sock, SIOCGIFADDR, &req);
 		if (ret == -1)
 		{
+            if (*count == 0 && k == 0)  //maybe based 1
+            {
+                continue;
+            }
 			break;
 		}
 

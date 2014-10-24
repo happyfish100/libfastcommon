@@ -146,12 +146,13 @@ int fast_timer_timeouts_get(FastTimer *timer, const int64_t current_time,
            continue;
          }
       }
-      else {
+      else {  //expired
          count++;
          if (first == NULL) {
             first = entry;
          }
       }
+
       last = entry;
       entry = entry->next;
     }
