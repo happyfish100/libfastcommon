@@ -9,8 +9,8 @@
 #include "shared_func.h"
 #include "pthread_func.h"
 
-int fast_mblock_init(struct fast_mblock_man *mblock, const int element_size, \
-		const int alloc_elements_once)
+int fast_mblock_init_ex(struct fast_mblock_man *mblock, const int element_size,
+		const int alloc_elements_once, fast_mblock_alloc_init_func init_func)
 {
 	int result;
 
@@ -43,6 +43,7 @@ int fast_mblock_init(struct fast_mblock_man *mblock, const int element_size, \
 		return result;
 	}
 
+    mblock->alloc_init_func = init_func;
 	mblock->malloc_chain_head = NULL;
 	mblock->free_chain_head = NULL;
     mblock->total_count = 0;
@@ -58,6 +59,7 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
 	char *pTrunkStart;
 	char *p;
 	char *pLast;
+    int result;
 	int block_size;
 	int alloc_size;
 
@@ -84,9 +86,28 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
 	for (p=pTrunkStart; p<pLast; p += block_size)
 	{
 		pNode = (struct fast_mblock_node *)p;
+
+        if (mblock->alloc_init_func != NULL)
+        {
+            if ((result=mblock->alloc_init_func(pNode->data)) != 0)
+            {
+                free(pNew);
+                return result;
+            }
+        }
 		pNode->next = (struct fast_mblock_node *)(p + block_size);
 	}
-	((struct fast_mblock_node *)pLast)->next = NULL;
+
+    if (mblock->alloc_init_func != NULL)
+    {
+        if ((result=mblock->alloc_init_func(((struct fast_mblock_node *)
+                            pLast)->data)) != 0)
+        {
+            free(pNew);
+            return result;
+        }
+    }
+    ((struct fast_mblock_node *)pLast)->next = NULL;
 	mblock->free_chain_head = (struct fast_mblock_node *)pTrunkStart;
 
 	pMallocNode->next = mblock->malloc_chain_head;
