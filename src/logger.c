@@ -370,7 +370,6 @@ static int log_delete_matched_old_files(LogContext *pContext,
         {
             snprintf(full_filename, sizeof(full_filename), "%s%s",
                     log_filepath, pEntry->d_name);
-            fprintf(stderr, "full_filename: %s\n", full_filename);
             if (unlink(full_filename) != 0)
             {
                 if (errno != ENOENT)
