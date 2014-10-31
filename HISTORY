@@ -1,6 +1,7 @@
 
-Version 1.10  2014-11-01
+Version 1.10  2014-10-31
   * correct iovent macro define
+  * must set timeout entry's dlink to NULL because NOT in time wheel
 
 Version 1.09  2014-10-26
   * Version struct add variable: patch
