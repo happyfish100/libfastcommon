@@ -106,7 +106,6 @@ int log_init_ex(LogContext *pContext)
 
 static int log_print_header(LogContext *pContext)
 {
-    usleep(100 * 1000);
     pContext->current_size = lseek(pContext->log_fd, 0, SEEK_END);
     if (pContext->current_size < 0)
     {

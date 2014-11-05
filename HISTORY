@@ -1,4 +1,7 @@
 
+Version 1.11  2014-11-05
+  * remove usleep call in logger.c
+
 Version 1.10  2014-10-31
   * correct iovent macro define
   * must set timeout entry's dlink to NULL because NOT in time wheel
