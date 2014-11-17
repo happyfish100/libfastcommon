@@ -28,7 +28,7 @@ static void *callback_proxy(void *arg);
 /*
  * push the thread into the pool
  * parameters:
- * 				thread:the thread will push into the poolbool
+ * 				thread:the thread will push into the pool
  * return:
  * 				0:success
  * 				>0 : fail
