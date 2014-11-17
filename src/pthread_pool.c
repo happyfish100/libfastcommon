@@ -203,7 +203,7 @@ int threadpool_run(callback func,void *arg)
 	pthread_mutex_unlock(&pool->mutex_locker);
 	return result;
 
-	return 0;
+
 }
 
 int threadpool_free()
