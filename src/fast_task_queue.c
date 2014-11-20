@@ -265,7 +265,7 @@ int free_queue_init_ex(const int max_connections, const int init_connections,
 			else
 			{
 				g_mpool.tail->next = mpool;
-				g_mpool.tail->last_block->next = mpool->blocks;
+				g_mpool.tail->last_block->next = mpool->blocks;  //link previous mpool to current
 			}
             g_mpool.tail = mpool;
 
@@ -370,14 +370,10 @@ static int free_queue_realloc()
 		else
 		{
 			g_mpool.tail->next = mpool;
-			g_mpool.tail->last_block->next = mpool->blocks;
 		}
         g_mpool.tail = mpool;
 
-        if (head == NULL)
-        {
-            head = mpool->blocks;
-        }
+        head = mpool->blocks;
         tail = mpool->last_block;
 
 		remain_count -= alloc_count;
