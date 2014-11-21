@@ -1,6 +1,7 @@
 
-Version 1.11  2014-11-05
+Version 1.11  2014-11-20
   * remove usleep call in logger.c
+  * bug fixed: NOT set last_block->next when realloc
 
 Version 1.10  2014-10-31
   * correct iovent macro define
