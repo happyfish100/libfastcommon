@@ -800,6 +800,10 @@ void log_it_ex(LogContext *pContext, const int priority, const char *format, ...
 	va_start(ap, format);
 	len = vsnprintf(text, sizeof(text), format, ap);
 	va_end(ap);
+    if (len > sizeof(text))
+    {
+        len = sizeof(text);
+    }
 
 	switch(priority)
 	{
@@ -859,9 +863,13 @@ void log_it_ex(LogContext *pContext, const int priority, const char *format, ...
 	va_start(ap, format); \
 	len = vsnprintf(text, sizeof(text), format, ap);  \
 	va_end(ap); \
+    if (len > sizeof(text)) \
+    { \
+        len = sizeof(text); \
+    } \
 	} \
 \
-	log_it_ex2(pContext, caption, text, len, bNeedSync, true); \
+	log_it_ex2(pContext, caption, text, len, bNeedSync, true);
 
 
 void logEmergEx(LogContext *pContext, const char *format, ...)
@@ -914,7 +922,10 @@ void logAccess(LogContext *pContext, struct timeval *tvStart, \
 	va_start(ap, format);
 	len = vsnprintf(text, sizeof(text), format, ap);
 	va_end(ap);
-
+    if (len > sizeof(text))
+    {
+        len = sizeof(text);
+    }
 	doLogEx(pContext, tvStart, NULL, text, len, false, true);
 }
 

@@ -1,4 +1,7 @@
 
+Version 1.12  2014-12-05
+  * bug fixed: must check the return value of vsnprintf
+
 Version 1.11  2014-11-20
   * remove usleep call in logger.c
   * bug fixed: NOT set last_block->next when realloc
