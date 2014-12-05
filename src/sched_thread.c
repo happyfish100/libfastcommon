@@ -408,6 +408,44 @@ static int sched_dup_array(const ScheduleArray *pSrcArray, \
 	return 0;
 }
 
+static int sched_append_array(const ScheduleArray *pSrcArray, \
+		ScheduleArray *pDestArray)
+{
+	int result;
+	int bytes;
+    ScheduleEntry *new_entries;
+
+	if (pSrcArray->count == 0)
+	{
+		return 0;
+	}
+
+	bytes = sizeof(ScheduleEntry) * (pDestArray->count + pSrcArray->count);
+	new_entries = (ScheduleEntry *)malloc(bytes);
+	if (new_entries == NULL)
+	{
+		result = errno != 0 ? errno : ENOMEM;
+		logError("file: "__FILE__", line: %d, " \
+			"malloc %d bytes failed, " \
+			"errno: %d, error info: %s", \
+			__LINE__, bytes, result, STRERROR(result));
+		return result;
+	}
+
+    if (pDestArray->entries != NULL)
+    {
+	    memcpy(new_entries, pDestArray->entries,
+                sizeof(ScheduleEntry) * pDestArray->count);
+        free(pDestArray->entries);
+    }
+    memcpy(new_entries + pDestArray->count, pSrcArray->entries,
+                sizeof(ScheduleEntry) * pSrcArray->count);
+
+    pDestArray->entries = new_entries;
+	pDestArray->count += pSrcArray->count;
+	return 0;
+}
+
 int sched_add_entries(const ScheduleArray *pScheduleArray)
 {
 	int result;
@@ -419,14 +457,21 @@ int sched_add_entries(const ScheduleArray *pScheduleArray)
 		return ENOENT;
 	}
 
-	while (waiting_schedule_array.entries != NULL)
-	{
-		logDebug("file: "__FILE__", line: %d, " \
-			"waiting for schedule array ready ...", __LINE__);
-		sleep(1);
-	}
+    if (waiting_schedule_array.entries != NULL)
+    {
+        if (g_schedule_flag)
+        {
+    	    while (waiting_schedule_array.entries != NULL)
+	        {
+	        	logDebug("file: "__FILE__", line: %d, " \
+			        "waiting for schedule array ready ...", __LINE__);
+	        	sleep(1);
+	        }
+        }
+    }
 
-	if ((result=sched_dup_array(pScheduleArray, &waiting_schedule_array))!=0)
+	if ((result=sched_append_array(pScheduleArray,
+                    &waiting_schedule_array)) != 0)
 	{
 		return result;
 	}

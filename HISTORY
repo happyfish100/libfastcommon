@@ -1,6 +1,7 @@
 
 Version 1.12  2014-12-05
   * bug fixed: must check the return value of vsnprintf
+  * can call sched_add_entries many times before schedule
 
 Version 1.11  2014-11-20
   * remove usleep call in logger.c

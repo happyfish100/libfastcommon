@@ -800,9 +800,9 @@ void log_it_ex(LogContext *pContext, const int priority, const char *format, ...
 	va_start(ap, format);
 	len = vsnprintf(text, sizeof(text), format, ap);
 	va_end(ap);
-    if (len > sizeof(text))
+    if (len >= sizeof(text))
     {
-        len = sizeof(text);
+        len = sizeof(text) - 1;
     }
 
 	switch(priority)
@@ -863,9 +863,9 @@ void log_it_ex(LogContext *pContext, const int priority, const char *format, ...
 	va_start(ap, format); \
 	len = vsnprintf(text, sizeof(text), format, ap);  \
 	va_end(ap); \
-    if (len > sizeof(text)) \
+    if (len >= sizeof(text)) \
     { \
-        len = sizeof(text); \
+        len = sizeof(text) - 1; \
     } \
 	} \
 \
@@ -922,9 +922,9 @@ void logAccess(LogContext *pContext, struct timeval *tvStart, \
 	va_start(ap, format);
 	len = vsnprintf(text, sizeof(text), format, ap);
 	va_end(ap);
-    if (len > sizeof(text))
+    if (len >= sizeof(text))
     {
-        len = sizeof(text);
+        len = sizeof(text) - 1;
     }
 	doLogEx(pContext, tvStart, NULL, text, len, false, true);
 }
