@@ -55,6 +55,14 @@ int get_url_content_ex(const char *url, const int url_len,
         alloc_size = *content_len - 1;
     }
 	*content_len = 0;
+    if (url_len > sizeof(out_buff) - 128)
+    {
+		sprintf(error_info, "file: "__FILE__", line: %d, "
+                "url too long, url length: %d > %d", __LINE__,
+                url_len, (int)(sizeof(out_buff) - 128));
+
+		return ENAMETOOLONG;
+    }
 
 	if (url_len <= 7 || strncasecmp(url, "http://", 7) != 0)
 	{

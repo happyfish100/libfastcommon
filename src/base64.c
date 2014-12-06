@@ -50,6 +50,10 @@ void base64_set_line_separator(struct base64_context *context, \
 {
     context->line_sep_len = snprintf(context->line_separator, \
 			sizeof(context->line_separator), "%s", pLineSeparator);
+    if (context->line_sep_len >= sizeof(context->line_separator))
+    {
+        context->line_sep_len = sizeof(context->line_separator) - 1;
+    }
 }
 
 void base64_init_ex(struct base64_context *context, const int nLineLength, \
