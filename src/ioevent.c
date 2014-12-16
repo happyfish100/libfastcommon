@@ -70,7 +70,7 @@ void ioevent_destroy(IOEventPoller *ioevent)
     ioevent->events = NULL;
   }
 
-  if (ioevent->poll_fd >=0) {
+  if (ioevent->poll_fd >= 0) {
     close(ioevent->poll_fd);
     ioevent->poll_fd = -1;
   }

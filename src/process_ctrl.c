@@ -122,6 +122,54 @@ int process_restart(const char *pidFilename)
   return result;
 }
 
+int process_start(const char* pidFilename)
+{
+    pid_t pid;
+    int result;
+    char cmdline[MAX_PATH_SIZE], cmdfile[MAX_PATH_SIZE], argv0[MAX_PATH_SIZE];
+    long cmdsz = sizeof cmdline;
+
+    if ((result=get_pid_from_file(pidFilename, &pid)) != 0) {
+        if (result == ENOENT) {
+            return 0;
+        }
+        else {
+            fprintf(stderr, "get pid from file: %s fail, " \
+                "errno: %d, error info: %s\n",
+                pidFilename, result, strerror(result));
+            return result;
+        }
+    }
+    cmdline[cmdsz-1] = argv0[cmdsz-1] = '\0';
+    if (kill(pid, 0) == 0) {
+        sprintf(cmdfile, "/proc/%d/cmdline", pid);
+        if ((result=getFileContentEx(cmdfile, cmdline, 0, &cmdsz)) != 0) {
+            fprintf(stderr, "read file %s failed. %d %s\n", cmdfile, errno, strerror(errno));
+            return result;
+        }
+        cmdsz = sizeof argv0;
+        sprintf(cmdfile, "/proc/%d/cmdline", getpid());
+        if ((result=getFileContentEx(cmdfile, argv0, 0, &cmdsz)) != 0) {
+            fprintf(stderr, "read file %s failed. %d %s\n", cmdfile, errno, strerror(errno));
+            return result;
+        }
+        if (strcmp(cmdline, argv0) == 0) {
+            return EEXIST;
+        }
+        return 0;
+    }
+    else if (errno == ENOENT || errno == ESRCH) {
+        return 0;
+    }
+    else {
+        result = errno;
+        fprintf(stderr, "kill pid: %d fail, errno: %d, error info: %s\n",
+            (int)pid, errno, strerror(errno));
+        return result;
+    }
+
+}
+
 int process_exist(const char *pidFilename)
 {
   pid_t pid;
@@ -223,7 +271,7 @@ int process_action(const char *pidFilename, const char *action, bool *stop)
 	}
 	else if (strcmp(action, "start") == 0)
 	{
-		return 0;
+		return process_start(pidFilename);
 	}
 	else
 	{
