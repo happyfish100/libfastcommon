@@ -1,4 +1,4 @@
-Name: fastcommon
+Name: php-fastcommon
 Version: 1.0.0
 Release: 1%{?dist}
 Summary: The php extension for libfastcommon
