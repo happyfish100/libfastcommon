@@ -1,0 +1,50 @@
+Name: fastcommon
+Version: 1.0.0
+Release: 1%{?dist}
+Summary: The php extension for libfastcommon
+License: GPL
+Group: Arch/Tech
+URL: 	http://perso.orange.fr/sebastien.godard/
+Source: http://perso.orange.fr/sebastien.godard/%{name}-%{version}.tar.gz
+
+BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n) 
+
+BuildRequires: libfastcommon >= 1.0.12
+Requires: libfastcommon >= 1.0.12
+
+%description
+This package provides the php extension for libfastcommon
+
+%prep
+%setup -q
+
+%build
+phpize
+%configure
+make
+
+%install
+rm -rf %{buildroot}
+
+mkdir -p %{buildroot}/usr/lib64/php/modules
+mkdir -p %{buildroot}/etc/php.d
+cp -f .libs/fastcommon.so  %{buildroot}/usr/lib64/php/modules/
+cp -f fastcommon.ini %{buildroot}/etc/php.d/fastcommon.ini.sample
+
+%post
+
+%preun
+
+%postun
+
+%clean
+#rm -rf %{buildroot}
+
+%files
+%defattr(-,root,root,-)
+%{_libdir}/php/modules/*
+/etc/php.d/*
+
+%changelog
+* Jan 14 2015  Yu Qing<yuqing@yongche.com>
+- first RPM release (1.0)
