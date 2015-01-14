@@ -29,7 +29,7 @@ rm -rf %{buildroot}
 mkdir -p %{buildroot}/usr/lib64/php/modules
 mkdir -p %{buildroot}/etc/php.d
 cp -f .libs/fastcommon.so  %{buildroot}/usr/lib64/php/modules/
-cp -f fastcommon.ini %{buildroot}/etc/php.d/fastcommon.ini.sample
+cp -f fastcommon.ini %{buildroot}/etc/php.d/fastcommon.ini
 
 %post
 

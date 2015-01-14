@@ -18,6 +18,7 @@ PHP_RSHUTDOWN_FUNCTION(fastcommon);
 PHP_MINFO_FUNCTION(fastcommon);
 
 ZEND_FUNCTION(fastcommon_version);
+ZEND_FUNCTION(fastcommon_gethostaddrs);
 
 #ifdef __cplusplus
 }

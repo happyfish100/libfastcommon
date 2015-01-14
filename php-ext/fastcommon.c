@@ -36,6 +36,7 @@ const zend_fcall_info empty_fcall_info = { 0, NULL, NULL, NULL, NULL, 0, NULL, N
 // Every user visible function must have an entry in fastcommon_functions[].
 	zend_function_entry fastcommon_functions[] = {
 		ZEND_FE(fastcommon_version, NULL)
+		ZEND_FE(fastcommon_gethostaddrs, NULL)
 		{NULL, NULL, NULL}  /* Must be the last line */
 	};
 
@@ -114,9 +115,12 @@ ZEND_FUNCTION(fastcommon_gethostaddrs)
     char *if_alias_prefix;
     int if_prefix_len;
 	int count;
+    int uniq_count;
+    int i;
 	int k;
 	int alias_count;
 	char ip_addresses[FAST_MAX_LOCAL_IP_ADDRS][IP_ADDRESS_SIZE];
+	char *uniq_ips[FAST_MAX_LOCAL_IP_ADDRS];
 	char *if_alias_prefixes[1];
 
 	argc = ZEND_NUM_ARGS();
@@ -137,8 +141,7 @@ ZEND_FUNCTION(fastcommon_gethostaddrs)
 	}
 
 
-	if (if_alias_prefix == NULL || if_prefix_len == 0)
-	{
+	if (if_alias_prefix == NULL || if_prefix_len == 0) {
 		alias_count = 0;
         if_alias_prefixes[0] = NULL;
 	}
@@ -148,16 +151,29 @@ ZEND_FUNCTION(fastcommon_gethostaddrs)
         if_alias_prefixes[0] = if_alias_prefix;
 	}
 
-	if (gethostaddrs(if_alias_prefixes, alias_count, ip_addresses, \
+    count = 0;
+	if (gethostaddrs(if_alias_prefixes, alias_count, ip_addresses,
 			FAST_MAX_LOCAL_IP_ADDRS, &count) != 0)
 	{
 		RETURN_BOOL(false);
 	}
 
+    uniq_count = 0;
+	for (k=0; k<count; k++) {
+        for (i=0; i<uniq_count; i++) {
+            if (strcmp(ip_addresses[k], uniq_ips[i]) == 0) {
+                break;
+            }
+        }
+
+        if (i == uniq_count) {  //not found
+            uniq_ips[uniq_count++] = ip_addresses[k];
+        }
+	}
+
 	array_init(return_value);
-	for (k=0; k<count; k++)
-	{
-        add_index_string(return_value, k, ip_addresses[k], 1);
+	for (k=0; k<uniq_count; k++) {
+        add_index_string(return_value, k, uniq_ips[k], 1);
 	}
 }
 
