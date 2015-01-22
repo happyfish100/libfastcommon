@@ -19,6 +19,7 @@
 #include <time.h>
 #include "local_ip_func.h"
 #include "logger.h"
+#include "hash.h"
 #include "sockopt.h"
 #include "fastcommon.h"
 
@@ -37,6 +38,8 @@ const zend_fcall_info empty_fcall_info = { 0, NULL, NULL, NULL, NULL, 0, NULL, N
 	zend_function_entry fastcommon_functions[] = {
 		ZEND_FE(fastcommon_version, NULL)
 		ZEND_FE(fastcommon_gethostaddrs, NULL)
+		ZEND_FE(fastcommon_time33_hash, NULL)
+		ZEND_FE(fastcommon_simple_hash, NULL)
 		{NULL, NULL, NULL}  /* Must be the last line */
 	};
 
@@ -175,5 +178,65 @@ ZEND_FUNCTION(fastcommon_gethostaddrs)
 	for (k=0; k<uniq_count; k++) {
         add_index_string(return_value, k, uniq_ips[k], 1);
 	}
+}
+
+/*
+array fastcommon_time33_hash(string str)
+return unsigned hash code
+*/
+ZEND_FUNCTION(fastcommon_time33_hash)
+{
+	int argc;
+    char *str;
+    int str_len;
+
+	argc = ZEND_NUM_ARGS();
+	if (argc != 1) {
+		logError("file: "__FILE__", line: %d, "
+			"fastcommon_time33_hash parameters count: %d is invalid",
+			__LINE__, argc);
+		RETURN_BOOL(false);
+	}
+
+    str = NULL;
+	if (zend_parse_parameters(argc TSRMLS_CC, "s", &str,
+                &str_len) == FAILURE)
+	{
+		logError("file: "__FILE__", line: %d, "
+			"zend_parse_parameters fail!", __LINE__);
+		RETURN_BOOL(false);
+	}
+
+    RETURN_LONG(Time33Hash(str, str_len));
+}
+
+/*
+array fastcommon_simple_hash(string str)
+return unsigned hash code
+*/
+ZEND_FUNCTION(fastcommon_simple_hash)
+{
+	int argc;
+    char *str;
+    int str_len;
+
+	argc = ZEND_NUM_ARGS();
+	if (argc != 1) {
+		logError("file: "__FILE__", line: %d, "
+			"fastcommon_simple_hash parameters count: %d is invalid",
+			__LINE__, argc);
+		RETURN_BOOL(false);
+	}
+
+    str = NULL;
+	if (zend_parse_parameters(argc TSRMLS_CC, "s", &str,
+                &str_len) == FAILURE)
+	{
+		logError("file: "__FILE__", line: %d, "
+			"zend_parse_parameters fail!", __LINE__);
+		RETURN_BOOL(false);
+	}
+
+    RETURN_LONG(simple_hash(str, str_len));
 }
 

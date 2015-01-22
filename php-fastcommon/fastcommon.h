@@ -19,6 +19,8 @@ PHP_MINFO_FUNCTION(fastcommon);
 
 ZEND_FUNCTION(fastcommon_version);
 ZEND_FUNCTION(fastcommon_gethostaddrs);
+ZEND_FUNCTION(fastcommon_time33_hash);
+ZEND_FUNCTION(fastcommon_simple_hash);
 
 #ifdef __cplusplus
 }
