@@ -181,7 +181,7 @@ ZEND_FUNCTION(fastcommon_gethostaddrs)
 }
 
 /*
-array fastcommon_time33_hash(string str)
+long fastcommon_time33_hash(string str)
 return unsigned hash code
 */
 ZEND_FUNCTION(fastcommon_time33_hash)
@@ -211,7 +211,7 @@ ZEND_FUNCTION(fastcommon_time33_hash)
 }
 
 /*
-array fastcommon_simple_hash(string str)
+long fastcommon_simple_hash(string str)
 return unsigned hash code
 */
 ZEND_FUNCTION(fastcommon_simple_hash)
