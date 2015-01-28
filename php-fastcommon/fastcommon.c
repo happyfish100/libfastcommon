@@ -207,7 +207,7 @@ ZEND_FUNCTION(fastcommon_time33_hash)
 		RETURN_BOOL(false);
 	}
 
-    RETURN_LONG(Time33Hash(str, str_len));
+    RETURN_LONG(Time33Hash(str, str_len) & 0x7FFFFFFF);
 }
 
 /*
@@ -237,6 +237,6 @@ ZEND_FUNCTION(fastcommon_simple_hash)
 		RETURN_BOOL(false);
 	}
 
-    RETURN_LONG(simple_hash(str, str_len));
+    RETURN_LONG(simple_hash(str, str_len) & 0x7FFFFFFF);
 }
 

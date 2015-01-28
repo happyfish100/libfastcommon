@@ -1,5 +1,5 @@
 
-Version 1.13  2015-01-22
+Version 1.13  2015-01-28
   * support php extension
   * php extention export simple_hash and time33_hash
 
