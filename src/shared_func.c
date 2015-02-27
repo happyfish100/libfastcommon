@@ -1419,8 +1419,8 @@ int set_run_by(const char *group_name, const char *username)
 		{
 			nErrNo = errno != 0 ? errno : ENOENT;
 			logError("file: "__FILE__", line: %d, " \
-				"getgrnam fail, errno: %d, error info: %s.", \
-				__LINE__, nErrNo, STRERROR(nErrNo));
+				"getgrnam %s fail, errno: %d, error info: %s.", \
+				__LINE__, group_name, nErrNo, STRERROR(nErrNo));
 			return nErrNo;
 		}
 
@@ -1441,8 +1441,8 @@ int set_run_by(const char *group_name, const char *username)
 		{
 			nErrNo = errno != 0 ? errno : ENOENT;
 			logError("file: "__FILE__", line: %d, " \
-				"getpwnam fail, errno: %d, error info: %s.", \
-				__LINE__, nErrNo, STRERROR(nErrNo));
+				"getpwnam %s fail, errno: %d, error info: %s.", \
+				__LINE__, username, nErrNo, STRERROR(nErrNo));
 			return nErrNo;
 		}
 
