@@ -436,9 +436,34 @@ struct fast_task_info *free_queue_pop()
     return task_queue_pop(&g_free_queue);
 }
 
-int free_queue_push(struct fast_task_info *pTask)
+static int _realloc_buffer(struct fast_task_info *pTask, const int new_size,
+        const bool copy_data)
 {
 	char *new_buff;
+    new_buff = (char *)malloc(new_size);
+    if (new_buff == NULL)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "malloc %d bytes fail, "
+                "errno: %d, error info: %s",
+                __LINE__, new_size,
+                errno, STRERROR(errno));
+        return errno != 0 ? errno : ENOMEM;
+    }
+    else
+    {
+        if (copy_data && pTask->offset > 0) {
+            memcpy(new_buff, pTask->data, pTask->offset);
+        }
+        free(pTask->data);
+        pTask->size = new_size;
+        pTask->data = new_buff;
+        return 0;
+    }
+}
+
+int free_queue_push(struct fast_task_info *pTask)
+{
 	int result;
 
 	*(pTask->client_ip) = '\0';
@@ -448,21 +473,7 @@ int free_queue_push(struct fast_task_info *pTask)
 
 	if (pTask->size > g_free_queue.min_buff_size) //need thrink
 	{
-		new_buff = (char *)malloc(g_free_queue.min_buff_size);
-		if (new_buff == NULL)
-		{
-			logWarning("file: "__FILE__", line: %d, " \
-				"malloc %d bytes fail, " \
-				"errno: %d, error info: %s", \
-				__LINE__, g_free_queue.min_buff_size, \
-				errno, STRERROR(errno));
-		}
-		else
-		{
-			free(pTask->data);
-			pTask->size = g_free_queue.min_buff_size;
-			pTask->data = new_buff;
-		}
+        _realloc_buffer(pTask, g_free_queue.min_buff_size, false);
 	}
 
 	if ((result=pthread_mutex_lock(&g_free_queue.lock)) != 0)
@@ -499,6 +510,18 @@ int free_queue_count()
 int free_queue_alloc_connections()
 {
     return g_free_queue.alloc_connections;
+}
+
+int free_queue_set_buffer_size(struct fast_task_info *pTask,
+        const int expect_size)
+{
+    return task_queue_set_buffer_size(&g_free_queue, pTask, expect_size);
+}
+
+int free_queue_realloc_buffer(struct fast_task_info *pTask,
+        const int expect_size)
+{
+    return task_queue_realloc_buffer(&g_free_queue, pTask, expect_size);
 }
 
 int task_queue_push(struct fast_task_queue *pQueue, \
@@ -604,5 +627,75 @@ int task_queue_count(struct fast_task_queue *pQueue)
 	}
 
 	return count;
+}
+
+static int _get_new_buffer_size(struct fast_task_queue *pQueue,
+        const int expect_size, int *new_size)
+{
+    if (pQueue->min_buff_size == pQueue->max_buff_size)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "can't change buffer size because NOT supported", __LINE__);
+        return EOPNOTSUPP;
+    }
+
+    if (expect_size > pQueue->max_buff_size)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "can't change buffer size because expect buffer size: %d "
+                "exceeds max buffer size: %d", __LINE__, expect_size,
+                pQueue->max_buff_size);
+        return EOVERFLOW;
+    }
+
+    *new_size = pQueue->min_buff_size;
+    if (expect_size > pQueue->min_buff_size)
+    {
+        while (*new_size < expect_size)
+        {
+            *new_size *= 2;
+        }
+        if (*new_size > pQueue->max_buff_size)
+        {
+            *new_size = pQueue->max_buff_size;
+        }
+    }
+
+    return 0;
+}
+
+int task_queue_set_buffer_size(struct fast_task_queue *pQueue,
+        struct fast_task_info *pTask, const int expect_size)
+{
+    int result;
+    int new_size;
+
+    if ((result=_get_new_buffer_size(pQueue, expect_size, &new_size)) != 0) {
+        return result;
+    }
+    if (pTask->size == new_size)  //do NOT need change buffer size
+    {
+        return 0;
+    }
+
+    return _realloc_buffer(pTask, new_size, false);
+}
+
+int task_queue_realloc_buffer(struct fast_task_queue *pQueue,
+        struct fast_task_info *pTask, const int expect_size)
+{
+    int result;
+    int new_size;
+
+    if (pTask->size >= expect_size)  //do NOT need change buffer size
+    {
+        return 0;
+    }
+
+    if ((result=_get_new_buffer_size(pQueue, expect_size, &new_size)) != 0) {
+        return result;
+    }
+
+    return _realloc_buffer(pTask, new_size, true);
 }
 
