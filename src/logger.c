@@ -104,20 +104,53 @@ int log_init_ex(LogContext *pContext)
 	return 0;
 }
 
+static int do_lock_file(int fd, int cmd)
+{
+    struct flock lock;
+
+    memset(&lock, 0, sizeof(lock));
+    lock.l_type = cmd;
+    lock.l_whence = SEEK_SET;
+    if (fcntl(fd, F_SETLKW, &lock) != 0)
+    {
+        fprintf(stderr, "call fcntl fail, "
+                "errno: %d, error info: %s\n",
+                errno, STRERROR(errno));
+        return errno != 0 ? errno : ENOMEM;
+    }
+
+    return 0;
+}
+
+#define log_file_lock(fd) do_lock_file(fd, F_WRLCK)
+#define log_file_unlock(fd) do_lock_file(fd, F_UNLCK)
+
 static int log_print_header(LogContext *pContext)
 {
+    int result;
+
+    if ((result=log_file_lock(pContext->log_fd)) != 0)
+    {
+        return result;
+    }
+
     pContext->current_size = lseek(pContext->log_fd, 0, SEEK_END);
     if (pContext->current_size < 0)
     {
+        result = errno != 0 ? errno : EACCES;
+        log_file_unlock(pContext->log_fd);
+
         fprintf(stderr, "lseek file \"%s\" fail, " \
                 "errno: %d, error info: %s\n", \
-                pContext->log_filename, errno, STRERROR(errno));
-        return errno != 0 ? errno : EACCES;
+                pContext->log_filename, result, STRERROR(result));
+        return result;
     }
     if (pContext->current_size == 0)
     {
         pContext->print_header_callback(pContext);
     }
+    log_file_unlock(pContext->log_fd);
+
     return 0;
 }
 
