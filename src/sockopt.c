@@ -1238,7 +1238,7 @@ int tcpsendfile_ex(int sock, const char *filename, const int64_t file_offset, \
                 break;
             }
         }
-        remain_bytes -= fsbytes;
+        remain_bytes -= sbytes;
     }
 #endif
 #endif
