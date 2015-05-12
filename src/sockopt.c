@@ -826,7 +826,7 @@ int tcprecvfile(int sock, const char *filename, const int64_t file_bytes, \
 		int64_t *true_file_bytes)
 {
 	int write_fd;
-	char buff[FDFS_WRITE_BUFF_SIZE];
+	char buff[FAST_WRITE_BUFF_SIZE];
 	int64_t remain_bytes;
 	int recv_bytes;
 	int written_bytes;
@@ -979,7 +979,7 @@ int tcprecvfile_ex(int sock, const char *filename, const int64_t file_bytes, \
 		unsigned int *hash_codes, const int timeout)
 {
 	int fd;
-	char buff[FDFS_WRITE_BUFF_SIZE];
+	char buff[FAST_WRITE_BUFF_SIZE];
 	int64_t remain_bytes;
 	int recv_bytes;
 	int written_bytes;
@@ -1070,7 +1070,7 @@ int tcprecvfile_ex(int sock, const char *filename, const int64_t file_bytes, \
 int tcpdiscard(int sock, const int bytes, const int timeout, \
 		int64_t *total_recv_bytes)
 {
-	char buff[FDFS_WRITE_BUFF_SIZE];
+	char buff[FAST_WRITE_BUFF_SIZE];
 	int remain_bytes;
 	int recv_bytes;
 	int result;
@@ -1267,7 +1267,7 @@ int tcpsendfile_ex(int sock, const char *filename, const int64_t file_offset, \
 #endif
 
 	{
-	char buff[FDFS_WRITE_BUFF_SIZE];
+	char buff[FAST_WRITE_BUFF_SIZE];
 	int64_t remain_bytes;
 	tcpsenddatafunc send_func;
 
