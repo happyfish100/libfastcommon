@@ -115,6 +115,9 @@ int log_init2();
 #define log_take_over_stderr()  log_take_over_stderr_ex(&g_log_context)
 #define log_take_over_stdout()  log_take_over_stdout_ex(&g_log_context)
 
+#define log_header(pContext, header, header_len) \
+    log_it_ex2(pContext, NULL, header, header_len, false, false)
+
 #define log_destroy()  log_destroy_ex(&g_log_context)
 
 /** init function, use stderr for output by default

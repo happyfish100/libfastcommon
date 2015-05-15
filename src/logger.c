@@ -542,10 +542,8 @@ int log_rotate(LogContext *pContext)
 	return log_open(pContext);
 }
 
-static int log_check_rotate(LogContext *pContext, const bool bNeedLock)
+static int log_check_rotate(LogContext *pContext)
 {
-	int result;
-
 	if (pContext->log_fd == STDERR_FILENO)
 	{
 		if (pContext->current_size > 0)
@@ -555,27 +553,13 @@ static int log_check_rotate(LogContext *pContext, const bool bNeedLock)
 		return ENOENT;
 	}
 	
-	if (bNeedLock)
-	{
-		pthread_mutex_lock(&(pContext->log_thread_lock));
-	}
-
 	if (pContext->rotate_immediately)
 	{
-		result = log_rotate(pContext);
 		pContext->rotate_immediately = false;
-	}
-	else
-	{
-		result = 0;
+		return log_rotate(pContext);
 	}
 
-	if (bNeedLock)
-	{
-		pthread_mutex_unlock(&(pContext->log_thread_lock));
-	}
-
-	return result;
+	return 0;
 }
 
 static int log_fsync(LogContext *pContext, const bool bNeedLock)
@@ -593,7 +577,16 @@ static int log_fsync(LogContext *pContext, const bool bNeedLock)
 		}
 		else
 		{
-			return log_check_rotate(pContext, bNeedLock);
+            if (bNeedLock)
+            {
+                pthread_mutex_lock(&(pContext->log_thread_lock));
+            }
+            result = log_check_rotate(pContext);
+            if (bNeedLock)
+            {
+                pthread_mutex_unlock(&(pContext->log_thread_lock));
+            }
+            return result;
 		}
 	}
 
@@ -612,7 +605,7 @@ static int log_fsync(LogContext *pContext, const bool bNeedLock)
 		if (pContext->current_size > pContext->rotate_size)
 		{
 			pContext->rotate_immediately = true;
-			log_check_rotate(pContext, false);
+			log_check_rotate(pContext);
 		}
 	}
 
@@ -630,23 +623,9 @@ static int log_fsync(LogContext *pContext, const bool bNeedLock)
 		break;
 	}
 
-    /*
-	if (pContext->log_fd != STDERR_FILENO)
-	{
-		if (fsync(pContext->log_fd) != 0)
-		{
-			result = errno != 0 ? errno : EIO;
-			fprintf(stderr, "file: "__FILE__", line: %d, " \
-				"call fsync fail, errno: %d, error info: %s\n",\
-				 __LINE__, result, STRERROR(result));
-			break;
-		}
-	}
-    */
-
 	if (pContext->rotate_immediately)
 	{
-		result = log_check_rotate(pContext, false);
+		result = log_check_rotate(pContext);
 	}
 	} while (0);
 

@@ -1,9 +1,10 @@
 
-Version 1.14  2015-05-12
+Version 1.14  2015-05-15
   * fast_task_info support set_buffer_size and realloc_buffer
   * use file lock when write logger header
   * bugfixed: sockopt.c correct fsbytes to sbytes in FreeBSD
   * macro FDFS_WRITE_BUFF_SIZE change to FAST_WRITE_BUFF_SIZE
+  * logger.c call log_check_rotate in lock
 
 Version 1.13  2015-02-27
   * support php extension
