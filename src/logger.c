@@ -567,9 +567,9 @@ static int log_fsync(LogContext *pContext, const bool bNeedLock)
 	int result;
 	int lock_res;
 	int write_bytes;
+    int written;
 
-	write_bytes = pContext->pcurrent_buff - pContext->log_buff;
-	if (write_bytes == 0)
+	if (pContext->pcurrent_buff - pContext->log_buff == 0)
 	{
 		if (!pContext->rotate_immediately)
 		{
@@ -599,6 +599,7 @@ static int log_fsync(LogContext *pContext, const bool bNeedLock)
 			__LINE__, lock_res, STRERROR(lock_res));
 	}
 
+	write_bytes = pContext->pcurrent_buff - pContext->log_buff;
     pContext->current_size += write_bytes;
 	if (pContext->rotate_size > 0)
 	{
@@ -612,9 +613,9 @@ static int log_fsync(LogContext *pContext, const bool bNeedLock)
 	result = 0;
 	do
 	{
-	write_bytes = pContext->pcurrent_buff - pContext->log_buff;
-	if (write(pContext->log_fd, pContext->log_buff, write_bytes) != \
-		write_bytes)
+    written = write(pContext->log_fd, pContext->log_buff, write_bytes);
+	pContext->pcurrent_buff = pContext->log_buff;
+	if (written != write_bytes)
 	{
 		result = errno != 0 ? errno : EIO;
 		fprintf(stderr, "file: "__FILE__", line: %d, " \
@@ -629,7 +630,6 @@ static int log_fsync(LogContext *pContext, const bool bNeedLock)
 	}
 	} while (0);
 
-	pContext->pcurrent_buff = pContext->log_buff;
 	if (bNeedLock && ((lock_res=pthread_mutex_unlock( \
 			&(pContext->log_thread_lock))) != 0))
 	{
