@@ -10,7 +10,8 @@
 #include "pthread_func.h"
 
 int fast_mblock_init_ex(struct fast_mblock_man *mblock, const int element_size,
-		const int alloc_elements_once, fast_mblock_alloc_init_func init_func)
+		const int alloc_elements_once, fast_mblock_alloc_init_func init_func,
+        const bool need_lock)
 {
 	int result;
 
@@ -35,7 +36,7 @@ int fast_mblock_init_ex(struct fast_mblock_man *mblock, const int element_size,
 		mblock->alloc_elements_once = (1024 * 1024) / block_size;
 	}
 
-	if ((result=init_pthread_lock(&(mblock->lock))) != 0)
+	if (need_lock && (result=init_pthread_lock(&(mblock->lock))) != 0)
 	{
 		logError("file: "__FILE__", line: %d, " \
 			"init_pthread_lock fail, errno: %d, error info: %s", \
@@ -47,6 +48,7 @@ int fast_mblock_init_ex(struct fast_mblock_man *mblock, const int element_size,
 	mblock->malloc_chain_head = NULL;
 	mblock->free_chain_head = NULL;
     mblock->total_count = 0;
+    mblock->need_lock = need_lock;
 
 	return 0;
 }
@@ -139,7 +141,7 @@ void fast_mblock_destroy(struct fast_mblock_man *mblock)
 	mblock->free_chain_head = NULL;
     mblock->total_count = 0;
 
-	pthread_mutex_destroy(&(mblock->lock));
+    if (mblock->need_lock) pthread_mutex_destroy(&(mblock->lock));
 }
 
 struct fast_mblock_node *fast_mblock_alloc(struct fast_mblock_man *mblock)
@@ -147,7 +149,7 @@ struct fast_mblock_node *fast_mblock_alloc(struct fast_mblock_man *mblock)
 	struct fast_mblock_node *pNode;
 	int result;
 
-	if ((result=pthread_mutex_lock(&(mblock->lock))) != 0)
+	if (mblock->need_lock && (result=pthread_mutex_lock(&(mblock->lock))) != 0)
 	{
 		logError("file: "__FILE__", line: %d, " \
 			"call pthread_mutex_lock fail, " \
@@ -174,7 +176,7 @@ struct fast_mblock_node *fast_mblock_alloc(struct fast_mblock_man *mblock)
 		}
 	}
 
-	if ((result=pthread_mutex_unlock(&(mblock->lock))) != 0)
+	if (mblock->need_lock && (result=pthread_mutex_unlock(&(mblock->lock))) != 0)
 	{
 		logError("file: "__FILE__", line: %d, " \
 			"call pthread_mutex_unlock fail, " \
@@ -190,7 +192,7 @@ int fast_mblock_free(struct fast_mblock_man *mblock, \
 {
 	int result;
 
-	if ((result=pthread_mutex_lock(&(mblock->lock))) != 0)
+	if (mblock->need_lock && (result=pthread_mutex_lock(&(mblock->lock))) != 0)
 	{
 		logError("file: "__FILE__", line: %d, " \
 			"call pthread_mutex_lock fail, " \
@@ -202,7 +204,7 @@ int fast_mblock_free(struct fast_mblock_man *mblock, \
 	pNode->next = mblock->free_chain_head;
 	mblock->free_chain_head = pNode;
 
-	if ((result=pthread_mutex_unlock(&(mblock->lock))) != 0)
+	if (mblock->need_lock && (result=pthread_mutex_unlock(&(mblock->lock))) != 0)
 	{
 		logError("file: "__FILE__", line: %d, " \
 			"call pthread_mutex_unlock fail, " \
@@ -219,7 +221,7 @@ int fast_mblock_free_count(struct fast_mblock_man *mblock)
 	int count;
 	int result;
 
-	if ((result=pthread_mutex_lock(&(mblock->lock))) != 0)
+	if (mblock->need_lock && (result=pthread_mutex_lock(&(mblock->lock))) != 0)
 	{
 		logError("file: "__FILE__", line: %d, " \
 			"call pthread_mutex_lock fail, " \
@@ -236,7 +238,7 @@ int fast_mblock_free_count(struct fast_mblock_man *mblock)
 		count++;
 	}
 
-	if ((result=pthread_mutex_unlock(&(mblock->lock))) != 0)
+	if (mblock->need_lock && (result=pthread_mutex_unlock(&(mblock->lock))) != 0)
 	{
 		logError("file: "__FILE__", line: %d, " \
 			"call pthread_mutex_unlock fail, " \

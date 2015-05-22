@@ -41,6 +41,7 @@ struct fast_mblock_man
 	int element_size;         //element size
 	int alloc_elements_once;  //alloc elements once
     int total_count;          //total element count
+    bool need_lock;
 	pthread_mutex_t lock;     //the lock for read / write free node chain
 };
 
@@ -53,7 +54,7 @@ extern "C" {
 #endif
 
 #define fast_mblock_init(mblock, element_size, alloc_elements_once) \
-    fast_mblock_init_ex(mblock, element_size, alloc_elements_once, NULL)
+    fast_mblock_init_ex(mblock, element_size, alloc_elements_once, NULL, true)
 
 /**
 mblock init
@@ -64,7 +65,8 @@ parameters:
 return error no, 0 for success, != 0 fail
 */
 int fast_mblock_init_ex(struct fast_mblock_man *mblock, const int element_size,
-		const int alloc_elements_once, fast_mblock_alloc_init_func init_func);
+		const int alloc_elements_once, fast_mblock_alloc_init_func init_func,
+        const bool need_lock);
 
 /**
 mblock destroy
