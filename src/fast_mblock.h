@@ -61,7 +61,7 @@ mblock init
 parameters:
 	mblock: the mblock pointer
 	element_size: element size, such as sizeof(struct xxx)
-	alloc_elements_once: malloc elements once, 0 for malloc 1MB once
+	alloc_elements_once: malloc elements once, 0 for malloc 1MB memory once
 return error no, 0 for success, != 0 fail
 */
 int fast_mblock_init_ex(struct fast_mblock_man *mblock, const int element_size,
