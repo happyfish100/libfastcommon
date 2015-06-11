@@ -113,7 +113,7 @@ extern "C" {
 #endif
 
 int ioevent_init(IOEventPoller *ioevent, const int size,
-    const int timeout, const int extra_events);
+    const int timeout_ms, const int extra_events);
 void ioevent_destroy(IOEventPoller *ioevent);
 
 int ioevent_attach(IOEventPoller *ioevent, const int fd, const int e,
@@ -122,6 +122,22 @@ int ioevent_modify(IOEventPoller *ioevent, const int fd, const int e,
     void *data);
 int ioevent_detach(IOEventPoller *ioevent, const int fd);
 int ioevent_poll(IOEventPoller *ioevent);
+
+static inline void ioevent_set_timeout(IOEventPoller *ioevent, const int timeout_ms)
+{
+#if IOEVENT_USE_EPOLL
+  ioevent->timeout = timeout_ms;
+#else
+  ioevent->timeout.tv_sec = timeout_ms / 1000;
+  ioevent->timeout.tv_nsec = 1000000 * (timeout_ms % 1000);
+#endif
+}
+
+static inline int ioevent_poll_ex(IOEventPoller *ioevent, const int timeout_ms)
+{
+  ioevent_set_timeout(ioevent, timeout_ms);
+  return ioevent_poll(ioevent);
+}
 
 #ifdef __cplusplus
 }

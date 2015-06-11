@@ -30,7 +30,7 @@ int kqueue_ev_convert(int16_t event, uint16_t flags)
 #endif
 
 int ioevent_init(IOEventPoller *ioevent, const int size,
-    const int timeout, const int extra_events)
+    const int timeout_ms, const int extra_events)
 {
   int bytes;
 
@@ -40,26 +40,24 @@ int ioevent_init(IOEventPoller *ioevent, const int size,
   ioevent->iterator.count = 0;
 
 #if IOEVENT_USE_EPOLL
-  ioevent->timeout = timeout;
   ioevent->poll_fd = epoll_create(ioevent->size);
   bytes = sizeof(struct epoll_event) * size;
   ioevent->events = (struct epoll_event *)malloc(bytes);
 #elif IOEVENT_USE_KQUEUE
-  ioevent->timeout.tv_sec = timeout / 1000;
-  ioevent->timeout.tv_nsec = 1000000 * (timeout % 1000);
   ioevent->poll_fd = kqueue();
   bytes = sizeof(struct kevent) * size;
   ioevent->events = (struct kevent *)malloc(bytes);
 #elif IOEVENT_USE_PORT
-  ioevent->timeout.tv_sec = timeout / 1000;
-  ioevent->timeout.tv_nsec = 1000000 * (timeout % 1000);
   ioevent->poll_fd = port_create();
   bytes = sizeof(port_event_t) * size;
   ioevent->events = (port_event_t *)malloc(bytes);
 #endif
+
   if (ioevent->events == NULL) {
     return errno != 0 ? errno : ENOMEM;
   }
+  ioevent_set_timeout(ioevent, timeout_ms);
+
   return 0;
 }
 
