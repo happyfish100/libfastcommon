@@ -1,4 +1,9 @@
 
+Version 1.15  2015-06-15
+  * fast_mblock.c support none lock
+  * ioevent support set timeout
+  * fast_mblock suport alloc and free object
+
 Version 1.14  2015-06-12
   * fast_task_info support set_buffer_size and realloc_buffer
   * use file lock when write logger header
@@ -6,8 +11,6 @@ Version 1.14  2015-06-12
   * macro FDFS_WRITE_BUFF_SIZE change to FAST_WRITE_BUFF_SIZE
   * logger.c call log_check_rotate in lock
   * bug fixed: log header correctly when rotate
-  * fast_mblock.c support none lock
-  * ioevent support set timeout
 
 Version 1.13  2015-02-27
   * support php extension

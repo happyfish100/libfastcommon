@@ -88,10 +88,40 @@ free a node (put a node to the mblock)
 parameters:
 	mblock: the mblock pointer
 	pNode: the node to free
-return the alloced node, return NULL if fail
+return 0 for success, return none zero if fail
 */
-int fast_mblock_free(struct fast_mblock_man *mblock, \
+int fast_mblock_free(struct fast_mblock_man *mblock,
 		     struct fast_mblock_node *pNode);
+
+/**
+alloc a object from the mblock
+parameters:
+	mblock: the mblock pointer
+return the alloced object, return NULL if fail
+*/
+static inline void *fast_mblock_alloc_object(struct fast_mblock_man *mblock)
+{
+    struct fast_mblock_node *node;
+    node = fast_mblock_alloc(mblock);
+    if (node == NULL)
+    {
+        return NULL;
+    }
+    return node->data;
+}
+
+/**
+free a object (put the object to the mblock)
+parameters:
+	mblock: the mblock pointer
+	object: the object to free
+return 0 for success, return none zero if fail
+*/
+static inline int fast_mblock_free_object(struct fast_mblock_man *mblock,
+        void *object)
+{
+    return fast_mblock_free(mblock, fast_mblock_to_node_ptr(object));
+}
 
 /**
 get node count of the mblock
