@@ -256,14 +256,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 	result = 0;
 	pLastEnd = content - 1;
 	pSection = pContext->current_section;
-	if (pSection->count > 0)
-	{
-		pItem = pSection->items + pSection->count;
-	}
-	else
-	{
-		pItem = pSection->items;
-	}
+    pItem = pSection->items + pSection->count;
 
 	while (pLastEnd != NULL)
 	{
@@ -320,6 +313,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 				}
 			}
 
+            pContext->current_section = &pContext->global;
 			result = iniDoLoadFromFile(full_filename, pContext);
 			if (result != 0)
 			{
@@ -327,15 +321,9 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 				break;
 			}
 
+            pContext->current_section = &pContext->global;
 			pSection = pContext->current_section;
-			if (pSection->count > 0)
-			{
-				pItem = pSection->items + pSection->count;  //must re-asign
-			}
-			else
-			{
-				pItem = pSection->items;
-			}
+            pItem = pSection->items + pSection->count;  //must re-asign
 
 			free(pIncludeFilename);
 			continue;
@@ -361,14 +349,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 			{
 				pContext->current_section = &pContext->global;
 				pSection = pContext->current_section;
-				if (pSection->count > 0)
-				{
-					pItem = pSection->items + pSection->count;
-				}
-				else
-				{
-					pItem = pSection->items;
-				}
+                pItem = pSection->items + pSection->count;
 				continue;
 			}
 
@@ -411,14 +392,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 			}
 
 			pContext->current_section = pSection;
-			if (pSection->count > 0)
-			{
-				pItem = pSection->items + pSection->count;
-			}
-			else
-			{
-				pItem = pSection->items;
-			}
+            pItem = pSection->items + pSection->count;
 			continue;
 		}
 		

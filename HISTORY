@@ -1,8 +1,9 @@
 
-Version 1.15  2015-06-15
+Version 1.15  2015-06-16
   * fast_mblock.c support none lock
   * ioevent support set timeout
-  * fast_mblock suport alloc and free object
+  * fast_mblock support alloc and free object
+  * ini_file_reader set global section before and after directive #include
 
 Version 1.14  2015-06-12
   * fast_task_info support set_buffer_size and realloc_buffer
