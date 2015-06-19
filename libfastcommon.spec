@@ -1,5 +1,5 @@
 Name: libfastcommon
-Version: 1.0.15
+Version: 1.0.16
 Release: 1%{?dist}
 Summary: c common functions library extracted from my open source projects FastDFS
 License: GPL

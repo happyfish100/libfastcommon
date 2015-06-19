@@ -8,6 +8,7 @@
 #include "logger.h"
 #include "shared_func.h"
 #include "pthread_func.h"
+#include "sched_thread.h"
 
 int fast_mblock_init_ex(struct fast_mblock_man *mblock, const int element_size,
 		const int alloc_elements_once, fast_mblock_alloc_init_func init_func,
@@ -47,6 +48,8 @@ int fast_mblock_init_ex(struct fast_mblock_man *mblock, const int element_size,
     mblock->alloc_init_func = init_func;
 	mblock->malloc_chain_head = NULL;
 	mblock->free_chain_head = NULL;
+	mblock->delay_free_chain.head = NULL;
+	mblock->delay_free_chain.tail = NULL;
     mblock->total_count = 0;
     mblock->need_lock = need_lock;
 
@@ -165,7 +168,17 @@ struct fast_mblock_node *fast_mblock_alloc(struct fast_mblock_man *mblock)
 	}
 	else
 	{
-		if ((result=fast_mblock_prealloc(mblock)) == 0)
+        if (mblock->delay_free_chain.head != NULL &&
+                mblock->delay_free_chain.head->recycle_timestamp <= get_current_time())
+        {
+            pNode = mblock->delay_free_chain.head;
+            mblock->delay_free_chain.head = pNode->next;
+            if (mblock->delay_free_chain.tail == pNode)
+            {
+                mblock->delay_free_chain.tail = NULL;
+            }
+        }
+        else if ((result=fast_mblock_prealloc(mblock)) == 0)
 		{
 			pNode = mblock->free_chain_head;
 			mblock->free_chain_head = pNode->next;
@@ -215,7 +228,45 @@ int fast_mblock_free(struct fast_mblock_man *mblock, \
 	return 0;
 }
 
-int fast_mblock_free_count(struct fast_mblock_man *mblock)
+int fast_mblock_delay_free(struct fast_mblock_man *mblock,
+		     struct fast_mblock_node *pNode, const int deley)
+{
+	int result;
+
+	if (mblock->need_lock && (result=pthread_mutex_lock(&(mblock->lock))) != 0)
+	{
+		logError("file: "__FILE__", line: %d, " \
+			"call pthread_mutex_lock fail, " \
+			"errno: %d, error info: %s", \
+			__LINE__, result, STRERROR(result));
+		return result;
+	}
+
+    pNode->recycle_timestamp = get_current_time() + deley;
+	if (mblock->delay_free_chain.head == NULL)
+    {
+        mblock->delay_free_chain.head = pNode;
+    }
+    else
+    {
+        mblock->delay_free_chain.tail->next = pNode;
+    }
+    mblock->delay_free_chain.tail = pNode;
+    pNode->next = NULL;
+
+	if (mblock->need_lock && (result=pthread_mutex_unlock(&(mblock->lock))) != 0)
+	{
+		logError("file: "__FILE__", line: %d, " \
+			"call pthread_mutex_unlock fail, " \
+			"errno: %d, error info: %s", \
+			__LINE__, result, STRERROR(result));
+	}
+
+	return 0;
+}
+
+static int fast_mblock_chain_count(struct fast_mblock_man *mblock,
+        struct fast_mblock_node *head)
 {
 	struct fast_mblock_node *pNode;
 	int count;
@@ -231,7 +282,7 @@ int fast_mblock_free_count(struct fast_mblock_man *mblock)
 	}
 
 	count = 0;
-	pNode = mblock->free_chain_head;
+	pNode = head;
 	while (pNode != NULL)
 	{
 		pNode = pNode->next;
@@ -247,5 +298,15 @@ int fast_mblock_free_count(struct fast_mblock_man *mblock)
 	}
 
 	return count;
+}
+
+int fast_mblock_free_count(struct fast_mblock_man *mblock)
+{
+    return fast_mblock_chain_count(mblock, mblock->free_chain_head);
+}
+
+int fast_mblock_delay_free_count(struct fast_mblock_man *mblock)
+{
+    return fast_mblock_chain_count(mblock, mblock->delay_free_chain.head);
 }
 

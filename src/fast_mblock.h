@@ -22,6 +22,7 @@
 struct fast_mblock_node
 {
 	struct fast_mblock_node *next;
+    int recycle_timestamp;
 	char data[0];   //the data buffer
 };
 
@@ -31,11 +32,17 @@ struct fast_mblock_malloc
 	struct fast_mblock_malloc *next;
 };
 
+struct fast_mblock_chain {
+	struct fast_mblock_node *head;
+	struct fast_mblock_node *tail;
+};
+
 typedef int (*fast_mblock_alloc_init_func)(void *element);
 
 struct fast_mblock_man
 {
-	struct fast_mblock_node *free_chain_head;     //free node chain
+	struct fast_mblock_node *free_chain_head;    //free node chain
+    struct fast_mblock_chain delay_free_chain;   //delay free node chain
 	struct fast_mblock_malloc *malloc_chain_head; //malloc chain to be freed
     fast_mblock_alloc_init_func alloc_init_func;
 	int element_size;         //element size
@@ -94,6 +101,17 @@ int fast_mblock_free(struct fast_mblock_man *mblock,
 		     struct fast_mblock_node *pNode);
 
 /**
+delay free a node (put a node to the mblock)
+parameters:
+	mblock: the mblock pointer
+	pNode: the node to free
+    delay: delay seconds to free
+return 0 for success, return none zero if fail
+*/
+int fast_mblock_delay_free(struct fast_mblock_man *mblock,
+		     struct fast_mblock_node *pNode, const int delay);
+
+/**
 alloc a object from the mblock
 parameters:
 	mblock: the mblock pointer
@@ -124,12 +142,34 @@ static inline int fast_mblock_free_object(struct fast_mblock_man *mblock,
 }
 
 /**
+delay free a object (put a node to the mblock)
+parameters:
+	mblock: the mblock pointer
+	pNode: the node to free
+    delay: delay seconds to free
+return 0 for success, return none zero if fail
+*/
+int fast_mblock_delay_free_object(struct fast_mblock_man *mblock,
+        void *object, const int delay)
+{
+    return fast_mblock_delay_free(mblock, fast_mblock_to_node_ptr(object), delay);
+}
+
+/**
 get node count of the mblock
 parameters:
 	mblock: the mblock pointer
 return the free node count of the mblock, return -1 if fail
 */
 int fast_mblock_free_count(struct fast_mblock_man *mblock);
+
+/**
+get delay free node count of the mblock
+parameters:
+	mblock: the mblock pointer
+return the delay free node count of the mblock, return -1 if fail
+*/
+int fast_mblock_delay_free_count(struct fast_mblock_man *mblock);
 
 #define fast_mblock_total_count(mblock) (mblock)->total_count
 
