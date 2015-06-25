@@ -149,7 +149,7 @@ parameters:
     delay: delay seconds to free
 return 0 for success, return none zero if fail
 */
-int fast_mblock_delay_free_object(struct fast_mblock_man *mblock,
+static inline int fast_mblock_delay_free_object(struct fast_mblock_man *mblock,
         void *object, const int delay)
 {
     return fast_mblock_delay_free(mblock, fast_mblock_to_node_ptr(object), delay);
