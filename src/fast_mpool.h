@@ -67,10 +67,9 @@ parameters:
 void fast_mpool_destroy(struct fast_mpool_man *mpool);
 
 /**
-free a node (put a node to the mpool)
+reset for recycle use
 parameters:
 	mpool: the mpool pointer
-	pNode: the node to free
 */
 void fast_mpool_reset(struct fast_mpool_man *mpool);
 
@@ -78,6 +77,7 @@ void fast_mpool_reset(struct fast_mpool_man *mpool);
 alloc a node from the mpool
 parameters:
 	mpool: the mpool pointer
+    size: alloc bytes
 return the alloced ptr, return NULL if fail
 */
 void *fast_mpool_alloc(struct fast_mpool_man *mpool, const int size);
@@ -86,6 +86,7 @@ void *fast_mpool_alloc(struct fast_mpool_man *mpool, const int size);
 get stats
 parameters:
 	mpool: the mpool pointer
+    stats: return the stats
 */
 void fast_mpool_stats(struct fast_mpool_man *mpool, struct fast_mpool_stats *stats);
 
