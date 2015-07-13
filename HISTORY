@@ -1,4 +1,7 @@
 
+Version 1.17  2015-07-13
+  * ini_file_reader.c change PJWHash to Time33Hash and increase capacity
+
 Version 1.16  2015-07-01
   * fast_mblock add fast_mblock_delay_free
   * add fast_mpool.h and fast_mpool.c

@@ -20,7 +20,7 @@
 #include "ini_file_reader.h"
 
 #define _LINE_BUFFER_SIZE	512
-#define _ALLOC_ITEMS_ONCE	8
+#define _ALLOC_ITEMS_ONCE	32
 
 static int iniDoLoadFromFile(const char *szFilename, \
 		IniContext *pContext);
@@ -38,7 +38,7 @@ static int iniInitContext(IniContext *pContext)
 
 	memset(pContext, 0, sizeof(IniContext));
 	pContext->current_section = &pContext->global;
-	if ((result=hash_init(&pContext->sections, PJWHash, 10, 0.75)) != 0)
+	if ((result=hash_init(&pContext->sections, Time33Hash, 32, 0.75)) != 0)
 	{
 		logError("file: "__FILE__", line: %d, " \
 			"hash_init fail, errno: %d, error info: %s", \
