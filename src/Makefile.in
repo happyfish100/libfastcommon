@@ -36,7 +36,7 @@ all: $(ALL_OBJS) $(ALL_PRGS) $(ALL_LIBS)
 libfastcommon.so:
 	$(COMPILE) -o $@ $< -shared $(FAST_SHARED_OBJS)
 libfastcommon.a: $(FAST_STATIC_OBJS)
-	ar rcs $@ $<
+	ar rcs $@ $(FAST_STATIC_OBJS)
 .o:
 	$(COMPILE) -o $@ $<  $(STATIC_OBJS) $(LIB_PATH) $(INC_PATH)
 .c:

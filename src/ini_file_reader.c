@@ -19,8 +19,8 @@
 #include "http_func.h"
 #include "ini_file_reader.h"
 
-#define _LINE_BUFFER_SIZE	512
-#define _ALLOC_ITEMS_ONCE	32
+#define _LINE_BUFFER_SIZE	   512
+#define _INIT_ALLOC_ITEM_COUNT	32
 
 static int iniDoLoadFromFile(const char *szFilename, \
 		IniContext *pContext);
@@ -416,19 +416,34 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 	
 		if (pSection->count >= pSection->alloc_count)
 		{
-			pSection->alloc_count += _ALLOC_ITEMS_ONCE;
-			pSection->items=(IniItem *)realloc(pSection->items, 
-				sizeof(IniItem) * pSection->alloc_count);
-			if (pSection->items == NULL)
+            int bytes;
+            IniItem *pNew;
+            if (pSection->alloc_count == 0)
+            {
+			    pSection->alloc_count = _INIT_ALLOC_ITEM_COUNT;
+            }
+            else
+            {
+			    pSection->alloc_count *= 2;
+            }
+            bytes = sizeof(IniItem) * pSection->alloc_count;
+			pNew = (IniItem *)malloc(bytes);
+			if (pNew == NULL)
 			{
 				logError("file: "__FILE__", line: %d, " \
-					"realloc %d bytes fail", __LINE__, \
-					(int)sizeof(IniItem) * \
-					pSection->alloc_count);
+					"malloc %d bytes fail", __LINE__, bytes);
 				result = errno != 0 ? errno : ENOMEM;
 				break;
 			}
 
+            if (pSection->count > 0)
+            {
+		    	memcpy(pNew, pSection->items,
+                        sizeof(IniItem) * pSection->count);
+                free(pSection->items);
+            }
+
+            pSection->items = pNew;
 			pItem = pSection->items + pSection->count;
 			memset(pItem, 0, sizeof(IniItem) * \
 				(pSection->alloc_count - pSection->count));
