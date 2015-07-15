@@ -1,4 +1,9 @@
 
+Version 1.18  2015-07-15
+  * OS macro defines put in _os_define.h
+  * remove file _os_bits.h
+  * schedule task support second field
+
 Version 1.17  2015-07-14
   * ini_file_reader.c change PJWHash to Time33Hash and increase capacity
   * ini_file_reader.c realloc change to malloc and memcpy

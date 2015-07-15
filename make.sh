@@ -46,16 +46,6 @@ else
  OFF_BITS=32
 fi
 
-cat <<EOF > src/_os_bits.h
-#ifndef _OS_BITS_H
-#define _OS_BITS_H
-
-#define OS_BITS  $OS_BITS
-#define OFF_BITS $OFF_BITS
-
-#endif
-EOF
-
 DEBUG_FLAG=1
 
 CFLAGS='-Wall -D_FILE_OFFSET_BITS=64'
@@ -67,23 +57,53 @@ fi
 
 LIBS=''
 uname=`uname`
+
 if [ "$uname" = "Linux" ]; then
-  CFLAGS="$CFLAGS -DOS_LINUX -DIOEVENT_USE_EPOLL"
+  OS_NAME=OS_LINUX
+  IOEVENT_USE=IOEVENT_USE_EPOLL
 elif [ "$uname" = "FreeBSD" ] || [ "$uname" = "Darwin" ]; then
-  CFLAGS="$CFLAGS -DOS_FREEBSD -DIOEVENT_USE_KQUEUE"
+  OS_NAME=OS_FREEBSD 
+  IOEVENT_USE=IOEVENT_USE_KQUEUE
   if [ "$uname" = "Darwin" ]; then
     CFLAGS="$CFLAGS -DDARWIN"
   fi
 elif [ "$uname" = "SunOS" ]; then
-  CFLAGS="$CFLAGS -DOS_SUNOS -D_THREAD_SAFE -DIOEVENT_USE_PORT"
+  OS_NAME=OS_SUNOS
+  IOEVENT_USE=IOEVENT_USE_PORT
+  CFLAGS="$CFLAGS -D_THREAD_SAFE"
   LIBS="$LIBS -lsocket -lnsl -lresolv"
   export CC=gcc
 elif [ "$uname" = "AIX" ]; then
-  CFLAGS="$CFLAGS -DOS_AIX -D_THREAD_SAFE"
+  OS_NAME=OS_AIX
+  IOEVENT_USE=IOEVENT_USE_NONE
+  CFLAGS="$CFLAGS -D_THREAD_SAFE"
   export CC=gcc
 elif [ "$uname" = "HP-UX" ]; then
-  CFLAGS="$CFLAGS -DOS_HPUX"
+  OS_NAME=OS_HPUX
+  IOEVENT_USE=IOEVENT_USE_NONE
+else
+  OS_NAME=OS_UNKOWN
+  IOEVENT_USE=IOEVENT_USE_NONE
 fi
+
+cat <<EOF > src/_os_define.h
+#ifndef _OS_DEFINE_H
+#define _OS_DEFINE_H
+
+#define OS_BITS  $OS_BITS
+#define OFF_BITS $OFF_BITS
+
+#ifndef $OS_NAME
+#define $OS_NAME  1
+#endif
+
+#ifndef $IOEVENT_USE
+#define $IOEVENT_USE  1
+#endif
+
+#endif
+EOF
+
 
 if [ -f /usr/lib/libpthread.so ] || [ -f /usr/local/lib/libpthread.so ] || [ -f /usr/lib64/libpthread.so ] || [ -f /usr/lib/libpthread.a ] || [ -f /usr/local/lib/libpthread.a ] || [ -f /usr/lib64/libpthread.a ]; then
   LIBS="$LIBS -lpthread"

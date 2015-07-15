@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <poll.h>
 #include <sys/time.h>
+#include "_os_define.h"
 
 #define IOEVENT_TIMEOUT  0x8000
 

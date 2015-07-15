@@ -81,7 +81,14 @@ static int sched_init_entries(ScheduleArray *pScheduleArray)
 
 			tm_base.tm_hour = pEntry->time_base.hour;
 			tm_base.tm_min = pEntry->time_base.minute;
-			tm_base.tm_sec = 0;
+            if (pEntry->time_base.second >= 0 && pEntry->time_base.second <= 59)
+            {
+                tm_base.tm_sec = pEntry->time_base.second;
+            }
+            else
+            {
+                tm_base.tm_sec = 0;
+            }
 			time_base = mktime(&tm_base);
 
 			pEntry->next_call_time = g_current_time + \

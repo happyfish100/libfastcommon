@@ -1819,6 +1819,8 @@ int get_time_item_from_conf(IniContext *pIniContext, \
 	char *pValue;
 	int hour;
 	int minute;
+	int second;
+    int count;
 
 	pValue = iniGetStrValue(NULL, item_name, pIniContext);
 	if (pValue == NULL)
@@ -1828,7 +1830,9 @@ int get_time_item_from_conf(IniContext *pIniContext, \
 		return 0;
 	}
 
-	if (sscanf(pValue, "%d:%d", &hour, &minute) != 2)
+    second = 0;
+    count = sscanf(pValue, "%d:%d:%d", &hour, &minute, &second);
+	if (count != 2 && count != 3)
 	{
 		logError("file: "__FILE__", line: %d, " \
 			"item \"%s\" 's value \"%s\" is not an valid time", \
@@ -1836,7 +1840,8 @@ int get_time_item_from_conf(IniContext *pIniContext, \
 		return EINVAL;
 	}
 
-	if ((hour < 0 || hour > 23) || (minute < 0 || minute > 59))
+	if ((hour < 0 || hour > 23) || (minute < 0 || minute > 59)
+             || (second < 0 || second > 59))
 	{
 		logError("file: "__FILE__", line: %d, " \
 			"item \"%s\" 's value \"%s\" is not an valid time", \
@@ -1846,6 +1851,7 @@ int get_time_item_from_conf(IniContext *pIniContext, \
 
 	pTimeInfo->hour = (byte)hour;
 	pTimeInfo->minute = (byte)minute;
+	pTimeInfo->second = (byte)second;
 
 	return 0;
 }

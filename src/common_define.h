@@ -52,7 +52,7 @@ extern int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int kind);
 #define PTHREAD_MUTEX_ERRORCHECK PTHREAD_MUTEX_ERRORCHECK_NP
 #endif
 
-#include "_os_bits.h"
+#include "_os_define.h"
 
 #ifdef OS_BITS
   #if OS_BITS == 64
@@ -124,6 +124,7 @@ typedef struct
 {
 	byte hour;
 	byte minute;
+	byte second;
 } TimeInfo;
 
 typedef struct
