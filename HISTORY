@@ -1,4 +1,7 @@
 
+Version 1.19  2015-07-24
+  * correct logger rotate time near 0 clock
+
 Version 1.18  2015-07-15
   * OS macro defines put in _os_define.h
   * remove file _os_bits.h
