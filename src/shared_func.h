@@ -512,6 +512,9 @@ int set_file_utimes(const char *filename, const time_t new_time);
 */
 int ignore_signal_pipe();
 
+double get_line_distance_km(const double lat1, const double lon1,
+        const double lat2, const double lon2);
+
 #ifdef __cplusplus
 }
 #endif

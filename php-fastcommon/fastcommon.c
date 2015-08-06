@@ -21,6 +21,7 @@
 #include "logger.h"
 #include "hash.h"
 #include "sockopt.h"
+#include "shared_func.h"
 #include "fastcommon.h"
 
 #define MAJOR_VERSION  1
@@ -40,6 +41,7 @@ const zend_fcall_info empty_fcall_info = { 0, NULL, NULL, NULL, NULL, 0, NULL, N
 		ZEND_FE(fastcommon_gethostaddrs, NULL)
 		ZEND_FE(fastcommon_time33_hash, NULL)
 		ZEND_FE(fastcommon_simple_hash, NULL)
+		ZEND_FE(fastcommon_get_line_distance_km, NULL)
 		{NULL, NULL, NULL}  /* Must be the last line */
 	};
 
@@ -238,5 +240,37 @@ ZEND_FUNCTION(fastcommon_simple_hash)
 	}
 
     RETURN_LONG(simple_hash(str, str_len) & 0x7FFFFFFF);
+}
+
+/*
+double fastcommon_get_line_distance_km(double lat1, double lon1,
+        double lat2, double lon2)
+return line distance in KM
+*/
+ZEND_FUNCTION(fastcommon_get_line_distance_km)
+{
+	int argc;
+    double lat1;
+    double lon1;
+    double lat2;
+    double lon2;
+
+	argc = ZEND_NUM_ARGS();
+	if (argc != 4) {
+		logError("file: "__FILE__", line: %d, "
+			"fastcommon_get_line_distance_km parameters count: %d is invalid",
+			__LINE__, argc);
+		RETURN_BOOL(false);
+	}
+
+	if (zend_parse_parameters(argc TSRMLS_CC, "dddd", &lat1, &lon1,
+                &lat2, &lon2) == FAILURE)
+	{
+		logError("file: "__FILE__", line: %d, "
+			"zend_parse_parameters fail!", __LINE__);
+		RETURN_BOOL(false);
+	}
+
+    RETURN_DOUBLE(get_line_distance_km(lat1, lon1, lat2, lon2));
 }
 

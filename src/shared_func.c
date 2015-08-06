@@ -23,6 +23,7 @@
 #include <dirent.h>
 #include <grp.h>
 #include <pwd.h>
+#include <math.h>
 #include "shared_func.h"
 #include "logger.h"
 #include "sockopt.h"
@@ -2090,5 +2091,23 @@ int ignore_signal_pipe()
 	}
 
 	return 0;
+}
+
+double get_line_distance_km(const double lat1, const double lon1,
+        const double lat2, const double lon2)
+{
+#define FAST_ABS(v) ((v) >= 0 ? (v) : -1 * (v))
+#define DISTANCE_PER_LATITUDE 111.111
+
+    double lat_value;
+    double lng_distance;
+    double lat_distance;
+
+    lat_value = FAST_ABS(lat1) < FAST_ABS(lat2) ? lat1 : lat2;
+    lat_distance = FAST_ABS(lat1 - lat2) * DISTANCE_PER_LATITUDE;
+    lng_distance = FAST_ABS(lon1 - lon2) * DISTANCE_PER_LATITUDE *
+        cos(lat_value * 3.1415926 / 180.0);
+
+    return sqrt(lat_distance * lat_distance + lng_distance * lng_distance);
 }
 
