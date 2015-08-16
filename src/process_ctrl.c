@@ -126,8 +126,10 @@ int process_start(const char* pidFilename)
 {
     pid_t pid;
     int result;
-    char cmdline[MAX_PATH_SIZE], cmdfile[MAX_PATH_SIZE], argv0[MAX_PATH_SIZE];
-    long cmdsz = sizeof cmdline;
+    char cmdline[MAX_PATH_SIZE];
+    char cmdfile[MAX_PATH_SIZE];
+    char argv0[MAX_PATH_SIZE];
+    int64_t cmdsz;
 
     if ((result=get_pid_from_file(pidFilename, &pid)) != 0) {
         if (result == ENOENT) {
@@ -140,14 +142,16 @@ int process_start(const char* pidFilename)
             return result;
         }
     }
-    cmdline[cmdsz-1] = argv0[cmdsz-1] = '\0';
+
     if (kill(pid, 0) == 0) {
+        cmdsz = sizeof(cmdline);
+        cmdline[cmdsz-1] = argv0[cmdsz-1] = '\0';
         sprintf(cmdfile, "/proc/%d/cmdline", pid);
         if ((result=getFileContentEx(cmdfile, cmdline, 0, &cmdsz)) != 0) {
             fprintf(stderr, "read file %s failed. %d %s\n", cmdfile, errno, strerror(errno));
             return result;
         }
-        cmdsz = sizeof argv0;
+        cmdsz = sizeof(argv0);
         sprintf(cmdfile, "/proc/%d/cmdline", getpid());
         if ((result=getFileContentEx(cmdfile, argv0, 0, &cmdsz)) != 0) {
             fprintf(stderr, "read file %s failed. %d %s\n", cmdfile, errno, strerror(errno));
@@ -167,7 +171,6 @@ int process_start(const char* pidFilename)
             (int)pid, errno, strerror(errno));
         return result;
     }
-
 }
 
 int process_exist(const char *pidFilename)
