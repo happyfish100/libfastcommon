@@ -285,6 +285,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
     char *pAnnoItemLine;
 	char *pIncludeFilename;
     char *pItemValue[100];
+    char full_funcName[128];
 	char full_filename[MAX_PATH_SIZE];
     int i;
 	int nLineLen;
@@ -301,6 +302,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 	pLastEnd = content - 1;
 	pSection = pContext->current_section;
     pItem = pSection->items + pSection->count;
+    pFunc_name = full_funcName;
 
 	while (pLastEnd != NULL)
 	{
@@ -372,135 +374,25 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 			free(pIncludeFilename);
 			continue;
 		}
-        else if (isAnnotation || (*pLine == '#' && \
+        else if ((*pLine == '#' && \
             strncasecmp(pLine+1, "@function", 9) == 0 && \
             (*(pLine+10) == ' ' || *(pLine+10) == '\t')))
         {
-            if (isAnnotation == 0) {
-                pFunc_name = strdup(pLine + 11);
-                if (pFunc_name == NULL) {
-                    logError("file: "__FILE__", line: %d, " \
-                        "strdup %d bytes fail", __LINE__, \
-                        (int)strlen(pLine + 11) + 1);
-                    result = errno != 0 ? errno : ENOMEM;
-                    break;
-                }
-
-                trim(pFunc_name);
-                isAnnotation = 1;
-                pAnnoItemLine = pLastEnd + 1;
-                continue;
-            }
-
-            isAnnotation = 0;
-
-            if (pLine != pAnnoItemLine) {
-                logError("file: "__FILE__", line: %d, " \
-                    "the @function and annotation item " \
-                    "must be next to each other", __LINE__);
-                result = EINVAL;
-                free(pFunc_name);
-                break;
-            }
-
-            trim(pLine);
-            if (*pLine == '#' || *pLine == '\0') {
-                logError("file: "__FILE__", line: %d, " \
-                    "the @function and annotation item " \
-                    "must be next to each other", __LINE__);
-                result = EINVAL;
-                free(pFunc_name);
-                break;
-            }
-
-            pEqualChar = strchr(pLine, '=');
-            if (pEqualChar == NULL) {
-                logError("file: "__FILE__", line: %d, " \
-                    "the @function and annotation item " \
-                    "must be next to each other", __LINE__);
-                result = EINVAL;
-                free(pFunc_name);
-                break;
-            }
-
-            nNameLen = pEqualChar - pLine;
-            nValueLen = strlen(pLine) - (nNameLen + 1);
-            if (nNameLen > FAST_INI_ITEM_NAME_LEN) {
-                nNameLen = FAST_INI_ITEM_NAME_LEN;
-            }
-
-            if (pSection->count >= pSection->alloc_count) {
-                result = remallocSection(pSection, &pItem);
-                if (result) {
-                    free(pFunc_name);
-                    break;
-                }
-            }
-
-            memcpy(pItem->name, pLine, nNameLen);
-            memcpy(pItem->value, pEqualChar + 1, nValueLen);
-
-            trim(pItem->name);
-            trim(pItem->value);
-
-            if (g_annotataionMap == NULL) {
-                logWarning("file: "__FILE__", line: %d, " \
-                    "not set annotataionMap and (%s) will use " \
-                    "the item value (%s)", __LINE__, pItem->name,
-                    pItem->value);
-                pSection->count++;
-                pItem++;
-                free(pFunc_name);
-                continue;
-            }
-
-            pAnnoMap = g_annotataionMap;
-            while (pAnnoMap->func_name) {
-                if (strlen(pAnnoMap->func_name) == strlen(pFunc_name)
-                    && strcasecmp(pFunc_name, pAnnoMap->func_name) == 0)
-                {
-                    pAnnoMap->func_init();
-                    nItemCnt = pAnnoMap->func_get(pItem->value, pItemValue, 100);
-                    break;
-                }
-                pAnnoMap++;
-            }
-
-            if (nItemCnt == -1) {
-                logWarning("file: "__FILE__", line: %d, " \
-                    "not found corresponding annotation func (%s)" \
-                    " and (%s) will use the item value (%s).", __LINE__,
-                    pItem->name, pFunc_name, pItem->value);
-                pSection->count++;
-                pItem++;
-                free(pFunc_name);
-                continue;
-            } else if (nItemCnt == 0) {
-                logWarning("file: "__FILE__", line: %d, " \
-                    "annotation func(%s) execute failed and"
-                    "(%s) will use the item value (%s)", __LINE__,
-                    pItem->name, pFunc_name, pItem->value);
-                pSection->count++;
-                pItem++;
-                free(pFunc_name);
-                continue;
-            }
-
-            pItemName = pItem->name;
-            for (i = 0; i < nItemCnt; i++) {
-                memcpy(pItem->name, pItemName, strlen(pItemName) + 1);
-                memcpy(pItem->value, pItemValue[i], strlen(pItemValue[i]) + 1);
-                pSection->count++;
-                pItem++;
-                if (pSection->count >= pSection->alloc_count) {
-                    result = remallocSection(pSection, &pItem);
-                    if (result) {
-                        break;
-                    }
-                }
-            }
-            free(pFunc_name);
+            nNameLen = strlen(pLine + 11) + 1;
+            nNameLen = nNameLen > 128 ? 128 : nNameLen;
+            memcpy(pFunc_name, pLine + 11, nNameLen);
+            trim(pFunc_name);
+            isAnnotation = 1;
+            pAnnoItemLine = pLastEnd + 1;
             continue;
+        }
+
+        if (isAnnotation && pLine != pAnnoItemLine) 
+        {
+            logWarning("file: "__FILE__", line: %d, " \
+                "the @function and annotation item " \
+                "must be next to each other", __LINE__);
+            isAnnotation = 0;
         }
 
 		trim(pLine);
@@ -588,9 +480,11 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 			nValueLen = FAST_INI_ITEM_VALUE_LEN;
 		}
 
-		if (pSection->count >= pSection->alloc_count) {
+		if (pSection->count >= pSection->alloc_count)
+        {
             result = remallocSection(pSection, &pItem);
-            if (result) {
+            if (result)
+            {
                 break;
             }
 		}
@@ -601,6 +495,86 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 		trim(pItem->name);
 		trim(pItem->value);
 
+        if (isAnnotation)
+        {
+            isAnnotation = 0;
+
+            if (g_annotataionMap == NULL)
+            {
+                logWarning("file: "__FILE__", line: %d, " \
+                    "not set annotataionMap and (%s) will use " \
+                    "the item value (%s)", __LINE__, pItem->name,
+                    pItem->value);
+                pSection->count++;
+                pItem++;
+                continue;
+            }
+
+            pAnnoMap = g_annotataionMap;
+            while (pAnnoMap->func_name)
+            {
+                if (strlen(pAnnoMap->func_name) == strlen(pFunc_name)
+                    && strcasecmp(pFunc_name, pAnnoMap->func_name) == 0)
+                {
+                    if (pAnnoMap->func_init)
+                    {
+                        pAnnoMap->func_init();
+                    }
+
+                    if (pAnnoMap->func_get)
+                    {
+                        nItemCnt = pAnnoMap->func_get(pItem->value, pItemValue, 100);
+                    }
+                    break;
+                }
+                pAnnoMap++;
+            }
+
+            if (nItemCnt == -1)
+            {
+                logWarning("file: "__FILE__", line: %d, " \
+                    "not found corresponding annotation func (%s)" \
+                    " and (%s) will use the item value (%s).", __LINE__,
+                    pItem->name, pFunc_name, pItem->value);
+                pSection->count++;
+                pItem++;
+                continue;
+            }
+            else if (nItemCnt == 0)
+            {
+                logWarning("file: "__FILE__", line: %d, " \
+                    "annotation func(%s) execute failed and"
+                    "(%s) will use the item value (%s)", __LINE__,
+                    pItem->name, pFunc_name, pItem->value);
+                pSection->count++;
+                pItem++;
+                continue;
+            }
+
+            pItemName = pItem->name;
+            nNameLen = strlen(pItemName) + 1;
+            for (i = 0; i < nItemCnt; i++)
+            {
+                nValueLen = strlen(pItemValue[i]) + 1;
+                if (nValueLen > FAST_INI_ITEM_VALUE_LEN)
+                {
+                    nValueLen = FAST_INI_ITEM_VALUE_LEN;
+                }
+                memcpy(pItem->name, pItemName, nNameLen);
+                memcpy(pItem->value, pItemValue[i], nValueLen);
+                pSection->count++;
+                pItem++;
+                if (pSection->count >= pSection->alloc_count)
+                {
+                    result = remallocSection(pSection, &pItem);
+                    if (result)
+                    {
+                        break;
+                    }
+                }
+            }
+            continue;
+        }
 		pSection->count++;
 		pItem++;
 	}
@@ -688,7 +662,9 @@ void iniFreeContext(IniContext *pContext)
     pAnnoMap = g_annotataionMap;
     while (pAnnoMap->func_name)
     {
-        pAnnoMap->func_destroy();
+        if (pAnnoMap->func_destroy) {
+            pAnnoMap->func_destroy();
+        }
         pAnnoMap++;
     }
 }
