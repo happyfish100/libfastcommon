@@ -2,7 +2,7 @@
 
 COMPILE = $(CC) $(CFLAGS)
 INC_PATH = 
-LIB_PATH = -L/usr/local/lib $(LIBS)
+LIB_PATH = $(LIBS)
 
 FAST_SHARED_OBJS = hash.lo chain.lo shared_func.lo ini_file_reader.lo \
                    logger.lo sockopt.lo base64.lo sched_thread.lo \
@@ -34,7 +34,7 @@ ALL_LIBS = $(SHARED_LIBS) $(STATIC_LIBS)
 
 all: $(ALL_OBJS) $(ALL_PRGS) $(ALL_LIBS)
 libfastcommon.so:
-	$(COMPILE) -o $@ $< -shared $(FAST_SHARED_OBJS)
+	$(COMPILE) -o $@ $< -shared $(FAST_SHARED_OBJS) $(LIB_PATH)
 libfastcommon.a: $(FAST_STATIC_OBJS)
 	ar rcs $@ $(FAST_STATIC_OBJS)
 .o:
