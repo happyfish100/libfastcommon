@@ -46,12 +46,12 @@ void iniSetAnnotationCallBack(AnnotationMap *map, int count)
     g_annotataionMap = (AnnotationMap *) malloc(bytes);
     if (g_annotataionMap == NULL) {
 		logError("file: "__FILE__", line: %d, " \
-			"malloc fail, errno: %d, error info: %s", \
-			__LINE__, errno, STRERROR(errno));
+			"malloc (%d) fail, errno: %d, error info: %s", \
+			__LINE__, bytes, errno, STRERROR(errno));
         return;
     }
 
-    memcpy(g_annotataionMap, map, bytes);
+    memcpy(g_annotataionMap, map, sizeof(AnnotationMap) * count);
 
     p = g_annotataionMap + count;
     p->func_name = NULL;
