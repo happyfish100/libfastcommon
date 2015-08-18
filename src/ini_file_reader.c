@@ -283,7 +283,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
     char *pItemName;
     char *pAnnoItemLine;
 	char *pIncludeFilename;
-    char *pItemValue[100];
+    char *pItemValues[100];
     char pFuncName[FAST_INI_ITEM_NAME_LEN + 1];
 	char full_filename[MAX_PATH_SIZE];
     int i;
@@ -376,7 +376,8 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
             (*(pLine+10) == ' ' || *(pLine+10) == '\t')))
         {
             nNameLen = strlen(pLine + 11);
-            if (nNameLen > FAST_INI_ITEM_NAME_LEN) {
+            if (nNameLen > FAST_INI_ITEM_NAME_LEN)
+            {
                 nNameLen = FAST_INI_ITEM_NAME_LEN;
             }
             memcpy(pFuncName, pLine + 11, nNameLen);
@@ -514,7 +515,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
             pAnnoMap = g_annotataionMap;
             while (pAnnoMap->func_name)
             {
-                if (strcmp(pFuncName, pAnnoMap->func_name) == 0)
+                if (strcasecmp(pFuncName, pAnnoMap->func_name) == 0)
                 {
                     if (pAnnoMap->func_init)
                     {
@@ -523,7 +524,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 
                     if (pAnnoMap->func_get)
                     {
-                        nItemCnt = pAnnoMap->func_get(pItem->value, pItemValue, 100);
+                        nItemCnt = pAnnoMap->func_get(pItem->value, pItemValues, 100);
                     }
                     break;
                 }
@@ -555,13 +556,14 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
             nNameLen = strlen(pItemName) + 1;
             for (i = 0; i < nItemCnt; i++)
             {
-                nValueLen = strlen(pItemValue[i]) + 1;
+                nValueLen = strlen(pItemValues[i]);
                 if (nValueLen > FAST_INI_ITEM_VALUE_LEN)
                 {
                     nValueLen = FAST_INI_ITEM_VALUE_LEN;
                 }
                 memcpy(pItem->name, pItemName, nNameLen);
-                memcpy(pItem->value, pItemValue[i], nValueLen);
+                memcpy(pItem->value, pItemValues[i], nValueLen);
+                pItem->value[nValueLen] = '\0';
                 pSection->count++;
                 pItem++;
                 if (pSection->count >= pSection->alloc_count)
