@@ -280,12 +280,11 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 	char *pLine;
 	char *pLastEnd;
 	char *pEqualChar;
-    char *pFunc_name;
     char *pItemName;
     char *pAnnoItemLine;
 	char *pIncludeFilename;
     char *pItemValue[100];
-    char full_funcName[FAST_INI_ITEM_VALUE_LEN];
+    char pFunc_name[FAST_INI_ITEM_NAME_LEN + 1];
 	char full_filename[MAX_PATH_SIZE];
     int i;
 	int nLineLen;
@@ -301,7 +300,6 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 	pLastEnd = content - 1;
 	pSection = pContext->current_section;
     pItem = pSection->items + pSection->count;
-    pFunc_name = full_funcName;
 
 	while (pLastEnd != NULL)
 	{
@@ -377,17 +375,17 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
             strncasecmp(pLine+1, "@function", 9) == 0 && \
             (*(pLine+10) == ' ' || *(pLine+10) == '\t')))
         {
-            nNameLen = strlen(pLine + 11) + 1;
-            nNameLen = nNameLen > FAST_INI_ITEM_VALUE_LEN ?
-                FAST_INI_ITEM_VALUE_LEN : nNameLen;
-            memcpy(pFunc_name, pLine + 11, nNameLen);
+            nNameLen = strlen(pLine + 11);
+            nNameLen = nNameLen > FAST_INI_ITEM_NAME_LEN ?
+                FAST_INI_ITEM_NAME_LEN : nNameLen;
+            memcpy(pFunc_name, pLine + 11, nNameLen + 1);
             trim(pFunc_name);
             isAnnotation = 1;
             pAnnoItemLine = pLastEnd + 1;
             continue;
         }
 
-        if (isAnnotation && pLine != pAnnoItemLine) 
+        if (isAnnotation && pLine != pAnnoItemLine)
         {
             logWarning("file: "__FILE__", line: %d, " \
                 "the @function and annotation item " \
