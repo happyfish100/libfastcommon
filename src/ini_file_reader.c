@@ -284,7 +284,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
     char *pAnnoItemLine;
 	char *pIncludeFilename;
     char *pItemValue[100];
-    char pFunc_name[FAST_INI_ITEM_NAME_LEN + 1];
+    char pFuncName[FAST_INI_ITEM_NAME_LEN + 1];
 	char full_filename[MAX_PATH_SIZE];
     int i;
 	int nLineLen;
@@ -376,10 +376,12 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
             (*(pLine+10) == ' ' || *(pLine+10) == '\t')))
         {
             nNameLen = strlen(pLine + 11);
-            nNameLen = nNameLen > FAST_INI_ITEM_NAME_LEN ?
-                FAST_INI_ITEM_NAME_LEN : nNameLen;
-            memcpy(pFunc_name, pLine + 11, nNameLen + 1);
-            trim(pFunc_name);
+            if (nNameLen > FAST_INI_ITEM_NAME_LEN) {
+                nNameLen = FAST_INI_ITEM_NAME_LEN;
+            }
+            memcpy(pFuncName, pLine + 11, nNameLen);
+            pFuncName[nNameLen] = '\0';
+            trim(pFuncName);
             isAnnotation = 1;
             pAnnoItemLine = pLastEnd + 1;
             continue;
@@ -512,7 +514,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
             pAnnoMap = g_annotataionMap;
             while (pAnnoMap->func_name)
             {
-                if (strcmp(pFunc_name, pAnnoMap->func_name) == 0)
+                if (strcmp(pFuncName, pAnnoMap->func_name) == 0)
                 {
                     if (pAnnoMap->func_init)
                     {
@@ -533,7 +535,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
                 logWarning("file: "__FILE__", line: %d, " \
                     "not found corresponding annotation func (%s)" \
                     " and (%s) will use the item value (%s).", __LINE__,
-                    pItem->name, pFunc_name, pItem->value);
+                    pItem->name, pFuncName, pItem->value);
                 pSection->count++;
                 pItem++;
                 continue;
@@ -543,7 +545,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
                 logWarning("file: "__FILE__", line: %d, " \
                     "annotation func(%s) execute failed and"
                     "(%s) will use the item value (%s)", __LINE__,
-                    pItem->name, pFunc_name, pItem->value);
+                    pItem->name, pFuncName, pItem->value);
                 pSection->count++;
                 pItem++;
                 continue;
