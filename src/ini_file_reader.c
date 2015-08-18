@@ -285,7 +285,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
     char *pAnnoItemLine;
 	char *pIncludeFilename;
     char *pItemValue[100];
-    char full_funcName[128];
+    char full_funcName[FAST_INI_ITEM_VALUE_LEN];
 	char full_filename[MAX_PATH_SIZE];
     int i;
 	int nLineLen;
@@ -296,7 +296,6 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
     int isAnnotation;
 
 	result = 0;
-    nItemCnt = -1;
     pAnnoItemLine = NULL;
     isAnnotation = 0;
 	pLastEnd = content - 1;
@@ -379,7 +378,8 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
             (*(pLine+10) == ' ' || *(pLine+10) == '\t')))
         {
             nNameLen = strlen(pLine + 11) + 1;
-            nNameLen = nNameLen > 128 ? 128 : nNameLen;
+            nNameLen = nNameLen > FAST_INI_ITEM_VALUE_LEN ?
+                FAST_INI_ITEM_VALUE_LEN : nNameLen;
             memcpy(pFunc_name, pLine + 11, nNameLen);
             trim(pFunc_name);
             isAnnotation = 1;
@@ -510,11 +510,11 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
                 continue;
             }
 
+            nItemCnt = -1;
             pAnnoMap = g_annotataionMap;
             while (pAnnoMap->func_name)
             {
-                if (strlen(pAnnoMap->func_name) == strlen(pFunc_name)
-                    && strcasecmp(pFunc_name, pAnnoMap->func_name) == 0)
+                if (strcmp(pFunc_name, pAnnoMap->func_name) == 0)
                 {
                     if (pAnnoMap->func_init)
                     {
