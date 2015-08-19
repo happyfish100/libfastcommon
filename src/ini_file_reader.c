@@ -22,7 +22,7 @@
 #define _LINE_BUFFER_SIZE	   512
 #define _INIT_ALLOC_ITEM_COUNT	32
 
-static AnnotationMap *g_annotataionMap;
+static AnnotationMap *g_annotataionMap = NULL;
 
 static int remallocSection(IniSection *pSection, IniItem **pItem);
 static int iniDoLoadFromFile(const char *szFilename, \
@@ -83,6 +83,7 @@ void iniDestroyAnnotationCallBack()
         }
         pAnnoMap++;
     }
+    g_annotataionMap = NULL;
 }
 
 static int iniCompareByItemName(const void *p1, const void *p2)
