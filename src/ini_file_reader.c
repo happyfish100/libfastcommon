@@ -30,25 +30,27 @@ static int iniDoLoadFromFile(const char *szFilename, \
 static int iniDoLoadItemsFromBuffer(char *content, \
 		IniContext *pContext);
 
-void iniSetAnnotationCallBack(AnnotationMap *map, int count)
+int iniSetAnnotationCallBack(AnnotationMap *map, int count)
 {
     int bytes;
     AnnotationMap *p;
 
-    if (count <= 0) {
+    if (count <= 0)
+    {
 		logWarning("file: "__FILE__", line: %d, " \
 			"iniSetAnnotationCallBack fail count(%d) is incorrectly.", \
 			__LINE__, count);
-        return;
+        return EINVAL;
     }
 
     bytes = sizeof(AnnotationMap) * (count + 1);
     g_annotataionMap = (AnnotationMap *) malloc(bytes);
-    if (g_annotataionMap == NULL) {
+    if (g_annotataionMap == NULL)
+    {
 		logError("file: "__FILE__", line: %d, " \
 			"malloc (%d) fail, errno: %d, error info: %s", \
 			__LINE__, bytes, errno, STRERROR(errno));
-        return;
+        return ENOMEM;
     }
 
     memcpy(g_annotataionMap, map, sizeof(AnnotationMap) * count);
@@ -58,6 +60,29 @@ void iniSetAnnotationCallBack(AnnotationMap *map, int count)
     p->func_init = NULL;
     p->func_destroy = NULL;
     p->func_get = NULL;
+
+    return 0;
+}
+
+void iniDestroyAnnotationCallBack()
+{
+    AnnotationMap *pAnnoMap;
+
+    pAnnoMap = g_annotataionMap;
+
+    if (pAnnoMap == NULL)
+    {
+        return;
+    }
+
+    while (pAnnoMap->func_name)
+    {
+        if (pAnnoMap->func_destroy)
+        {
+            pAnnoMap->func_destroy();
+        }
+        pAnnoMap++;
+    }
 }
 
 static int iniCompareByItemName(const void *p1, const void *p2)
@@ -645,8 +670,6 @@ static int iniFreeHashData(const int index, const HashData *data, void *args)
 
 void iniFreeContext(IniContext *pContext)
 {
-    AnnotationMap *pAnnoMap;
-
 	if (pContext == NULL)
 	{
 		return;
@@ -660,15 +683,6 @@ void iniFreeContext(IniContext *pContext)
 
 	hash_walk(&pContext->sections, iniFreeHashData, NULL);
 	hash_destroy(&pContext->sections);
-
-    pAnnoMap = g_annotataionMap;
-    while (pAnnoMap->func_name)
-    {
-        if (pAnnoMap->func_destroy) {
-            pAnnoMap->func_destroy();
-        }
-        pAnnoMap++;
-    }
 }
 
 

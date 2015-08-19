@@ -51,7 +51,8 @@ typedef struct
 extern "C" {
 #endif
 
-void iniSetAnnotationCallBack(AnnotationMap *map, int count);
+int iniSetAnnotationCallBack(AnnotationMap *map, int count);
+void iniDestroyAnnotationCallBack();
 
 /** load ini items from file
  *  parameters:
