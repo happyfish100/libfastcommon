@@ -621,8 +621,6 @@ static int log_fsync(LogContext *pContext, const bool bNeedLock)
 	}
 
 	result = 0;
-	do
-	{
     written = write(pContext->log_fd, pContext->log_buff, write_bytes);
 	pContext->pcurrent_buff = pContext->log_buff;
 	if (written != write_bytes)
@@ -631,14 +629,12 @@ static int log_fsync(LogContext *pContext, const bool bNeedLock)
 		fprintf(stderr, "file: "__FILE__", line: %d, " \
 			"call write fail, errno: %d, error info: %s\n",\
 			 __LINE__, result, STRERROR(result));
-		break;
 	}
 
 	if (pContext->rotate_immediately)
 	{
-		result = log_check_rotate(pContext);
+		log_check_rotate(pContext);
 	}
-	} while (0);
 
 	if (bNeedLock && ((lock_res=pthread_mutex_unlock( \
 			&(pContext->log_thread_lock))) != 0))
