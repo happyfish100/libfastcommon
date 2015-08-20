@@ -336,6 +336,14 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 			*pLastEnd = '\0';
 		}
 
+        if (isAnnotation && pLine != pAnnoItemLine)
+        {
+            logWarning("file: "__FILE__", line: %d, " \
+                "the @function and annotation item " \
+                "must be next to each other", __LINE__);
+            isAnnotation = 0;
+        }
+
 		if (*pLine == '#' && \
 			strncasecmp(pLine+1, "include", 7) == 0 && \
 			(*(pLine+8) == ' ' || *(pLine+8) == '\t'))
@@ -412,14 +420,6 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
             isAnnotation = 1;
             pAnnoItemLine = pLastEnd + 1;
             continue;
-        }
-
-        if (isAnnotation && pLine != pAnnoItemLine)
-        {
-            logWarning("file: "__FILE__", line: %d, " \
-                "the @function and annotation item " \
-                "must be next to each other", __LINE__);
-            isAnnotation = 0;
         }
 
 		trim(pLine);
@@ -606,6 +606,13 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 		pSection->count++;
 		pItem++;
 	}
+
+    if (!result && isAnnotation)
+    {
+        logWarning("file: "__FILE__", line: %d, " \
+            "the @function and annotation item " \
+            "must be next to each other", __LINE__);
+    }
 
 	return result;
 }
