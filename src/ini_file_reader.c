@@ -323,6 +323,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 	result = 0;
     pAnnoItemLine = NULL;
     isAnnotation = 0;
+    *pFuncName = '\0';
 	pLastEnd = content - 1;
 	pSection = pContext->current_section;
     pItem = pSection->items + pSection->count;
@@ -339,8 +340,8 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
         if (isAnnotation && pLine != pAnnoItemLine)
         {
             logWarning("file: "__FILE__", line: %d, " \
-                "the @function and annotation item " \
-                "must be next to each other", __LINE__);
+                "the @function annotation line " \
+                "must follow by key=value line!", __LINE__);
             isAnnotation = 0;
         }
 
@@ -417,8 +418,17 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
             memcpy(pFuncName, pLine + 11, nNameLen);
             pFuncName[nNameLen] = '\0';
             trim(pFuncName);
-            isAnnotation = 1;
-            pAnnoItemLine = pLastEnd + 1;
+            if ((int)strlen(pFuncName) > 0)
+            {
+                isAnnotation = 1;
+                pAnnoItemLine = pLastEnd + 1;
+            }
+            else
+            {
+                logWarning("file: "__FILE__", line: %d, " \
+                        "the function name of annotation line is empty", \
+                        __LINE__);
+            }
             continue;
         }
 
@@ -541,7 +551,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
             pAnnoMap = g_annotataionMap;
             while (pAnnoMap->func_name)
             {
-                if (strcasecmp(pFuncName, pAnnoMap->func_name) == 0)
+                if (strcmp(pFuncName, pAnnoMap->func_name) == 0)
                 {
                     if (pAnnoMap->func_init)
                     {
@@ -560,9 +570,9 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
             if (nItemCnt == -1)
             {
                 logWarning("file: "__FILE__", line: %d, " \
-                    "not found corresponding annotation func (%s)" \
-                    " and (%s) will use the item value (%s).", __LINE__,
-                    pItem->name, pFuncName, pItem->value);
+                    "not found corresponding annotation function: %s, " \
+                    "\"%s\" will use the item value \"%s\"", __LINE__,
+                    pFuncName, pItem->name, pItem->value);
                 pSection->count++;
                 pItem++;
                 continue;
@@ -570,16 +580,16 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
             else if (nItemCnt == 0)
             {
                 logWarning("file: "__FILE__", line: %d, " \
-                    "annotation func(%s) execute failed and"
-                    "(%s) will use the item value (%s)", __LINE__,
-                    pItem->name, pFuncName, pItem->value);
+                    "annotation function %s execute fail, " \
+                    "\"%s\" will use the item value \"%s\"", __LINE__,
+                    pFuncName, pItem->name, pItem->value);
                 pSection->count++;
                 pItem++;
                 continue;
             }
 
             pItemName = pItem->name;
-            nNameLen = strlen(pItemName) + 1;
+            nNameLen = strlen(pItemName);
             for (i = 0; i < nItemCnt; i++)
             {
                 nValueLen = strlen(pItemValues[i]);
@@ -603,15 +613,16 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
             }
             continue;
         }
+
 		pSection->count++;
 		pItem++;
 	}
 
-    if (!result && isAnnotation)
+    if (result == 0 && isAnnotation)
     {
         logWarning("file: "__FILE__", line: %d, " \
-            "the @function and annotation item " \
-            "must be next to each other", __LINE__);
+            "the @function annotation line " \
+            "must follow by key=value line!", __LINE__);
     }
 
 	return result;
