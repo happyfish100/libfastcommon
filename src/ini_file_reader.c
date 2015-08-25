@@ -22,10 +22,69 @@
 #define _LINE_BUFFER_SIZE	   512
 #define _INIT_ALLOC_ITEM_COUNT	32
 
+static AnnotationMap *g_annotataionMap = NULL;
+
+static int remallocSection(IniSection *pSection, IniItem **pItem);
 static int iniDoLoadFromFile(const char *szFilename, \
 		IniContext *pContext);
 static int iniDoLoadItemsFromBuffer(char *content, \
 		IniContext *pContext);
+
+int iniSetAnnotationCallBack(AnnotationMap *map, int count)
+{
+    int bytes;
+    AnnotationMap *p;
+
+    if (count <= 0)
+    {
+		logWarning("file: "__FILE__", line: %d, " \
+			"iniSetAnnotationCallBack fail count(%d) is incorrectly.", \
+			__LINE__, count);
+        return EINVAL;
+    }
+
+    bytes = sizeof(AnnotationMap) * (count + 1);
+    g_annotataionMap = (AnnotationMap *) malloc(bytes);
+    if (g_annotataionMap == NULL)
+    {
+		logError("file: "__FILE__", line: %d, " \
+			"malloc (%d) fail, errno: %d, error info: %s", \
+			__LINE__, bytes, errno, STRERROR(errno));
+        return ENOMEM;
+    }
+
+    memcpy(g_annotataionMap, map, sizeof(AnnotationMap) * count);
+
+    p = g_annotataionMap + count;
+    p->func_name = NULL;
+    p->func_init = NULL;
+    p->func_destroy = NULL;
+    p->func_get = NULL;
+
+    return 0;
+}
+
+void iniDestroyAnnotationCallBack()
+{
+    AnnotationMap *pAnnoMap;
+
+    pAnnoMap = g_annotataionMap;
+
+    if (pAnnoMap == NULL)
+    {
+        return;
+    }
+
+    while (pAnnoMap->func_name)
+    {
+        if (pAnnoMap->func_destroy)
+        {
+            pAnnoMap->func_destroy();
+        }
+        pAnnoMap++;
+    }
+    g_annotataionMap = NULL;
+}
 
 static int iniCompareByItemName(const void *p1, const void *p2)
 {
@@ -241,19 +300,29 @@ int iniLoadFromBuffer(char *content, IniContext *pContext)
 
 static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 {
+    AnnotationMap *pAnnoMap;
 	IniSection *pSection;
 	IniItem *pItem;
 	char *pLine;
 	char *pLastEnd;
 	char *pEqualChar;
+    char *pItemName;
+    char *pAnnoItemLine;
 	char *pIncludeFilename;
+    char *pItemValues[100];
+    char pFuncName[FAST_INI_ITEM_NAME_LEN + 1];
 	char full_filename[MAX_PATH_SIZE];
+    int i;
 	int nLineLen;
 	int nNameLen;
+    int nItemCnt;
 	int nValueLen;
 	int result;
+    int isAnnotation;
 
 	result = 0;
+    pAnnoItemLine = NULL;
+    isAnnotation = 0;
 	pLastEnd = content - 1;
 	pSection = pContext->current_section;
     pItem = pSection->items + pSection->count;
@@ -266,6 +335,14 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 		{
 			*pLastEnd = '\0';
 		}
+
+        if (isAnnotation && pLine != pAnnoItemLine)
+        {
+            logWarning("file: "__FILE__", line: %d, " \
+                "the @function and annotation item " \
+                "must be next to each other", __LINE__);
+            isAnnotation = 0;
+        }
 
 		if (*pLine == '#' && \
 			strncasecmp(pLine+1, "include", 7) == 0 && \
@@ -328,6 +405,22 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 			free(pIncludeFilename);
 			continue;
 		}
+        else if ((*pLine == '#' && \
+            strncasecmp(pLine+1, "@function", 9) == 0 && \
+            (*(pLine+10) == ' ' || *(pLine+10) == '\t')))
+        {
+            nNameLen = strlen(pLine + 11);
+            if (nNameLen > FAST_INI_ITEM_NAME_LEN)
+            {
+                nNameLen = FAST_INI_ITEM_NAME_LEN;
+            }
+            memcpy(pFuncName, pLine + 11, nNameLen);
+            pFuncName[nNameLen] = '\0';
+            trim(pFuncName);
+            isAnnotation = 1;
+            pAnnoItemLine = pLastEnd + 1;
+            continue;
+        }
 
 		trim(pLine);
 		if (*pLine == '#' || *pLine == '\0')
@@ -368,7 +461,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 						__LINE__, \
 						(int)sizeof(IniSection), \
 						result, STRERROR(result));
-					
+
 					break;
 				}
 
@@ -395,71 +488,171 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
             pItem = pSection->items + pSection->count;
 			continue;
 		}
-		
+
 		pEqualChar = strchr(pLine, '=');
 		if (pEqualChar == NULL)
 		{
 			continue;
 		}
-		
+
 		nNameLen = pEqualChar - pLine;
 		nValueLen = strlen(pLine) - (nNameLen + 1);
 		if (nNameLen > FAST_INI_ITEM_NAME_LEN)
 		{
 			nNameLen = FAST_INI_ITEM_NAME_LEN;
 		}
-		
+
 		if (nValueLen > FAST_INI_ITEM_VALUE_LEN)
 		{
 			nValueLen = FAST_INI_ITEM_VALUE_LEN;
 		}
-	
+
 		if (pSection->count >= pSection->alloc_count)
-		{
-            int bytes;
-            IniItem *pNew;
-            if (pSection->alloc_count == 0)
+        {
+            result = remallocSection(pSection, &pItem);
+            if (result)
             {
-			    pSection->alloc_count = _INIT_ALLOC_ITEM_COUNT;
+                break;
             }
-            else
-            {
-			    pSection->alloc_count *= 2;
-            }
-            bytes = sizeof(IniItem) * pSection->alloc_count;
-			pNew = (IniItem *)malloc(bytes);
-			if (pNew == NULL)
-			{
-				logError("file: "__FILE__", line: %d, " \
-					"malloc %d bytes fail", __LINE__, bytes);
-				result = errno != 0 ? errno : ENOMEM;
-				break;
-			}
-
-            if (pSection->count > 0)
-            {
-		    	memcpy(pNew, pSection->items,
-                        sizeof(IniItem) * pSection->count);
-                free(pSection->items);
-            }
-
-            pSection->items = pNew;
-			pItem = pSection->items + pSection->count;
-			memset(pItem, 0, sizeof(IniItem) * \
-				(pSection->alloc_count - pSection->count));
 		}
 
 		memcpy(pItem->name, pLine, nNameLen);
 		memcpy(pItem->value, pEqualChar + 1, nValueLen);
-		
+
 		trim(pItem->name);
 		trim(pItem->value);
-		
+
+        if (isAnnotation)
+        {
+            isAnnotation = 0;
+
+            if (g_annotataionMap == NULL)
+            {
+                logWarning("file: "__FILE__", line: %d, " \
+                    "not set annotataionMap and (%s) will use " \
+                    "the item value (%s)", __LINE__, pItem->name,
+                    pItem->value);
+                pSection->count++;
+                pItem++;
+                continue;
+            }
+
+            nItemCnt = -1;
+            pAnnoMap = g_annotataionMap;
+            while (pAnnoMap->func_name)
+            {
+                if (strcasecmp(pFuncName, pAnnoMap->func_name) == 0)
+                {
+                    if (pAnnoMap->func_init)
+                    {
+                        pAnnoMap->func_init();
+                    }
+
+                    if (pAnnoMap->func_get)
+                    {
+                        nItemCnt = pAnnoMap->func_get(pItem->value, pItemValues, 100);
+                    }
+                    break;
+                }
+                pAnnoMap++;
+            }
+
+            if (nItemCnt == -1)
+            {
+                logWarning("file: "__FILE__", line: %d, " \
+                    "not found corresponding annotation func (%s)" \
+                    " and (%s) will use the item value (%s).", __LINE__,
+                    pItem->name, pFuncName, pItem->value);
+                pSection->count++;
+                pItem++;
+                continue;
+            }
+            else if (nItemCnt == 0)
+            {
+                logWarning("file: "__FILE__", line: %d, " \
+                    "annotation func(%s) execute failed and"
+                    "(%s) will use the item value (%s)", __LINE__,
+                    pItem->name, pFuncName, pItem->value);
+                pSection->count++;
+                pItem++;
+                continue;
+            }
+
+            pItemName = pItem->name;
+            nNameLen = strlen(pItemName) + 1;
+            for (i = 0; i < nItemCnt; i++)
+            {
+                nValueLen = strlen(pItemValues[i]);
+                if (nValueLen > FAST_INI_ITEM_VALUE_LEN)
+                {
+                    nValueLen = FAST_INI_ITEM_VALUE_LEN;
+                }
+                memcpy(pItem->name, pItemName, nNameLen);
+                memcpy(pItem->value, pItemValues[i], nValueLen);
+                pItem->value[nValueLen] = '\0';
+                pSection->count++;
+                pItem++;
+                if (pSection->count >= pSection->alloc_count)
+                {
+                    result = remallocSection(pSection, &pItem);
+                    if (result)
+                    {
+                        break;
+                    }
+                }
+            }
+            continue;
+        }
 		pSection->count++;
 		pItem++;
 	}
 
+    if (!result && isAnnotation)
+    {
+        logWarning("file: "__FILE__", line: %d, " \
+            "the @function and annotation item " \
+            "must be next to each other", __LINE__);
+    }
+
 	return result;
+}
+
+static int remallocSection(IniSection *pSection, IniItem **pItem)
+{
+    int bytes, result;
+    IniItem *pNew;
+
+    if (pSection->alloc_count == 0)
+    {
+        pSection->alloc_count = _INIT_ALLOC_ITEM_COUNT;
+    }
+    else
+    {
+        pSection->alloc_count *= 2;
+    }
+    bytes = sizeof(IniItem) * pSection->alloc_count;
+    pNew = (IniItem *)malloc(bytes);
+    if (pNew == NULL)
+    {
+        logError("file: "__FILE__", line: %d, " \
+            "malloc %d bytes fail", __LINE__, bytes);
+        result = errno != 0 ? errno : ENOMEM;
+        return result;
+    }
+
+    if (pSection->count > 0)
+    {
+        memcpy(pNew, pSection->items,
+                sizeof(IniItem) * pSection->count);
+        free(pSection->items);
+    }
+
+    pSection->items = pNew;
+    *pItem = pSection->items + pSection->count;
+    memset(*pItem, 0, sizeof(IniItem) * \
+        (pSection->alloc_count - pSection->count));
+
+    return 0;
 }
 
 static int iniFreeHashData(const int index, const HashData *data, void *args)
@@ -551,7 +744,7 @@ int64_t iniGetInt64Value(const char *szSectionName, const char *szItemName, \
 		IniContext *pContext, const int64_t nDefaultValue)
 {
 	char *pValue;
-	
+
 	pValue = iniGetStrValue(szSectionName, szItemName, pContext);
 	if (pValue == NULL)
 	{
@@ -567,7 +760,7 @@ int iniGetIntValue(const char *szSectionName, const char *szItemName, \
 		IniContext *pContext, const int nDefaultValue)
 {
 	char *pValue;
-	
+
 	pValue = iniGetStrValue(szSectionName, szItemName, pContext);
 	if (pValue == NULL)
 	{
@@ -583,7 +776,7 @@ double iniGetDoubleValue(const char *szSectionName, const char *szItemName, \
 		IniContext *pContext, const double dbDefaultValue)
 {
 	char *pValue;
-	
+
 	pValue = iniGetStrValue(szSectionName, szItemName, pContext);
 	if (pValue == NULL)
 	{
@@ -599,7 +792,7 @@ bool iniGetBoolValue(const char *szSectionName, const char *szItemName, \
 		IniContext *pContext, const bool bDefaultValue)
 {
 	char *pValue;
-	
+
 	pValue = iniGetStrValue(szSectionName, szItemName, pContext);
 	if (pValue == NULL)
 	{
@@ -628,7 +821,7 @@ int iniGetValues(const char *szSectionName, const char *szItemName, \
 	{
 		return 0;
 	}
-	
+
 	INI_FIND_ITEM(szSectionName, szItemName, pContext, pSection, \
 			targetItem, pFound, 0)
 	if (pFound == NULL)
@@ -677,7 +870,7 @@ IniItem *iniGetValuesEx(const char *szSectionName, const char *szItemName, \
 	IniItem *pItem;
 	IniItem *pItemEnd;
 	IniItem *pItemStart;
-	
+
 	*nTargetCount = 0;
 	INI_FIND_ITEM(szSectionName, szItemName, pContext, pSection, \
 			targetItem, pFound, NULL)

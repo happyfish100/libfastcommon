@@ -19,6 +19,13 @@
 #define FAST_INI_ITEM_NAME_LEN		64
 #define FAST_INI_ITEM_VALUE_LEN		256
 
+typedef struct {
+    char *func_name;
+    int (*func_init) ();
+    void (*func_destroy) ();
+    int (*func_get) (char *key, char **pOutValue, int max_values);
+} AnnotationMap;
+
 typedef struct
 {
 	char name[FAST_INI_ITEM_NAME_LEN + 1];
@@ -43,6 +50,9 @@ typedef struct
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+int iniSetAnnotationCallBack(AnnotationMap *map, int count);
+void iniDestroyAnnotationCallBack();
 
 /** load ini items from file
  *  parameters:
