@@ -5,7 +5,7 @@ cat <<EOF > $tmp_src_filename
 #include <fcntl.h>
 int main()
 {
-	printf("%d\n", (int)sizeof(long));
+	printf("%d\n", (int)sizeof(void*));
 	printf("%d\n", (int)sizeof(off_t));
 	return 0;
 }
@@ -23,6 +23,8 @@ fi
 count=0
 int_bytes=4
 off_bytes=8
+LIB_VERSION=lib64
+
 for col in $output; do
     if [ $count -eq 0 ]; then
         int_bytes=$col
@@ -36,8 +38,10 @@ done
 /bin/rm -f a.out $tmp_src_filename
 if [ "$int_bytes" -eq 8 ]; then
  OS_BITS=64
+ LIB_VERSION=lib64
 else
  OS_BITS=32
+ LIB_VERSION=lib
 fi
 
 if [ "$off_bytes" -eq 8 ]; then
@@ -118,5 +122,6 @@ cd src
 cp Makefile.in Makefile
 perl -pi -e "s#\\\$\(CFLAGS\)#$CFLAGS#g" Makefile
 perl -pi -e "s#\\\$\(LIBS\)#$LIBS#g" Makefile
-make $1 $2
+perl -pi -e "s#\\\$\(LIB_VERSION\)#$LIB_VERSION#g" Makefile
+make $1 $2 $3
 
