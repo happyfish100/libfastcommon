@@ -125,3 +125,7 @@ perl -pi -e "s#\\\$\(LIBS\)#$LIBS#g" Makefile
 perl -pi -e "s#\\\$\(LIB_VERSION\)#$LIB_VERSION#g" Makefile
 make $1 $2 $3
 
+if [ "$1" = "clean" ]; then
+  /bin/rm -f Makefile _os_define.h
+fi
+
