@@ -38,7 +38,7 @@ int init_pthread_lock(pthread_mutex_t *pthread_lock)
 		return result;
 	}
 	if ((result=pthread_mutexattr_settype(&mat, \
-			PTHREAD_MUTEX_ERRORCHECK)) != 0)
+			PTHREAD_MUTEX_ERRORCHECK_NP)) != 0)
 	{
 		logError("file: "__FILE__", line: %d, " \
 			"call pthread_mutexattr_settype fail, " \
