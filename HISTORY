@@ -1,6 +1,8 @@
 
-Version 1.21  2015-08-25
+Version 1.21  2015-08-26
   * ini_file_reader support annotation function
+  * correct PTHREAD_MUTEX_ERRORCHECK define
+  * support 32 bit OS
 
 Version 1.20  2015-08-06
   * add GEO function get_line_distance_km

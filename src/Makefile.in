@@ -51,9 +51,6 @@ install:
 	install -m 755 $(SHARED_LIBS) $(DESTDIR)/usr/$(LIB_VERSION)
 	mkdir -p $(DESTDIR)/usr/include/fastcommon
 	install -m 644 $(HEADER_FILES) $(DESTDIR)/usr/include/fastcommon
-#	cd $(DESTDIR)/usr/$(LIB_VERSION) && ln -fs libfastcommon.so.1 libfastcommon.so
-#	ln -fs $(DESTDIR)/usr/local/$(LIB_VERSION)/libfastcommon.so.1 $(DESTDIR)/usr/local/$(LIB_VERSION)/libfastcommon.so
-#	sh ./fast_link_library.sh
 clean:
 	rm -f $(ALL_OBJS) $(ALL_PRGS) $(ALL_LIBS)
 
