@@ -3,6 +3,7 @@
 COMPILE = $(CC) $(CFLAGS)
 INC_PATH = 
 LIB_PATH = $(LIBS)
+LIB_VERSION = $(LIB_VERSION)
 
 FAST_SHARED_OBJS = hash.lo chain.lo shared_func.lo ini_file_reader.lo \
                    logger.lo sockopt.lo base64.lo sched_thread.lo \
@@ -46,12 +47,12 @@ libfastcommon.a: $(FAST_STATIC_OBJS)
 .c.lo:
 	$(COMPILE) -c -fPIC -o $@ $<  $(INC_PATH)
 install:
-	mkdir -p $(DESTDIR)/usr/lib64
-	install -m 755 $(SHARED_LIBS) $(DESTDIR)/usr/lib64
+	mkdir -p $(DESTDIR)/usr/$(LIB_VERSION)
+	install -m 755 $(SHARED_LIBS) $(DESTDIR)/usr/$(LIB_VERSION)
 	mkdir -p $(DESTDIR)/usr/include/fastcommon
 	install -m 644 $(HEADER_FILES) $(DESTDIR)/usr/include/fastcommon
-#	cd $(DESTDIR)/usr/lib64 && ln -fs libfastcommon.so.1 libfastcommon.so
-#	ln -fs $(DESTDIR)/usr/local/lib/libfastcommon.so.1 $(DESTDIR)/usr/local/lib/libfastcommon.so
+#	cd $(DESTDIR)/usr/$(LIB_VERSION) && ln -fs libfastcommon.so.1 libfastcommon.so
+#	ln -fs $(DESTDIR)/usr/local/$(LIB_VERSION)/libfastcommon.so.1 $(DESTDIR)/usr/local/$(LIB_VERSION)/libfastcommon.so
 #	sh ./fast_link_library.sh
 clean:
 	rm -f $(ALL_OBJS) $(ALL_PRGS) $(ALL_LIBS)
