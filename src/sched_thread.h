@@ -46,13 +46,23 @@ typedef struct
 	bool *pcontinue_flag;
 } ScheduleContext;
 
-#define INIT_SCHEDULE_ENTRY(schedule_entry, a, b, c, d, e, f)\
-	(schedule_entry).id = a;\
-	(schedule_entry).time_base.hour = b;\
-	(schedule_entry).time_base.minute = c;\
-	(schedule_entry).interval = d;\
-	(schedule_entry).task_func = e;\
-	(schedule_entry).func_args = f
+#define INIT_SCHEDULE_ENTRY(schedule_entry, _id, _hour, _minute, _second, \
+	_interval,  _task_func, _func_args) \
+	(schedule_entry).id = _id; \
+	(schedule_entry).time_base.hour = _hour;     \
+	(schedule_entry).time_base.minute = _minute; \
+	(schedule_entry).time_base.second = _second; \
+	(schedule_entry).interval = _interval;   \
+	(schedule_entry).task_func = _task_func; \
+	(schedule_entry).func_args = _func_args
+
+#define INIT_SCHEDULE_ENTRY_EX(schedule_entry, _id, _time_base, \
+	_interval,  _task_func, _func_args) \
+	(schedule_entry).id = _id; \
+	(schedule_entry).time_base = _time_base; \
+	(schedule_entry).interval = _interval;   \
+	(schedule_entry).task_func = _task_func; \
+	(schedule_entry).func_args = _func_args
 
 #ifdef __cplusplus
 extern "C" {
