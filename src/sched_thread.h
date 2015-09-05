@@ -46,6 +46,14 @@ typedef struct
 	bool *pcontinue_flag;
 } ScheduleContext;
 
+#define INIT_SCHEDULE_ENTRY(schedule_entry, a, b, c, d, e, f)\
+	(schedule_entry).id = a;\
+	(schedule_entry).time_base.hour = b;\
+	(schedule_entry).time_base.minute = c;\
+	(schedule_entry).interval = d;\
+	(schedule_entry).task_func = e;\
+	(schedule_entry).func_args = f
+
 #ifdef __cplusplus
 extern "C" {
 #endif
