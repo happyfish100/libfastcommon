@@ -1461,20 +1461,286 @@ int set_run_by(const char *group_name, const char *username)
 	return 0;
 }
 
+static int check_realloc_allow_ips(in_addr_t **allow_ip_addrs,
+	int *alloc_count, const int target_ip_count)
+{
+	int bytes;
+	if (*alloc_count < target_ip_count)
+	{
+		*alloc_count = target_ip_count;
+		bytes = sizeof(in_addr_t) * (*alloc_count);
+		*allow_ip_addrs = (in_addr_t *)realloc(*allow_ip_addrs, bytes);
+		if (*allow_ip_addrs == NULL)
+		{
+			logError("file: "__FILE__", line: %d, "\
+				"malloc %d bytes fail, " \
+				"errno: %d, error info: %s", \
+				__LINE__, bytes, errno, STRERROR(errno));
+
+			return errno != 0 ? errno : ENOMEM;
+		}
+	}
+
+	return 0;
+}
+
+static int parse_cidr_ips(const char *ip_addr, in_addr_t **allow_ip_addrs,
+	int *alloc_count, int *allow_ip_count, const int remain_items)
+{
+	char *pSlash;
+	char *pReservedEnd;
+	char ip_part[IP_ADDRESS_SIZE];
+	int ip_len;
+	int network_bits;
+	int host_bits;
+	int bits;
+	uint32_t hip;
+	in_addr_t nip;
+	int h;
+	int count;
+	int result;
+	struct in_addr addr;
+
+	pSlash = strchr(ip_addr, '/');
+	if (pSlash == NULL)
+	{
+		return EINVAL;
+	}
+
+	ip_len = pSlash - ip_addr;
+	if (ip_len == 0 || ip_len >= IP_ADDRESS_SIZE)
+	{
+		logError("file: "__FILE__", line: %d, " \
+			"invalid ip address: %s", \
+			__LINE__, ip_addr);
+		return EINVAL;
+	}
+	memcpy(ip_part, ip_addr, ip_len);
+	*(ip_part + ip_len) = '\0';
+	
+	pReservedEnd = NULL;
+	network_bits = strtol(pSlash + 1, &pReservedEnd, 10);
+	if (!(pReservedEnd == NULL || *pReservedEnd == '\0'))
+	{
+		logError("file: "__FILE__", line: %d, " \
+			"ip address: %s, invalid network bits: %s",
+			__LINE__, ip_addr, pSlash + 1);
+		return EINVAL;
+	}
+
+	if (network_bits < 16 || network_bits >= 32)
+	{
+		logError("file: "__FILE__", line: %d, " \
+			"ip address: %s, invalid network bits: %d, " \
+			"it should >= 16 and < 32", \
+			__LINE__, ip_addr, network_bits);
+		return EINVAL;
+	}
+
+	if (inet_pton(AF_INET, ip_part, &addr) != 1)
+	{
+		logError("file: "__FILE__", line: %d, " \
+			"ip address: %s, invalid ip part: %s", \
+			__LINE__, ip_addr, ip_part);
+		return EINVAL;
+	}
+
+	host_bits = 32 - network_bits;
+	count = 2;
+	bits = host_bits;
+	while (--bits)
+	{
+		count *= 2;
+	}
+
+	if ((result=check_realloc_allow_ips(allow_ip_addrs,
+		alloc_count, (*allow_ip_count) + count + remain_items)) != 0)
+	{
+		return result;
+	}
+
+	logDebug("CIDR ip: %s, ip count: %d", ip_addr, count);
+
+	hip = ntohl(addr.s_addr);
+	for (h=0; h<count; h++)
+	{
+		struct sockaddr_in a;
+
+		nip = htonl(hip | h);
+		(*allow_ip_addrs)[*allow_ip_count] = nip;
+		(*allow_ip_count)++;
+
+		a.sin_addr.s_addr = nip;
+		if (inet_ntop(AF_INET, &a.sin_addr, ip_part, IP_ADDRESS_SIZE) != NULL)
+		{
+			logDebug("%d. %s", h + 1, ip_part);
+		}
+	}
+
+	return 0;
+}
+
+static int parse_range_hosts(const char *value, char *pStart, char *pEnd,
+	char *hostname, const int nHeadLen, in_addr_t **allow_ip_addrs,
+	int *alloc_count, int *allow_ip_count, const int remain_items)
+{
+	char *pTail;
+	char *p;
+	int result;
+	int i;
+	in_addr_t addr;
+
+	pTail = pEnd + 1;
+	p = pStart + 1;  //skip [
+	while (p <= pEnd)
+	{
+		char *pNumStart1;
+		char *pNumStart2;
+		int nStart;
+		int nEnd;
+		int nNumLen1;
+		int nNumLen2;
+		char end_ch1;
+		char end_ch2;
+		char szFormat[16];
+
+		while (*p == ' ' || *p == '\t') //trim prior spaces
+		{
+			p++;
+		}
+
+		pNumStart1 = p;
+		while (*p >='0' && *p <= '9')
+		{
+			p++;
+		}
+
+		nNumLen1 = p - pNumStart1;
+		while (*p == ' ' || *p == '\t') //trim tail spaces
+		{
+			p++;
+		}
+
+		if (!(*p == ',' || *p == '-' || *p == ']'))
+		{
+			logError("file: "__FILE__", line: %d, " \
+				"invalid char \"%c\" in host name: %s",\
+				__LINE__, *p, value);
+			return EINVAL;
+		}
+
+		end_ch1 = *p;
+		*(pNumStart1 + nNumLen1) = '\0';
+
+		if (nNumLen1 == 0)
+		{
+			logError("file: "__FILE__", line: %d, " \
+				"invalid host name: %s, " \
+				"empty entry before \"%c\"", \
+				__LINE__, value, end_ch1);
+			return EINVAL;
+		}
+
+		nStart = atoi(pNumStart1);
+		if (end_ch1 == '-')
+		{
+			p++;   //skip -
+
+			/* trim prior spaces */
+			while (*p == ' ' || *p == '\t')
+			{
+				p++;
+			}
+
+			pNumStart2 = p;
+			while (*p >='0' && *p <= '9')
+			{
+				p++;
+			}
+
+			nNumLen2 = p - pNumStart2;
+			/* trim tail spaces */
+			while (*p == ' ' || *p == '\t')
+			{
+				p++;
+			}
+
+			if (!(*p == ',' || *p == ']'))
+			{
+				logError("file: "__FILE__", line: %d, " \
+					"invalid char \"%c\" in host name: %s",\
+					__LINE__, *p, value);
+				return EINVAL;
+			}
+
+			end_ch2 = *p;
+			*(pNumStart2 + nNumLen2) = '\0';
+
+			if (nNumLen2 == 0)
+			{
+				logError("file: "__FILE__", line: %d, " \
+					"invalid host name: %s, " \
+					"empty entry before \"%c\"", \
+					__LINE__, value, end_ch2);
+				return EINVAL;
+			}
+
+			nEnd = atoi(pNumStart2);
+		}
+		else
+		{
+			nEnd = nStart;
+		}
+
+
+		if ((result=check_realloc_allow_ips(allow_ip_addrs,
+			alloc_count, (*allow_ip_count) + remain_items +
+			(nEnd - nStart + 1))) != 0)
+		{
+			return result;
+		}
+
+		sprintf(szFormat, "%%0%dd%%s",  nNumLen1);
+		for (i=nStart; i<=nEnd; i++)
+		{
+			sprintf(hostname + nHeadLen, szFormat, \
+				i, pTail);
+
+			addr = getIpaddrByName(hostname, NULL, 0);
+			if (addr == INADDR_NONE)
+			{
+				logWarning("file: "__FILE__", line: %d, " \
+					"invalid host name: %s", \
+					__LINE__, hostname);
+			}
+			else
+			{
+				(*allow_ip_addrs)[*allow_ip_count] = addr;
+				(*allow_ip_count)++;
+			}
+
+		}
+
+		p++;
+	}
+
+	return 0;
+}
+
 int load_allow_hosts(IniContext *pIniContext, \
 		in_addr_t **allow_ip_addrs, int *allow_ip_count)
 {
+	int result;
 	int count;
 	IniItem *pItem;
 	IniItem *pItemStart;
 	IniItem *pItemEnd;
-	char *pItemValue;
+	char item_value[256];
 	char *pStart;
 	char *pEnd;
-	char *p;
-	char *pTail;
 	int alloc_count;
 	int nHeadLen;
+	int nValueLen;
 	int i;
 	in_addr_t addr;
 	char hostname[256];
@@ -1520,6 +1786,17 @@ int load_allow_hosts(IniContext *pIniContext, \
 		pStart = strchr(pItem->value, '[');
 		if (pStart == NULL)
 		{
+			if (strchr(pItem->value, '/') != NULL) //CIDR addresses
+			{
+				if ((result=parse_cidr_ips(pItem->value,
+					allow_ip_addrs, &alloc_count,
+					allow_ip_count, pItemEnd - pItem)) != 0)
+				{
+					return result;
+				}
+				continue;
+			}
+
 			addr = getIpaddrByName(pItem->value, NULL, 0);
 			if (addr == INADDR_NONE)
 			{
@@ -1529,24 +1806,10 @@ int load_allow_hosts(IniContext *pIniContext, \
 			}
 			else
 			{
-				if (alloc_count < (*allow_ip_count) + 1)
+				if ((result=check_realloc_allow_ips(allow_ip_addrs,
+					&alloc_count, (*allow_ip_count) + (pItemEnd - pItem))) != 0)
 				{
-					alloc_count = (*allow_ip_count) + \
-							(pItemEnd - pItem);
-					*allow_ip_addrs = (in_addr_t *)realloc(
-						*allow_ip_addrs, 
-						sizeof(in_addr_t)*alloc_count);
-					if (*allow_ip_addrs == NULL)
-					{
-					logError("file: "__FILE__", line: %d, "\
-						"malloc %d bytes fail, " \
-						"errno: %d, error info: %s", \
-						__LINE__, (int)sizeof(in_addr_t)
-							* alloc_count, \
-						errno, STRERROR(errno));
-
-					return errno != 0 ? errno : ENOMEM;
-					}
+					return result;
 				}
 
 				(*allow_ip_addrs)[*allow_ip_count] = addr;
@@ -1560,177 +1823,32 @@ int load_allow_hosts(IniContext *pIniContext, \
 		pEnd = strchr(pStart, ']');
 		if (pEnd == NULL)
 		{
-			logWarning("file: "__FILE__", line: %d, " \
+			logError("file: "__FILE__", line: %d, " \
 				"invalid host name: %s, expect \"]\"", \
 				__LINE__, pItem->value);
-			continue;
+			return EINVAL;
 		}
 
-		pItemValue = strdup(pItem->value);
-		if (pItemValue == NULL)
+		nValueLen = strlen(pItem->value);
+		if (nValueLen >= (int)sizeof(item_value))
 		{
-			logWarning("file: "__FILE__", line: %d, " \
-				"strdup fail, " \
-				"errno: %d, error info: %s.", \
-				__LINE__, errno, STRERROR(errno));
-			continue;
+			logError("file: "__FILE__", line: %d, " \
+				"hostname too long, exceeds %d bytes", \
+				__LINE__, (int)sizeof(item_value));
+			return EINVAL;
 		}
-
+		memcpy(item_value, pItem->value, nValueLen + 1);
 		nHeadLen = pStart - pItem->value;
-		pStart = pItemValue + nHeadLen;
-		pEnd = pItemValue + (pEnd - pItem->value);
-		pTail = pEnd + 1;
-
 		memcpy(hostname, pItem->value, nHeadLen);
-		p = pStart + 1;  //skip [
 
-		while (p <= pEnd)
+		result = parse_range_hosts(pItem->value, item_value + nHeadLen,
+				item_value + (pEnd - pItem->value),
+				hostname, nHeadLen, allow_ip_addrs,
+				&alloc_count, allow_ip_count, pItemEnd - pItem);
+		if (result != 0)
 		{
-			char *pNumStart1;
-			char *pNumStart2;
-			int nStart;
-			int nEnd;
-			int nNumLen1;
-			int nNumLen2;
-			char end_ch1;
-			char end_ch2;
-			char szFormat[16];
-
-			while (*p == ' ' || *p == '\t') //trim prior spaces
-			{
-				p++;
-			}
-
-			pNumStart1 = p;
-			while (*p >='0' && *p <= '9')
-			{
-				p++;
-			}
-
-			nNumLen1 = p - pNumStart1;
-			while (*p == ' ' || *p == '\t') //trim tail spaces
-			{
-				p++;
-			}
-
-			if (!(*p == ',' || *p == '-' || *p == ']'))
-			{
-				logWarning("file: "__FILE__", line: %d, " \
-					"invalid char \"%c\" in host name: %s",\
-					__LINE__, *p, pItem->value);
-				break;
-			}
-
-			end_ch1 = *p;
-			*(pNumStart1 + nNumLen1) = '\0';
-
-			if (nNumLen1 == 0)
-			{
-				logWarning("file: "__FILE__", line: %d, " \
-					"invalid host name: %s, " \
-					"empty entry before \"%c\"", \
-					__LINE__, pItem->value, end_ch1);
-				break;
-			}
-
-			nStart = atoi(pNumStart1);
-			if (end_ch1 == '-')
-			{
-				p++;   //skip -
-
-				/* trim prior spaces */
-				while (*p == ' ' || *p == '\t')
-				{
-					p++;
-				}
-
-				pNumStart2 = p;
-				while (*p >='0' && *p <= '9')
-				{
-					p++;
-				}
-
-				nNumLen2 = p - pNumStart2;
-				/* trim tail spaces */
-				while (*p == ' ' || *p == '\t')
-				{
-					p++;
-				}
-
-				if (!(*p == ',' || *p == ']'))
-				{
-				logWarning("file: "__FILE__", line: %d, " \
-					"invalid char \"%c\" in host name: %s",\
-					__LINE__, *p, pItem->value);
-				break;
-				}
-
-				end_ch2 = *p;
-				*(pNumStart2 + nNumLen2) = '\0';
-
-				if (nNumLen2 == 0)
-				{
-				logWarning("file: "__FILE__", line: %d, " \
-					"invalid host name: %s, " \
-					"empty entry before \"%c\"", \
-					__LINE__, pItem->value, end_ch2);
-				break;
-				}
-
-				nEnd = atoi(pNumStart2);
-			}
-			else
-			{
-				nEnd = nStart;
-			}
-
-			if (alloc_count < *allow_ip_count+(nEnd - nStart + 1))
-			{
-				alloc_count = *allow_ip_count + (nEnd - nStart)
-						 + (pItemEnd - pItem);
-				*allow_ip_addrs = (in_addr_t *)realloc(
-					*allow_ip_addrs, 
-					sizeof(in_addr_t)*alloc_count);
-				if (*allow_ip_addrs == NULL)
-				{
-					logError("file: "__FILE__", line: %d, "\
-						"malloc %d bytes fail, " \
-						"errno: %d, error info: %s.", \
-						__LINE__, \
-						(int)sizeof(in_addr_t) * \
-						alloc_count,\
-						errno, STRERROR(errno));
-
-					free(pItemValue);
-					return errno != 0 ? errno : ENOMEM;
-				}
-			}
-
-			sprintf(szFormat, "%%0%dd%%s",  nNumLen1);
-			for (i=nStart; i<=nEnd; i++)
-			{
-				sprintf(hostname + nHeadLen, szFormat, \
-					i, pTail);
-
-				addr = getIpaddrByName(hostname, NULL, 0);
-				if (addr == INADDR_NONE)
-				{
-				logWarning("file: "__FILE__", line: %d, " \
-					"invalid host name: %s", \
-					__LINE__, hostname);
-				}
-				else
-				{
-					(*allow_ip_addrs)[*allow_ip_count]=addr;
-					(*allow_ip_count)++;
-				}
-
-			}
-
-			p++;
+			return result;
 		}
-
-		free(pItemValue);
 	}
 
 	if (*allow_ip_count == 0)
@@ -1745,15 +1863,13 @@ int load_allow_hosts(IniContext *pIniContext, \
 			cmp_by_ip_addr_t);
 	}
 
-	/*
-	printf("*allow_ip_count=%d\n", *allow_ip_count);
+	logDebug("allow_ip_count=%d", *allow_ip_count);
 	for (i=0; i<*allow_ip_count; i++)
 	{
 		struct in_addr address;
 		address.s_addr = (*allow_ip_addrs)[i];
-		printf("%s\n", inet_ntoa(address));
+		logDebug("%d. %s", i + 1, inet_ntoa(address));
 	}
-	*/
 
 	return 0;
 }
