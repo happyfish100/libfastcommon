@@ -14,6 +14,8 @@
 #include "shared_func.h"
 #include "local_ip_func.h"
 
+#define LOCAL_LOOPBACK_IP  "127.0.0.1"
+
 int g_local_host_ip_count = 0;
 char g_local_host_ip_addrs[FAST_MAX_LOCAL_IP_ADDRS * \
 				IP_ADDRESS_SIZE];
@@ -83,7 +85,7 @@ void load_local_host_ip_addrs()
 	char *if_alias_prefixes[STORAGE_MAX_ALIAS_PREFIX_COUNT];
 	int alias_count;
 
-	insert_into_local_host_ip("127.0.0.1");
+	insert_into_local_host_ip(LOCAL_LOOPBACK_IP);
 
 	memset(if_alias_prefixes, 0, sizeof(if_alias_prefixes));
 	if (*g_if_alias_prefix == '\0')
@@ -130,5 +132,28 @@ void print_local_host_ip_addrs()
 	}
 
 	printf("\n");
+}
+
+const char *get_first_local_ip()
+{
+    char *p;
+	char *pEnd;
+
+    if (g_local_host_ip_count == 0)
+    {
+        load_local_host_ip_addrs();
+    }
+
+	pEnd = g_local_host_ip_addrs + \
+		IP_ADDRESS_SIZE * g_local_host_ip_count;
+	for (p=g_local_host_ip_addrs; p<pEnd; p+=IP_ADDRESS_SIZE)
+	{
+	    if (strcmp(p, LOCAL_LOOPBACK_IP) != 0)
+        {
+            return p;
+        }
+	}
+
+    return LOCAL_LOOPBACK_IP;
 }
 

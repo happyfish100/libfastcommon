@@ -31,6 +31,7 @@ extern char g_if_alias_prefix[FAST_IF_ALIAS_PREFIX_MAX_SIZE];
 
 void load_local_host_ip_addrs();
 bool is_local_host_ip(const char *client_ip);
+const char *get_first_local_ip();
 int insert_into_local_host_ip(const char *client_ip);
 void print_local_host_ip_addrs();
 
