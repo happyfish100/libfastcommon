@@ -1322,7 +1322,7 @@ int load_log_level_ex(const char *conf_filename)
 	int result;
 	IniContext iniContext;
 
-	if ((result=iniLoadFromFileEx(conf_filename, &iniContext, IGNORE_ANNOTATION)) != 0)
+	if ((result=iniLoadFromFileEx(conf_filename, &iniContext, true)) != 0)
 	{
 		logError("file: "__FILE__", line: %d, " \
 			"load conf file \"%s\" fail, ret code: %d", \

@@ -47,7 +47,7 @@ typedef struct
 	HashArray sections;  //key is session name, and value is IniSection
 	IniSection *current_section; //for load from ini file
 	char config_path[MAX_PATH_SIZE];  //save the config filepath
-    char annotation;
+    bool ignore_annotation;
 } IniContext;
 
 #ifdef __cplusplus
@@ -69,11 +69,11 @@ int iniLoadFromFile(const char *szFilename, IniContext *pContext);
  *  parameters:
  *           szFilename: the filename, can be an URL
  *           pContext: the ini context
- *           annotation: whether ignore annotation
+ *           ignore_annotation: whether ignore annotation
  *  return: error no, 0 for success, != 0 fail
 */
 int iniLoadFromFileEx(const char *szFilename, IniContext *pContext,
-    char annotation);
+    bool ignore_annotation);
 
 /** load ini items from string buffer
  *  parameters:
