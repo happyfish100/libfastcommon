@@ -230,6 +230,107 @@ int iniLoadFromFile(const char *szFilename, IniContext *pContext)
 	return result;
 }
 
+int iniLoadFromFileEx(const char *szFilename, IniContext *pContext,
+    char annotation)
+{
+	int result;
+	int len;
+	char *pLast;
+	char full_filename[MAX_PATH_SIZE];
+
+	if ((result=iniInitContext(pContext)) != 0)
+	{
+		return result;
+	}
+
+    pContext->annotation = annotation;
+
+	if (strncasecmp(szFilename, "http://", 7) == 0)
+	{
+		*pContext->config_path = '\0';
+		snprintf(full_filename, sizeof(full_filename),"%s",szFilename);
+	}
+	else
+	{
+		if (*szFilename == '/')
+		{
+			pLast = strrchr(szFilename, '/');
+			len = pLast - szFilename;
+			if (len >= sizeof(pContext->config_path))
+			{
+				logError("file: "__FILE__", line: %d, "\
+					"the path of the config file: %s is " \
+					"too long!", __LINE__, szFilename);
+				return ENOSPC;
+			}
+
+			memcpy(pContext->config_path, szFilename, len);
+			*(pContext->config_path + len) = '\0';
+			snprintf(full_filename, sizeof(full_filename), \
+				"%s", szFilename);
+		}
+		else
+		{
+			memset(pContext->config_path, 0, \
+				sizeof(pContext->config_path));
+			if (getcwd(pContext->config_path, sizeof( \
+				pContext->config_path)) == NULL)
+			{
+				logError("file: "__FILE__", line: %d, " \
+					"getcwd fail, errno: %d, " \
+					"error info: %s", \
+					__LINE__, errno, STRERROR(errno));
+				return errno != 0 ? errno : EPERM;
+			}
+
+			len = strlen(pContext->config_path);
+			if (len > 0 && pContext->config_path[len - 1] == '/')
+			{
+				len--;
+				*(pContext->config_path + len) = '\0';
+			}
+
+			snprintf(full_filename, sizeof(full_filename), \
+				"%s/%s", pContext->config_path, szFilename);
+
+			pLast = strrchr(szFilename, '/');
+			if (pLast != NULL)
+			{
+				int tail_len;
+
+				tail_len = pLast - szFilename;
+				if (len + 1 + tail_len >= sizeof( \
+						pContext->config_path))
+				{
+					logError("file: "__FILE__", line: %d, "\
+						"the path of the config " \
+						"file: %s is too long!", \
+						__LINE__, szFilename);
+					return ENOSPC;
+				}
+
+                *(pContext->config_path + len++) = '/';
+				memcpy(pContext->config_path + len, \
+					szFilename, tail_len);
+				len += tail_len;
+				*(pContext->config_path + len) = '\0';
+			}
+		}
+	}
+
+	result = iniDoLoadFromFile(full_filename, pContext);
+	if (result == 0)
+	{
+		iniSortItems(pContext);
+	}
+	else
+	{
+		iniFreeContext(pContext);
+	}
+
+	return result;
+}
+
 static int iniDoLoadFromFile(const char *szFilename, \
 		IniContext *pContext)
 {
@@ -410,26 +511,28 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
             strncasecmp(pLine+1, "@function", 9) == 0 && \
             (*(pLine+10) == ' ' || *(pLine+10) == '\t')))
         {
-            nNameLen = strlen(pLine + 11);
-            if (nNameLen > FAST_INI_ITEM_NAME_LEN)
-            {
-                nNameLen = FAST_INI_ITEM_NAME_LEN;
+            if (pContext->annotation != IGNORE_ANNOTATION) {
+                nNameLen = strlen(pLine + 11);
+                if (nNameLen > FAST_INI_ITEM_NAME_LEN)
+                {
+                    nNameLen = FAST_INI_ITEM_NAME_LEN;
+                }
+                memcpy(pFuncName, pLine + 11, nNameLen);
+                pFuncName[nNameLen] = '\0';
+                trim(pFuncName);
+                if ((int)strlen(pFuncName) > 0)
+                {
+                    isAnnotation = 1;
+                    pAnnoItemLine = pLastEnd + 1;
+                }
+                else
+                {
+                    logWarning("file: "__FILE__", line: %d, " \
+                            "the function name of annotation line is empty", \
+                            __LINE__);
+                }
+                continue;
             }
-            memcpy(pFuncName, pLine + 11, nNameLen);
-            pFuncName[nNameLen] = '\0';
-            trim(pFuncName);
-            if ((int)strlen(pFuncName) > 0)
-            {
-                isAnnotation = 1;
-                pAnnoItemLine = pLastEnd + 1;
-            }
-            else
-            {
-                logWarning("file: "__FILE__", line: %d, " \
-                        "the function name of annotation line is empty", \
-                        __LINE__);
-            }
-            continue;
         }
 
 		trim(pLine);

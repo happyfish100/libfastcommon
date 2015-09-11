@@ -19,6 +19,8 @@
 #define FAST_INI_ITEM_NAME_LEN		64
 #define FAST_INI_ITEM_VALUE_LEN		256
 
+#define IGNORE_ANNOTATION      1
+
 typedef struct {
     char *func_name;
     int (*func_init) ();
@@ -45,6 +47,7 @@ typedef struct
 	HashArray sections;  //key is session name, and value is IniSection
 	IniSection *current_section; //for load from ini file
 	char config_path[MAX_PATH_SIZE];  //save the config filepath
+    char annotation;
 } IniContext;
 
 #ifdef __cplusplus
@@ -61,6 +64,16 @@ void iniDestroyAnnotationCallBack();
  *  return: error no, 0 for success, != 0 fail
 */
 int iniLoadFromFile(const char *szFilename, IniContext *pContext);
+
+/** load ini items from file
+ *  parameters:
+ *           szFilename: the filename, can be an URL
+ *           pContext: the ini context
+ *           annotation: whether ignore annotation
+ *  return: error no, 0 for success, != 0 fail
+*/
+int iniLoadFromFileEx(const char *szFilename, IniContext *pContext,
+    char annotation);
 
 /** load ini items from string buffer
  *  parameters:
