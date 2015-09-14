@@ -129,8 +129,14 @@ int ioevent_modify(IOEventPoller *ioevent, const int fd, const int e,
   else if ((ioevent->care_events & IOEVENT_WRITE)) {
     EV_SET(&ev[n++], fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
   }
+
   ioevent->care_events = e;
-  return kevent(ioevent->poll_fd, ev, n, NULL, 0, NULL);
+  if (n > 0) {
+      return kevent(ioevent->poll_fd, ev, n, NULL, 0, NULL);
+  }
+  else {
+      return 0;
+  }
 #elif IOEVENT_USE_PORT
   return port_associate(ioevent->poll_fd, PORT_SOURCE_FD, fd, e, data);
 #endif
@@ -149,8 +155,14 @@ int ioevent_detach(IOEventPoller *ioevent, const int fd)
   if ((ioevent->care_events & IOEVENT_WRITE)) {
     EV_SET(&ev[n++], fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
   }
+
   ioevent->care_events = 0;
-  return kevent(ioevent->poll_fd, ev, n, NULL, 0, NULL);
+  if (n > 0) {
+      return kevent(ioevent->poll_fd, ev, n, NULL, 0, NULL);
+  }
+  else {
+      return 0;
+  }
 #elif IOEVENT_USE_PORT
   return port_dissociate(ioevent->poll_fd, PORT_SOURCE_FD, fd);
 #endif
