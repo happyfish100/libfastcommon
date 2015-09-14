@@ -831,55 +831,35 @@ bool iniGetBoolValue(const char *szSectionName, const char *szItemName, \
 int iniGetValues(const char *szSectionName, const char *szItemName, \
 		IniContext *pContext, char **szValues, const int max_values)
 {
-	IniItem targetItem;
-	IniSection *pSection;
-	IniItem *pFound;
 	IniItem *pItem;
 	IniItem *pItemEnd;
 	char **ppValues;
+	int count;
 
 	if (max_values <= 0)
 	{
 		return 0;
 	}
 
-	INI_FIND_ITEM(szSectionName, szItemName, pContext, pSection, \
-			targetItem, pFound, 0)
-	if (pFound == NULL)
+	pItem = iniGetValuesEx(szSectionName, szItemName,
+			pContext, &count);
+	if (count == 0)
 	{
 		return 0;
 	}
+	if (count > max_values)
+	{
+		count = max_values;
+	}
 
 	ppValues = szValues;
-	*ppValues++ = pFound->value;
-	for (pItem=pFound-1; pItem>=pSection->items; pItem--)
+	pItemEnd = pItem + count;
+	for (; pItem<pItemEnd; pItem++)
 	{
-		if (strcmp(pItem->name, szItemName) != 0)
-		{
-			break;
-		}
-
-		if (ppValues - szValues < max_values)
-		{
-			*ppValues++ = pItem->value;
-		}
+		*ppValues++ = pItem->value;
 	}
 
-	pItemEnd = pSection->items + pSection->count;
-	for (pItem=pFound+1; pItem<pItemEnd; pItem++)
-	{
-		if (strcmp(pItem->name, szItemName) != 0)
-		{
-			break;
-		}
-
-		if (ppValues - szValues < max_values)
-		{
-			*ppValues++ = pItem->value;
-		}
-	}
-
-	return ppValues - szValues;
+	return count;
 }
 
 IniItem *iniGetValuesEx(const char *szSectionName, const char *szItemName, \
