@@ -1,5 +1,5 @@
 Name: php-fastcommon
-Version: 1.0.1
+Version: 1.0.2
 Release: 1%{?dist}
 Summary: The php extension for libfastcommon
 License: GPL
@@ -9,8 +9,8 @@ Source: http://perso.orange.fr/sebastien.godard/%{name}-%{version}.tar.gz
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n) 
 
-BuildRequires: libfastcommon >= 1.0.20
-Requires: libfastcommon >= 1.0.20
+BuildRequires: libfastcommon >= 1.0.21
+Requires: libfastcommon >= 1.0.21
 
 %description
 This package provides the php extension for libfastcommon
