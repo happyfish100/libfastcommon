@@ -1,4 +1,7 @@
 
+Version 1.22  2015-09-15
+  * export php function: fastcommon_get_first_local_ip
+
 Version 1.21  2015-09-14
   * ini_file_reader support annotation function
   * correct PTHREAD_MUTEX_ERRORCHECK define

@@ -58,7 +58,7 @@ int insert_into_local_host_ip(const char *client_ip)
 	return 1;
 }
 
-static void log_local_host_ip_addrs()
+void log_local_host_ip_addrs()
 {
 	char *p;
 	char *pEnd;
@@ -113,7 +113,7 @@ void load_local_host_ip_addrs()
 		insert_into_local_host_ip(ip_addresses[k]);
 	}
 
-	log_local_host_ip_addrs();
+	//log_local_host_ip_addrs();
 	//print_local_host_ip_addrs();
 }
 

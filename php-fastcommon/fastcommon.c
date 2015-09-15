@@ -42,6 +42,7 @@ const zend_fcall_info empty_fcall_info = { 0, NULL, NULL, NULL, NULL, 0, NULL, N
 		ZEND_FE(fastcommon_time33_hash, NULL)
 		ZEND_FE(fastcommon_simple_hash, NULL)
 		ZEND_FE(fastcommon_get_line_distance_km, NULL)
+		ZEND_FE(fastcommon_get_first_local_ip, NULL)
 		{NULL, NULL, NULL}  /* Must be the last line */
 	};
 
@@ -272,5 +273,24 @@ ZEND_FUNCTION(fastcommon_get_line_distance_km)
 	}
 
     RETURN_DOUBLE(get_line_distance_km(lat1, lon1, lat2, lon2));
+}
+
+/*
+string fastcommon_get_first_local_ip()
+return the first local ip
+*/
+ZEND_FUNCTION(fastcommon_get_first_local_ip)
+{
+	int argc;
+
+	argc = ZEND_NUM_ARGS();
+	if (argc != 0) {
+		logError("file: "__FILE__", line: %d, "
+			"fastcommon_get_first_local_ip parameters count: %d is invalid",
+			__LINE__, argc);
+		RETURN_BOOL(false);
+	}
+
+	RETURN_STRING(get_first_local_ip(), 1);
 }
 

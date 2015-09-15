@@ -22,6 +22,7 @@ ZEND_FUNCTION(fastcommon_gethostaddrs);
 ZEND_FUNCTION(fastcommon_time33_hash);
 ZEND_FUNCTION(fastcommon_simple_hash);
 ZEND_FUNCTION(fastcommon_get_line_distance_km);
+ZEND_FUNCTION(fastcommon_get_first_local_ip);
 
 #ifdef __cplusplus
 }
