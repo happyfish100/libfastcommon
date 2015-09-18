@@ -19,8 +19,6 @@
 #define FAST_INI_ITEM_NAME_LEN		64
 #define FAST_INI_ITEM_VALUE_LEN		256
 
-#define IGNORE_ANNOTATION      1
-
 typedef struct {
     char *func_name;
     int (*func_init) ();
