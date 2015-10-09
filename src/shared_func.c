@@ -2227,3 +2227,27 @@ double get_line_distance_km(const double lat1, const double lon1,
     return sqrt(lat_distance * lat_distance + lng_distance * lng_distance);
 }
 
+bool is_private_ip(const char* ip)
+{
+    if (ip == NULL || (int)strlen(ip) < 8)
+    {
+        return false;
+    }
+
+    if (memcmp(ip, "10.", 3) == 0 || memcmp(ip, "192.168.", 8) == 0)
+    {
+        return true;
+    }
+    if (memcmp(ip, "172.", 4) == 0)
+    {
+        int b;
+        b = atoi(ip + 4);
+        if (b >= 16 && b < 32)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+

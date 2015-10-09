@@ -134,26 +134,49 @@ void print_local_host_ip_addrs()
 	printf("\n");
 }
 
-const char *get_first_local_ip()
+const char *get_next_local_ip(const char *previous_ip)
 {
     char *p;
 	char *pEnd;
+    bool found;
 
     if (g_local_host_ip_count == 0)
     {
         load_local_host_ip_addrs();
     }
 
+    found = (previous_ip == NULL);
 	pEnd = g_local_host_ip_addrs + \
 		IP_ADDRESS_SIZE * g_local_host_ip_count;
 	for (p=g_local_host_ip_addrs; p<pEnd; p+=IP_ADDRESS_SIZE)
 	{
 	    if (strcmp(p, LOCAL_LOOPBACK_IP) != 0)
         {
-            return p;
+            if (found)
+            {
+                return p;
+            }
+            else if (strcmp(p, previous_ip) == 0)
+            {
+                found = true;
+            }
         }
 	}
 
-    return LOCAL_LOOPBACK_IP;
+    return NULL;
+}
+
+const char *get_first_local_ip()
+{
+    const char *first_ip;
+    first_ip = get_next_local_ip(NULL);
+    if (first_ip != NULL)
+    {
+        return first_ip;
+    }
+    else
+    {
+        return LOCAL_LOOPBACK_IP;
+    }
 }
 

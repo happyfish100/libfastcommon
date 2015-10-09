@@ -515,6 +515,11 @@ int ignore_signal_pipe();
 double get_line_distance_km(const double lat1, const double lon1,
         const double lat2, const double lon2);
 
+/** is private ip address for IPv4
+ *  return: true for private ip, otherwise false
+ */
+bool is_private_ip(const char* ip);
+
 #ifdef __cplusplus
 }
 #endif
