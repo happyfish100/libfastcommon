@@ -7,3 +7,10 @@ $s = 'this is a test.';
 echo 'simple_hash: ' . fastcommon_simple_hash($s) . "\n";
 echo 'time33_hash: ' . fastcommon_time33_hash($s) . "\n";
 
+echo 'first local ip: ' . fastcommon_get_first_local_ip() . "\n";
+
+$next_ip = null;
+while (($next_ip=fastcommon_get_next_local_ip($next_ip)))
+{
+    echo "next local ip: $next_ip\n";
+}

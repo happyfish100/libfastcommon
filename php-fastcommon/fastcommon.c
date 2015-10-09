@@ -43,6 +43,7 @@ const zend_fcall_info empty_fcall_info = { 0, NULL, NULL, NULL, NULL, 0, NULL, N
 		ZEND_FE(fastcommon_simple_hash, NULL)
 		ZEND_FE(fastcommon_get_line_distance_km, NULL)
 		ZEND_FE(fastcommon_get_first_local_ip, NULL)
+		ZEND_FE(fastcommon_get_next_local_ip, NULL)
 		{NULL, NULL, NULL}  /* Must be the last line */
 	};
 
@@ -292,5 +293,45 @@ ZEND_FUNCTION(fastcommon_get_first_local_ip)
 	}
 
 	RETURN_STRING(get_first_local_ip(), 1);
+}
+
+/*
+string fastcommon_get_next_local_ip(string previous_ip)
+return the next local ip, false for fail
+*/
+ZEND_FUNCTION(fastcommon_get_next_local_ip)
+{
+	int argc;
+    int previous_len;
+    char *previous_ip;
+    const char *next_ip;
+
+	argc = ZEND_NUM_ARGS();
+	if (argc != 1) {
+		logError("file: "__FILE__", line: %d, "
+			"fastcommon_get_next_local_ip parameters count: %d is invalid",
+			__LINE__, argc);
+		RETURN_BOOL(false);
+	}
+
+	if (zend_parse_parameters(argc TSRMLS_CC, "s", &previous_ip,
+                &previous_len) == FAILURE)
+	{
+		logError("file: "__FILE__", line: %d, "
+			"zend_parse_parameters fail!", __LINE__);
+		RETURN_BOOL(false);
+	}
+
+    if (previous_len == 0)
+    {
+        previous_ip = NULL;
+    }
+    next_ip = get_next_local_ip(previous_ip);
+    if (next_ip == NULL)
+    {
+		RETURN_BOOL(false);
+    }
+
+	RETURN_STRING(next_ip , 1);
 }
 
