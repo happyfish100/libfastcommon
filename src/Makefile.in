@@ -49,6 +49,7 @@ libfastcommon.a: $(FAST_STATIC_OBJS)
 install:
 	mkdir -p $(DESTDIR)/usr/$(LIB_VERSION)
 	install -m 755 $(SHARED_LIBS) $(DESTDIR)/usr/$(LIB_VERSION)
+	install -m 755 $(SHARED_LIBS) $(DESTDIR)/usr/lib
 	mkdir -p $(DESTDIR)/usr/include/fastcommon
 	install -m 644 $(HEADER_FILES) $(DESTDIR)/usr/include/fastcommon
 clean:
