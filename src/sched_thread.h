@@ -10,7 +10,10 @@
 #define _SCHED_THREAD_H_
 
 #include <time.h>
+#include <pthread.h>
 #include "common_define.h"
+#include "fast_timer.h"
+#include "fast_mblock.h"
 
 typedef int (*TaskFunc) (void *args);
 
@@ -42,11 +45,32 @@ typedef struct
 	int count;
 } ScheduleArray;
 
+typedef struct fast_delay_task {
+    FastTimerEntry timer;  //must be first field
+
+	TaskFunc task_func; //callback function
+	void *func_args;    //arguments pass to callback function
+    struct fast_delay_task *next;
+} FastDelayTask;
+
+typedef struct
+{
+    FastDelayTask *head;
+    FastDelayTask *tail;
+    pthread_mutex_t lock;
+} FastDelayQueue;
+
 typedef struct
 {
 	ScheduleArray scheduleArray;
 	ScheduleEntry *head;  //schedule chain head
-        ScheduleEntry *tail;  //schedule chain tail
+    ScheduleEntry *tail;  //schedule chain tail
+
+    struct fast_mblock_man mblock;  //for timer entry
+    FastTimer timer;   //for delay task
+    bool timer_init;
+    FastDelayQueue delay_queue;
+
 	bool *pcontinue_flag;
 } ScheduleContext;
 
@@ -83,14 +107,28 @@ extern volatile time_t g_current_time;  //the current time
 int sched_add_entries(const ScheduleArray *pScheduleArray);
 int sched_del_entry(const int id);
 
+#define sched_enable_delay_task() sched_set_delay_params(0, 0)
+
+void sched_set_delay_params(const int slot_count, const int alloc_once);
+
+int sched_add_delay_task_ex(ScheduleContext *pContext, TaskFunc task_func,
+        void *func_args, const int delay_seconds);
+int sched_add_delay_task(TaskFunc task_func, void *func_args,
+        const int delay_seconds);
+
 /** execute the schedule thread
  *  parameters:
  *  	     pScheduleArray: schedule task
  *  	     ptid: store the schedule thread id
  *  	     stack_size: set thread stack size (byes)
  *  	     pcontinue_flag: main process continue running flag
+ *  	     ppContext: store the ScheduleContext pointer 
  * return: error no, 0 for success, != 0 fail
 */
+int sched_start_ex(ScheduleArray *pScheduleArray, pthread_t *ptid,
+		const int stack_size, bool * volatile pcontinue_flag,
+        ScheduleContext **ppContext);
+
 int sched_start(ScheduleArray *pScheduleArray, pthread_t *ptid, \
 		const int stack_size, bool * volatile pcontinue_flag);
 

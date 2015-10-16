@@ -52,6 +52,7 @@ int fast_timer_add(FastTimer *timer, FastTimerEntry *entry)
   }
   entry->prev = &slot->head;
   slot->head.next = entry;
+  entry->rehash = false;
   return 0;
 }
 
