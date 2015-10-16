@@ -266,6 +266,29 @@ static int sched_check_waiting(ScheduleContext *pContext)
 	return 0;
 }
 
+static void *sched_call_func(void *args)
+{
+	ScheduleEntry *pEntry;
+    void *func_args;
+    TaskFunc task_func;
+    int task_id;
+
+    pEntry = (ScheduleEntry *)args;
+    task_func = pEntry->task_func;
+    func_args = pEntry->func_args;
+    task_id = pEntry->id;
+
+    logDebug("file: "__FILE__", line: %d, " \
+            "thread enter, task id: %d", __LINE__, task_id);
+
+    pEntry->thread_running = true;
+    task_func(func_args);
+
+    logDebug("file: "__FILE__", line: %d, " \
+            "thread exit, task id: %d", __LINE__, task_id);
+	return NULL;
+}
+
 static void *sched_thread_entrance(void *args)
 {
 	ScheduleContext *pContext;
@@ -319,7 +342,34 @@ static void *sched_thread_entrance(void *args)
 			&& pCurrent->next_call_time <= g_current_time))
 		{
 			//fprintf(stderr, "exec task id=%d\n", pCurrent->id);
-			pCurrent->task_func(pCurrent->func_args);
+            if (!pCurrent->new_thread)
+            {
+			    pCurrent->task_func(pCurrent->func_args);
+            }
+            else
+            {
+                pthread_t tid;
+                int result;
+
+                pCurrent->thread_running = false;
+                if ((result=pthread_create(&tid, NULL,
+                                sched_call_func, pCurrent)) != 0)
+                {
+                    logError("file: "__FILE__", line: %d, " \
+                            "create thread failed, " \
+                            "errno: %d, error info: %s", \
+                            __LINE__, result, STRERROR(result));
+                }
+                usleep(1*1000);
+                for (i=1; !pCurrent->thread_running && i<100; i++)
+                {
+                    logDebug("file: "__FILE__", line: %d, "
+                            "task_id: %d, waiting thread ready, count %d",
+                            __LINE__, pCurrent->id, i);
+                    usleep(1*1000);
+                }
+            }
+
             do
             {
                 pCurrent->next_call_time += pCurrent->interval;

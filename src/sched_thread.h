@@ -24,6 +24,10 @@ typedef struct tagScheduleEntry
 
 	int interval;   //the interval for execute task, unit is second
 
+    bool new_thread;  //run in a new thread
+
+    bool thread_running; //if new thread running, for internal use
+
 	TaskFunc task_func; //callback function
 	void *func_args;    //arguments pass to callback function
 
@@ -54,6 +58,7 @@ typedef struct
 	(schedule_entry).time_base.second = _second; \
 	(schedule_entry).interval = _interval;   \
 	(schedule_entry).task_func = _task_func; \
+	(schedule_entry).new_thread = false;     \
 	(schedule_entry).func_args = _func_args
 
 #define INIT_SCHEDULE_ENTRY_EX(schedule_entry, _id, _time_base, \
@@ -62,6 +67,7 @@ typedef struct
 	(schedule_entry).time_base = _time_base; \
 	(schedule_entry).interval = _interval;   \
 	(schedule_entry).task_func = _task_func; \
+	(schedule_entry).new_thread = false;     \
 	(schedule_entry).func_args = _func_args
 
 #ifdef __cplusplus
