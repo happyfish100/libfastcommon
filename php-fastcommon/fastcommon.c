@@ -26,6 +26,7 @@
 
 #define MAJOR_VERSION  1
 #define MINOR_VERSION  0
+#define PATCH_VERSION  3
 
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 3)
 const zend_fcall_info empty_fcall_info = { 0, NULL, NULL, NULL, NULL, 0, NULL, NULL, 0 };
@@ -107,8 +108,8 @@ ZEND_FUNCTION(fastcommon_version)
 	char szVersion[16];
 	int len;
 
-	len = sprintf(szVersion, "%d.%02d",
-		MAJOR_VERSION, MINOR_VERSION);
+	len = sprintf(szVersion, "%d.%d.%d",
+		MAJOR_VERSION, MINOR_VERSION, PATCH_VERSION);
 
 	RETURN_STRINGL(szVersion, len, 1);
 }
