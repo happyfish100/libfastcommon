@@ -64,6 +64,11 @@ struct fast_mblock_man
     struct fast_mblock_man *next;  //for manager
 };
 
+#define  GET_BLOCK_SIZE(info) \
+	(MEM_ALIGN(sizeof(struct fast_mblock_node) + (info).element_size))
+
+#define fast_mblock_get_block_size(mblock) GET_BLOCK_SIZE(mblock->info)
+
 #define fast_mblock_to_node_ptr(data_ptr) \
         (struct fast_mblock_node *)((char *)data_ptr - ((size_t)(char *) \
                     &((struct fast_mblock_node *)0)->data))

@@ -185,7 +185,7 @@ int fast_mblock_manager_stat_print()
 
     stats = NULL;
     count = 0;
-    alloc_size = 128;
+    alloc_size = 64;
     result = EOVERFLOW;
     while (result == EOVERFLOW)
     {
@@ -201,18 +201,53 @@ int fast_mblock_manager_stat_print()
 
     if (result == 0)
     {
-        logInfo("mblock stat count: %d", count);
+        int64_t alloc_mem;
+        int64_t used_mem;
+        char alloc_mem_str[32];
+        char used_mem_str[32];
+        int block_size;
+
+        alloc_mem = 0;
+        used_mem = 0;
         logInfo("%32s %12s %16s %12s %12s %12s", "name", "element_size",
                 "instance_count", "alloc_count", "used_count", "used_ratio");
         stat_end = stats + count;
         for (pStat=stats; pStat<stat_end; pStat++)
         {
+            block_size = GET_BLOCK_SIZE(*pStat);
+            alloc_mem += block_size * pStat->total_count;
+            used_mem += block_size * pStat->used_count;
             logInfo("%32s %12d %16d %12d %12d %11.2f%%", pStat->name,
                     pStat->element_size, pStat->instance_count,
                     pStat->total_count, pStat->used_count,
                     pStat->total_count > 0 ? 100.00 * (double)pStat->used_count /
                     (double)pStat->total_count : 0.00);
         }
+
+        if (alloc_mem < 1024)
+        {
+            sprintf(alloc_mem_str, "%"PRId64" bytes", alloc_mem);
+            sprintf(used_mem_str, "%"PRId64" bytes", used_mem);
+        }
+        else if (alloc_mem < 1024 * 1024)
+        {
+            sprintf(alloc_mem_str, "%.3f KB", (double)alloc_mem / 1024);
+            sprintf(used_mem_str, "%.3f KB", (double)used_mem / 1024);
+        }
+        else if (alloc_mem < 1024 * 1024 * 1024)
+        {
+            sprintf(alloc_mem_str, "%.3f MB", (double)alloc_mem / (1024 * 1024));
+            sprintf(used_mem_str, "%.3f MB", (double)used_mem / (1024 * 1024));
+        }
+        else
+        {
+            sprintf(alloc_mem_str, "%.3f GB", (double)alloc_mem / (1024 * 1024 * 1024));
+            sprintf(used_mem_str, "%.3f GB", (double)used_mem / (1024 * 1024 * 1024));
+        }
+
+        logInfo("mblock entry count: %d, alloc memory: %s, used memory: %s, used ratio: %.2f%%",
+                count, alloc_mem_str, used_mem_str,
+                alloc_mem > 0 ? 100.00 * (double)used_mem / alloc_mem : 0.00);
     }
 
     if (stats != NULL) free(stats);
@@ -248,10 +283,8 @@ int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
 	}
 	else
 	{
-		int block_size;
-		block_size = MEM_ALIGN(sizeof(struct fast_mblock_node) \
-			+ mblock->info.element_size);
-		mblock->alloc_elements_once = (1024 * 1024) / block_size;
+		mblock->alloc_elements_once = (1024 * 1024) /
+            fast_mblock_get_block_size(mblock);
 	}
 
 	if (need_lock && (result=init_pthread_lock(&(mblock->lock))) != 0)
@@ -297,8 +330,7 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
 	int block_size;
 	int alloc_size;
 
-	block_size = MEM_ALIGN(sizeof(struct fast_mblock_node) + \
-			mblock->info.element_size);
+	block_size = fast_mblock_get_block_size(mblock);
 	alloc_size = sizeof(struct fast_mblock_malloc) + block_size * \
 			mblock->alloc_elements_once;
 
