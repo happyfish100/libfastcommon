@@ -207,10 +207,10 @@ int fast_mblock_manager_stat_print()
         stat_end = stats + count;
         for (pStat=stats; pStat<stat_end; pStat++)
         {
-            logInfo("%32s %12d %16d %12d %12d %12.4f", pStat->name,
+            logInfo("%32s %12d %16d %12d %12d %11.2f%%", pStat->name,
                     pStat->element_size, pStat->instance_count,
                     pStat->total_count, pStat->used_count,
-                    pStat->total_count > 0 ? (double)pStat->used_count /
+                    pStat->total_count > 0 ? 100.00 * (double)pStat->used_count /
                     (double)pStat->total_count : 0.00);
         }
     }
