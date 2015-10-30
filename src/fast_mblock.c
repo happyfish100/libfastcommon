@@ -97,12 +97,15 @@ static void delete_from_mblock_list(struct fast_mblock_man *mblock)
     INIT_HEAD(mblock);
 }
 
-#define STAT_DUP(pStat, current) \
+#define STAT_DUP(pStat, current, copy_name) \
     do { \
-        strcpy(pStat->name, current->info.name); \
-        pStat->element_size = current->info.element_size; \
+        if (copy_name) { \
+            strcpy(pStat->name, current->info.name); \
+            pStat->element_size = current->info.element_size; \
+        } \
         pStat->total_count += current->info.total_count;  \
         pStat->used_count += current->info.used_count;    \
+        pStat->instance_count += current->info.instance_count;  \
         /* logInfo("name: %s, element_size: %d, total_count: %d, used_count: %d", */ \
         /* pStat->name, pStat->element_size, pStat->total_count, pStat->used_count); */\
     } while (0)
@@ -142,8 +145,12 @@ int fast_mblock_manager_stat(struct fast_mblock_info *stats,
                     result = EOVERFLOW;
                     break;
                 }
-                STAT_DUP(pStat, current->prev);
+                STAT_DUP(pStat, current->prev, true);
                 pStat++;
+            }
+            else
+            {
+                STAT_DUP(pStat, current->prev, false);
             }
         }
         current = current->next;
@@ -157,7 +164,7 @@ int fast_mblock_manager_stat(struct fast_mblock_info *stats,
         }
         else
         {
-            STAT_DUP(pStat, current->prev);
+            STAT_DUP(pStat, current->prev, true);
             pStat++;
         }
     }
@@ -195,12 +202,13 @@ int fast_mblock_manager_stat_print()
     if (result == 0)
     {
         logInfo("mblock stat count: %d", count);
-        logInfo("%32s %12s %12s %12s %12s", "name", "element_size",
-                "alloc_count", "used_count", "used_ratio");
+        logInfo("%32s %12s %16s %12s %12s %12s", "name", "element_size",
+                "instance_count", "alloc_count", "used_count", "used_ratio");
         stat_end = stats + count;
         for (pStat=stats; pStat<stat_end; pStat++)
         {
-            logInfo("%32s %12d %12d %12d %12.4f", pStat->name, pStat->element_size,
+            logInfo("%32s %12d %16d %12d %12d %12.4f", pStat->name,
+                    pStat->element_size, pStat->instance_count,
                     pStat->total_count, pStat->used_count,
                     pStat->total_count > 0 ? (double)pStat->used_count /
                     (double)pStat->total_count : 0.00);
@@ -261,6 +269,7 @@ int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
 	mblock->delay_free_chain.tail = NULL;
     mblock->info.total_count = 0;
     mblock->info.used_count = 0;
+    mblock->info.instance_count = 1;
     mblock->need_lock = need_lock;
 
     if (name != NULL)

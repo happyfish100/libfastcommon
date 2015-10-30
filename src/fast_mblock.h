@@ -47,6 +47,7 @@ struct fast_mblock_info
 	int element_size;         //element size
     int total_count;          //total element count
     int used_count;           //used element count
+    int instance_count;       //instance count
 };
 
 struct fast_mblock_man
