@@ -4,11 +4,11 @@
 #include <sys/resource.h>
 #include <pthread.h>
 #include <assert.h>
-#include "fast_mblock.h"
 #include "logger.h"
 #include "shared_func.h"
 #include "pthread_func.h"
 #include "sched_thread.h"
+#include "fast_mblock.h"
 
 struct _fast_mblock_manager
 {
@@ -18,7 +18,7 @@ struct _fast_mblock_manager
 };
 
 #define INIT_HEAD(head) (head)->next = (head)->prev = head
-#define IS_EMPTY(head) ((head)->next == (head)->prev)
+#define IS_EMPTY(head) ((head)->next == head)
 
 static struct _fast_mblock_manager mblock_manager = {false};
 
@@ -75,9 +75,10 @@ static void add_to_mblock_list(struct fast_mblock_man *mblock)
     }
 
     mblock->next = current;
-    current->prev = mblock;
     mblock->prev = current->prev;
     current->prev->next = mblock;
+    current->prev = mblock;
+
     pthread_mutex_unlock(&(mblock_manager.lock));
 }
 
@@ -95,6 +96,16 @@ static void delete_from_mblock_list(struct fast_mblock_man *mblock)
 
     INIT_HEAD(mblock);
 }
+
+#define STAT_DUP(pStat, current) \
+    do { \
+        strcpy(pStat->name, current->info.name); \
+        pStat->element_size = current->info.element_size; \
+        pStat->total_count += current->info.total_count;  \
+        pStat->used_count += current->info.used_count;    \
+        /* logInfo("name: %s, element_size: %d, total_count: %d, used_count: %d", */ \
+        /* pStat->name, pStat->element_size, pStat->total_count, pStat->used_count); */\
+    } while (0)
 
 int fast_mblock_manager_stat(struct fast_mblock_info *stats,
         const int size, int *count)
@@ -122,10 +133,6 @@ int fast_mblock_manager_stat(struct fast_mblock_info *stats,
     current = mblock_manager.head.next;
     while (current != &mblock_manager.head)
     {
-        strcpy(pStat->name, current->info.name);
-        pStat->element_size = current->info.element_size;
-        pStat->total_count += current->info.total_count;
-        pStat->used_count += current->info.used_count;
         if (current->prev != &mblock_manager.head)
         {
             if (cmp_mblock_info(current, current->prev) != 0)
@@ -135,6 +142,7 @@ int fast_mblock_manager_stat(struct fast_mblock_info *stats,
                     result = EOVERFLOW;
                     break;
                 }
+                STAT_DUP(pStat, current->prev);
                 pStat++;
             }
         }
@@ -149,6 +157,7 @@ int fast_mblock_manager_stat(struct fast_mblock_info *stats,
         }
         else
         {
+            STAT_DUP(pStat, current->prev);
             pStat++;
         }
     }
@@ -185,19 +194,29 @@ int fast_mblock_manager_stat_print()
 
     if (result == 0)
     {
-        logInfo("mblock manager stat count: %d", count);
-        logInfo("name element_size alloc_count used_count used_ratio");
+        logInfo("mblock stat count: %d", count);
+        logInfo("%32s %12s %12s %12s %12s", "name", "element_size",
+                "alloc_count", "used_count", "used_ratio");
         stat_end = stats + count;
         for (pStat=stats; pStat<stat_end; pStat++)
         {
-            logInfo("%32s %8d %8d %8d %4.2f", pStat->name, pStat->total_count,
-                    pStat->used_count, (double)pStat->used_count /
-                    (double)pStat->total_count);
+            logInfo("%32s %12d %12d %12d %12.4f", pStat->name, pStat->element_size,
+                    pStat->total_count, pStat->used_count,
+                    pStat->total_count > 0 ? (double)pStat->used_count /
+                    (double)pStat->total_count : 0.00);
         }
     }
 
     if (stats != NULL) free(stats);
     return 0;
+}
+
+int fast_mblock_init_ex(struct fast_mblock_man *mblock,
+        const int element_size, const int alloc_elements_once,
+        fast_mblock_alloc_init_func init_func, const bool need_lock)
+{
+    return fast_mblock_init_ex2(mblock, NULL, element_size,
+            alloc_elements_once, init_func, need_lock);
 }
 
 int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,

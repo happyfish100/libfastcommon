@@ -18,7 +18,7 @@
 #include "common_define.h"
 #include "chain.h"
 
-#define FAST_MBLOCK_NAME_SIZE 64
+#define FAST_MBLOCK_NAME_SIZE 32
 
 /* free node chain */ 
 struct fast_mblock_node
@@ -72,10 +72,21 @@ extern "C" {
 #endif
 
 #define fast_mblock_init(mblock, element_size, alloc_elements_once) \
-    fast_mblock_init_ex2(mblock, NULL, element_size, alloc_elements_once, NULL, true)
+    fast_mblock_init_ex(mblock, element_size, alloc_elements_once, NULL, true)
 
-#define fast_mblock_init_ex(mblock, element_size, alloc_elements_once, init_func, need_lock) \
-    fast_mblock_init_ex2(mblock, NULL, element_size, alloc_elements_once, init_func, need_lock)
+/**
+mblock init
+parameters:
+	mblock: the mblock pointer
+	element_size: element size, such as sizeof(struct xxx)
+	alloc_elements_once: malloc elements once, 0 for malloc 1MB memory once
+    init_func: the init function
+    need_lock: if need lock
+return error no, 0 for success, != 0 fail
+*/
+int fast_mblock_init_ex(struct fast_mblock_man *mblock,
+        const int element_size, const int alloc_elements_once,
+        fast_mblock_alloc_init_func init_func, const bool need_lock);
 
 /**
 mblock init
