@@ -10,9 +10,199 @@
 #include "pthread_func.h"
 #include "sched_thread.h"
 
-int fast_mblock_init_ex(struct fast_mblock_man *mblock, const int element_size,
-		const int alloc_elements_once, fast_mblock_alloc_init_func init_func,
-        const bool need_lock)
+struct _fast_mblock_manager
+{
+    bool initialized;
+    struct fast_mblock_man head;
+	pthread_mutex_t lock;
+};
+
+#define INIT_HEAD(head) (head)->next = (head)->prev = head
+#define IS_EMPTY(head) ((head)->next == (head)->prev)
+
+static struct _fast_mblock_manager mblock_manager = {false};
+
+int fast_mblock_manager_init()
+{
+    int result;
+	if ((result=init_pthread_lock(&(mblock_manager.lock))) != 0)
+	{
+		logError("file: "__FILE__", line: %d, " \
+			"init_pthread_lock fail, errno: %d, error info: %s", \
+			__LINE__, result, STRERROR(result));
+		return result;
+	}
+    INIT_HEAD(&mblock_manager.head);
+    mblock_manager.initialized = true;
+
+    return 0;
+}
+
+static int cmp_mblock_info(struct fast_mblock_man *mb1, struct fast_mblock_man *mb2)
+{
+    int result;
+    result = strcmp(mb1->info.name, mb2->info.name);
+    if (result != 0)
+    {
+        return result;
+    }
+
+    return mb1->info.element_size - mb2->info.element_size;
+}
+
+static void add_to_mblock_list(struct fast_mblock_man *mblock)
+{
+    struct fast_mblock_man *current;
+    if (!mblock_manager.initialized)
+    {
+        return;
+    }
+
+    if (*mblock->info.name == '\0')
+    {
+        snprintf(mblock->info.name, sizeof(mblock->info.name),
+                "size-%d", mblock->info.element_size);
+    }
+    pthread_mutex_lock(&(mblock_manager.lock));
+    current = mblock_manager.head.next;
+    while (current != &mblock_manager.head)
+    {
+        if (cmp_mblock_info(mblock, current) <= 0)
+        {
+            break;
+        }
+        current = current->next;
+    }
+
+    mblock->next = current;
+    current->prev = mblock;
+    mblock->prev = current->prev;
+    current->prev->next = mblock;
+    pthread_mutex_unlock(&(mblock_manager.lock));
+}
+
+static void delete_from_mblock_list(struct fast_mblock_man *mblock)
+{
+    if (!mblock_manager.initialized)
+    {
+        return;
+    }
+
+    pthread_mutex_lock(&(mblock_manager.lock));
+    mblock->prev->next = mblock->next;
+    mblock->next->prev = mblock->prev;
+    pthread_mutex_unlock(&(mblock_manager.lock));
+
+    INIT_HEAD(mblock);
+}
+
+int fast_mblock_manager_stat(struct fast_mblock_info *stats,
+        const int size, int *count)
+{
+    int result;
+    struct fast_mblock_man *current;
+    struct fast_mblock_info *pStat;
+
+    if (!mblock_manager.initialized)
+    {
+        *count = 0;
+        return EFAULT;
+    }
+
+    if (size <= 0)
+    {
+        *count = 0;
+        return EOVERFLOW;
+    }
+
+    result = 0;
+    pStat = stats;
+    memset(stats, 0, sizeof(struct fast_mblock_info) * size);
+    pthread_mutex_lock(&(mblock_manager.lock));
+    current = mblock_manager.head.next;
+    while (current != &mblock_manager.head)
+    {
+        strcpy(pStat->name, current->info.name);
+        pStat->element_size = current->info.element_size;
+        pStat->total_count += current->info.total_count;
+        pStat->used_count += current->info.used_count;
+        if (current->prev != &mblock_manager.head)
+        {
+            if (cmp_mblock_info(current, current->prev) != 0)
+            {
+                if (size <= (int)(pStat - stats))
+                {
+                    result = EOVERFLOW;
+                    break;
+                }
+                pStat++;
+            }
+        }
+        current = current->next;
+    }
+
+    if (!IS_EMPTY(&mblock_manager.head))
+    {
+        if (size <= (int)(pStat - stats))
+        {
+            result = EOVERFLOW;
+        }
+        else
+        {
+            pStat++;
+        }
+    }
+    pthread_mutex_unlock(&(mblock_manager.lock));
+
+    *count = (int)(pStat - stats);
+    return result;
+}
+
+int fast_mblock_manager_stat_print()
+{
+    int result;
+    int count;
+    int alloc_size;
+    struct fast_mblock_info *stats;
+    struct fast_mblock_info *pStat;
+    struct fast_mblock_info *stat_end;
+
+    stats = NULL;
+    count = 0;
+    alloc_size = 128;
+    result = EOVERFLOW;
+    while (result == EOVERFLOW)
+    {
+        alloc_size *= 2;
+        stats = realloc(stats, sizeof(struct fast_mblock_info) * alloc_size);
+        if (stats == NULL)
+        {
+            return ENOMEM;
+        }
+        result = fast_mblock_manager_stat(stats,
+                alloc_size, &count);
+    }
+
+    if (result == 0)
+    {
+        logInfo("mblock manager stat count: %d", count);
+        logInfo("name element_size alloc_count used_count used_ratio");
+        stat_end = stats + count;
+        for (pStat=stats; pStat<stat_end; pStat++)
+        {
+            logInfo("%32s %8d %8d %8d %4.2f", pStat->name, pStat->total_count,
+                    pStat->used_count, (double)pStat->used_count /
+                    (double)pStat->total_count);
+        }
+    }
+
+    if (stats != NULL) free(stats);
+    return 0;
+}
+
+int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
+        const int element_size, const int alloc_elements_once,
+        fast_mblock_alloc_init_func init_func, const bool need_lock)
 {
 	int result;
 
@@ -24,7 +214,7 @@ int fast_mblock_init_ex(struct fast_mblock_man *mblock, const int element_size,
 		return EINVAL;
 	}
 
-	mblock->element_size = MEM_ALIGN(element_size);
+	mblock->info.element_size = MEM_ALIGN(element_size);
 	if (alloc_elements_once > 0)
 	{
 		mblock->alloc_elements_once = alloc_elements_once;
@@ -33,7 +223,7 @@ int fast_mblock_init_ex(struct fast_mblock_man *mblock, const int element_size,
 	{
 		int block_size;
 		block_size = MEM_ALIGN(sizeof(struct fast_mblock_node) \
-			+ mblock->element_size);
+			+ mblock->info.element_size);
 		mblock->alloc_elements_once = (1024 * 1024) / block_size;
 	}
 
@@ -50,8 +240,19 @@ int fast_mblock_init_ex(struct fast_mblock_man *mblock, const int element_size,
 	mblock->free_chain_head = NULL;
 	mblock->delay_free_chain.head = NULL;
 	mblock->delay_free_chain.tail = NULL;
-    mblock->total_count = 0;
+    mblock->info.total_count = 0;
+    mblock->info.used_count = 0;
     mblock->need_lock = need_lock;
+
+    if (name != NULL)
+    {
+        snprintf(mblock->info.name, sizeof(mblock->info.name), "%s", name);
+    }
+    else
+    {
+        *mblock->info.name = '\0';
+    }
+    add_to_mblock_list(mblock);
 
 	return 0;
 }
@@ -69,7 +270,7 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
 	int alloc_size;
 
 	block_size = MEM_ALIGN(sizeof(struct fast_mblock_node) + \
-			mblock->element_size);
+			mblock->info.element_size);
 	alloc_size = sizeof(struct fast_mblock_malloc) + block_size * \
 			mblock->alloc_elements_once;
 
@@ -117,7 +318,7 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
 
 	pMallocNode->next = mblock->malloc_chain_head;
 	mblock->malloc_chain_head = pMallocNode;
-    mblock->total_count += mblock->alloc_elements_once;
+    mblock->info.total_count += mblock->alloc_elements_once;
 
 	return 0;
 }
@@ -142,9 +343,11 @@ void fast_mblock_destroy(struct fast_mblock_man *mblock)
 	}
 	mblock->malloc_chain_head = NULL;
 	mblock->free_chain_head = NULL;
-    mblock->total_count = 0;
+    mblock->info.used_count = 0;
+    mblock->info.total_count = 0;
 
     if (mblock->need_lock) pthread_mutex_destroy(&(mblock->lock));
+    delete_from_mblock_list(mblock);
 }
 
 struct fast_mblock_node *fast_mblock_alloc(struct fast_mblock_man *mblock)
@@ -165,6 +368,7 @@ struct fast_mblock_node *fast_mblock_alloc(struct fast_mblock_man *mblock)
 	{
 		pNode = mblock->free_chain_head;
 		mblock->free_chain_head = pNode->next;
+        mblock->info.used_count++;
 	}
 	else
 	{
@@ -182,6 +386,7 @@ struct fast_mblock_node *fast_mblock_alloc(struct fast_mblock_man *mblock)
 		{
 			pNode = mblock->free_chain_head;
 			mblock->free_chain_head = pNode->next;
+            mblock->info.used_count++;
 		}
 		else
 		{
@@ -216,6 +421,7 @@ int fast_mblock_free(struct fast_mblock_man *mblock, \
 
 	pNode->next = mblock->free_chain_head;
 	mblock->free_chain_head = pNode;
+    mblock->info.used_count--;
 
 	if (mblock->need_lock && (result=pthread_mutex_unlock(&(mblock->lock))) != 0)
 	{

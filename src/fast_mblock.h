@@ -18,6 +18,8 @@
 #include "common_define.h"
 #include "chain.h"
 
+#define FAST_MBLOCK_NAME_SIZE 64
+
 /* free node chain */ 
 struct fast_mblock_node
 {
@@ -39,17 +41,26 @@ struct fast_mblock_chain {
 
 typedef int (*fast_mblock_alloc_init_func)(void *element);
 
+struct fast_mblock_info
+{
+    char name[FAST_MBLOCK_NAME_SIZE];
+	int element_size;         //element size
+    int total_count;          //total element count
+    int used_count;           //used element count
+};
+
 struct fast_mblock_man
 {
+    struct fast_mblock_info info;
+	int alloc_elements_once;  //alloc elements once
 	struct fast_mblock_node *free_chain_head;    //free node chain
     struct fast_mblock_chain delay_free_chain;   //delay free node chain
 	struct fast_mblock_malloc *malloc_chain_head; //malloc chain to be freed
     fast_mblock_alloc_init_func alloc_init_func;
-	int element_size;         //element size
-	int alloc_elements_once;  //alloc elements once
-    int total_count;          //total element count
-    bool need_lock;
+    bool need_lock;           //if need mutex lock
 	pthread_mutex_t lock;     //the lock for read / write free node chain
+    struct fast_mblock_man *prev;  //for manager
+    struct fast_mblock_man *next;  //for manager
 };
 
 #define fast_mblock_to_node_ptr(data_ptr) \
@@ -61,19 +72,25 @@ extern "C" {
 #endif
 
 #define fast_mblock_init(mblock, element_size, alloc_elements_once) \
-    fast_mblock_init_ex(mblock, element_size, alloc_elements_once, NULL, true)
+    fast_mblock_init_ex2(mblock, NULL, element_size, alloc_elements_once, NULL, true)
+
+#define fast_mblock_init_ex(mblock, element_size, alloc_elements_once, init_func, need_lock) \
+    fast_mblock_init_ex2(mblock, NULL, element_size, alloc_elements_once, init_func, need_lock)
 
 /**
 mblock init
 parameters:
+    name: the mblock name
 	mblock: the mblock pointer
 	element_size: element size, such as sizeof(struct xxx)
 	alloc_elements_once: malloc elements once, 0 for malloc 1MB memory once
+    init_func: the init function
+    need_lock: if need lock
 return error no, 0 for success, != 0 fail
 */
-int fast_mblock_init_ex(struct fast_mblock_man *mblock, const int element_size,
-		const int alloc_elements_once, fast_mblock_alloc_init_func init_func,
-        const bool need_lock);
+int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
+        const int element_size, const int alloc_elements_once,
+        fast_mblock_alloc_init_func init_func, const bool need_lock);
 
 /**
 mblock destroy
@@ -172,6 +189,32 @@ return the delay free node count of the mblock, return -1 if fail
 int fast_mblock_delay_free_count(struct fast_mblock_man *mblock);
 
 #define fast_mblock_total_count(mblock) (mblock)->total_count
+
+/**
+init mblock manager
+parameters:
+return error no, 0 for success, != 0 fail
+*/
+int fast_mblock_manager_init();
+
+/**
+get mblock stat
+parameters:
+    stats: return mblock stats
+    size: max size of stats
+    count: return mblock stat count
+return error no, 0 for success, != 0 fail
+*/
+int fast_mblock_manager_stat(struct fast_mblock_info *stats,
+        const int size, int *count);
+
+
+/**
+print mblock manager stat
+parameters:
+return error no, 0 for success, != 0 fail
+*/
+int fast_mblock_manager_stat_print();
 
 #ifdef __cplusplus
 }
