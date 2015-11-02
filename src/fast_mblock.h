@@ -60,8 +60,8 @@ struct fast_mblock_man
     fast_mblock_alloc_init_func alloc_init_func;
     bool need_lock;           //if need mutex lock
 	pthread_mutex_t lock;     //the lock for read / write free node chain
-    struct fast_mblock_man *prev;  //for manager
-    struct fast_mblock_man *next;  //for manager
+    struct fast_mblock_man *prev;  //for stat manager
+    struct fast_mblock_man *next;  //for stat manager
 };
 
 #define  GET_BLOCK_SIZE(info) \

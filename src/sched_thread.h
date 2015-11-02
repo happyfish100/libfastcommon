@@ -48,6 +48,10 @@ typedef struct
 typedef struct fast_delay_task {
     FastTimerEntry timer;  //must be first field
 
+    bool new_thread;  //run in a new thread
+
+    bool thread_running; //if new thread running, for internal use
+
 	TaskFunc task_func; //callback function
 	void *func_args;    //arguments pass to callback function
     struct fast_delay_task *next;
@@ -112,9 +116,9 @@ int sched_del_entry(const int id);
 void sched_set_delay_params(const int slot_count, const int alloc_once);
 
 int sched_add_delay_task_ex(ScheduleContext *pContext, TaskFunc task_func,
-        void *func_args, const int delay_seconds);
+        void *func_args, const int delay_seconds, const bool new_thread);
 int sched_add_delay_task(TaskFunc task_func, void *func_args,
-        const int delay_seconds);
+        const int delay_seconds, const bool new_thread);
 
 /** execute the schedule thread
  *  parameters:
