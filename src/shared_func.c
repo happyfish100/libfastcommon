@@ -24,9 +24,18 @@
 #include <grp.h>
 #include <pwd.h>
 #include <math.h>
+
 #include "shared_func.h"
 #include "logger.h"
 #include "sockopt.h"
+
+#ifdef OS_LINUX
+#include <sys/sysinfo.h>
+#else
+#ifdef OS_FREEBSD
+#include <sys/sysctl.h>
+#endif
+#endif
 
 char *formatDatetime(const time_t nTime, \
 	const char *szDateFormat, \
@@ -2259,11 +2268,47 @@ int64_t get_current_time_us()
 	{
 		logError("file: "__FILE__", line: %d, " \
 			 "call gettimeofday fail, " \
-			 "errno=%d, error info: %s", \
+			 "errno: %d, error info: %s", \
 			 __LINE__, errno, STRERROR(errno));
 		return errno != 0 ? errno : EPERM;
 	}
 
 	return ((int64_t)tv.tv_sec * 1000 * 1000 + (int64_t)tv.tv_usec);
+}
+
+int get_sys_total_mem_size(int64_t *mem_size)
+{
+#ifdef OS_LINUX
+    struct sysinfo si;
+    if (sysinfo(&si) != 0)
+    {
+		logError("file: "__FILE__", line: %d, " \
+			 "call sysinfo fail, " \
+			 "errno: %d, error info: %s", \
+			 __LINE__, errno, STRERROR(errno));
+		return errno != 0 ? errno : EPERM;
+    }
+    *mem_size = si.totalram;
+    return 0;
+#else
+#ifdef OS_FREEBSD
+   int mib[2];
+   size_t len;
+
+   mib[0] = CTL_HW;
+   mib[1] = HW_MEMSIZE;
+   len = sizeof(*mem_size);
+   if (sysctl(mib, 2, mem_size, &len, NULL, 0) != 0) {
+		logError("file: "__FILE__", line: %d, " \
+			 "call sysctl  fail, " \
+			 "errno: %d, error info: %s", \
+			 __LINE__, errno, STRERROR(errno));
+		return errno != 0 ? errno : EPERM;
+   }
+   return 0;
+#else
+#error port me!
+#endif
+#endif
 }
 

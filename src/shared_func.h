@@ -528,6 +528,13 @@ int64_t get_current_time_us();
 
 #define get_current_time_ms() (get_current_time_us() / 1000)
 
+/** get system total memory size
+ *  parameters:
+ *  	mem_size: return the total memory size
+ *  return: error no , 0 success, != 0 fail
+*/
+int get_sys_total_mem_size(int64_t *mem_size);
+
 #ifdef __cplusplus
 }
 #endif

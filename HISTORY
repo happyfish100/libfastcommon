@@ -1,9 +1,10 @@
 
-Version 1.23  2015-10-30
+Version 1.23  2015-11-02
   * sched_thread.c: task can execute in a new thread
   * sched_thread.c: support delay tasks
   * add function get_current_time_us and get_current_time_ms
   * mblock add stat function
+  * add function get_sys_total_mem_size, ONLY support Linux and FreeBSD
 
 Version 1.22  2015-10-10
   * export php function: fastcommon_get_first_local_ip
