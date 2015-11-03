@@ -292,6 +292,7 @@ static void *sched_call_func(void *args)
 
     logDebug("file: "__FILE__", line: %d, " \
             "thread exit, task id: %d", __LINE__, task_id);
+    pthread_detach(pthread_self());
 	return NULL;
 }
 
@@ -769,6 +770,7 @@ static void *sched_call_delay_func(void *args)
             "delay thread exit, task args: %p", __LINE__, task->func_args);
 
     fast_mblock_free_object(&pContext->mblock, task);
+    pthread_detach(pthread_self());
 	return NULL;
 }
 
