@@ -103,11 +103,13 @@ static void delete_from_mblock_list(struct fast_mblock_man *mblock)
             strcpy(pStat->name, current->info.name); \
             pStat->element_size = current->info.element_size; \
         } \
-        pStat->total_count += current->info.total_count;  \
-        pStat->used_count += current->info.used_count;    \
+        pStat->element_total_count += current->info.element_total_count;  \
+        pStat->element_used_count += current->info.element_used_count;    \
+        pStat->trunk_total_count += current->info.trunk_total_count;  \
+        pStat->trunk_used_count += current->info.trunk_used_count;    \
         pStat->instance_count += current->info.instance_count;  \
         /* logInfo("name: %s, element_size: %d, total_count: %d, used_count: %d", */ \
-        /* pStat->name, pStat->element_size, pStat->total_count, pStat->used_count); */\
+        /* pStat->name, pStat->element_size, pStat->element_total_count, pStat->element_used_count); */\
     } while (0)
 
 int fast_mblock_manager_stat(struct fast_mblock_info *stats,
@@ -209,19 +211,22 @@ int fast_mblock_manager_stat_print()
 
         alloc_mem = 0;
         used_mem = 0;
-        logInfo("%32s %12s %16s %12s %12s %12s", "name", "element_size",
-                "instance_count", "alloc_count", "used_count", "used_ratio");
+        logInfo("%32s %12s %16s %10s %10s %14s %12s %12s", "name", "element_size",
+                "instance_count", "trunc_alloc", "trunk_used",
+                "element_alloc", "element_used", "used_ratio");
         stat_end = stats + count;
         for (pStat=stats; pStat<stat_end; pStat++)
         {
             block_size = GET_BLOCK_SIZE(*pStat);
-            alloc_mem += block_size * pStat->total_count;
-            used_mem += block_size * pStat->used_count;
-            logInfo("%32s %12d %16d %12d %12d %11.2f%%", pStat->name,
+            alloc_mem += block_size * pStat->element_total_count;
+            used_mem += block_size * pStat->element_used_count;
+            logInfo("%32s %12d %16d %10d %10d %14d %12d %11.2f%%", pStat->name,
                     pStat->element_size, pStat->instance_count,
-                    pStat->total_count, pStat->used_count,
-                    pStat->total_count > 0 ? 100.00 * (double)pStat->used_count /
-                    (double)pStat->total_count : 0.00);
+                    pStat->trunk_total_count, pStat->trunk_used_count,
+                    pStat->element_total_count, pStat->element_used_count,
+                    pStat->element_total_count > 0 ? 100.00 * (double)
+                    pStat->element_used_count / (double)
+                    pStat->element_total_count : 0.00);
         }
 
         if (alloc_mem < 1024)
@@ -296,12 +301,14 @@ int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
 	}
 
     mblock->alloc_init_func = init_func;
-	mblock->malloc_chain_head = NULL;
+    INIT_HEAD(&mblock->trunks.head);
+    mblock->info.trunk_total_count = 0;
+    mblock->info.trunk_used_count = 0;
 	mblock->free_chain_head = NULL;
 	mblock->delay_free_chain.head = NULL;
 	mblock->delay_free_chain.tail = NULL;
-    mblock->info.total_count = 0;
-    mblock->info.used_count = 0;
+    mblock->info.element_total_count = 0;
+    mblock->info.element_used_count = 0;
     mblock->info.instance_count = 1;
     mblock->need_lock = need_lock;
 
@@ -361,6 +368,7 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
                 return result;
             }
         }
+        pNode->offset = (int)(p - pNew);
 		pNode->next = (struct fast_mblock_node *)(p + block_size);
 	}
 
@@ -373,38 +381,88 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
             return result;
         }
     }
+    ((struct fast_mblock_node *)pLast)->offset = (int)(pLast - pNew);
     ((struct fast_mblock_node *)pLast)->next = NULL;
 	mblock->free_chain_head = (struct fast_mblock_node *)pTrunkStart;
 
-	pMallocNode->next = mblock->malloc_chain_head;
-	mblock->malloc_chain_head = pMallocNode;
-    mblock->info.total_count += mblock->alloc_elements_once;
+    pMallocNode->ref_count = 0;
+    pMallocNode->prev = mblock->trunks.head.prev;
+	pMallocNode->next = &mblock->trunks.head;
+    mblock->trunks.head.prev->next = pMallocNode;
+    mblock->trunks.head.prev = pMallocNode;
 
+    mblock->info.trunk_total_count++;
+    mblock->info.element_total_count += mblock->alloc_elements_once;
 	return 0;
 }
+
+static inline void fast_mblock_remove_trunk(struct fast_mblock_man *mblock,
+        struct fast_mblock_malloc *pMallocNode)
+{
+    pMallocNode->prev->next = pMallocNode->next;
+	pMallocNode->next->prev = pMallocNode->prev;
+    mblock->info.trunk_total_count--;
+    mblock->info.element_total_count -= mblock->alloc_elements_once;
+}
+
+#define FAST_MBLOCK_GET_TRUNK(pNode) \
+    (struct fast_mblock_malloc *)((char *)pNode - pNode->offset)
+
+static inline void fast_mblock_ref_counter_op(struct fast_mblock_man *mblock,
+        struct fast_mblock_node *pNode, const bool is_inc)
+{
+	struct fast_mblock_malloc *pMallocNode;
+
+    pMallocNode = FAST_MBLOCK_GET_TRUNK(pNode);
+    if (is_inc)
+    {
+        if (pMallocNode->ref_count == 0)
+        {
+            mblock->info.trunk_used_count++;
+        }
+        pMallocNode->ref_count++;
+    }
+    else
+    {
+        pMallocNode->ref_count--;
+        if (pMallocNode->ref_count == 0)
+        {
+            mblock->info.trunk_used_count--;
+        }
+    }
+}
+
+#define fast_mblock_ref_counter_inc(mblock, pNode) \
+    fast_mblock_ref_counter_op(mblock, pNode, true)
+
+#define fast_mblock_ref_counter_dec(mblock, pNode) \
+    fast_mblock_ref_counter_op(mblock, pNode, false)
 
 void fast_mblock_destroy(struct fast_mblock_man *mblock)
 {
 	struct fast_mblock_malloc *pMallocNode;
 	struct fast_mblock_malloc *pMallocTmp;
 
-	if (mblock->malloc_chain_head == NULL)
+	if (IS_EMPTY(&mblock->trunks.head))
 	{
 		return;
 	}
 
-	pMallocNode = mblock->malloc_chain_head;
-	while (pMallocNode != NULL)
+	pMallocNode = mblock->trunks.head.next;
+	while (pMallocNode != &mblock->trunks.head)
 	{
 		pMallocTmp = pMallocNode;
 		pMallocNode = pMallocNode->next;
 
 		free(pMallocTmp);
 	}
-	mblock->malloc_chain_head = NULL;
+
+    INIT_HEAD(&mblock->trunks.head);
+    mblock->info.trunk_total_count = 0;
+    mblock->info.trunk_used_count = 0;
 	mblock->free_chain_head = NULL;
-    mblock->info.used_count = 0;
-    mblock->info.total_count = 0;
+    mblock->info.element_used_count = 0;
+    mblock->info.element_total_count = 0;
 
     if (mblock->need_lock) pthread_mutex_destroy(&(mblock->lock));
     delete_from_mblock_list(mblock);
@@ -428,7 +486,9 @@ struct fast_mblock_node *fast_mblock_alloc(struct fast_mblock_man *mblock)
 	{
 		pNode = mblock->free_chain_head;
 		mblock->free_chain_head = pNode->next;
-        mblock->info.used_count++;
+        mblock->info.element_used_count++;
+
+        fast_mblock_ref_counter_inc(mblock, pNode);
 	}
 	else
 	{
@@ -446,7 +506,8 @@ struct fast_mblock_node *fast_mblock_alloc(struct fast_mblock_man *mblock)
 		{
 			pNode = mblock->free_chain_head;
 			mblock->free_chain_head = pNode->next;
-            mblock->info.used_count++;
+            mblock->info.element_used_count++;
+            fast_mblock_ref_counter_inc(mblock, pNode);
 		}
 		else
 		{
@@ -481,7 +542,8 @@ int fast_mblock_free(struct fast_mblock_man *mblock, \
 
 	pNode->next = mblock->free_chain_head;
 	mblock->free_chain_head = pNode;
-    mblock->info.used_count--;
+    mblock->info.element_used_count--;
+    fast_mblock_ref_counter_dec(mblock, pNode);
 
 	if (mblock->need_lock && (result=pthread_mutex_unlock(&(mblock->lock))) != 0)
 	{
@@ -574,5 +636,183 @@ int fast_mblock_free_count(struct fast_mblock_man *mblock)
 int fast_mblock_delay_free_count(struct fast_mblock_man *mblock)
 {
     return fast_mblock_chain_count(mblock, mblock->delay_free_chain.head);
+}
+
+static int fast_mblock_do_reclaim(struct fast_mblock_man *mblock,
+        const int reclaim_target, int *reclaim_count,
+        struct fast_mblock_malloc **ppFreelist)
+{
+	struct fast_mblock_node *pPrevious;
+	struct fast_mblock_node *pCurrent;
+	struct fast_mblock_malloc *pMallocNode;
+    struct fast_mblock_malloc *freelist;
+    bool lookup_done;
+
+    lookup_done = false;
+    *reclaim_count = 0;
+    freelist = NULL;
+    pPrevious = NULL;
+	pCurrent = mblock->free_chain_head;
+    mblock->free_chain_head = NULL;
+	while (pCurrent != NULL)
+	{
+        pMallocNode = FAST_MBLOCK_GET_TRUNK(pCurrent);
+        if (pMallocNode->ref_count > 0 ||
+                (pMallocNode->ref_count == 0 && lookup_done))
+        {    //keep in free chain
+
+            if (pPrevious != NULL)
+            {
+                pPrevious->next = pCurrent;
+            }
+            else
+            {
+                mblock->free_chain_head = pCurrent;
+            }
+
+            pPrevious = pCurrent;
+            pCurrent = pCurrent->next;
+            if (pCurrent == NULL)
+            {
+                goto OUTER;
+            }
+            pMallocNode = FAST_MBLOCK_GET_TRUNK(pCurrent);
+
+            while (pMallocNode->ref_count > 0 ||
+                    (pMallocNode->ref_count == 0 && lookup_done))
+            {
+                pPrevious = pCurrent;
+                pCurrent = pCurrent->next;
+                if (pCurrent == NULL)
+                {
+                    goto OUTER;
+                }
+                pMallocNode = FAST_MBLOCK_GET_TRUNK(pCurrent);
+            }
+        }
+
+        while (pMallocNode->ref_count < 0 ||
+                (pMallocNode->ref_count == 0 && !lookup_done))
+        {
+            if (pMallocNode->ref_count == 0) //trigger by the first node
+            {
+                fast_mblock_remove_trunk(mblock, pMallocNode);
+                pMallocNode->ref_count = -1;
+
+                pMallocNode->next = freelist;
+                freelist = pMallocNode;
+                (*reclaim_count)++;
+                if (*reclaim_count == reclaim_target)
+                {
+                    lookup_done = true;
+                }
+            }
+
+            pCurrent = pCurrent->next;
+            if (pCurrent == NULL)
+            {
+                goto OUTER;
+            }
+            pMallocNode = FAST_MBLOCK_GET_TRUNK(pCurrent);
+        }
+	}
+
+
+OUTER:
+    if (pPrevious != NULL)
+    {
+        pPrevious->next = NULL;
+    }
+
+
+    {
+        bool old_need_lock;
+        old_need_lock = mblock->need_lock;
+        mblock->need_lock = false;
+        logDebug("file: "__FILE__", line: %d, "
+                "reclaim trunks for %p, reclaimed trunks: %d, "
+                "free node count: %d", __LINE__,
+                mblock, *reclaim_count, fast_mblock_free_count(mblock));
+        mblock->need_lock = mblock->need_lock;
+    }
+
+    *ppFreelist = freelist;
+    return (freelist != NULL ? 0 : ENOENT);
+}
+
+void fast_mblock_free_trunks(struct fast_mblock_man *mblock,
+        struct fast_mblock_malloc *freelist)
+{
+    struct fast_mblock_malloc *pDeleted;
+    int count;
+    count = 0;
+    while (freelist != NULL)
+    {
+        pDeleted = freelist;
+        freelist = freelist->next;
+        free(pDeleted);
+        count++;
+    }
+    logDebug("file: "__FILE__", line: %d, "
+            "free_trunks for %p, free trunks: %d", __LINE__,
+            mblock, count);
+}
+
+int fast_mblock_reclaim(struct fast_mblock_man *mblock,
+        const int reclaim_target, int *reclaim_count,
+        fast_mblock_free_trunks_func free_trunks_func)
+{
+    int result;
+    struct fast_mblock_malloc *freelist;
+
+    if (reclaim_target <= 0)
+    {
+        *reclaim_count = 0;
+        return EINVAL;
+    }
+
+	if (mblock->need_lock && (result=pthread_mutex_lock(&(mblock->lock))) != 0)
+	{
+		logError("file: "__FILE__", line: %d, " \
+			"call pthread_mutex_lock fail, " \
+			"errno: %d, error info: %s", \
+			__LINE__, result, STRERROR(result));
+        *reclaim_count = 0;
+		return result;
+	}
+
+    if (mblock->info.trunk_total_count - mblock->info.trunk_used_count < reclaim_target)
+    {
+        *reclaim_count = 0;
+        result = E2BIG;
+        freelist = NULL;
+    }
+    else
+    {
+        result = fast_mblock_do_reclaim(mblock, reclaim_target,
+                reclaim_count, &freelist);
+    }
+
+	if (mblock->need_lock && (result=pthread_mutex_unlock(&(mblock->lock))) != 0)
+	{
+		logError("file: "__FILE__", line: %d, " \
+			"call pthread_mutex_unlock fail, " \
+			"errno: %d, error info: %s", \
+			__LINE__, result, STRERROR(result));
+	}
+
+    if (result == 0)
+    {
+        if (free_trunks_func != NULL)
+        {
+            free_trunks_func(mblock, freelist);
+        }
+        else
+        {
+            fast_mblock_free_trunks(mblock, freelist);
+        }
+    }
+
+    return result;
 }
 

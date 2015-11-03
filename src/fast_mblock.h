@@ -24,6 +24,7 @@
 struct fast_mblock_node
 {
 	struct fast_mblock_node *next;
+    int offset;    //trunk offset
     int recycle_timestamp;
 	char data[0];   //the data buffer
 };
@@ -31,6 +32,8 @@ struct fast_mblock_node
 /* malloc chain */
 struct fast_mblock_malloc
 {
+    int64_t ref_count;  //refference count
+	struct fast_mblock_malloc *prev;
 	struct fast_mblock_malloc *next;
 };
 
@@ -45,9 +48,16 @@ struct fast_mblock_info
 {
     char name[FAST_MBLOCK_NAME_SIZE];
 	int element_size;         //element size
-    int total_count;          //total element count
-    int used_count;           //used element count
+    int element_total_count;  //total element count
+    int element_used_count;   //used element count
+    int trunk_total_count;    //total trunk count
+    int trunk_used_count;     //used trunk count
     int instance_count;       //instance count
+};
+
+struct fast_mblock_trunks
+{
+	struct fast_mblock_malloc head; //malloc chain to be freed
 };
 
 struct fast_mblock_man
@@ -55,8 +65,9 @@ struct fast_mblock_man
     struct fast_mblock_info info;
 	int alloc_elements_once;  //alloc elements once
 	struct fast_mblock_node *free_chain_head;    //free node chain
+    struct fast_mblock_trunks trunks;
     struct fast_mblock_chain delay_free_chain;   //delay free node chain
-	struct fast_mblock_malloc *malloc_chain_head; //malloc chain to be freed
+
     fast_mblock_alloc_init_func alloc_init_func;
     bool need_lock;           //if need mutex lock
 	pthread_mutex_t lock;     //the lock for read / write free node chain
@@ -232,6 +243,32 @@ parameters:
 return error no, 0 for success, != 0 fail
 */
 int fast_mblock_manager_stat_print();
+
+typedef void (*fast_mblock_free_trunks_func)(struct fast_mblock_man *mblock,
+        struct fast_mblock_malloc *freelist);
+
+/**
+free the trunks
+parameters:
+	mblock: the mblock pointer
+    freelist: the trunks to free
+return error no, 0 for success, != 0 fail
+*/
+void fast_mblock_free_trunks(struct fast_mblock_man *mblock,
+        struct fast_mblock_malloc *freelist);
+
+/**
+reclaim the free trunks of the mblock
+parameters:
+	mblock: the mblock pointer
+    reclaim_target: reclaim target trunks
+    reclaim_count: reclaimed trunk count
+    freelist: the free trunks
+return error no, 0 for success, != 0 fail
+*/
+int fast_mblock_reclaim(struct fast_mblock_man *mblock,
+        const int reclaim_target, int *reclaim_count,
+        fast_mblock_free_trunks_func free_trunks_func);
 
 #ifdef __cplusplus
 }
