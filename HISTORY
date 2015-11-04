@@ -8,6 +8,7 @@ Version 1.23  2015-11-04
     ONLY support Linux and FreeBSD
   * delay task can execute in a new thread
   * fast_mblock reclaimed object pool
+  * add fast_allocator
 
 Version 1.22  2015-10-10
   * export php function: fastcommon_get_first_local_ip
