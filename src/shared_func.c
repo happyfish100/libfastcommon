@@ -2312,3 +2312,12 @@ int get_sys_total_mem_size(int64_t *mem_size)
 #endif
 }
 
+int get_sys_cpu_count()
+{
+#if defined(OS_LINUX) || defined(OS_FREEBSD)
+    return sysconf(_SC_NPROCESSORS_ONLN);
+#else
+#error port me!
+#endif
+}
+

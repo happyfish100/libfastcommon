@@ -1,10 +1,11 @@
 
-Version 1.23  2015-11-03
+Version 1.23  2015-11-04
   * sched_thread.c: task can execute in a new thread
   * sched_thread.c: support delay tasks
   * add function get_current_time_us and get_current_time_ms
   * mblock add stat function
-  * add function get_sys_total_mem_size, ONLY support Linux and FreeBSD
+  * add function get_sys_total_mem_size and get_sys_cpu_count,
+    ONLY support Linux and FreeBSD
   * delay task can execute in a new thread
   * fast_mblock reclaimed object pool
 

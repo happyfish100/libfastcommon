@@ -535,6 +535,13 @@ int64_t get_current_time_us();
 */
 int get_sys_total_mem_size(int64_t *mem_size);
 
+
+/** get system CPU count
+ *  parameters:
+ *  return: error no , 0 success, != 0 fail
+*/
+int get_sys_cpu_count();
+
 #ifdef __cplusplus
 }
 #endif
