@@ -176,7 +176,7 @@ int fast_mblock_manager_stat(struct fast_mblock_info *stats,
     return result;
 }
 
-int fast_mblock_manager_stat_print()
+int fast_mblock_manager_stat_print(const bool hide_empty)
 {
     int result;
     int count;
@@ -217,9 +217,17 @@ int fast_mblock_manager_stat_print()
         stat_end = stats + count;
         for (pStat=stats; pStat<stat_end; pStat++)
         {
-            block_size = GET_BLOCK_SIZE(*pStat);
-            alloc_mem += block_size * pStat->element_total_count;
-            used_mem += block_size * pStat->element_used_count;
+            if (pStat->element_total_count > 0)
+            {
+                block_size = GET_BLOCK_SIZE(*pStat);
+                alloc_mem += block_size * pStat->element_total_count;
+                used_mem += block_size * pStat->element_used_count;
+            }
+            else if (hide_empty)
+            {
+                continue;
+            }
+
             logInfo("%32s %12d %16d %10d %10d %14d %12d %11.2f%%", pStat->name,
                     pStat->element_size, pStat->instance_count,
                     pStat->trunk_total_count, pStat->trunk_used_count,

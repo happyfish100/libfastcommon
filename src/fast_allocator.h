@@ -18,13 +18,29 @@
 #include "common_define.h"
 #include "fast_mblock.h"
 
+struct fast_allocator_info
+{
+	int index;
+	short magic_number;
+	bool pooled;
+	struct fast_mblock_man mblock;
+};
+
 struct fast_region_info
 {
 	int start;
 	int end;
 	int step;
 	int alloc_elements_once;
-	struct fast_mblock_man *allocators;
+	int pad_mask;  //for internal use
+	struct fast_allocator_info *allocators;
+};
+
+struct fast_allocator_array
+{
+	int count;
+	int alloc;
+	struct fast_allocator_info **allocators;
 };
 
 struct fast_allocator_context
@@ -32,7 +48,10 @@ struct fast_allocator_context
 	struct fast_region_info *regions;
 	int region_count;
 
-	int64_t alloc_bytes;
+	struct fast_allocator_array allocator_array;
+
+	volatile int64_t alloc_bytes;    //total alloc bytes
+	//volatile int64_t padding_bytes;  //bytes used by allocator
 	bool need_lock;     //if need mutex lock for acontext
 };
 

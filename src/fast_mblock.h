@@ -240,9 +240,10 @@ int fast_mblock_manager_stat(struct fast_mblock_info *stats,
 /**
 print mblock manager stat
 parameters:
+    hide_empty: if hide empty
 return error no, 0 for success, != 0 fail
 */
-int fast_mblock_manager_stat_print();
+int fast_mblock_manager_stat_print(const bool hide_empty);
 
 typedef void (*fast_mblock_free_trunks_func)(struct fast_mblock_man *mblock,
         struct fast_mblock_malloc *freelist);

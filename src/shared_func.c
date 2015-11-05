@@ -2321,3 +2321,16 @@ int get_sys_cpu_count()
 #endif
 }
 
+bool is_power2(const int64_t n)
+{
+	int64_t i;
+
+	i = 2;
+	while (i < n)
+	{
+		i *= 2;
+	}
+
+	return i == n;
+}
+

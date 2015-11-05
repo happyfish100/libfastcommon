@@ -542,6 +542,13 @@ int get_sys_total_mem_size(int64_t *mem_size);
 */
 int get_sys_cpu_count();
 
+/** is the number power 2
+ *  parameters:
+ *     n: the number to test
+ *  return: true for power 2, otherwise false
+*/
+bool is_power2(const int64_t n);
+
 #ifdef __cplusplus
 }
 #endif

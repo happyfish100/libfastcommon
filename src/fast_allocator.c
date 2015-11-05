@@ -1,10 +1,78 @@
 //fast_allocator.c
 
 #include <errno.h>
+#include <stdlib.h>
 #include <pthread.h>
 #include "logger.h"
 #include "shared_func.h"
 #include "fast_allocator.h"
+
+#define BYTES_ALIGN(x, pad_mask)  (((x) + pad_mask) & (~pad_mask))
+
+struct allocator_wrapper {
+	int alloc_bytes;
+	short allocator_index;
+	short magic_number;
+};
+
+static struct fast_allocator_info malloc_allocator;
+
+#define ADD_ALLOCATOR_TO_ARRAY(acontext, allocator, _pooled) \
+	do { \
+		(allocator)->index = acontext->allocator_array.count; \
+		(allocator)->magic_number = rand();   \
+		(allocator)->pooled = _pooled;        \
+		acontext->allocator_array.allocators[ \
+			acontext->allocator_array.count++] = allocator; \
+		/* logInfo("count: %d, magic_number: %d", acontext->allocator_array.count, (allocator)->magic_number); */\
+	} while (0)
+
+
+static int allocator_array_check_capacity(struct fast_allocator_context *acontext,
+	const int allocator_count)
+{
+	int result;
+	int bytes;
+	struct fast_allocator_info  **new_allocators;
+
+	if (acontext->allocator_array.alloc >= acontext->allocator_array.count +
+		allocator_count)
+	{
+		return 0;
+	}
+	if (acontext->allocator_array.alloc == 0)
+	{
+		acontext->allocator_array.alloc = 2 * allocator_count;
+	}
+	else
+	{
+		do
+		{
+			acontext->allocator_array.alloc *= 2;
+		} while (acontext->allocator_array.alloc < allocator_count);
+	}
+
+	bytes = sizeof(struct fast_allocator_info*) * acontext->allocator_array.alloc;
+	new_allocators = (struct fast_allocator_info **)malloc(bytes);
+	if (new_allocators == NULL)
+	{
+		result = errno != 0 ? errno : ENOMEM;
+		logError("file: "__FILE__", line: %d, "
+				"malloc %d bytes fail, errno: %d, error info: %s",
+				__LINE__, bytes, result, STRERROR(result));
+		return result;
+	}
+
+	if (acontext->allocator_array.allocators != NULL)
+	{
+		memcpy(new_allocators, acontext->allocator_array.allocators,
+			sizeof(struct fast_allocator_info *) *
+			acontext->allocator_array.count);
+		free(acontext->allocator_array.allocators);
+	}
+	acontext->allocator_array.allocators = new_allocators;
+	return 0;
+}
 
 static int region_init(struct fast_allocator_context *acontext,
 	struct fast_region_info *region)
@@ -13,11 +81,12 @@ static int region_init(struct fast_allocator_context *acontext,
 	int bytes;
 	int element_size;
 	int allocator_count;
-	struct fast_mblock_man *mblock;
+	struct fast_allocator_info *allocator;
 
+	region->pad_mask = region->step - 1;
 	allocator_count = (region->end - region->start) / region->step;
-	bytes = sizeof(struct fast_mblock_man) * allocator_count;
-	region->allocators = (struct fast_mblock_man *)malloc(bytes);
+	bytes = sizeof(struct fast_allocator_info) * allocator_count;
+	region->allocators = (struct fast_allocator_info *)malloc(bytes);
 	if (region->allocators == NULL)
 	{
 		result = errno != 0 ? errno : ENOMEM;
@@ -28,17 +97,25 @@ static int region_init(struct fast_allocator_context *acontext,
 	}
 	memset(region->allocators, 0, bytes);
 
-	result = 0;
-	mblock = region->allocators;
-	for (element_size=region->start+region->step; element_size<=region->end;
-		element_size+=region->step,mblock++)
+
+	if ((result=allocator_array_check_capacity(acontext, allocator_count)) != 0)
 	{
-		result = fast_mblock_init_ex(mblock, element_size,
+		return result;
+	}
+
+	result = 0;
+ 	allocator = region->allocators;
+	for (element_size=region->start+region->step; element_size<=region->end;
+		element_size+=region->step,allocator++)
+	{
+		result = fast_mblock_init_ex(&allocator->mblock, element_size,
 			region->alloc_elements_once, NULL, acontext->need_lock);
 		if (result != 0)
 		{
 			break;
 		}
+
+		ADD_ALLOCATOR_TO_ARRAY(acontext, allocator, true);
 	}
 
 	return result;
@@ -49,14 +126,14 @@ static void region_destroy(struct fast_allocator_context *acontext,
 {
 	int element_size;
 	int allocator_count;
-	struct fast_mblock_man *mblock;
+	struct fast_allocator_info *allocator;
 
 	allocator_count = (region->end - region->start) / region->step;
-	mblock = region->allocators;
+	allocator = region->allocators;
 	for (element_size=region->start+region->step; element_size<=region->end;
-		element_size+=region->step,mblock++)
+		element_size+=region->step,allocator++)
 	{
-		fast_mblock_destroy(mblock);
+		fast_mblock_destroy(&allocator->mblock);
 	}
 
 	free(region->allocators);
@@ -73,6 +150,7 @@ int fast_allocator_init_ex(struct fast_allocator_context *acontext,
 	struct fast_region_info *pRegion;
 	struct fast_region_info *region_end;
 
+	srand(time(NULL));
 	memset(acontext, 0, sizeof(*acontext));
 	if (region_count <= 0)
 	{
@@ -113,7 +191,7 @@ int fast_allocator_init_ex(struct fast_allocator_context *acontext,
 			result = EINVAL;
 			break;
 		}
-		if (pRegion->step <= 0)
+		if (pRegion->step <= 0 || !is_power2(pRegion->step))
 		{
 			logError("file: "__FILE__", line: %d, "
 				"invalid step: %d",
@@ -145,6 +223,16 @@ int fast_allocator_init_ex(struct fast_allocator_context *acontext,
 		}
 	}
 
+	if ((result=allocator_array_check_capacity(acontext, 1)) != 0)
+	{
+		return result;
+	}
+
+	ADD_ALLOCATOR_TO_ARRAY(acontext, &malloc_allocator, false);
+	/*
+	logInfo("sizeof(struct allocator_wrapper): %d, allocator_array count: %d",
+		(int)sizeof(struct allocator_wrapper), acontext->allocator_array.count);
+	*/
 	return result;
 }
 
@@ -159,7 +247,7 @@ int fast_allocator_init_ex(struct fast_allocator_context *acontext,
 int fast_allocator_init(struct fast_allocator_context *acontext,
         const bool need_lock)
 {
-#define DEFAULT_REGION_COUNT 6
+#define DEFAULT_REGION_COUNT 5
 
         struct fast_region_info regions[DEFAULT_REGION_COUNT]; 
 
@@ -178,23 +266,119 @@ void fast_allocator_destroy(struct fast_allocator_context *acontext)
 	struct fast_region_info *pRegion;
 	struct fast_region_info *region_end;
 
+	if (acontext->regions != NULL)
+	{
+		region_end = acontext->regions + acontext->region_count;
+		for (pRegion=acontext->regions; pRegion<region_end; pRegion++)
+		{
+			region_destroy(acontext, pRegion);
+		}
+		free(acontext->regions);
+	}
+
+	if (acontext->allocator_array.allocators != NULL)
+	{
+		free(acontext->allocator_array.allocators);
+	}
+	memset(acontext, 0, sizeof(*acontext));
+}
+
+static struct fast_allocator_info *get_allocator(struct fast_allocator_context *acontext,
+	int *alloc_bytes)
+{
+	struct fast_region_info *pRegion;
+	struct fast_region_info *region_end;
+
 	region_end = acontext->regions + acontext->region_count;
 	for (pRegion=acontext->regions; pRegion<region_end; pRegion++)
 	{
-		region_destroy(acontext, pRegion);
+		if (*alloc_bytes <= pRegion->end)
+		{
+			*alloc_bytes = BYTES_ALIGN(*alloc_bytes, pRegion->pad_mask);
+			return pRegion->allocators + ((*alloc_bytes -
+				pRegion->start) / pRegion->step) - 1;
+		}
 	}
 
-	free(acontext->regions);
-	acontext->regions = NULL;
+	return &malloc_allocator;
 }
 
-void* fast_allocator_alloc(struct fast_allocator_context *acontext,
+void *fast_allocator_alloc(struct fast_allocator_context *acontext,
 	const int bytes)
 {
-	return NULL;
+	int alloc_bytes;
+	struct fast_allocator_info *allocator_info;
+	void *ptr;
+
+	if (bytes < 0)
+	{
+		return NULL;
+	}
+
+	alloc_bytes = sizeof(struct allocator_wrapper) + bytes;
+	allocator_info = get_allocator(acontext, &alloc_bytes);
+	if (allocator_info->pooled)
+	{
+		ptr = fast_mblock_alloc_object(&allocator_info->mblock);
+	}
+	else
+	{
+		ptr = malloc(alloc_bytes);
+	}
+	if (ptr == NULL)
+	{
+		return NULL;
+	}
+
+	((struct allocator_wrapper *)ptr)->allocator_index = allocator_info->index;
+	((struct allocator_wrapper *)ptr)->magic_number = allocator_info->magic_number;
+	((struct allocator_wrapper *)ptr)->alloc_bytes = alloc_bytes;
+
+	__sync_add_and_fetch(&acontext->alloc_bytes, alloc_bytes);
+	return (char *)ptr + sizeof(struct allocator_wrapper);
 }
 
 void fast_allocator_free(struct fast_allocator_context *acontext, void *ptr)
 {
+	struct allocator_wrapper *pWrapper;
+	struct fast_allocator_info *allocator_info;
+	void *obj;
+	if (ptr == NULL)
+	{
+		return;
+	}
+
+	obj = (char *)ptr - sizeof(struct allocator_wrapper);
+	pWrapper = (struct allocator_wrapper *)obj;
+	if (pWrapper->allocator_index < 0 || pWrapper->allocator_index >=
+		acontext->allocator_array.count)
+	{
+		logError("file: "__FILE__", line: %d, "
+				"invalid allocator index: %d",
+				__LINE__, pWrapper->allocator_index);
+		return;
+	}
+
+	allocator_info = acontext->allocator_array.allocators[pWrapper->allocator_index];
+	if (pWrapper->magic_number != allocator_info->magic_number)
+	{
+		logError("file: "__FILE__", line: %d, "
+				"invalid magic number: %d != %d",
+				__LINE__, pWrapper->magic_number,
+				allocator_info->magic_number);
+		return;
+	}
+
+	__sync_sub_and_fetch(&acontext->alloc_bytes, pWrapper->alloc_bytes);
+	pWrapper->allocator_index = -1;
+	pWrapper->magic_number = 0;
+	if (allocator_info->pooled)
+	{
+		fast_mblock_free_object(&allocator_info->mblock, obj);
+	}
+	else
+	{
+		free(obj);
+	}
 }
 
