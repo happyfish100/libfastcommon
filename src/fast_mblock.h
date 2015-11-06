@@ -283,8 +283,8 @@ void fast_mblock_free_trunks(struct fast_mblock_man *mblock,
 /**
 reclaim the free trunks of the mblock
 parameters:
-	mblock: the mblock pointer
-    reclaim_target: reclaim target trunks
+    mblock: the mblock pointer
+    reclaim_target: reclaim target trunks, 0 for no limit
     reclaim_count: reclaimed trunk count
     freelist: the free trunks
 return error no, 0 for success, != 0 fail

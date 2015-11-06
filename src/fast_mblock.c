@@ -696,9 +696,9 @@ static int fast_mblock_do_reclaim(struct fast_mblock_man *mblock,
         const int reclaim_target, int *reclaim_count,
         struct fast_mblock_malloc **ppFreelist)
 {
-	struct fast_mblock_node *pPrevious;
-	struct fast_mblock_node *pCurrent;
-	struct fast_mblock_malloc *pMallocNode;
+    struct fast_mblock_node *pPrevious;
+    struct fast_mblock_node *pCurrent;
+    struct fast_mblock_malloc *pMallocNode;
     struct fast_mblock_malloc *freelist;
     bool lookup_done;
 
@@ -756,7 +756,7 @@ static int fast_mblock_do_reclaim(struct fast_mblock_man *mblock,
                 pMallocNode->next = freelist;
                 freelist = pMallocNode;
                 (*reclaim_count)++;
-                if (*reclaim_count == reclaim_target)
+                if (reclaim_target > 0 && *reclaim_count == reclaim_target)
                 {
                     lookup_done = true;
                 }
@@ -819,7 +819,8 @@ int fast_mblock_reclaim(struct fast_mblock_man *mblock,
     int result;
     struct fast_mblock_malloc *freelist;
 
-    if (reclaim_target <= 0)
+    if (reclaim_target < 0 || mblock->info.trunk_total_count -
+		mblock->info.trunk_used_count <= 0)
     {
         *reclaim_count = 0;
         return EINVAL;
@@ -835,7 +836,8 @@ int fast_mblock_reclaim(struct fast_mblock_man *mblock,
 		return result;
 	}
 
-    if (mblock->info.trunk_total_count - mblock->info.trunk_used_count < reclaim_target)
+    if (reclaim_target > 0 && mblock->info.trunk_total_count -
+		mblock->info.trunk_used_count < reclaim_target)
     {
         *reclaim_count = 0;
         result = E2BIG;

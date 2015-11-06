@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include "logger.h"
 #include "shared_func.h"
+#include "sched_thread.h"
 #include "fast_allocator.h"
 
 #define BYTES_ALIGN(x, pad_mask)  (((x) + pad_mask) & (~pad_mask))
@@ -27,6 +28,38 @@ static struct fast_allocator_info malloc_allocator;
 		/* logInfo("count: %d, magic_number: %d", acontext->allocator_array.count, (allocator)->magic_number); */\
 	} while (0)
 
+
+static int fast_allocator_malloc_trunk_check(const int alloc_bytes, void *args)
+{
+	struct fast_allocator_context *acontext;
+	acontext = (struct fast_allocator_context *)args;
+	if (acontext->alloc_bytes_limit == 0)
+	{
+		return 0;
+	}
+
+	if (acontext->alloc_bytes + alloc_bytes > acontext->alloc_bytes_limit)
+	{
+		return EOVERFLOW;
+	}
+
+	return acontext->allocator_array.malloc_bytes + alloc_bytes <=
+		acontext->allocator_array.malloc_bytes_limit ? 0 : EOVERFLOW;
+}
+
+static void fast_allocator_malloc_trunk_notify_func(const int alloc_bytes, void *args)
+{
+	if (alloc_bytes > 0)
+	{
+		__sync_add_and_fetch(&((struct fast_allocator_context *)args)->
+			allocator_array.malloc_bytes, alloc_bytes);
+	}
+	else
+	{
+		__sync_sub_and_fetch(&((struct fast_allocator_context *)args)->
+			allocator_array.malloc_bytes, -1 * alloc_bytes);
+	}
+}
 
 static int allocator_array_check_capacity(struct fast_allocator_context *acontext,
 	const int allocator_count)
@@ -108,8 +141,10 @@ static int region_init(struct fast_allocator_context *acontext,
 	for (element_size=region->start+region->step; element_size<=region->end;
 		element_size+=region->step,allocator++)
 	{
-		result = fast_mblock_init_ex(&allocator->mblock, element_size,
-			region->alloc_elements_once, NULL, acontext->need_lock);
+		result = fast_mblock_init_ex2(&allocator->mblock, NULL, element_size,
+			region->alloc_elements_once, NULL, acontext->need_lock,
+			fast_allocator_malloc_trunk_check,
+			fast_allocator_malloc_trunk_notify_func, acontext);
 		if (result != 0)
 		{
 			break;
@@ -142,7 +177,8 @@ static void region_destroy(struct fast_allocator_context *acontext,
 
 int fast_allocator_init_ex(struct fast_allocator_context *acontext,
         struct fast_region_info *regions, const int region_count,
-        const bool need_lock)
+        const int64_t alloc_bytes_limit, const double expect_usage_ratio,
+	const int reclaim_interval, const bool need_lock)
 {
 	int result;
 	int bytes;
@@ -169,6 +205,18 @@ int fast_allocator_init_ex(struct fast_allocator_context *acontext,
 	}
 	memcpy(acontext->regions, regions, bytes);
 	acontext->region_count = region_count;
+	acontext->alloc_bytes_limit = alloc_bytes_limit;
+	if (expect_usage_ratio < 0.01 || expect_usage_ratio > 1.00)
+	{
+		acontext->allocator_array.expect_usage_ratio = 0.80;
+	}
+	else
+	{
+		acontext->allocator_array.expect_usage_ratio = expect_usage_ratio;
+	}
+	acontext->allocator_array.malloc_bytes_limit = alloc_bytes_limit /
+		acontext->allocator_array.expect_usage_ratio;
+	acontext->allocator_array.reclaim_interval = reclaim_interval;
 	acontext->need_lock = need_lock;
 	result = 0;
 	previous_end = 0;
@@ -250,7 +298,8 @@ int fast_allocator_init_ex(struct fast_allocator_context *acontext,
 	} while(0)
 
 int fast_allocator_init(struct fast_allocator_context *acontext,
-        const bool need_lock)
+        const int64_t alloc_bytes_limit, const double expect_usage_ratio,
+	const int reclaim_interval, const bool need_lock)
 {
 #define DEFAULT_REGION_COUNT 5
 
@@ -263,7 +312,8 @@ int fast_allocator_init(struct fast_allocator_context *acontext,
 	INIT_REGION(regions[4], 16384, 65536, 1024,    16);
 
 	return fast_allocator_init_ex(acontext, regions,
-		DEFAULT_REGION_COUNT, need_lock);
+		DEFAULT_REGION_COUNT, alloc_bytes_limit,
+		expect_usage_ratio, reclaim_interval, need_lock);
 }
 
 void fast_allocator_destroy(struct fast_allocator_context *acontext)
@@ -308,10 +358,51 @@ static struct fast_allocator_info *get_allocator(struct fast_allocator_context *
 	return &malloc_allocator;
 }
 
+int fast_allocator_retry_reclaim(struct fast_allocator_context *acontext,
+	int64_t *total_reclaim_bytes)
+{
+	int64_t malloc_bytes;
+	int reclaim_count;
+	int i;
+
+	*total_reclaim_bytes = 0;
+	if (acontext->allocator_array.last_reclaim_time +
+		acontext->allocator_array.reclaim_interval > get_current_time())
+	{
+		return EAGAIN;
+	}
+
+	acontext->allocator_array.last_reclaim_time = get_current_time();
+	malloc_bytes = acontext->allocator_array.malloc_bytes;
+	logInfo("malloc_bytes: %"PRId64", ratio: %f", malloc_bytes, (double)acontext->alloc_bytes /
+		(double)malloc_bytes);
+
+	if (malloc_bytes == 0 || (double)acontext->alloc_bytes /
+		(double)malloc_bytes >= acontext->allocator_array.expect_usage_ratio)
+	{
+		return EAGAIN;
+	}
+
+	for (i=0; i< acontext->allocator_array.count; i++)
+	{
+		if (fast_mblock_reclaim(&acontext->allocator_array.
+			allocators[i]->mblock, 0, &reclaim_count, NULL) == 0)
+		{
+			logInfo("reclaim_count: %d", reclaim_count);
+			*total_reclaim_bytes += reclaim_count *
+				acontext->allocator_array.allocators[i]->
+					mblock.info.trunk_size;
+		}
+	}
+
+	return *total_reclaim_bytes > 0 ? 0 : EAGAIN;
+}
+
 void *fast_allocator_alloc(struct fast_allocator_context *acontext,
 	const int bytes)
 {
 	int alloc_bytes;
+	int64_t total_reclaim_bytes;
 	struct fast_allocator_info *allocator_info;
 	void *ptr;
 
@@ -325,14 +416,40 @@ void *fast_allocator_alloc(struct fast_allocator_context *acontext,
 	if (allocator_info->pooled)
 	{
 		ptr = fast_mblock_alloc_object(&allocator_info->mblock);
+		if (ptr == NULL)
+		{
+			if (acontext->allocator_array.reclaim_interval <= 0)
+			{
+				return NULL;
+			}
+			if (fast_allocator_retry_reclaim(acontext, &total_reclaim_bytes) != 0)
+			{
+				return NULL;
+			}
+			logInfo("reclaimed bytes: %"PRId64, total_reclaim_bytes);
+			if (total_reclaim_bytes < allocator_info->mblock.info.trunk_size)
+			{
+				return NULL;
+			}
+			ptr = fast_mblock_alloc_object(&allocator_info->mblock);
+			if (ptr == NULL)
+			{
+				return NULL;
+			}
+		}
 	}
 	else
 	{
+		if (fast_allocator_malloc_trunk_check(alloc_bytes, acontext) != 0)
+		{
+			return NULL;
+		}
 		ptr = malloc(alloc_bytes);
-	}
-	if (ptr == NULL)
-	{
-		return NULL;
+		if (ptr == NULL)
+		{
+			return NULL;
+		}
+		fast_allocator_malloc_trunk_notify_func(alloc_bytes, acontext);
 	}
 
 	((struct allocator_wrapper *)ptr)->allocator_index = allocator_info->index;
@@ -383,6 +500,7 @@ void fast_allocator_free(struct fast_allocator_context *acontext, void *ptr)
 	}
 	else
 	{
+		fast_allocator_malloc_trunk_notify_func(-1 * pWrapper->alloc_bytes, acontext);
 		free(obj);
 	}
 }
