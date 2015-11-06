@@ -176,6 +176,18 @@ int fast_mblock_manager_stat(struct fast_mblock_info *stats,
     return result;
 }
 
+//desc order
+static int fast_mblock_info_cmp(const void *p1, const void *p2)
+{
+	struct fast_mblock_info *pStat1;
+	struct fast_mblock_info *pStat2;
+
+	pStat1 = (struct fast_mblock_info *)p1;
+	pStat2 = (struct fast_mblock_info *)p2;
+	return GET_BLOCK_SIZE(*pStat2) * pStat2->element_total_count -
+		GET_BLOCK_SIZE(*pStat1) * pStat1->element_total_count;
+}
+
 int fast_mblock_manager_stat_print(const bool hide_empty)
 {
     int result;
@@ -205,14 +217,17 @@ int fast_mblock_manager_stat_print(const bool hide_empty)
     {
         int64_t alloc_mem;
         int64_t used_mem;
+        int64_t amem;
         char alloc_mem_str[32];
         char used_mem_str[32];
         int block_size;
 
+	qsort(stats, count, sizeof(struct fast_mblock_info), fast_mblock_info_cmp);
+
         alloc_mem = 0;
         used_mem = 0;
-        logInfo("%32s %12s %16s %10s %10s %14s %12s %12s", "name", "element_size",
-                "instance_count", "trunc_alloc", "trunk_used",
+        logInfo("%20s %12s %16s %12s %10s %10s %14s %12s %12s", "name", "element_size",
+                "instance_count", "alloc_bytes", "trunc_alloc", "trunk_used",
                 "element_alloc", "element_used", "used_ratio");
         stat_end = stats + count;
         for (pStat=stats; pStat<stat_end; pStat++)
@@ -220,16 +235,21 @@ int fast_mblock_manager_stat_print(const bool hide_empty)
             if (pStat->element_total_count > 0)
             {
                 block_size = GET_BLOCK_SIZE(*pStat);
-                alloc_mem += block_size * pStat->element_total_count;
+		amem = block_size * pStat->element_total_count;
+                alloc_mem += amem;
                 used_mem += block_size * pStat->element_used_count;
             }
-            else if (hide_empty)
+            else
             {
-                continue;
+		amem = 0;
+                if (hide_empty)
+                {
+                    continue;
+                }
             }
 
-            logInfo("%32s %12d %16d %10d %10d %14d %12d %11.2f%%", pStat->name,
-                    pStat->element_size, pStat->instance_count,
+            logInfo("%20s %12d %16d %12d %10d %10d %14d %12d %11.2f%%", pStat->name,
+                    pStat->element_size, pStat->instance_count, amem,
                     pStat->trunk_total_count, pStat->trunk_used_count,
                     pStat->element_total_count, pStat->element_used_count,
                     pStat->element_total_count > 0 ? 100.00 * (double)

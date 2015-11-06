@@ -223,6 +223,11 @@ int fast_allocator_init_ex(struct fast_allocator_context *acontext,
 		}
 	}
 
+	if (result != 0)
+	{
+		return result;
+	}
+
 	if ((result=allocator_array_check_capacity(acontext, 1)) != 0)
 	{
 		return result;
