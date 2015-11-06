@@ -12,8 +12,9 @@ FastDHT. this library is very simple and stable.
 
 functions including: string, logger, chain, hash, avl treee, socket,
 ini file reader, memory pool, object based allocator, connection pool,
-timer based time wheel, ioevent like epull, local ip functions,
-base64 encode / decode, url encode / decode etc.
+time wheel based timer, ioevent like epoll, local ip functions,
+process start/stop/restart control, task schedule, base64 encode / decode,
+url encode / decode etc.
 
 detail info please see the c header files.
 
