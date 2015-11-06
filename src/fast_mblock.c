@@ -100,7 +100,8 @@ static void delete_from_mblock_list(struct fast_mblock_man *mblock)
 #define STAT_DUP(pStat, current, copy_name) \
     do { \
         if (copy_name) { \
-            strcpy(pStat->name, current->info.name); \
+            strcpy(pStat->name, current->info.name);          \
+            pStat->trunk_size = current->info.trunk_size;     \
             pStat->element_size = current->info.element_size; \
         } \
         pStat->element_total_count += current->info.element_total_count;  \
@@ -184,8 +185,8 @@ static int fast_mblock_info_cmp(const void *p1, const void *p2)
 
 	pStat1 = (struct fast_mblock_info *)p1;
 	pStat2 = (struct fast_mblock_info *)p2;
-	return GET_BLOCK_SIZE(*pStat2) * pStat2->element_total_count -
-		GET_BLOCK_SIZE(*pStat1) * pStat1->element_total_count;
+	return pStat2->trunk_size * pStat2->trunk_total_count -
+		pStat1->trunk_size * pStat1->trunk_total_count;
 }
 
 int fast_mblock_manager_stat_print(const bool hide_empty)
@@ -220,24 +221,22 @@ int fast_mblock_manager_stat_print(const bool hide_empty)
         int64_t amem;
         char alloc_mem_str[32];
         char used_mem_str[32];
-        int block_size;
 
 	qsort(stats, count, sizeof(struct fast_mblock_info), fast_mblock_info_cmp);
 
         alloc_mem = 0;
         used_mem = 0;
-        logInfo("%20s %12s %16s %12s %10s %10s %14s %12s %12s", "name", "element_size",
-                "instance_count", "alloc_bytes", "trunc_alloc", "trunk_used",
+        logInfo("%20s %12s %8s %12s %10s %10s %14s %12s %12s", "name", "element_size",
+                "instance", "alloc_bytes", "trunc_alloc", "trunk_used",
                 "element_alloc", "element_used", "used_ratio");
         stat_end = stats + count;
         for (pStat=stats; pStat<stat_end; pStat++)
         {
-            if (pStat->element_total_count > 0)
+            if (pStat->trunk_total_count > 0)
             {
-                block_size = GET_BLOCK_SIZE(*pStat);
-		amem = block_size * pStat->element_total_count;
+		amem = pStat->trunk_size * pStat->trunk_total_count;
                 alloc_mem += amem;
-                used_mem += block_size * pStat->element_used_count;
+                used_mem += GET_BLOCK_SIZE(*pStat) * pStat->element_used_count;
             }
             else
             {
@@ -248,7 +247,7 @@ int fast_mblock_manager_stat_print(const bool hide_empty)
                 }
             }
 
-            logInfo("%20s %12d %16d %12d %10d %10d %14d %12d %11.2f%%", pStat->name,
+            logInfo("%20s %12d %8d %12d %10d %10d %14d %12d %11.2f%%", pStat->name,
                     pStat->element_size, pStat->instance_count, amem,
                     pStat->trunk_total_count, pStat->trunk_used_count,
                     pStat->element_total_count, pStat->element_used_count,
@@ -292,14 +291,18 @@ int fast_mblock_init_ex(struct fast_mblock_man *mblock,
         fast_mblock_alloc_init_func init_func, const bool need_lock)
 {
     return fast_mblock_init_ex2(mblock, NULL, element_size,
-            alloc_elements_once, init_func, need_lock);
+            alloc_elements_once, init_func, need_lock, NULL, NULL, NULL);
 }
 
 int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
         const int element_size, const int alloc_elements_once,
-        fast_mblock_alloc_init_func init_func, const bool need_lock)
+        fast_mblock_alloc_init_func init_func, const bool need_lock,
+	fast_mblock_malloc_trunk_check_func malloc_trunk_check,
+	fast_mblock_malloc_trunk_notify_func malloc_trunk_notify,
+	void *malloc_trunk_args)
 {
 	int result;
+	int block_size;
 
 	if (element_size <= 0)
 	{
@@ -310,14 +313,14 @@ int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
 	}
 
 	mblock->info.element_size = MEM_ALIGN(element_size);
+	block_size = fast_mblock_get_block_size(mblock);
 	if (alloc_elements_once > 0)
 	{
 		mblock->alloc_elements_once = alloc_elements_once;
 	}
 	else
 	{
-		mblock->alloc_elements_once = (1024 * 1024) /
-            fast_mblock_get_block_size(mblock);
+		mblock->alloc_elements_once = (1024 * 1024) / block_size;
 	}
 
 	if (need_lock && (result=init_pthread_lock(&(mblock->lock))) != 0)
@@ -332,13 +335,18 @@ int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
     INIT_HEAD(&mblock->trunks.head);
     mblock->info.trunk_total_count = 0;
     mblock->info.trunk_used_count = 0;
-	mblock->free_chain_head = NULL;
-	mblock->delay_free_chain.head = NULL;
-	mblock->delay_free_chain.tail = NULL;
+    mblock->free_chain_head = NULL;
+    mblock->delay_free_chain.head = NULL;
+    mblock->delay_free_chain.tail = NULL;
     mblock->info.element_total_count = 0;
     mblock->info.element_used_count = 0;
     mblock->info.instance_count = 1;
+    mblock->info.trunk_size = sizeof(struct fast_mblock_malloc) + block_size *
+			mblock->alloc_elements_once;
     mblock->need_lock = need_lock;
+    mblock->malloc_trunk_callback.check_func = malloc_trunk_check;
+    mblock->malloc_trunk_callback.notify_func = malloc_trunk_notify;
+    mblock->malloc_trunk_callback.args = malloc_trunk_args;
 
     if (name != NULL)
     {
@@ -350,7 +358,7 @@ int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
     }
     add_to_mblock_list(mblock);
 
-	return 0;
+    return 0;
 }
 
 static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
@@ -361,29 +369,34 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
 	char *pTrunkStart;
 	char *p;
 	char *pLast;
-    int result;
+	int result;
 	int block_size;
-	int alloc_size;
 
 	block_size = fast_mblock_get_block_size(mblock);
-	alloc_size = sizeof(struct fast_mblock_malloc) + block_size * \
-			mblock->alloc_elements_once;
+	if (mblock->malloc_trunk_callback.check_func != NULL &&
+		mblock->malloc_trunk_callback.check_func(
+		mblock->info.trunk_size,
+		mblock->malloc_trunk_callback.args) != 0)
+	{
+		return ENOMEM;
+	}
 
-	pNew = (char *)malloc(alloc_size);
+	pNew = (char *)malloc(mblock->info.trunk_size);
 	if (pNew == NULL)
 	{
 		logError("file: "__FILE__", line: %d, " \
 			"malloc %d bytes fail, " \
 			"errno: %d, error info: %s", \
-			__LINE__, alloc_size, errno, STRERROR(errno));
+			__LINE__, mblock->info.trunk_size,
+			errno, STRERROR(errno));
 		return errno != 0 ? errno : ENOMEM;
 	}
-	memset(pNew, 0, alloc_size);
+	memset(pNew, 0, mblock->info.trunk_size);
 
 	pMallocNode = (struct fast_mblock_malloc *)pNew;
 
 	pTrunkStart = pNew + sizeof(struct fast_mblock_malloc);
-	pLast = pNew + (alloc_size - block_size);
+	pLast = pNew + (mblock->info.trunk_size - block_size);
 	for (p=pTrunkStart; p<pLast; p += block_size)
 	{
 		pNode = (struct fast_mblock_node *)p;
@@ -421,7 +434,14 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
 
     mblock->info.trunk_total_count++;
     mblock->info.element_total_count += mblock->alloc_elements_once;
-	return 0;
+
+    if (mblock->malloc_trunk_callback.notify_func != NULL)
+    {
+	   mblock->malloc_trunk_callback.notify_func(mblock->info.trunk_size,
+	   mblock->malloc_trunk_callback.args);
+    }
+
+    return 0;
 }
 
 static inline void fast_mblock_remove_trunk(struct fast_mblock_man *mblock,
@@ -431,6 +451,12 @@ static inline void fast_mblock_remove_trunk(struct fast_mblock_man *mblock,
 	pMallocNode->next->prev = pMallocNode->prev;
     mblock->info.trunk_total_count--;
     mblock->info.element_total_count -= mblock->alloc_elements_once;
+
+    if (mblock->malloc_trunk_callback.notify_func != NULL)
+    {
+	   mblock->malloc_trunk_callback.notify_func(-1 * mblock->info.trunk_size,
+	   mblock->malloc_trunk_callback.args);
+    }
 }
 
 #define FAST_MBLOCK_GET_TRUNK(pNode) \
@@ -488,7 +514,7 @@ void fast_mblock_destroy(struct fast_mblock_man *mblock)
     INIT_HEAD(&mblock->trunks.head);
     mblock->info.trunk_total_count = 0;
     mblock->info.trunk_used_count = 0;
-	mblock->free_chain_head = NULL;
+    mblock->free_chain_head = NULL;
     mblock->info.element_used_count = 0;
     mblock->info.element_total_count = 0;
 
