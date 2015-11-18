@@ -51,6 +51,7 @@ libfastcommon.a: $(FAST_STATIC_OBJS)
 	$(COMPILE) -c -fPIC -o $@ $<  $(INC_PATH)
 install:
 	mkdir -p $(DESTDIR)/usr/$(LIB_VERSION)
+	mkdir -p $(DESTDIR)/usr/lib
 	install -m 755 $(SHARED_LIBS) $(DESTDIR)/usr/$(LIB_VERSION)
 	install -m 755 $(SHARED_LIBS) $(DESTDIR)/usr/lib
 	mkdir -p $(DESTDIR)/usr/include/fastcommon
