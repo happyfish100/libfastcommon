@@ -28,6 +28,20 @@
 #define MINOR_VERSION  0
 #define PATCH_VERSION  3
 
+#if PHP_MAJOR_VERSION < 7
+typedef int zend_size_t;
+#define ZEND_RETURN_STRINGL(s, l, dup) RETURN_STRINGL(s, l, dup)
+#define ZEND_RETURN_STRING(s, dup) RETURN_STRING(s, dup)
+#define zend_add_index_string(z, index, value, dup) \
+	add_index_string(z, index, value, dup)
+#else
+typedef size_t zend_size_t;
+#define ZEND_RETURN_STRINGL(s, l, dup) RETURN_STRINGL(s, l)
+#define ZEND_RETURN_STRING(s, dup) RETURN_STRING(s)
+#define zend_add_index_string(z, index, value, dup) \
+	add_index_string(z, index, value)
+#endif
+
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 3)
 const zend_fcall_info empty_fcall_info = { 0, NULL, NULL, NULL, NULL, 0, NULL, NULL, 0 };
 #undef ZEND_BEGIN_ARG_INFO_EX
@@ -111,7 +125,7 @@ ZEND_FUNCTION(fastcommon_version)
 	len = sprintf(szVersion, "%d.%d.%d",
 		MAJOR_VERSION, MINOR_VERSION, PATCH_VERSION);
 
-	RETURN_STRINGL(szVersion, len, 1);
+	ZEND_RETURN_STRINGL(szVersion, len, 1);
 }
 
 /*
@@ -122,7 +136,7 @@ ZEND_FUNCTION(fastcommon_gethostaddrs)
 {
 	int argc;
     char *if_alias_prefix;
-    int if_prefix_len;
+    zend_size_t if_prefix_len;
 	int count;
     int uniq_count;
     int i;
@@ -140,7 +154,8 @@ ZEND_FUNCTION(fastcommon_gethostaddrs)
 		RETURN_BOOL(false);
 	}
 
-    if_alias_prefix = NULL;
+	if_alias_prefix = NULL;
+	if_prefix_len = 0;
 	if (zend_parse_parameters(argc TSRMLS_CC, "|s", &if_alias_prefix,
                 &if_prefix_len) == FAILURE)
 	{
@@ -182,7 +197,7 @@ ZEND_FUNCTION(fastcommon_gethostaddrs)
 
 	array_init(return_value);
 	for (k=0; k<uniq_count; k++) {
-        add_index_string(return_value, k, uniq_ips[k], 1);
+		zend_add_index_string(return_value, k, uniq_ips[k], 1);
 	}
 }
 
@@ -194,7 +209,7 @@ ZEND_FUNCTION(fastcommon_time33_hash)
 {
 	int argc;
     char *str;
-    int str_len;
+    zend_size_t str_len;
 
 	argc = ZEND_NUM_ARGS();
 	if (argc != 1) {
@@ -204,7 +219,7 @@ ZEND_FUNCTION(fastcommon_time33_hash)
 		RETURN_BOOL(false);
 	}
 
-    str = NULL;
+	str = NULL;
 	if (zend_parse_parameters(argc TSRMLS_CC, "s", &str,
                 &str_len) == FAILURE)
 	{
@@ -224,7 +239,7 @@ ZEND_FUNCTION(fastcommon_simple_hash)
 {
 	int argc;
     char *str;
-    int str_len;
+    zend_size_t str_len;
 
 	argc = ZEND_NUM_ARGS();
 	if (argc != 1) {
@@ -294,7 +309,7 @@ ZEND_FUNCTION(fastcommon_get_first_local_ip)
 		RETURN_BOOL(false);
 	}
 
-	RETURN_STRING(get_first_local_ip(), 1);
+	ZEND_RETURN_STRING(get_first_local_ip(), 1);
 }
 
 /*
@@ -304,7 +319,7 @@ return the next local ip, false for fail
 ZEND_FUNCTION(fastcommon_get_next_local_ip)
 {
 	int argc;
-    int previous_len;
+    zend_size_t previous_len;
     char *previous_ip;
     const char *next_ip;
 
@@ -334,7 +349,7 @@ ZEND_FUNCTION(fastcommon_get_next_local_ip)
 		RETURN_BOOL(false);
     }
 
-	RETURN_STRING(next_ip , 1);
+    ZEND_RETURN_STRING(next_ip , 1);
 }
 
 /*
@@ -344,7 +359,7 @@ return true for private ip, otherwise false
 ZEND_FUNCTION(fastcommon_is_private_ip)
 {
 	int argc;
-    int ip_len;
+    zend_size_t ip_len;
     char *ip;
 
 	argc = ZEND_NUM_ARGS();
