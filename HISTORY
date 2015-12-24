@@ -1,6 +1,7 @@
 
-Version 1.24  2015-11-30
+Version 1.24  2015-12-24
   * php extension compiled on PHP 7
+  * add skiplist
 
 Version 1.23  2015-11-16
   * sched_thread.c: task can execute in a new thread
