@@ -61,6 +61,20 @@ static int test_insert()
     return 0;
 }
 
+static void test_delete()
+{
+    int i;
+    int64_t start_time;
+    int64_t end_time;
+
+    start_time = get_current_time_ms();
+    for (i=1; i<=COUNT; i++) {
+        assert(skiplist_delete(&sl, &i) == 0);
+    }
+    end_time = get_current_time_ms();
+    printf("delete time used: %"PRId64" ms\n", end_time - start_time);
+}
+
 int main(int argc, char *argv[])
 {
     int i;
@@ -97,12 +111,7 @@ int main(int argc, char *argv[])
 
     test_insert();
 
-    start_time = get_current_time_ms();
-    for (i=1; i<=COUNT; i++) {
-        assert(skiplist_delete(&sl, &i) == 0);
-    }
-    end_time = get_current_time_ms();
-    printf("delete time used: %"PRId64" ms\n", end_time - start_time);
+    test_delete();
 
     start_time = get_current_time_ms();
     for (i=1; i<=COUNT; i++) {
@@ -121,6 +130,7 @@ int main(int argc, char *argv[])
 
     test_insert();
 
+    test_delete();
     skiplist_destroy(&sl);
 
     printf("pass OK\n");
