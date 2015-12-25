@@ -66,6 +66,7 @@ static void test_delete()
     int i;
     int64_t start_time;
     int64_t end_time;
+    void *value;
 
     start_time = get_current_time_ms();
     for (i=1; i<=COUNT; i++) {
@@ -73,6 +74,21 @@ static void test_delete()
     }
     end_time = get_current_time_ms();
     printf("delete time used: %"PRId64" ms\n", end_time - start_time);
+
+    start_time = get_current_time_ms();
+    for (i=1; i<=COUNT; i++) {
+        value = skiplist_find(&sl, &i);
+        assert(value == NULL);
+    }
+    end_time = get_current_time_ms();
+    printf("find after delete time used: %"PRId64" ms\n", end_time - start_time);
+
+    i = 0;
+    skiplist_iterator(&sl, &iterator);
+    while ((value=skiplist_next(&iterator)) != NULL) {
+        i++;
+    }
+    assert(i==0);
 }
 
 int main(int argc, char *argv[])
@@ -82,9 +98,6 @@ int main(int argc, char *argv[])
     int index1;
     int index2;
     int result;
-    int64_t start_time;
-    int64_t end_time;
-    void *value;
 
     log_init();
     numbers = (int *)malloc(sizeof(int) * COUNT);
@@ -112,21 +125,6 @@ int main(int argc, char *argv[])
     test_insert();
 
     test_delete();
-
-    start_time = get_current_time_ms();
-    for (i=1; i<=COUNT; i++) {
-        value = skiplist_find(&sl, &i);
-        assert(value == NULL);
-    }
-    end_time = get_current_time_ms();
-    printf("find after delete time used: %"PRId64" ms\n", end_time - start_time);
-
-    i = 0;
-    skiplist_iterator(&sl, &iterator);
-    while ((value=skiplist_next(&iterator)) != NULL) {
-        i++;
-    }
-    assert(i==0);
 
     test_insert();
 
