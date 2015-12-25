@@ -21,6 +21,7 @@ typedef int (*skiplist_compare_func)(const void *p1, const void *p2);
 typedef struct skiplist_node
 {
     void *data;
+//    struct skiplist_node *prev;   //for stable sort
     struct skiplist_node *links[0];
 } SkiplistNode;
 

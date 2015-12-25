@@ -26,9 +26,9 @@ static int test_insert()
 {
     int i;
     int result;
-    void *value;
     int64_t start_time;
     int64_t end_time;
+    void *value;
 
     start_time = get_current_time_ms();
     for (i=0; i<COUNT; i++) {
@@ -40,9 +40,9 @@ static int test_insert()
     printf("insert time used: %"PRId64" ms\n", end_time - start_time);
 
     start_time = get_current_time_ms();
-    for (i=1; i<=COUNT; i++) {
-        value = skiplist_find(&sl, &i);
-        assert(value != NULL && *((int *)value) == i);
+    for (i=0; i<COUNT; i++) {
+        value = skiplist_find(&sl, numbers + i);
+        assert(value != NULL && *((int *)value) == numbers[i]);
     }
     end_time = get_current_time_ms();
     printf("find time used: %"PRId64" ms\n", end_time - start_time);
@@ -69,15 +69,15 @@ static void test_delete()
     void *value;
 
     start_time = get_current_time_ms();
-    for (i=1; i<=COUNT; i++) {
-        assert(skiplist_delete(&sl, &i) == 0);
+    for (i=0; i<COUNT; i++) {
+        assert(skiplist_delete(&sl, numbers + i) == 0);
     }
     end_time = get_current_time_ms();
     printf("delete time used: %"PRId64" ms\n", end_time - start_time);
 
     start_time = get_current_time_ms();
-    for (i=1; i<=COUNT; i++) {
-        value = skiplist_find(&sl, &i);
+    for (i=0; i<COUNT; i++) {
+        value = skiplist_find(&sl, numbers + i);
         assert(value == NULL);
     }
     end_time = get_current_time_ms();
@@ -123,12 +123,16 @@ int main(int argc, char *argv[])
     }
 
     test_insert();
+    printf("\n");
 
     test_delete();
+    printf("\n");
 
     test_insert();
+    printf("\n");
 
     test_delete();
+    printf("\n");
     skiplist_destroy(&sl);
 
     printf("pass OK\n");
