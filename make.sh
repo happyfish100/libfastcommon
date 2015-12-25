@@ -50,7 +50,7 @@ else
  OFF_BITS=32
 fi
 
-DEBUG_FLAG=1
+DEBUG_FLAG=0
 
 CFLAGS='-Wall -D_FILE_OFFSET_BITS=64'
 if [ "$DEBUG_FLAG" = "1" ]; then

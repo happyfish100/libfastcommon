@@ -52,7 +52,7 @@ int skiplist_init_ex(Skiplist *sl, const int level_count,
 
     for (i=0; i<level_count; i++) {
         element_size = sizeof(SkiplistNode) + sizeof(SkiplistNode *) * (i + 1);
-        if ((result=fast_mblock_init_ex(sl->mblocks + i, 
+        if ((result=fast_mblock_init_ex(sl->mblocks + i,
             element_size, alloc_elements_once, NULL, false)) != 0)
         {
             return result;
@@ -90,11 +90,11 @@ void skiplist_destroy(Skiplist *sl)
     sl->mblocks = NULL;
 }
 
-static inline int skiplist_get_previous_level_index(Skiplist *sl)
+static inline int skiplist_get_level_index(Skiplist *sl)
 {
     int i;
 
-    for (i=0; i<sl->level_count; i++) {
+    for (i=0; i<sl->top_level_index; i++) {
         if (rand() < RAND_MAX / 2) {
             break;
         }
@@ -111,7 +111,7 @@ int skiplist_insert(Skiplist *sl, void *data)
     SkiplistNode *previous;
     SkiplistNode *current;
 
-    level_index = skiplist_get_previous_level_index(sl);
+    level_index = skiplist_get_level_index(sl);
     node = (SkiplistNode *)fast_mblock_alloc_object(sl->mblocks + level_index);
     if (node == NULL) {
         return ENOMEM;
@@ -210,5 +210,4 @@ void *skiplist_find(Skiplist *sl, void *data)
     previous = skiplist_get_previous(sl, data, &level_index);
     return (previous != NULL) ? previous->links[level_index]->data : NULL;
 }
-
 
