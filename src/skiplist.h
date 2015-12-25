@@ -6,7 +6,7 @@
 * Please visit the FastDFS Home Page http://www.csource.org/ for more detail.
 **/
 
-//skiplist.h
+//skiplist.h, support stable sort  :)
 #ifndef _SKIPLIST_H
 #define _SKIPLIST_H
 
@@ -21,7 +21,7 @@ typedef int (*skiplist_compare_func)(const void *p1, const void *p2);
 typedef struct skiplist_node
 {
     void *data;
-//    struct skiplist_node *prev;   //for stable sort
+    struct skiplist_node *prev;   //for stable sort
     struct skiplist_node *links[0];
 } SkiplistNode;
 
@@ -32,9 +32,11 @@ typedef struct skiplist
     skiplist_compare_func compare_func;
     struct fast_mblock_man *mblocks;  //node allocators
     SkiplistNode *top;   //the top node
+    SkiplistNode *tail;  //the tail node for interator
 } Skiplist;
 
 typedef struct skiplist_iterator {
+    Skiplist *sl;
     SkiplistNode *current;
 } SkiplistIterator;
 
@@ -42,11 +44,14 @@ typedef struct skiplist_iterator {
 extern "C" {
 #endif
 
+#define SKIPLIST_DEFAULT_MIN_ALLOC_ELEMENTS_ONCE 128
+
 #define skiplist_init(sl, level_count, compare_func) \
-    skiplist_init_ex(sl, level_count, compare_func, 1024)
+    skiplist_init_ex(sl, level_count, compare_func,  \
+    SKIPLIST_DEFAULT_MIN_ALLOC_ELEMENTS_ONCE)
 
 int skiplist_init_ex(Skiplist *sl, const int level_count,
-        skiplist_compare_func compare_func, const int alloc_elements_once);
+        skiplist_compare_func compare_func, const int min_alloc_elements_once);
 
 void skiplist_destroy(Skiplist *sl);
 
@@ -56,19 +61,20 @@ void *skiplist_find(Skiplist *sl, void *data);
 
 static inline void skiplist_iterator(Skiplist *sl, SkiplistIterator *iterator)
 {
-    iterator->current = sl->top->links[0];
+    iterator->sl = sl;
+    iterator->current = sl->tail->prev;
 }
 
 static inline void *skiplist_next(SkiplistIterator *iterator)
 {
     void *data;
 
-    if (iterator->current == NULL) {
+    if (iterator->current == iterator->sl->top) {
         return NULL;
     }
 
     data = iterator->current->data;
-    iterator->current = iterator->current->links[0];
+    iterator->current = iterator->current->prev;
     return data;
 }
 

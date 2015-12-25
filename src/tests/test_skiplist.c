@@ -91,6 +91,72 @@ static void test_delete()
     assert(i==0);
 }
 
+typedef struct record
+{
+    int line;
+    int key;
+} Record;
+
+static int compare_record(const void *p1, const void *p2)
+{
+    return ((Record *)p1)->key - ((Record *)p2)->key;
+}
+
+static int test_stable_sort()
+{
+#define RECORDS 20 
+    int i;
+    int result;
+    int index1;
+    int index2;
+    Skiplist sl;
+    SkiplistIterator iterator;
+    Record records[RECORDS];
+    Record *record;
+    void *value;
+
+    result = skiplist_init_ex(&sl, 16, compare_record, 128);
+    if (result != 0) {
+        return result;
+    }
+
+    for (i=0; i<RECORDS; i++) {
+        records[i].line = i + 1;
+        records[i].key = i + 1;
+    }
+
+    for (i=0; i<RECORDS/4; i++) {
+        index1 = (RECORDS - 1) * (int64_t)rand() / (int64_t)RAND_MAX;
+        index2 = RECORDS - 1 - index1;
+        if (index1 != index2) {
+            records[index1].key = records[index2].key;
+        }
+    }
+
+    for (i=0; i<RECORDS; i++) {
+        if ((result=skiplist_insert(&sl, records + i)) != 0) {
+            return result;
+        }
+    }
+
+    for (i=0; i<RECORDS; i++) {
+        value = skiplist_find(&sl, records + i);
+        assert(value != NULL && ((Record *)value)->key == records[i].key);
+    }
+
+    i = 0;
+    skiplist_iterator(&sl, &iterator);
+    while ((value=skiplist_next(&iterator)) != NULL) {
+        i++;
+        record = (Record *)value;
+        printf("%d => #%d\n", record->key, record->line);
+    }
+    assert(i==RECORDS);
+
+    skiplist_destroy(&sl);
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
     int i;
@@ -117,6 +183,7 @@ int main(int argc, char *argv[])
         numbers[index2] = tmp;
     }
 
+    fast_mblock_manager_init();
     result = skiplist_init_ex(&sl, 12, compare_func, 128);
     if (result != 0) {
         return result;
@@ -124,6 +191,8 @@ int main(int argc, char *argv[])
 
     test_insert();
     printf("\n");
+
+    fast_mblock_manager_stat_print(false);
 
     test_delete();
     printf("\n");
@@ -134,6 +203,8 @@ int main(int argc, char *argv[])
     test_delete();
     printf("\n");
     skiplist_destroy(&sl);
+
+    test_stable_sort();
 
     printf("pass OK\n");
     return 0;
