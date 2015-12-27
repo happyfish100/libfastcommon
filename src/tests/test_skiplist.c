@@ -10,7 +10,9 @@
 #include "logger.h"
 #include "shared_func.h"
 
-#define COUNT 1000000
+#define COUNT 10000000
+#define LEVEL_COUNT 18
+#define MIN_ALLOC_ONCE  32
 #define LAST_INDEX (COUNT - 1)
 
 static int *numbers;
@@ -115,7 +117,7 @@ static int test_stable_sort()
     Record *record;
     void *value;
 
-    result = skiplist_init_ex(&sl, 16, compare_record, 128);
+    result = skiplist_init_ex(&sl, 12, compare_record, 128);
     if (result != 0) {
         return result;
     }
@@ -184,7 +186,7 @@ int main(int argc, char *argv[])
     }
 
     fast_mblock_manager_init();
-    result = skiplist_init_ex(&sl, 12, compare_func, 128);
+    result = skiplist_init_ex(&sl, LEVEL_COUNT, compare_func, MIN_ALLOC_ONCE);
     if (result != 0) {
         return result;
     }

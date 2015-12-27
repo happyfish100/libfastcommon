@@ -120,9 +120,9 @@ fi
 
 cd src
 cp Makefile.in Makefile
-sed -i "s/\\\$(CFLAGS)/$CFLAGS/g" Makefile
-sed -i "s/\\\$(LIBS)/$LIBS/g" Makefile
-sed -i "s/\\\$(LIB_VERSION)/$LIB_VERSION/g" Makefile
+sed -i "" "s/\\\$(CFLAGS)/$CFLAGS/g" Makefile
+sed -i "" "s/\\\$(LIBS)/$LIBS/g" Makefile
+sed -i "" "s/\\\$(LIB_VERSION)/$LIB_VERSION/g" Makefile
 make $1 $2 $3
 
 if [ "$1" = "clean" ]; then
