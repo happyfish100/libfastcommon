@@ -118,11 +118,22 @@ elif [ -f /usr/lib/libc_r.so ]; then
   fi
 fi
 
+function sed_replace()
+{
+    sed_cmd=$1
+    filename=$2
+    if [ "$uname" = "FreeBSD" ] || [ "$uname" = "Darwin" ]; then
+       sed -i "" "$sed_cmd" $filename
+    else
+       sed -i "$sed_cmd" $filename
+    fi
+}
+
 cd src
 cp Makefile.in Makefile
-sed -i "" "s/\\\$(CFLAGS)/$CFLAGS/g" Makefile
-sed -i "" "s/\\\$(LIBS)/$LIBS/g" Makefile
-sed -i "" "s/\\\$(LIB_VERSION)/$LIB_VERSION/g" Makefile
+sed_replace "s/\\\$(CFLAGS)/$CFLAGS/g" Makefile
+sed_replace "s/\\\$(LIBS)/$LIBS/g" Makefile
+sed_replace "s/\\\$(LIB_VERSION)/$LIB_VERSION/g" Makefile
 make $1 $2 $3
 
 if [ "$1" = "clean" ]; then
