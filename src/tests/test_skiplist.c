@@ -10,7 +10,7 @@
 #include "logger.h"
 #include "shared_func.h"
 
-#define COUNT 1000
+#define COUNT 100000
 #define LEVEL_COUNT 18
 #define MIN_ALLOC_ONCE  32
 #define LAST_INDEX (COUNT - 1)
@@ -106,15 +106,18 @@ static int compare_record(const void *p1, const void *p2)
 
 static int test_stable_sort()
 {
-#define RECORDS 20 
+#define RECORDS 32
     int i;
     int result;
     int index1;
     int index2;
+    int delete_count;
+    int total_delete_count;
     Skiplist sl;
     SkiplistIterator iterator;
     Record records[RECORDS];
     Record *record;
+    Record target;
     void *value;
 
     result = skiplist_init_ex(&sl, 12, compare_record, 128);
@@ -154,6 +157,38 @@ static int test_stable_sort()
         printf("%d => #%d\n", record->key, record->line);
     }
     assert(i==RECORDS);
+
+    target.key = 10;
+    target.line = 0;
+    if (skiplist_find_all(&sl, &target, &iterator) == 0) {
+        printf("found key: %d\n", target.key);
+    }
+    i = 0;
+    while ((value=skiplist_next(&iterator)) != NULL) {
+        i++;
+        record = (Record *)value;
+        printf("%d => #%d\n", record->key, record->line);
+    }
+    printf("found record count: %d\n", i);
+
+    total_delete_count = 0;
+    for (i=0; i<RECORDS; i++) {
+        if ((result=skiplist_delete_all(&sl, records + i,
+                        &delete_count)) == 0)
+        {
+            total_delete_count += delete_count;
+        }
+        assert((result == 0 && delete_count > 0) ||
+                (result != 0 && delete_count == 0));
+    }
+    assert(total_delete_count == RECORDS);
+
+    i = 0;
+    skiplist_iterator(&sl, &iterator);
+    while ((value=skiplist_next(&iterator)) != NULL) {
+        i++;
+    }
+    assert(i == 0);
 
     skiplist_destroy(&sl);
     return 0;

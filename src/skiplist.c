@@ -229,6 +229,16 @@ int skiplist_delete(Skiplist *sl, void *data)
     return 0;
 }
 
+int skiplist_delete_all(Skiplist *sl, void *data, int *delete_count)
+{
+    *delete_count = 0;
+    while (skiplist_delete(sl, data) == 0) {
+        (*delete_count)++;
+    }
+
+    return *delete_count > 0 ? 0 : ENOENT;
+}
+
 void *skiplist_find(Skiplist *sl, void *data)
 {
     int level_index;
@@ -236,5 +246,28 @@ void *skiplist_find(Skiplist *sl, void *data)
 
     previous = skiplist_get_previous(sl, data, &level_index);
     return (previous != NULL) ? previous->links[level_index]->data : NULL;
+}
+
+int skiplist_find_all(Skiplist *sl, void *data, SkiplistIterator *iterator)
+{
+    int level_index;
+    SkiplistNode *previous;
+    SkiplistNode *last;
+
+    previous = skiplist_get_previous(sl, data, &level_index);
+    if (previous == NULL) {
+        iterator->top = sl->top;
+        iterator->current = sl->top;
+        return ENOENT;
+    }
+
+    last = previous->links[0]->links[0];
+    while (last != sl->tail && sl->compare_func(data, last->data) == 0) {
+        last = last->links[0];
+    }
+
+    iterator->top = previous;
+    iterator->current = last->prev;
+    return 0;
 }
 

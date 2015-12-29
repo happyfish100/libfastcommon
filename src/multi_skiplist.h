@@ -43,7 +43,7 @@ typedef struct multi_skiplist
 } MultiSkiplist;
 
 typedef struct multi_skiplist_iterator {
-    MultiSkiplist *sl;
+    MultiSkiplistNode *tail;
     struct {
         MultiSkiplistNode *node;
         MultiSkiplistData *data;
@@ -61,18 +61,22 @@ extern "C" {
     SKIPLIST_DEFAULT_MIN_ALLOC_ELEMENTS_ONCE)
 
 int multi_skiplist_init_ex(MultiSkiplist *sl, const int level_count,
-        multi_skiplist_compare_func compare_func, const int min_alloc_elements_once);
+        multi_skiplist_compare_func compare_func,
+        const int min_alloc_elements_once);
 
 void multi_skiplist_destroy(MultiSkiplist *sl);
 
 int multi_skiplist_insert(MultiSkiplist *sl, void *data);
 int multi_skiplist_delete(MultiSkiplist *sl, void *data);
-int multi_skiplist_delete_all(MultiSkiplist *sl, void *data);
+int multi_skiplist_delete_all(MultiSkiplist *sl, void *data, int *delete_count);
 void *multi_skiplist_find(MultiSkiplist *sl, void *data);
+int multi_skiplist_find_all(MultiSkiplist *sl, void *data,
+        MultiSkiplistIterator *iterator);
 
-static inline void multi_skiplist_iterator(MultiSkiplist *sl, MultiSkiplistIterator *iterator)
+static inline void multi_skiplist_iterator(MultiSkiplist *sl,
+        MultiSkiplistIterator *iterator)
 {
-    iterator->sl = sl;
+    iterator->tail = sl->tail;
     iterator->current.node = sl->top;
     iterator->current.data = NULL;
 }
@@ -82,8 +86,8 @@ static inline void *multi_skiplist_next(MultiSkiplistIterator *iterator)
     void *data;
 
     if (iterator->current.data == NULL) {
-        if (iterator->current.node == iterator->sl->tail ||
-                iterator->current.node->links[0] == iterator->sl->tail)
+        if (iterator->current.node == iterator->tail ||
+                iterator->current.node->links[0] == iterator->tail)
         {
             return NULL;
         }

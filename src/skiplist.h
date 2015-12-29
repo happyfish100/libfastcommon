@@ -36,7 +36,7 @@ typedef struct skiplist
 } Skiplist;
 
 typedef struct skiplist_iterator {
-    Skiplist *sl;
+    SkiplistNode *top;
     SkiplistNode *current;
 } SkiplistIterator;
 
@@ -57,11 +57,13 @@ void skiplist_destroy(Skiplist *sl);
 
 int skiplist_insert(Skiplist *sl, void *data);
 int skiplist_delete(Skiplist *sl, void *data);
+int skiplist_delete_all(Skiplist *sl, void *data, int *delete_count);
 void *skiplist_find(Skiplist *sl, void *data);
+int skiplist_find_all(Skiplist *sl, void *data, SkiplistIterator *iterator);
 
 static inline void skiplist_iterator(Skiplist *sl, SkiplistIterator *iterator)
 {
-    iterator->sl = sl;
+    iterator->top = sl->top;
     iterator->current = sl->tail->prev;
 }
 
@@ -69,7 +71,7 @@ static inline void *skiplist_next(SkiplistIterator *iterator)
 {
     void *data;
 
-    if (iterator->current == iterator->sl->top) {
+    if (iterator->current == iterator->top) {
         return NULL;
     }
 

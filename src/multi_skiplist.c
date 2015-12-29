@@ -18,7 +18,8 @@
 #include "multi_skiplist.h"
 
 int multi_skiplist_init_ex(MultiSkiplist *sl, const int level_count,
-        multi_skiplist_compare_func compare_func, const int min_alloc_elements_once)
+        multi_skiplist_compare_func compare_func,
+        const int min_alloc_elements_once)
 {
     int bytes;
     int element_size;
@@ -223,7 +224,7 @@ int multi_skiplist_insert(MultiSkiplist *sl, void *data)
 }
 
 int multi_skiplist_do_delete(MultiSkiplist *sl, void *data,
-        const bool delete_all)
+        const bool delete_all, int *delete_count)
 {
     int i;
     int level_index;
@@ -232,6 +233,7 @@ int multi_skiplist_do_delete(MultiSkiplist *sl, void *data,
     MultiSkiplistData *dataNode;
     MultiSkiplistData *dataCurrent;
 
+    *delete_count = 0;
     previous = multi_skiplist_get_previous(sl, data, &level_index);
     if (previous == NULL) {
         return ENOENT;
@@ -243,6 +245,7 @@ int multi_skiplist_do_delete(MultiSkiplist *sl, void *data,
             dataNode = deleted->head;
             deleted->head = dataNode->next;
             fast_mblock_free_object(&sl->data_mblock, dataNode);
+            *delete_count = 1;
             return 0;
         }
     }
@@ -261,6 +264,8 @@ int multi_skiplist_do_delete(MultiSkiplist *sl, void *data,
     while (dataCurrent != NULL) {
         dataNode = dataCurrent;
         dataCurrent = dataCurrent->next;
+
+        (*delete_count)++;
         fast_mblock_free_object(&sl->data_mblock, dataNode);
     }
 
@@ -270,12 +275,13 @@ int multi_skiplist_do_delete(MultiSkiplist *sl, void *data,
 
 int multi_skiplist_delete(MultiSkiplist *sl, void *data)
 {
-    return multi_skiplist_do_delete(sl, data, false);
+    int delete_count;
+    return multi_skiplist_do_delete(sl, data, false, &delete_count);
 }
 
-int multi_skiplist_delete_all(MultiSkiplist *sl, void *data)
+int multi_skiplist_delete_all(MultiSkiplist *sl, void *data, int *delete_count)
 {
-    return multi_skiplist_do_delete(sl, data, true);
+    return multi_skiplist_do_delete(sl, data, true, delete_count);
 }
 
 void *multi_skiplist_find(MultiSkiplist *sl, void *data)
@@ -285,5 +291,25 @@ void *multi_skiplist_find(MultiSkiplist *sl, void *data)
 
     previous = multi_skiplist_get_previous(sl, data, &level_index);
     return (previous != NULL) ? previous->links[level_index]->head->data : NULL;
+}
+
+int multi_skiplist_find_all(MultiSkiplist *sl, void *data,
+        MultiSkiplistIterator *iterator)
+{
+    int level_index;
+    MultiSkiplistNode *previous;
+
+    iterator->current.data = NULL;
+    previous = multi_skiplist_get_previous(sl, data, &level_index);
+    if (previous == NULL) {
+        iterator->current.node = sl->tail;
+        iterator->tail = sl->tail;
+        return ENOENT;
+    }
+    else {
+        iterator->current.node = previous;
+        iterator->tail = previous->links[0]->links[0];
+        return 0;
+    }
 }
 
