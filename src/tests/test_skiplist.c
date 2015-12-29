@@ -10,14 +10,21 @@
 #include "logger.h"
 #include "shared_func.h"
 
-#define COUNT 100000
-#define LEVEL_COUNT 18
+#define COUNT 1000000
+#define LEVEL_COUNT 16
 #define MIN_ALLOC_ONCE  32
 #define LAST_INDEX (COUNT - 1)
 
 static int *numbers;
 static Skiplist sl;
 static SkiplistIterator iterator;
+
+static int instance_count = 0;
+
+static void free_test_func(void *ptr)
+{
+    instance_count--;
+}
 
 static int compare_func(const void *p1, const void *p2)
 {
@@ -32,12 +39,16 @@ static int test_insert()
     int64_t end_time;
     void *value;
 
+    instance_count = 0;
     start_time = get_current_time_ms();
     for (i=0; i<COUNT; i++) {
         if ((result=skiplist_insert(&sl, numbers + i)) != 0) {
             return result;
         }
+        instance_count++;
     }
+    assert(instance_count == COUNT);
+
     end_time = get_current_time_ms();
     printf("insert time used: %"PRId64" ms\n", end_time - start_time);
 
@@ -74,6 +85,8 @@ static void test_delete()
     for (i=0; i<COUNT; i++) {
         assert(skiplist_delete(&sl, numbers + i) == 0);
     }
+    assert(instance_count == 0);
+
     end_time = get_current_time_ms();
     printf("delete time used: %"PRId64" ms\n", end_time - start_time);
 
@@ -120,7 +133,9 @@ static int test_stable_sort()
     Record target;
     void *value;
 
-    result = skiplist_init_ex(&sl, 12, compare_record, 128);
+    instance_count = 0;
+    result = skiplist_init_ex(&sl, 12, compare_record,
+            free_test_func, 128);
     if (result != 0) {
         return result;
     }
@@ -142,7 +157,9 @@ static int test_stable_sort()
         if ((result=skiplist_insert(&sl, records + i)) != 0) {
             return result;
         }
+        instance_count++;
     }
+    assert(instance_count == RECORDS);
 
     for (i=0; i<RECORDS; i++) {
         value = skiplist_find(&sl, records + i);
@@ -182,6 +199,7 @@ static int test_stable_sort()
                 (result != 0 && delete_count == 0));
     }
     assert(total_delete_count == RECORDS);
+    assert(instance_count == 0);
 
     i = 0;
     skiplist_iterator(&sl, &iterator);
@@ -191,6 +209,8 @@ static int test_stable_sort()
     assert(i == 0);
 
     skiplist_destroy(&sl);
+    assert(instance_count == 0);
+
     return 0;
 }
 
@@ -221,7 +241,8 @@ int main(int argc, char *argv[])
     }
 
     fast_mblock_manager_init();
-    result = skiplist_init_ex(&sl, LEVEL_COUNT, compare_func, MIN_ALLOC_ONCE);
+    result = skiplist_init_ex(&sl, LEVEL_COUNT, compare_func,
+            free_test_func, MIN_ALLOC_ONCE);
     if (result != 0) {
         return result;
     }
@@ -233,14 +254,13 @@ int main(int argc, char *argv[])
 
     test_delete();
     printf("\n");
+    assert(instance_count == 0);
 
     test_insert();
     printf("\n");
 
-    test_delete();
-    printf("\n");
     skiplist_destroy(&sl);
-    fast_mblock_manager_stat_print(false);
+    assert(instance_count == 0);
 
     test_stable_sort();
 

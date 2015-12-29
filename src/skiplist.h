@@ -17,6 +17,7 @@
 #include "fast_mblock.h"
 
 typedef int (*skiplist_compare_func)(const void *p1, const void *p2);
+typedef void (*skiplist_free_func)(void *ptr);
 
 typedef struct skiplist_node
 {
@@ -30,6 +31,7 @@ typedef struct skiplist
     int level_count;
     int top_level_index;
     skiplist_compare_func compare_func;
+    skiplist_free_func free_func;
     struct fast_mblock_man *mblocks;  //node allocators
     SkiplistNode *top;   //the top node
     SkiplistNode *tail;  //the tail node for interator
@@ -46,12 +48,13 @@ extern "C" {
 
 #define SKIPLIST_DEFAULT_MIN_ALLOC_ELEMENTS_ONCE 128
 
-#define skiplist_init(sl, level_count, compare_func) \
-    skiplist_init_ex(sl, level_count, compare_func,  \
+#define skiplist_init(sl, level_count, compare_func, free_func) \
+    skiplist_init_ex(sl, level_count, compare_func, free_func,  \
     SKIPLIST_DEFAULT_MIN_ALLOC_ELEMENTS_ONCE)
 
 int skiplist_init_ex(Skiplist *sl, const int level_count,
-        skiplist_compare_func compare_func, const int min_alloc_elements_once);
+        skiplist_compare_func compare_func, skiplist_free_func free_func,
+        const int min_alloc_elements_once);
 
 void skiplist_destroy(Skiplist *sl);
 

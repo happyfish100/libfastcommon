@@ -17,6 +17,7 @@
 #include "fast_mblock.h"
 
 typedef int (*multi_skiplist_compare_func)(const void *p1, const void *p2);
+typedef void (*multi_skiplist_free_func)(void *ptr);
 
 typedef struct multi_skiplist_data
 {
@@ -36,6 +37,7 @@ typedef struct multi_skiplist
     int level_count;
     int top_level_index;
     multi_skiplist_compare_func compare_func;
+    multi_skiplist_free_func free_func;
     struct fast_mblock_man data_mblock; //data node allocators
     struct fast_mblock_man *mblocks;  //node allocators
     MultiSkiplistNode *top;   //the top node
@@ -56,12 +58,13 @@ extern "C" {
 
 #define SKIPLIST_DEFAULT_MIN_ALLOC_ELEMENTS_ONCE 128
 
-#define multi_skiplist_init(sl, level_count, compare_func) \
-    multi_skiplist_init_ex(sl, level_count, compare_func,  \
+#define multi_skiplist_init(sl, level_count, compare_func, free_func) \
+    multi_skiplist_init_ex(sl, level_count, compare_func, free_func,  \
     SKIPLIST_DEFAULT_MIN_ALLOC_ELEMENTS_ONCE)
 
 int multi_skiplist_init_ex(MultiSkiplist *sl, const int level_count,
         multi_skiplist_compare_func compare_func,
+        multi_skiplist_free_func free_func,
         const int min_alloc_elements_once);
 
 void multi_skiplist_destroy(MultiSkiplist *sl);

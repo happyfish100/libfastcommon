@@ -18,7 +18,8 @@
 #include "skiplist.h"
 
 int skiplist_init_ex(Skiplist *sl, const int level_count,
-        skiplist_compare_func compare_func, const int min_alloc_elements_once)
+        skiplist_compare_func compare_func, skiplist_free_func free_func,
+        const int min_alloc_elements_once)
 {
     int bytes;
     int element_size;
@@ -92,6 +93,7 @@ int skiplist_init_ex(Skiplist *sl, const int level_count,
 
     sl->level_count = level_count;
     sl->compare_func = compare_func;
+    sl->free_func = free_func;
 
     srand(time(NULL));
     return 0;
@@ -100,9 +102,20 @@ int skiplist_init_ex(Skiplist *sl, const int level_count,
 void skiplist_destroy(Skiplist *sl)
 {
     int i;
+    SkiplistNode *node;
+    SkiplistNode *deleted;
 
     if (sl->mblocks == NULL) {
         return;
+    }
+
+    if (sl->free_func != NULL) {
+        node = sl->top->links[0];
+        while (node != sl->tail) {
+            deleted = node;
+            node = node->links[0];
+            sl->free_func(deleted->data);
+        }
     }
 
     for (i=0; i<sl->level_count; i++) {
@@ -225,6 +238,9 @@ int skiplist_delete(Skiplist *sl, void *data)
 
     deleted->links[0]->prev = previous;
 
+    if (sl->free_func != NULL) {
+        sl->free_func(deleted->data);
+    }
     fast_mblock_free_object(sl->mblocks + level_index, deleted);
     return 0;
 }
