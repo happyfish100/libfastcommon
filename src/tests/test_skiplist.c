@@ -10,7 +10,7 @@
 #include "logger.h"
 #include "shared_func.h"
 
-#define COUNT 10000000
+#define COUNT 1000
 #define LEVEL_COUNT 18
 #define MIN_ALLOC_ONCE  32
 #define LAST_INDEX (COUNT - 1)
@@ -205,6 +205,7 @@ int main(int argc, char *argv[])
     test_delete();
     printf("\n");
     skiplist_destroy(&sl);
+    fast_mblock_manager_stat_print(false);
 
     test_stable_sort();
 

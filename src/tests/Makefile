@@ -1,10 +1,10 @@
 .SUFFIXES: .c .o
 
-COMPILE = $(CC) -O2 -Wall -D_FILE_OFFSET_BITS=64 -g -DDEBUG_FLAG
+COMPILE = $(CC) -g -O1 -Wall -D_FILE_OFFSET_BITS=64 -g -DDEBUG_FLAG
 INC_PATH = -I/usr/include/fastcommon
 LIB_PATH = -lfastcommon
 
-ALL_PRGS = test_allocator test_skiplist
+ALL_PRGS = test_allocator test_skiplist test_multi_skiplist
 
 all: $(ALL_PRGS)
 .c:

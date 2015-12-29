@@ -150,7 +150,6 @@ DONE:
     return found;
 }
 
-
 static inline int multi_skiplist_get_level_index(MultiSkiplist *sl)
 {
     int i;
@@ -239,18 +238,10 @@ int multi_skiplist_do_delete(MultiSkiplist *sl, void *data,
     }
 
     deleted = previous->links[level_index];
-    if (delete_all) {
-        dataCurrent = deleted->head;
-        while (dataCurrent != NULL) {
-            dataNode = dataCurrent;
-            dataCurrent = dataCurrent->next;
-            fast_mblock_free_object(&sl->data_mblock, dataNode);
-        }
-    }
-    else {
-        dataNode = deleted->head;
-        deleted->head = dataNode->next;
-        if (deleted->head != NULL) {
+    if (!delete_all) {
+        if (deleted->head->next != NULL) {
+            dataNode = deleted->head;
+            deleted->head = dataNode->next;
             fast_mblock_free_object(&sl->data_mblock, dataNode);
             return 0;
         }
@@ -264,6 +255,13 @@ int multi_skiplist_do_delete(MultiSkiplist *sl, void *data,
         }
 
         previous->links[i] = previous->links[i]->links[i];
+    }
+
+    dataCurrent = deleted->head;
+    while (dataCurrent != NULL) {
+        dataNode = dataCurrent;
+        dataCurrent = dataCurrent->next;
+        fast_mblock_free_object(&sl->data_mblock, dataNode);
     }
 
     fast_mblock_free_object(sl->mblocks + level_index, deleted);

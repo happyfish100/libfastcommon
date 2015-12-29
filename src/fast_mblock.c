@@ -13,6 +13,7 @@
 struct _fast_mblock_manager
 {
     bool initialized;
+    int count;
     struct fast_mblock_man head;
 	pthread_mutex_t lock;
 };
@@ -20,7 +21,7 @@ struct _fast_mblock_manager
 #define INIT_HEAD(head) (head)->next = (head)->prev = head
 #define IS_EMPTY(head) ((head)->next == head)
 
-static struct _fast_mblock_manager mblock_manager = {false};
+static struct _fast_mblock_manager mblock_manager = {false, 0};
 
 int fast_mblock_manager_init()
 {
@@ -78,13 +79,14 @@ static void add_to_mblock_list(struct fast_mblock_man *mblock)
     mblock->prev = current->prev;
     current->prev->next = mblock;
     current->prev = mblock;
+    mblock_manager.count++;
 
     pthread_mutex_unlock(&(mblock_manager.lock));
 }
 
 static void delete_from_mblock_list(struct fast_mblock_man *mblock)
 {
-    if (!mblock_manager.initialized)
+    if (!mblock_manager.initialized || IS_EMPTY(mblock))
     {
         return;
     }
@@ -92,6 +94,7 @@ static void delete_from_mblock_list(struct fast_mblock_man *mblock)
     pthread_mutex_lock(&(mblock_manager.lock));
     mblock->prev->next = mblock->next;
     mblock->next->prev = mblock->prev;
+    mblock_manager.count--;
     pthread_mutex_unlock(&(mblock_manager.lock));
 
     INIT_HEAD(mblock);
@@ -499,6 +502,7 @@ void fast_mblock_destroy(struct fast_mblock_man *mblock)
 
 	if (IS_EMPTY(&mblock->trunks.head))
 	{
+        delete_from_mblock_list(mblock);
 		return;
 	}
 

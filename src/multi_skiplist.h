@@ -73,13 +73,8 @@ void *multi_skiplist_find(MultiSkiplist *sl, void *data);
 static inline void multi_skiplist_iterator(MultiSkiplist *sl, MultiSkiplistIterator *iterator)
 {
     iterator->sl = sl;
-    iterator->current.node = sl->top->links[0];
-    if (iterator->current.node != iterator->sl->tail) {
-        iterator->current.data = iterator->current.node->head;
-    }
-    else {
-        iterator->current.data = NULL;
-    }
+    iterator->current.node = sl->top;
+    iterator->current.data = NULL;
 }
 
 static inline void *multi_skiplist_next(MultiSkiplistIterator *iterator)
@@ -87,7 +82,9 @@ static inline void *multi_skiplist_next(MultiSkiplistIterator *iterator)
     void *data;
 
     if (iterator->current.data == NULL) {
-        if (iterator->current.node == iterator->sl->tail) {
+        if (iterator->current.node == iterator->sl->tail ||
+                iterator->current.node->links[0] == iterator->sl->tail)
+        {
             return NULL;
         }
 
