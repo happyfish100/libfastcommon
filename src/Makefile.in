@@ -10,7 +10,7 @@ FAST_SHARED_OBJS = hash.lo chain.lo shared_func.lo ini_file_reader.lo \
                    avl_tree.lo ioevent.lo ioevent_loop.lo fast_task_queue.lo \
                    fast_timer.lo process_ctrl.lo fast_mblock.lo \
                    connection_pool.lo fast_mpool.lo fast_allocator.lo  \
-                   fast_buffer.lo skiplist.lo multi_skiplist.lo
+                   fast_buffer.lo multi_skiplist.lo flat_skiplist.lo
 
 FAST_STATIC_OBJS = hash.o chain.o shared_func.o ini_file_reader.o \
                    logger.o sockopt.o base64.o sched_thread.o \
@@ -18,7 +18,7 @@ FAST_STATIC_OBJS = hash.o chain.o shared_func.o ini_file_reader.o \
                    avl_tree.o ioevent.o ioevent_loop.o fast_task_queue.o \
                    fast_timer.o process_ctrl.o fast_mblock.o \
                    connection_pool.o fast_mpool.o fast_allocator.o \
-                   fast_buffer.o skiplist.o multi_skiplist.o
+                   fast_buffer.o multi_skiplist.o flat_skiplist.o
 
 HEADER_FILES = common_define.h hash.h chain.h logger.h base64.h \
                shared_func.h pthread_func.h ini_file_reader.h _os_define.h \
@@ -26,7 +26,8 @@ HEADER_FILES = common_define.h hash.h chain.h logger.h base64.h \
                avl_tree.h ioevent.h ioevent_loop.h fast_task_queue.h \
                fast_timer.h process_ctrl.h fast_mblock.h \
                connection_pool.h fast_mpool.h fast_allocator.h \
-               fast_buffer.h skiplist.h multi_skiplist.h
+               fast_buffer.h skiplist.h multi_skiplist.h flat_skiplist.h \
+			   skiplist_common.h
 
 ALL_OBJS = $(FAST_STATIC_OBJS) $(FAST_SHARED_OBJS)
 

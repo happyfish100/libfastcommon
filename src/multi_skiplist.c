@@ -18,8 +18,8 @@
 #include "multi_skiplist.h"
 
 int multi_skiplist_init_ex(MultiSkiplist *sl, const int level_count,
-        multi_skiplist_compare_func compare_func,
-        multi_skiplist_free_func free_func,
+        skiplist_compare_func compare_func,
+        skiplist_free_func free_func,
         const int min_alloc_elements_once)
 {
     int bytes;

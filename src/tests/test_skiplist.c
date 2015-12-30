@@ -18,6 +18,7 @@
 static int *numbers;
 static Skiplist sl;
 static SkiplistIterator iterator;
+static int skiplist_type = SKIPLIST_TYPE_FLAT;
 
 static int instance_count = 0;
 
@@ -135,7 +136,7 @@ static int test_stable_sort()
 
     instance_count = 0;
     result = skiplist_init_ex(&sl, 12, compare_record,
-            free_test_func, 128);
+            free_test_func, 128, skiplist_type);
     if (result != 0) {
         return result;
     }
@@ -222,7 +223,17 @@ int main(int argc, char *argv[])
     int index2;
     int result;
 
+
     log_init();
+
+    if (argc > 1) {
+        if (strcasecmp(argv[1], "multi") == 0 || strcmp(argv[1], "1") == 0) {
+            skiplist_type = SKIPLIST_TYPE_MULTI;
+        }
+    }
+    printf("skiplist type: %s\n",
+            skiplist_type == SKIPLIST_TYPE_FLAT ? "flat" : "multi");
+
     numbers = (int *)malloc(sizeof(int) * COUNT);
     srand(time(NULL));
     for (i=0; i<COUNT; i++) {
@@ -242,7 +253,7 @@ int main(int argc, char *argv[])
 
     fast_mblock_manager_init();
     result = skiplist_init_ex(&sl, LEVEL_COUNT, compare_func,
-            free_test_func, MIN_ALLOC_ONCE);
+            free_test_func, MIN_ALLOC_ONCE, skiplist_type);
     if (result != 0) {
         return result;
     }
