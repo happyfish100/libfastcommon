@@ -68,8 +68,6 @@ static int fast_buffer_check(FastBuffer *buffer, const int inc_len)
         memcpy(buff, buffer->data, buffer->length);
     }
 
-printf("alloc size: %d\n", alloc_size);
-
     free(buffer->data);
     buffer->data = buff;
     buffer->alloc_size = alloc_size;
@@ -97,14 +95,13 @@ int fast_buffer_append(FastBuffer *buffer, const char *format, ...)
     }
     else  //maybe full, realloc and try again
     {
-        printf("len: %d, alloc size: %d, remain: %d\n", len, buffer->alloc_size, buffer->alloc_size - buffer->length);
         if ((result=fast_buffer_check(buffer, len)) == 0)
-	{
+        {
             va_start(ap, format);
-	    buffer->length += vsnprintf(buffer->data + buffer->length,
-                   buffer->alloc_size - buffer->length, format, ap);
-	    va_end(ap);
-	}
+            buffer->length += vsnprintf(buffer->data + buffer->length,
+                    buffer->alloc_size - buffer->length, format, ap);
+            va_end(ap);
+        }
     }
     return 0;
 }
