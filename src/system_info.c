@@ -19,12 +19,12 @@
 #include <netinet/in.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <sys/vfs.h>
 #include "logger.h"
 #include "system_info.h"
 
 #ifdef OS_LINUX
 #include <sys/sysinfo.h>
+#include <sys/vfs.h>
 #include <mntent.h>
 #else
 #ifdef OS_FREEBSD

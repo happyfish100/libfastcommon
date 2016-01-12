@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
     get_mounted_filesystems(stats, sizeof(stats) / sizeof(stats[0]), &count);
     printf("mounted fs count: %d\n", count);
     for (i=0; i<count; i++) {
-        printf("%s %s %s %ld %ld %ld %ld %ld %ld %ld\n",
+        printf("%s => %s %s %ld %ld %ld %ld %ld %ld %ld\n",
                 stats[i].f_mntfromname, stats[i].f_mntonname, stats[i].f_fstypename,
                 stats[i].f_type, stats[i].f_bsize, stats[i].f_blocks,
                 stats[i].f_bfree, stats[i].f_bavail, stats[i].f_files,
