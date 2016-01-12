@@ -41,6 +41,7 @@
 #include <sys/sendfile.h>
 #else
 #ifdef OS_FREEBSD
+#include <sys/sysctl.h>
 #include <sys/uio.h>
 #include <net/if_dl.h>
 #include <netinet/if_ether.h>
@@ -1805,6 +1806,29 @@ int gethostaddrs(char **if_alias_prefixes, const int prefix_count, \
 
 #if defined(OS_LINUX) || defined(OS_FREEBSD)
 
+static inline void formatifmac(char *buff, const int buff_size, unsigned char *hwaddr)
+{
+    int i;
+    for (i=0; i<6; i++)
+    {
+        if (hwaddr[i] != 0)
+        {
+            break;
+        }
+    }
+
+    if (i == 6)
+    {
+        *buff = '\0';
+        return;
+    }
+
+    snprintf(buff, buff_size,
+            "%02X:%02X:%02X:%02X:%02X:%02X",
+            *hwaddr, *(hwaddr+1), *(hwaddr+2),
+            *(hwaddr+3), *(hwaddr+4), *(hwaddr+5));
+}
+
 #if defined(OS_LINUX)
 static int getifmac(FastIFConfig *config)
 {
@@ -1833,14 +1857,7 @@ static int getifmac(FastIFConfig *config)
     }
 
     close(sockfd);
-    snprintf(config->mac, sizeof(config->mac),
-            "%02X:%02X:%02X:%02X:%02X:%02X",
-            req->ifr_hwaddr.sa_data[0] & 0xff,
-            req->ifr_hwaddr.sa_data[1] & 0xff,
-            req->ifr_hwaddr.sa_data[2] & 0xff,
-            req->ifr_hwaddr.sa_data[3] & 0xff,
-            req->ifr_hwaddr.sa_data[4] & 0xff,
-            req->ifr_hwaddr.sa_data[5] & 0xff);
+    formatifmac(config->mac, sizeof(config->mac), req->ifr_hwaddr.sa_data);
     return 0;
 }
 #else  //FreeBSD
@@ -1881,9 +1898,7 @@ static int getifmac(FastIFConfig *config)
     ifm = (struct if_msghdr *)buf;
     sdl = (struct sockaddr_dl *)(ifm + 1);
     ptr = (unsigned char *)LLADDR(sdl);
-    snprintf(config->mac, sizeof(config->mac),
-            "%02X:%02X:%02X:%02X:%02X:%02X",
-            *ptr, *(ptr+1), *(ptr+2), *(ptr+3), *(ptr+4), *(ptr+5));
+    formatifmac(config->mac, sizeof(config->mac), ptr);
     return 0;
 }
 #endif
