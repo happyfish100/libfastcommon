@@ -160,10 +160,8 @@ static void region_destroy(struct fast_allocator_context *acontext,
 	struct fast_region_info *region)
 {
 	int element_size;
-	int allocator_count;
 	struct fast_allocator_info *allocator;
 
-	allocator_count = (region->end - region->start) / region->step;
 	allocator = region->allocators;
 	for (element_size=region->start+region->step; element_size<=region->end;
 		element_size+=region->step,allocator++)
