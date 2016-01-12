@@ -1857,7 +1857,8 @@ static int getifmac(FastIFConfig *config)
     }
 
     close(sockfd);
-    formatifmac(config->mac, sizeof(config->mac), req->ifr_hwaddr.sa_data);
+    formatifmac(config->mac, sizeof(config->mac),
+            (unsigned char *)req->ifr_hwaddr.sa_data);
     return 0;
 }
 #else  //FreeBSD
