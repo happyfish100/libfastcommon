@@ -19,14 +19,17 @@
 #include <netinet/in.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <sys/vfs.h>
 #include "logger.h"
 #include "system_info.h"
 
 #ifdef OS_LINUX
 #include <sys/sysinfo.h>
+#include <mntent.h>
 #else
 #ifdef OS_FREEBSD
 #include <sys/sysctl.h>
+#include <sys/ucred.h>
 #endif
 #endif
 
@@ -82,9 +85,9 @@ int get_uptime(time_t *uptime)
     struct sysinfo si;
     if (sysinfo(&si) != 0)
     {
-		logError("file: "__FILE__", line: %d, " \
-			 "call sysinfo fail, " \
-			 "errno: %d, error info: %s", \
+		logError("file: "__FILE__", line: %d, "
+			 "call sysinfo fail, "
+			 "errno: %d, error info: %s",
 			 __LINE__, errno, STRERROR(errno));
 		return errno != 0 ? errno : EPERM;
     }
@@ -108,12 +111,127 @@ int get_uptime(time_t *uptime)
     else
     {
         *uptime = 0;
-		logError("file: "__FILE__", line: %d, " \
-			 "call sysctl  fail, " \
-			 "errno: %d, error info: %s", \
+		logError("file: "__FILE__", line: %d, "
+			 "call sysctl  fail, "
+			 "errno: %d, error info: %s",
 			 __LINE__, errno, STRERROR(errno));
 		return errno != 0 ? errno : EPERM;
     }
+#else
+#error port me!
+#endif
+#endif
+}
+
+#define SET_STATFS_FIELDS(left, right) \
+    do { \
+        left.f_type = right.f_type;     \
+        left.f_bsize = right.f_bsize;   \
+        left.f_blocks = right.f_blocks; \
+        left.f_bfree = right.f_bfree;   \
+        left.f_bavail = right.f_bavail; \
+        left.f_files = right.f_files;   \
+        left.f_ffree = right.f_ffree;   \
+        left.f_fsid = right.f_fsid;     \
+    } while (0)
+
+#define SET_MNT_FIELDS(left, fstypename, mntfromname, mntonname) \
+    do { \
+        snprintf(left.f_fstypename, sizeof(left.f_fstypename), "%s", fstypename); \
+        snprintf(left.f_mntfromname, sizeof(left.f_mntfromname), "%s", mntfromname); \
+        snprintf(left.f_mntonname, sizeof(left.f_mntonname), "%s", mntonname); \
+    } while (0)
+
+int get_mounted_filesystems(struct fast_statfs *stats, const int size, int *count)
+{
+#ifdef OS_LINUX
+    const char *filename = "/proc/mounts";
+    FILE *fp;
+    struct mntent *mnt;
+    struct statfs buf;
+    int result;
+    int i;
+
+    *count = 0;
+    fp = setmntent(filename, "r");
+    if (fp == NULL)
+    {
+        result = errno != 0 ? errno : ENOENT;
+		logError("file: "__FILE__", line: %d, "
+			 "call setmntent fail, "
+			 "errno: %d, error info: %s",
+			 __LINE__, errno, STRERROR(errno));
+		return result;
+    }
+
+    memset(stats, 0, sizeof(struct fast_statfs) * size);
+    result = 0;
+    while ((mnt=getmntent(fp)) != NULL)
+    {
+        if (*count >= size)
+        {
+            result = ENOSPC;
+            break;
+        }
+
+        SET_MNT_FIELDS(stats[*count], mnt->mnt_type,
+                mnt->mnt_fsname, mnt->mnt_dir);
+
+        (*count)++;
+    }
+    endmntent(fp);
+
+    for (i=0; i<*count; i++)
+    {
+        if (statfs(stats[i].f_mntonname, &buf) == 0)
+        {
+            SET_STATFS_FIELDS(stats[i], buf);
+        }
+        else
+        {
+            logWarning("file: "__FILE__", line: %d, "
+                    "call statfs fail, "
+                    "errno: %d, error info: %s",
+                    __LINE__, errno, STRERROR(errno));
+        }
+    }
+
+    return result;
+#else
+#ifdef OS_FREEBSD
+    struct statfs *mnts;
+    int result;
+    int i;
+
+    mnts = NULL;
+    *count = getmntinfo(&mnts, 0);
+    if (*count == 0)
+    {
+        result = errno != 0 ? errno : EPERM;
+		logError("file: "__FILE__", line: %d, "
+			 "call getmntinfo fail, "
+			 "errno: %d, error info: %s",
+			 __LINE__, errno, STRERROR(errno));
+		return result;
+    }
+
+    if (*count <= size)
+    {
+        result = 0;
+    }
+    else
+    {
+        *count = size;
+        result = ENOSPC;
+    }
+
+    for (i=0; i<*count; i++)
+    {
+        SET_STATFS_FIELDS(stats[i], mnts[i]);
+        SET_MNT_FIELDS(stats[i], mnts[i].f_fstypename,
+                mnts[i].f_mntfromname, mnts[i].f_mntonname);
+    }
+    return result;
 #else
 #error port me!
 #endif

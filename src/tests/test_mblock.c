@@ -11,6 +11,7 @@
 #include "ini_file_reader.h"
 #include "fast_mblock.h"
 #include "sockopt.h"
+#include "system_info.h"
 
 struct my_struct {
     struct fast_mblock_man *mblock;
@@ -47,6 +48,7 @@ int main(int argc, char *argv[])
     ScheduleEntry scheduleEntries[1];
     volatile bool continue_flag = true;
     FastIFConfig if_configs[32];
+    struct fast_statfs stats[32];
 
     if (argc > 1) {
         filename  = argv[1];
@@ -65,11 +67,22 @@ int main(int argc, char *argv[])
         return result;
     }
 
-    getifconfigs(if_configs, 32, &count);
+    getifconfigs(if_configs, sizeof(if_configs) / sizeof(if_configs[0]), &count);
+    printf("ifconfig count: %d\n", count);
     for (i=0; i<count; i++) {
         printf("%s ipv4: %s, ipv6: %s, mac: %s\n",
                 if_configs[i].name, if_configs[i].ipv4,
                 if_configs[i].ipv6, if_configs[i].mac); 
+    }
+
+    get_mounted_filesystems(stats, sizeof(stats) / sizeof(stats[0]), &count);
+    printf("mounted fs count: %d\n", count);
+    for (i=0; i<count; i++) {
+        printf("%s %s %s %ld %ld %ld %ld %ld %ld %ld\n",
+                stats[i].f_mntfromname, stats[i].f_mntonname, stats[i].f_fstypename,
+                stats[i].f_type, stats[i].f_bsize, stats[i].f_blocks,
+                stats[i].f_bfree, stats[i].f_bavail, stats[i].f_files,
+                stats[i].f_ffree);
     }
 
     //iniPrintItems(&iniContext);

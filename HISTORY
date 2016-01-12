@@ -5,6 +5,7 @@ Version 1.24  2016-01-12
   * make.sh: use sed to replace perl
   * support get local mac addresses
   * add system_info.h and system_info.c
+  * add function get_mounted_filesystems
 
 Version 1.23  2015-11-16
   * sched_thread.c: task can execute in a new thread
