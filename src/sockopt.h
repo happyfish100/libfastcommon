@@ -11,9 +11,17 @@
 #ifndef _SOCKETOPT_H_
 #define _SOCKETOPT_H_
 
+#include <net/if.h>
 #include "common_define.h"
 
 #define FAST_WRITE_BUFF_SIZE  256 * 1024
+
+typedef struct fast_if_config {
+    char name[IF_NAMESIZE];
+    char mac[32];
+    char ipv4[IP_ADDRESS_SIZE];
+    char ipv6[48];
+} FastIFConfig;
 
 #ifdef __cplusplus
 extern "C" {
@@ -317,16 +325,6 @@ int tcpdiscard(int sock, const int bytes, const int timeout, \
 int getlocaladdrs(char ip_addrs[][IP_ADDRESS_SIZE], \
 	const int max_count, int *count);
 
-/** get local host ip addresses
- *  parameters:
- *          ip_addrs: store the ip addresses
- *          max_count: max ip address (max ip_addrs elements)
- *          count: store the ip address count
- *  return: error no, 0 success, != 0 fail
-*/
-int getlocaladdrs1(char ip_addrs[][IP_ADDRESS_SIZE], \
-	const int max_count, int *count);
-
 /** get local host ip addresses by if alias prefix
  *  parameters:
  *          if_alias_prefixes: if alias prefixes, such as eth, bond etc.
@@ -338,6 +336,15 @@ int getlocaladdrs1(char ip_addrs[][IP_ADDRESS_SIZE], \
 */
 int gethostaddrs(char **if_alias_prefixes, const int prefix_count, \
 	char ip_addrs[][IP_ADDRESS_SIZE], const int max_count, int *count);
+
+/** get local if configs
+ *  parameters:
+ *          if_configs: store the if configs
+ *          max_count: max ip address (max ip_addrs elements)
+ *          count: store the ip address count
+ *  return: error no, 0 success, != 0 fail
+*/
+int getifconfigs(FastIFConfig *if_configs, const int max_count, int *count);
 
 #ifdef __cplusplus
 }

@@ -250,7 +250,7 @@ int fast_mblock_manager_stat_print(const bool hide_empty)
                 }
             }
 
-            logInfo("%20s %12d %8d %12d %10d %10d %14d %12d %11.2f%%", pStat->name,
+            logInfo("%20s %12d %8d %12"PRId64" %10d %10d %14d %12d %11.2f%%", pStat->name,
                     pStat->element_size, pStat->instance_count, amem,
                     pStat->trunk_total_count, pStat->trunk_used_count,
                     pStat->element_total_count, pStat->element_used_count,

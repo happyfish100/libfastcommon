@@ -22,7 +22,6 @@
 #include <netdb.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
-#include <net/if.h>
 
 #if defined(OS_LINUX) || defined(OS_FREEBSD)
 #include <ifaddrs.h>
@@ -43,6 +42,9 @@
 #else
 #ifdef OS_FREEBSD
 #include <sys/uio.h>
+#include <net/if_dl.h>
+#include <netinet/if_ether.h>
+#include <net/route.h>
 #endif
 #endif
 
@@ -1800,4 +1802,187 @@ int gethostaddrs(char **if_alias_prefixes, const int prefix_count, \
 
 	return 0;
 }
+
+#if defined(OS_LINUX) || defined(OS_FREEBSD)
+
+#if defined(OS_LINUX)
+static int getifmac(FastIFConfig *config)
+{
+    int sockfd;
+    struct ifreq req[1];
+
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "unable to create socket, "
+                "errno: %d, error info: %s",
+                __LINE__, errno, STRERROR(errno));
+        return errno != 0 ? errno : EPERM;
+    }
+
+    memset(req, 0, sizeof(struct ifreq));
+    strcpy(req->ifr_name, config->name);
+    if (ioctl(sockfd, SIOCGIFHWADDR, req) < 0)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "ioctl error, errno: %d, error info: %s",
+                __LINE__, errno, STRERROR(errno));
+        close(sockfd);
+        return errno != 0 ? errno : EPERM;
+    }
+
+    close(sockfd);
+    snprintf(config->mac, sizeof(config->mac),
+            "%02X:%02X:%02X:%02X:%02X:%02X",
+            req->ifr_hwaddr.sa_data[0] & 0xff,
+            req->ifr_hwaddr.sa_data[1] & 0xff,
+            req->ifr_hwaddr.sa_data[2] & 0xff,
+            req->ifr_hwaddr.sa_data[3] & 0xff,
+            req->ifr_hwaddr.sa_data[4] & 0xff,
+            req->ifr_hwaddr.sa_data[5] & 0xff);
+    return 0;
+}
+#else  //FreeBSD
+static int getifmac(FastIFConfig *config)
+{
+    int                 mib[6];
+    size_t              len;
+    char                buf[256];
+    unsigned char       *ptr;
+    struct if_msghdr    *ifm;
+    struct sockaddr_dl  *sdl;
+
+    mib[0] = CTL_NET;
+    mib[1] = AF_ROUTE;
+    mib[2] = 0;
+    mib[3] = AF_LINK;
+    mib[4] = NET_RT_IFLIST;
+
+    if ((mib[5] = if_nametoindex(config->name)) == 0)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "call if_nametoindex fail, "
+                "errno: %d, error info: %s",
+                __LINE__, errno, STRERROR(errno));
+        return errno != 0 ? errno : EPERM;
+    }
+
+    len = sizeof(buf);
+    if (sysctl(mib, 6, buf, &len, NULL, 0) < 0)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "call sysctl fail, "
+                "errno: %d, error info: %s",
+                __LINE__, errno, STRERROR(errno));
+        return errno != 0 ? errno : EPERM;
+    }
+
+    ifm = (struct if_msghdr *)buf;
+    sdl = (struct sockaddr_dl *)(ifm + 1);
+    ptr = (unsigned char *)LLADDR(sdl);
+    snprintf(config->mac, sizeof(config->mac),
+            "%02X:%02X:%02X:%02X:%02X:%02X",
+            *ptr, *(ptr+1), *(ptr+2), *(ptr+3), *(ptr+4), *(ptr+5));
+    return 0;
+}
+#endif
+
+int getifconfigs(FastIFConfig *if_configs, const int max_count, int *count)
+{
+	struct ifaddrs *ifc;
+	struct ifaddrs *ifc1;
+    FastIFConfig *config;
+    char *buff;
+    int buff_size;
+    int i;
+
+	*count = 0;
+    memset(if_configs, 0, sizeof(FastIFConfig) * max_count);
+	if (0 != getifaddrs(&ifc))
+	{
+		logError("file: "__FILE__", line: %d, " \
+			"call getifaddrs fail, " \
+			"errno: %d, error info: %s", \
+			__LINE__, errno, STRERROR(errno));
+		return errno != 0 ? errno : EMFILE;
+	}
+
+	ifc1 = ifc;
+	while (NULL != ifc)
+	{
+		struct sockaddr *s;
+		s = ifc->ifa_addr;
+		if (NULL != s)
+        {
+            if (AF_INET == s->sa_family || AF_INET6 == s->sa_family)
+            {
+                for (i=0; i<*count; i++)
+                {
+                    if (strcmp(if_configs[i].name, ifc->ifa_name) == 0)
+                    {
+                        break;
+                    }
+                }
+
+                config = if_configs + i;
+                if (i == *count)  //not found
+                {
+                    if (max_count <= *count)
+                    {
+                        logError("file: "__FILE__", line: %d, "\
+                                "max_count: %d < iterface count: %d", \
+                                __LINE__, max_count, *count);
+                        freeifaddrs(ifc1);
+                        return ENOSPC;
+                    }
+
+                    sprintf(config->name, "%s", ifc->ifa_name);
+                    (*count)++;
+                }
+
+                if (AF_INET == s->sa_family)
+                {
+                    buff = config->ipv4;
+                    buff_size = sizeof(config->ipv4);
+                }
+                else
+                {
+                    buff = config->ipv6;
+                    buff_size = sizeof(config->ipv6);
+                }
+
+                if (inet_ntop(s->sa_family, &((struct sockaddr_in *)s)->
+                            sin_addr, buff, buff_size) == NULL)
+                {
+                    logWarning("file: "__FILE__", line: %d, " \
+                            "call inet_ntop fail, " \
+                            "errno: %d, error info: %s", \
+                            __LINE__, errno, STRERROR(errno));
+                }
+            }
+        }
+
+		ifc = ifc->ifa_next;
+	}
+
+	freeifaddrs(ifc1);
+
+    printf ("count: %d\n", *count);
+    for (i=0; i<*count; i++)
+    {
+        getifmac(if_configs + i);
+    }
+
+    return 0;
+}
+
+#else
+
+int getifconfigs(FastIFConfig *if_configs, const int max_count, int *count)
+{
+    *count = 0;
+    return EOPNOTSUPP;
+}
+#endif
 
