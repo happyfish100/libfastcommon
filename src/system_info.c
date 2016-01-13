@@ -47,8 +47,7 @@ int get_sys_total_mem_size(int64_t *mem_size)
     }
     *mem_size = si.totalram;
     return 0;
-#else
-#ifdef OS_FREEBSD
+#elif defined(OS_FREEBSD)
    int mib[2];
    size_t len;
 
@@ -65,8 +64,10 @@ int get_sys_total_mem_size(int64_t *mem_size)
    }
    return 0;
 #else
-#error port me!
-#endif
+   *mem_size = 0;
+   logError("file: "__FILE__", line: %d, "
+           "please port me!", __LINE__);
+   return EOPNOTSUPP;
 #endif
 }
 
@@ -75,7 +76,9 @@ int get_sys_cpu_count()
 #if defined(OS_LINUX) || defined(OS_FREEBSD)
     return sysconf(_SC_NPROCESSORS_ONLN);
 #else
-#error port me!
+    logError("file: "__FILE__", line: %d, "
+            "please port me!", __LINE__);
+    return 0;
 #endif
 }
 
@@ -93,8 +96,7 @@ int get_uptime(time_t *uptime)
     }
     *uptime = si.uptime;
     return 0;
-#else
-#ifdef OS_FREEBSD
+#elif defined(OS_FREEBSD)
     struct timeval boottime;
     size_t size;
     int mib[2];
@@ -118,8 +120,10 @@ int get_uptime(time_t *uptime)
 		return errno != 0 ? errno : EPERM;
     }
 #else
-#error port me!
-#endif
+    *uptime = 0;
+    logError("file: "__FILE__", line: %d, "
+            "please port me!", __LINE__);
+    return EOPNOTSUPP;
 #endif
 }
 
@@ -197,8 +201,9 @@ int get_mounted_filesystems(struct fast_statfs *stats, const int size, int *coun
     }
 
     return result;
-#else
-#ifdef OS_FREEBSD
+
+#elif defined(OS_FREEBSD)
+
     struct statfs *mnts;
     int result;
     int i;
@@ -233,8 +238,10 @@ int get_mounted_filesystems(struct fast_statfs *stats, const int size, int *coun
     }
     return result;
 #else
-#error port me!
-#endif
+    *count = 0;
+    logError("file: "__FILE__", line: %d, "
+            "please port me!", __LINE__);
+    return EOPNOTSUPP;
 #endif
 }
 
