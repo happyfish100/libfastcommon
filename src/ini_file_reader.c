@@ -966,3 +966,82 @@ void iniPrintItems(IniContext *pContext)
 	hash_walk(&pContext->sections, iniPrintHashData, NULL);
 }
 
+struct section_walk_arg {
+    IniSectionInfo *sections;
+    int count;
+    int size;
+};
+
+static int iniSectionWalkCallback(const int index, const HashData *data,
+        void *args)
+{
+    struct section_walk_arg *walk_arg;
+	IniSection *pSection;
+    char *section_name;
+	int section_len;
+
+	pSection = (IniSection *)data->value;
+	if (pSection == NULL)
+	{
+		return 0;
+	}
+
+    walk_arg = (struct section_walk_arg *)args;
+    if (walk_arg->count >= walk_arg->size)
+    {
+        return ENOSPC;
+    }
+
+	section_len = data->key_len;
+	if (section_len > FAST_INI_ITEM_NAME_LEN)
+	{
+        section_len = FAST_INI_ITEM_NAME_LEN;
+	}
+
+    section_name = walk_arg->sections[walk_arg->count].section_name;
+	memcpy(section_name, data->key, section_len);
+	*(section_name + section_len) = '\0';
+
+    walk_arg->sections[walk_arg->count].pSection = pSection;
+    walk_arg->count++;
+    return 0;
+}
+
+int iniGetSectionNames(IniContext *pContext, IniSectionInfo *sections,
+        const int max_size, int *nCount)
+{
+    struct section_walk_arg walk_arg;
+    int result;
+
+    walk_arg.sections = sections;
+    walk_arg.count = 0;
+    walk_arg.size = max_size;
+	result = hash_walk(&pContext->sections, iniSectionWalkCallback, &walk_arg);
+    *nCount = walk_arg.count;
+    return result;
+}
+
+IniItem *iniGetSectionItems(const char *szSectionName, IniContext *pContext,
+        int *nCount)
+{
+	IniSection *pSection;
+
+	if (szSectionName == NULL || *szSectionName == '\0')
+	{
+		pSection = &pContext->global;
+	}
+	else
+	{
+		pSection = (IniSection *)hash_find(&pContext->sections,
+				szSectionName, strlen(szSectionName));
+		if (pSection == NULL)
+		{
+            *nCount = 0;
+			return NULL;
+		}
+	}
+
+    *nCount = pSection->count;
+    return pSection->items;
+}
+
