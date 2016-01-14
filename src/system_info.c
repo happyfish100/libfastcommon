@@ -19,7 +19,9 @@
 #include <netinet/in.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <dirent.h>
 #include "logger.h"
+#include "shared_func.h"
 #include "system_info.h"
 
 #ifdef OS_LINUX
@@ -244,4 +246,221 @@ int get_mounted_filesystems(struct fast_statfs *stats, const int size, int *coun
     return EOPNOTSUPP;
 #endif
 }
+
+#ifdef OS_LINUX
+
+typedef struct fast_process_array {
+    struct fast_process_info *procs;
+    int alloc_size;
+    int count;
+} FastProcessArray;
+
+static int check_process_capacity(FastProcessArray *proc_array)
+{
+    struct fast_process_info *procs;
+    int alloc_size;
+    int bytes;
+
+    if (proc_array->alloc_size > proc_array->count)
+    {
+        return 0;
+    }
+
+    alloc_size = proc_array->alloc_size > 0 ?
+        proc_array->alloc_size * 2 : 128;
+    bytes = sizeof(struct fast_process_info) * alloc_size;
+    procs = (struct fast_process_info *)malloc(bytes);
+    if (procs == NULL)
+    {
+		logError("file: "__FILE__", line: %d, "
+			 "malloc %d bytes fail", __LINE__, bytes);
+        return ENOMEM;
+    }
+
+    memset(procs, 0, bytes);
+    if (proc_array->count > 0)
+    {
+        memcpy(procs, proc_array->procs, sizeof(struct fast_process_info) *
+                proc_array->count);
+        free(proc_array->procs);
+    }
+
+    proc_array->alloc_size = alloc_size;
+    proc_array->procs = procs;
+    return 0;
+}
+
+static void parse_proc_stat(char *buff, const int len, struct fast_process_info *process)
+{
+    char *p;
+    char *end;
+    char *start;
+    int cmd_len;
+
+    if (len == 0)
+    {
+        process->field_count = 0;
+        return;
+    }
+
+    end = buff + len;
+    process->pid = strtol(buff, &p, 10);
+    p++;  //skip space
+    start = p;
+    while (p < end)
+    {
+        if (*p == ' ' || *p == '\t')
+        {
+            if (*start == '(')
+            {
+                if (*(p - 1) == ')')
+                {
+                    break;
+                }
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        p++;
+    }
+    if (p == end)
+    {
+        process->field_count = 1;
+        return;
+    }
+
+    if (*start == '(')
+    {
+        start++;
+        cmd_len = p - start - 1;
+    }
+    else
+    {
+        cmd_len = p - start;
+    }
+    if (cmd_len >= sizeof(process->comm))
+    {
+        cmd_len = sizeof(process->comm) - 1;
+    }
+
+    memcpy(process->comm, start, cmd_len);
+
+    p++;  //skip space
+    process->field_count = 2 +
+        sscanf(p, "%c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld "
+                "%ld %ld %llu %lu %ld %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu "
+                "%lu %lu %d %d %u %u %llu %lu %ld",
+       &process->state,
+       &process->ppid,
+       &process->pgrp,
+       &process->session,
+       &process->tty_nr,
+       &process->tpgid,
+       &process->flags,
+       &process->minflt,
+       &process->cminflt,
+       &process->majflt,
+       &process->cmajflt,
+       &process->utime,
+       &process->stime,
+       &process->cutime,
+       &process->cstime,
+       &process->priority,
+       &process->nice,
+       &process->num_threads,
+       &process->itrealvalue,
+       &process->starttime,
+       &process->vsize,
+       &process->rss,
+       &process->rsslim,
+       &process->startcode,
+       &process->endcode,
+       &process->startstack,
+       &process->kstkesp,
+       &process->kstkeip,
+       &process->signal,
+       &process->blocked,
+       &process->sigignore,
+       &process->sigcatch,
+       &process->wchan,
+       &process->nswap,
+       &process->cnswap,
+       &process->exit_signal,
+       &process->processor,
+       &process->rt_priority,
+       &process->policy,
+       &process->delayacct_blkio_ticks,
+       &process->guest_time,
+       &process->cguest_time);
+}
+
+int get_processes(struct fast_process_info **processes, int *count)
+{
+    const char *dirname = "/proc";
+    char filename[128];
+    char buff[4096];
+    DIR *dir;
+    struct dirent *ent;
+    FastProcessArray proc_array;
+    int64_t bytes;
+    int result;
+    int len;
+    int i;
+
+    dir = opendir(dirname);
+    if (dir == NULL)
+    {
+        *count = 0;
+        *processes = NULL;
+		logError("file: "__FILE__", line: %d, "
+			 "call opendir %s fail, "
+			 "errno: %d, error info: %s",
+			 __LINE__, dirname, errno, STRERROR(errno));
+		return errno != 0 ? errno : EPERM;
+    }
+
+    result = 0;
+    proc_array.procs = NULL;
+    proc_array.alloc_size = 0;
+    proc_array.count = 0;
+    while ((ent=readdir(dir)) != NULL)
+    {
+        len = strlen(ent->d_name);
+        for (i=0; i<len; i++)
+        {
+            if (!(ent->d_name[i] >= '0' && ent->d_name[i] <= '9'))
+            {
+                break;
+            }
+        }
+        if (i < len)
+        {
+            continue;
+        }
+
+        sprintf(filename, "%s/%s/stat", dirname, ent->d_name);
+        bytes = sizeof(buff);
+        if (getFileContentEx(filename, buff, 0, &bytes) != 0)
+        {
+            continue;
+        }
+
+        if ((result=check_process_capacity(&proc_array)) != 0)
+        {
+            break;
+        }
+
+        parse_proc_stat(buff, bytes, proc_array.procs + proc_array.count);
+        proc_array.count++;
+    }
+    closedir(dir);
+
+    *count = proc_array.count;
+    *processes = proc_array.procs;
+    return result;
+}
+#endif
 

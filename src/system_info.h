@@ -46,6 +46,56 @@ extern "C" {
         char    f_mntonname[MNAMELEN];    /* directory on which mounted */
     } FastStatFS;
 
+#ifdef OS_LINUX
+   typedef struct fast_process_info {
+       int field_count;
+       int pid;
+       char comm[128];
+       char state;
+       int ppid;
+       int pgrp;
+       int session;
+       int tty_nr;
+       int tpgid;
+       unsigned int flags;
+       unsigned long minflt;
+       unsigned long cminflt;
+       unsigned long majflt;
+       unsigned long cmajflt;
+       unsigned long utime;
+       unsigned long stime;
+       long cutime;
+       long cstime;
+       long priority;
+       long nice;
+       long num_threads;
+       long itrealvalue;
+       unsigned long long starttime;
+       unsigned long vsize;
+       long rss;
+       unsigned long rsslim;
+       unsigned long startcode;
+       unsigned long endcode;
+       unsigned long startstack;
+       unsigned long kstkesp;
+       unsigned long kstkeip;
+       unsigned long signal;
+       unsigned long blocked;
+       unsigned long sigignore;
+       unsigned long sigcatch;
+       unsigned long wchan;
+       unsigned long nswap;
+       unsigned long cnswap;
+       int exit_signal;
+       int processor;
+       unsigned int rt_priority;
+       unsigned int policy;
+       unsigned long long delayacct_blkio_ticks;
+       unsigned long guest_time;
+       long cguest_time;
+   } FastProcessInfo;
+#endif
+
 /** get system total memory size
  *  parameters:
  *  	mem_size: return the total memory size
@@ -75,6 +125,16 @@ int get_uptime(time_t *uptime);
  *  return: error no , 0 success, != 0 fail
 */
 int get_mounted_filesystems(struct fast_statfs *stats, const int size, int *count);
+
+#ifdef OS_LINUX
+/** get processes
+ *  parameters:
+ *      processes: return the processes
+ *      count: return the count of the processes
+ *  return: error no , 0 success, != 0 fail
+*/
+int get_processes(struct fast_process_info **processes, int *count);
+#endif
 
 #ifdef __cplusplus
 }
