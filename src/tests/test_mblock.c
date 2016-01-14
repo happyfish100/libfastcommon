@@ -85,6 +85,7 @@ int main(int argc, char *argv[])
                 stats[i].f_ffree);
     }
 
+#ifdef OS_LINUX
     {
         FastProcessInfo *processes;
         get_processes(&processes, &count);
@@ -93,7 +94,12 @@ int main(int argc, char *argv[])
         {
             printf("%d %d %c %s\n", processes[i].field_count, processes[i].pid, processes[i].state, processes[i].comm);
         }
+        if (processes != NULL)
+        {
+            free(processes);
+        }
     }
+#endif
 
     //iniPrintItems(&iniContext);
     iniFreeContext(&iniContext);

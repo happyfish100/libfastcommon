@@ -436,7 +436,7 @@ int get_processes(struct fast_process_info **processes, int *count)
                 break;
             }
         }
-        if (i < len)
+        if (i < len)  //not digital string
         {
             continue;
         }

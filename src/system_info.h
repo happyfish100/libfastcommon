@@ -48,7 +48,7 @@ extern "C" {
 
 #ifdef OS_LINUX
    typedef struct fast_process_info {
-       int field_count;
+       int field_count;  //field count in /proc/$pid/stat
        int pid;
        char comm[128];
        char state;
