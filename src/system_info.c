@@ -138,7 +138,6 @@ int get_uptime(time_t *uptime)
         left.f_bavail = right.f_bavail; \
         left.f_files = right.f_files;   \
         left.f_ffree = right.f_ffree;   \
-        left.f_fsid = right.f_fsid;     \
     } while (0)
 
 #define SET_MNT_FIELDS(left, fstypename, mntfromname, mntonname) \
@@ -192,6 +191,9 @@ int get_mounted_filesystems(struct fast_statfs *stats, const int size, int *coun
         if (statfs(stats[i].f_mntonname, &buf) == 0)
         {
             SET_STATFS_FIELDS(stats[i], buf);
+#ifdef HAVE_FILE_SYSTEM_ID
+            stats[i].f_fsid = buf.f_fsid;
+#endif
         }
         else
         {
@@ -235,6 +237,9 @@ int get_mounted_filesystems(struct fast_statfs *stats, const int size, int *coun
     for (i=0; i<*count; i++)
     {
         SET_STATFS_FIELDS(stats[i], mnts[i]);
+#ifdef HAVE_FILE_SYSTEM_ID
+        stats[i].f_fsid = mnts[i].f_fsid;
+#endif
         SET_MNT_FIELDS(stats[i], mnts[i].f_fstypename,
                 mnts[i].f_mntfromname, mnts[i].f_mntonname);
     }

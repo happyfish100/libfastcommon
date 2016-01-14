@@ -39,8 +39,9 @@ extern "C" {
         long    f_bavail;   /* free blocks avail to non-superuser */
         long    f_files;    /* total file nodes in file system */
         long    f_ffree;    /* free file nodes in fs */
+#ifdef HAVE_FILE_SYSTEM_ID
         fsid_t  f_fsid;     /* file system id */
-
+#endif
         char    f_fstypename[MFSNAMELEN]; /* fs type name */
         char    f_mntfromname[MNAMELEN];  /* mounted file system */
         char    f_mntonname[MNAMELEN];    /* directory on which mounted */
