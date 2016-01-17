@@ -1614,8 +1614,8 @@ int getlocaladdrs(char ip_addrs[][IP_ADDRESS_SIZE], \
 	int s;
 	struct ifconf ifconf;
 	struct ifreq ifr[32];
-	int if_count;
-	int i;
+	struct ifreq *ifrp;
+	char *p_end;
 	int result;
 
 	*count = 0;
@@ -1640,20 +1640,26 @@ int getlocaladdrs(char ip_addrs[][IP_ADDRESS_SIZE], \
 		return result;
 	}
 
-	if_count = ifconf.ifc_len / sizeof(ifr[0]);
-	if (max_count < if_count)
+	ifrp = ifconf.ifc_req;
+	p_end = (char *)ifr + ifconf.ifc_len;
+	while ((char *)ifrp < p_end)
 	{
-		logError("file: "__FILE__", line: %d, " \
-			"max_count: %d < iterface count: %d", \
-			__LINE__, max_count, if_count);
- 		close(s);
-		return ENOSPC;
-	}
-
-	for (i = 0; i < if_count; i++)
-	{
+		struct sockaddr *sa = &ifrp->ifr_addr;
 		struct sockaddr_in *s_in;
-    		s_in = (struct sockaddr_in *) &ifr[i].ifr_addr;
+
+		if (*count >= max_count)
+		{
+			logError("file: "__FILE__", line: %d, " \
+					"max_count: %d < iterface count: %d", \
+					__LINE__, max_count, *count);
+			close(s);
+			return ENOSPC;
+		}
+
+
+    		s_in = (struct sockaddr_in *) &ifrp->ifr_addr;
+		if (sa->sa_family == AF_INET)
+		{
     		if (!inet_ntop(AF_INET, &s_in->sin_addr, \
 			ip_addrs[*count], IP_ADDRESS_SIZE))
 		{
@@ -1666,6 +1672,10 @@ int getlocaladdrs(char ip_addrs[][IP_ADDRESS_SIZE], \
 			return result;
     		}
 		(*count)++;
+		}
+
+
+		ifrp = (struct ifreq*)((caddr_t)&ifrp->ifr_addr + sa->sa_len);
 	}
 
 	close(s);

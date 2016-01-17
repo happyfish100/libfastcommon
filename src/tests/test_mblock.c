@@ -12,6 +12,7 @@
 #include "fast_mblock.h"
 #include "sockopt.h"
 #include "system_info.h"
+#include "local_ip_func.h"
 
 struct my_struct {
     struct fast_mblock_man *mblock;
@@ -66,6 +67,9 @@ int main(int argc, char *argv[])
                 __LINE__, filename, result);
         return result;
     }
+
+load_local_host_ip_addrs();
+print_local_host_ip_addrs();
 
     getifconfigs(if_configs, sizeof(if_configs) / sizeof(if_configs[0]), &count);
     printf("ifconfig count: %d\n", count);
