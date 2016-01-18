@@ -34,7 +34,7 @@ This pakcage provides the header files of libfastcommon
 %setup -q
 
 %build
-./make.sh
+./make.sh clean && ./make.sh
 
 %install
 rm -rf %{buildroot}
