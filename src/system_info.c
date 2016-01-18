@@ -27,7 +27,6 @@
 #ifdef OS_LINUX
 #include <sys/sysinfo.h>
 #include <sys/vfs.h>
-#include <mntent.h>
 #else
 #ifdef OS_FREEBSD
 #include <sys/sysctl.h>
@@ -152,26 +151,30 @@ int get_mounted_filesystems(struct fast_statfs *stats, const int size, int *coun
 #ifdef OS_LINUX
     const char *filename = "/proc/mounts";
     FILE *fp;
-    struct mntent *mnt;
+    char *p;
+    char *mntfromname;
+    char *mntonname;
+    char *fstypename;
     struct statfs buf;
+    char line[1024];
     int result;
     int i;
 
     *count = 0;
-    fp = setmntent(filename, "r");
+    fp = fopen(filename, "r");
     if (fp == NULL)
     {
         result = errno != 0 ? errno : ENOENT;
 		logError("file: "__FILE__", line: %d, "
-			 "call setmntent fail, "
+			 "call fopen %s fail, "
 			 "errno: %d, error info: %s",
-			 __LINE__, errno, STRERROR(errno));
+			 __LINE__, filename, errno, STRERROR(errno));
 		return result;
     }
 
     memset(stats, 0, sizeof(struct fast_statfs) * size);
     result = 0;
-    while ((mnt=getmntent(fp)) != NULL)
+    while (fgets(line, sizeof(line), fp) != NULL)
     {
         if (*count >= size)
         {
@@ -179,12 +182,21 @@ int get_mounted_filesystems(struct fast_statfs *stats, const int size, int *coun
             break;
         }
 
-        SET_MNT_FIELDS(stats[*count], mnt->mnt_type,
-                mnt->mnt_fsname, mnt->mnt_dir);
+        p = line;
+        mntfromname = strsep(&p, " \t");
+        mntonname = strsep(&p, " \t");
+        fstypename = strsep(&p, " \t");
+
+        snprintf(stats[*count].f_mntfromname,
+                sizeof(stats[*count].f_mntfromname), "%s", mntfromname);
+        snprintf(stats[*count].f_mntonname,
+                sizeof(stats[*count].f_mntonname), "%s", mntonname);
+        snprintf(stats[*count].f_fstypename,
+                sizeof(stats[*count].f_fstypename), "%s", fstypename);
 
         (*count)++;
     }
-    endmntent(fp);
+    fclose(fp);
 
     for (i=0; i<*count; i++)
     {
