@@ -93,7 +93,7 @@ print_local_host_ip_addrs();
     {
         FastProcessInfo *processes;
         get_processes(&processes, &count);
-        printf("count: %d\n", count);
+        printf("process count: %d\n", count);
         for (i=0; i<count; i++)
         {
             printf("%d %d %c %s\n", processes[i].field_count, processes[i].pid, processes[i].state, processes[i].comm);

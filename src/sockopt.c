@@ -1571,36 +1571,36 @@ int getlocaladdrs(char ip_addrs[][IP_ADDRESS_SIZE], \
 
 	ifc1 = ifc;
 	while (NULL != ifc)
-	{
-		struct sockaddr *s;
-		s = ifc->ifa_addr;
-		if (NULL != s && AF_INET == s->sa_family)
-		{
-			if (max_count <= *count)
-			{
-				logError("file: "__FILE__", line: %d, "\
-				"max_count: %d < iterface count: %d", \
-				__LINE__, max_count, *count);
-				freeifaddrs(ifc1);
-				return ENOSPC;
-			}
+    {
+        struct sockaddr *s;
+        s = ifc->ifa_addr;
+        if (NULL != s && AF_INET == s->sa_family)
+        {
+            if (max_count <= *count)
+            {
+                logError("file: "__FILE__", line: %d, "\
+                        "max_count: %d < iterface count: %d", \
+                        __LINE__, max_count, *count);
+                freeifaddrs(ifc1);
+                return ENOSPC;
+            }
 
-			if (inet_ntop(AF_INET, &((struct sockaddr_in *)s)-> \
-			sin_addr, ip_addrs[*count], IP_ADDRESS_SIZE) != NULL)
-			{
-				(*count)++;
-			}
-			else
-			{
-				logWarning("file: "__FILE__", line: %d, " \
-					"call inet_ntop fail, " \
-					"errno: %d, error info: %s", \
-					__LINE__, errno, STRERROR(errno));
-			}
-		}
+            if (inet_ntop(AF_INET, &((struct sockaddr_in *)s)-> \
+                        sin_addr, ip_addrs[*count], IP_ADDRESS_SIZE) != NULL)
+            {
+                (*count)++;
+            }
+            else
+            {
+                logWarning("file: "__FILE__", line: %d, " \
+                        "call inet_ntop fail, " \
+                        "errno: %d, error info: %s", \
+                        __LINE__, errno, STRERROR(errno));
+            }
+        }
 
-		ifc = ifc->ifa_next;
-	}
+        ifc = ifc->ifa_next;
+    }
 
 	freeifaddrs(ifc1);
 	return *count > 0 ? 0 : ENOENT;
@@ -1619,7 +1619,7 @@ int getlocaladdrs(char ip_addrs[][IP_ADDRESS_SIZE], \
 	int result;
 
 	*count = 0;
-	s = socket(AF_INET, SOCK_STREAM, 0);
+	s = socket(AF_INET, SOCK_DGRAM, 0);
 	if (s < 0)
 	{
 		logError("file: "__FILE__", line: %d, " \
@@ -1656,26 +1656,28 @@ int getlocaladdrs(char ip_addrs[][IP_ADDRESS_SIZE], \
 			return ENOSPC;
 		}
 
-
-    		s_in = (struct sockaddr_in *) &ifrp->ifr_addr;
+        s_in = (struct sockaddr_in *) &ifrp->ifr_addr;
 		if (sa->sa_family == AF_INET)
-		{
-    		if (!inet_ntop(AF_INET, &s_in->sin_addr, \
-			ip_addrs[*count], IP_ADDRESS_SIZE))
-		{
-			result = errno != 0 ? errno : EMFILE;
-			logError("file: "__FILE__", line: %d, " \
-				"call inet_ntop fail, " \
-				"errno: %d, error info: %s", \
-				__LINE__, result, STRERROR(result));
- 			close(s);
-			return result;
-    		}
-		(*count)++;
-		}
+        {
+            if (!inet_ntop(AF_INET, &s_in->sin_addr, \
+                        ip_addrs[*count], IP_ADDRESS_SIZE))
+            {
+                result = errno != 0 ? errno : EMFILE;
+                logError("file: "__FILE__", line: %d, " \
+                        "call inet_ntop fail, " \
+                        "errno: %d, error info: %s", \
+                        __LINE__, result, STRERROR(result));
+                close(s);
+                return result;
+            }
+            (*count)++;
+        }
 
-
+#ifdef OS_FREEBSD
 		ifrp = (struct ifreq*)((caddr_t)&ifrp->ifr_addr + sa->sa_len);
+#else
+        ifrp++;
+#endif
 	}
 
 	close(s);
