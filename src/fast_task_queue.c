@@ -629,40 +629,44 @@ int task_queue_count(struct fast_task_queue *pQueue)
 	return count;
 }
 
-static int _get_new_buffer_size(struct fast_task_queue *pQueue,
-        const int expect_size, int *new_size)
+int task_queue_get_new_buffer_size(const int min_buff_size,
+        const int max_buff_size, const int expect_size, int *new_size)
 {
-    if (pQueue->min_buff_size == pQueue->max_buff_size)
+    if (min_buff_size == max_buff_size)
     {
         logError("file: "__FILE__", line: %d, "
                 "can't change buffer size because NOT supported", __LINE__);
         return EOPNOTSUPP;
     }
 
-    if (expect_size > pQueue->max_buff_size)
+    if (expect_size > max_buff_size)
     {
         logError("file: "__FILE__", line: %d, "
                 "can't change buffer size because expect buffer size: %d "
                 "exceeds max buffer size: %d", __LINE__, expect_size,
-                pQueue->max_buff_size);
+                max_buff_size);
         return EOVERFLOW;
     }
 
-    *new_size = pQueue->min_buff_size;
-    if (expect_size > pQueue->min_buff_size)
+    *new_size = min_buff_size;
+    if (expect_size > min_buff_size)
     {
         while (*new_size < expect_size)
         {
             *new_size *= 2;
         }
-        if (*new_size > pQueue->max_buff_size)
+        if (*new_size > max_buff_size)
         {
-            *new_size = pQueue->max_buff_size;
+            *new_size = max_buff_size;
         }
     }
 
     return 0;
 }
+
+#define  _get_new_buffer_size(pQueue, expect_size, new_size) \
+    task_queue_get_new_buffer_size(pQueue->min_buff_size, \
+            pQueue->max_buff_size, expect_size, new_size)
 
 int task_queue_set_buffer_size(struct fast_task_queue *pQueue,
         struct fast_task_info *pTask, const int expect_size)

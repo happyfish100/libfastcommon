@@ -106,6 +106,9 @@ int task_queue_set_buffer_size(struct fast_task_queue *pQueue,
 int task_queue_realloc_buffer(struct fast_task_queue *pQueue,
         struct fast_task_info *pTask, const int expect_size);
 
+int task_queue_get_new_buffer_size(const int min_buff_size,
+        const int max_buff_size, const int expect_size, int *new_size);
+
 #ifdef __cplusplus
 }
 #endif
