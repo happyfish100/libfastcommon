@@ -41,7 +41,7 @@ struct nio_thread_data
 	struct fast_timer timer;
 	int pipe_fds[2];
 	struct fast_task_info *deleted_list;
-    ThreadLoopCallback thread_loop_callback;
+	ThreadLoopCallback thread_loop_callback;
 	void *arg;   //extra argument pointer
 };
 
@@ -67,7 +67,7 @@ struct fast_task_queue
 	pthread_mutex_t lock;
 	int max_connections;
 	int alloc_connections;
-    int alloc_task_once;
+	int alloc_task_once;
 	int min_buff_size;
 	int max_buff_size;
 	int arg_size;
