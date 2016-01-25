@@ -61,15 +61,9 @@ int main(int argc, char *argv[])
     srand(time(NULL));
     log_init();
     g_log_context.log_level = LOG_DEBUG;
-    if ((result=iniLoadFromFile(filename, &iniContext)) != 0) {
-        logError("file: "__FILE__", line: %d, "
-                "load conf file \"%s\" fail, ret code: %d",
-                __LINE__, filename, result);
-        return result;
-    }
 
-load_local_host_ip_addrs();
-print_local_host_ip_addrs();
+    load_local_host_ip_addrs();
+    print_local_host_ip_addrs();
 
     getifconfigs(if_configs, sizeof(if_configs) / sizeof(if_configs[0]), &count);
     printf("ifconfig count: %d\n", count);
@@ -104,6 +98,14 @@ print_local_host_ip_addrs();
         }
     }
 #endif
+
+    if ((result=iniLoadFromFile(filename, &iniContext)) != 0) {
+        logError("file: "__FILE__", line: %d, "
+                "load conf file \"%s\" fail, ret code: %d",
+                __LINE__, filename, result);
+        return result;
+    }
+
 
     //iniPrintItems(&iniContext);
     iniFreeContext(&iniContext);
