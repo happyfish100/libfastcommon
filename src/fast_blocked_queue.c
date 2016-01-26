@@ -36,6 +36,12 @@ int blocked_queue_init(struct fast_blocked_queue *pQueue)
 	return 0;
 }
 
+void blocked_queue_destroy(struct fast_blocked_queue *pQueue)
+{
+    pthread_cond_destroy(&(pQueue->cond));
+    pthread_mutex_destroy(&(pQueue->lock));
+}
+
 int blocked_queue_push(struct fast_blocked_queue *pQueue,
 		struct fast_task_info *pTask)
 {
