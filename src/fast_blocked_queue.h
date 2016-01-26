@@ -23,7 +23,7 @@ struct fast_blocked_queue
 	struct fast_task_info *head;
 	struct fast_task_info *tail;
 	pthread_mutex_t lock;
-    pthread_cond_t cond;
+	pthread_cond_t cond;
 };
 
 #ifdef __cplusplus

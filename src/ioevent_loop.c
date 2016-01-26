@@ -129,7 +129,7 @@ int ioevent_loop(struct nio_thread_data *pThreadData,
 				clean_up_callback(pTask);
 				count++;
 			}
-			logInfo("cleanup task count: %d", count);
+			logDebug("cleanup task count: %d", count);
 		}
 
 		if (g_current_time - last_check_time > 0)
