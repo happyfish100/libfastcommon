@@ -90,7 +90,8 @@ int main(int argc, char *argv[])
         printf("process count: %d\n", count);
         for (i=0; i<count; i++)
         {
-            printf("%d %d %c %s\n", processes[i].field_count, processes[i].pid, processes[i].state, processes[i].comm);
+            printf("%d %d %d %d %s %lld\n", processes[i].field_count, processes[i].pid,
+		processes[i].ppid, processes[i].state, processes[i].comm, processes[i].starttime);
         }
         if (processes != NULL)
         {

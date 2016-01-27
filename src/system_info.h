@@ -47,7 +47,7 @@ extern "C" {
         char    f_mntonname[MNAMELEN];    /* directory on which mounted */
     } FastStatFS;
 
-#ifdef OS_LINUX
+#if defined(OS_LINUX) || defined(OS_FREEBSD)
    typedef struct fast_process_info {
        int field_count;  //field count in /proc/$pid/stat
        int pid;

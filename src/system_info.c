@@ -491,6 +491,7 @@ int get_processes(struct fast_process_info **processes, int *count)
     size_t size;
     int bytes;
     int nproc;
+    int i;
     bool success;
 
     *count = 0;
