@@ -47,7 +47,7 @@ extern "C" {
         char    f_mntonname[MNAMELEN];    /* directory on which mounted */
     } FastStatFS;
 
-#ifdef OS_LINUX
+#if defined(OS_LINUX) || defined(OS_FREEBSD)
    typedef struct fast_process_info {
        int field_count;  //field count in /proc/$pid/stat
        int pid;
@@ -127,7 +127,7 @@ int get_uptime(time_t *uptime);
 */
 int get_mounted_filesystems(struct fast_statfs *stats, const int size, int *count);
 
-#ifdef OS_LINUX
+#if defined(OS_LINUX) || defined(OS_FREEBSD)
 /** get processes
  *  parameters:
  *      processes: return the processes
