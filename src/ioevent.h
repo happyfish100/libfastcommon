@@ -18,16 +18,17 @@
 
 #elif IOEVENT_USE_KQUEUE
 #include <sys/event.h>
+#include <sys/poll.h>
 #define IOEVENT_EDGE_TRIGGER EV_CLEAR
 
-#define KPOLLIN    0x001
-#define KPOLLPRI   0x002
-#define KPOLLOUT   0x004
-#define KPOLLERR   0x010
-#define KPOLLHUP   0x020
+#define KPOLLIN    POLLIN
+#define KPOLLPRI   POLLPRI
+#define KPOLLOUT   POLLOUT
+#define KPOLLERR   POLLERR
+#define KPOLLHUP   POLLHUP
 #define IOEVENT_READ  KPOLLIN
 #define IOEVENT_WRITE KPOLLOUT
-#define IOEVENT_ERROR (KPOLLERR | KPOLLPRI | KPOLLHUP)
+#define IOEVENT_ERROR (KPOLLERR | KPOLLHUP | POLLNVAL)
 
 #ifdef __cplusplus
 extern "C" {

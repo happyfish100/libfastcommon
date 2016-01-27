@@ -113,18 +113,14 @@ int ioevent_modify(IOEventPoller *ioevent, const int fd, const int e,
   struct kevent ev[2];
   int n = 0;
   if (e & IOEVENT_READ) {
-     if (!(ioevent->care_events & IOEVENT_READ)) {
-        EV_SET(&ev[n++], fd, EVFILT_READ, EV_ADD | ioevent->extra_events, 0, 0, data);
-     }
+    EV_SET(&ev[n++], fd, EVFILT_READ, EV_ADD | ioevent->extra_events, 0, 0, data);
   }
   else if ((ioevent->care_events & IOEVENT_READ)) {
     EV_SET(&ev[n++], fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
   }
 
   if (e & IOEVENT_WRITE) {
-    if (!(ioevent->care_events & IOEVENT_WRITE)) {
-      EV_SET(&ev[n++], fd, EVFILT_WRITE, EV_ADD | ioevent->extra_events, 0, 0, data);
-    }
+    EV_SET(&ev[n++], fd, EVFILT_WRITE, EV_ADD | ioevent->extra_events, 0, 0, data);
   }
   else if ((ioevent->care_events & IOEVENT_WRITE)) {
     EV_SET(&ev[n++], fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
