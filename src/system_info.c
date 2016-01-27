@@ -264,7 +264,7 @@ int get_mounted_filesystems(struct fast_statfs *stats, const int size, int *coun
 #endif
 }
 
-#ifdef OS_LINUX
+#if defined(OS_LINUX) || defined(OS_FREEBSD)
 
 typedef struct fast_process_array {
     struct fast_process_info *procs;
@@ -272,6 +272,7 @@ typedef struct fast_process_array {
     int count;
 } FastProcessArray;
 
+#if defined(OS_LINUX)
 static int check_process_capacity(FastProcessArray *proc_array)
 {
     struct fast_process_info *procs;
@@ -479,5 +480,123 @@ int get_processes(struct fast_process_info **processes, int *count)
     *processes = proc_array.procs;
     return result;
 }
+
+#elif  defined(OS_FREEBSD)
+
+int get_processes(struct fast_process_info **processes, int *count)
+{
+    struct kinfo_proc *procs;
+    struct fast_process_info *process;
+    int mib[4];
+    size_t size;
+    int bytes;
+    int nproc;
+    bool success;
+
+    *count = 0;
+    *processes = NULL;
+
+    mib[0] = CTL_KERN;
+    mib[1] = KERN_PROC;
+    mib[2] = KERN_PROC_ALL;
+    mib[3] =  0;
+    size = 0;
+    if (sysctl(mib, 4, NULL, &size, NULL, 0) < 0)
+    {
+		logError("file: "__FILE__", line: %d, " \
+			 "call sysctl  fail, " \
+			 "errno: %d, error info: %s", \
+			 __LINE__, errno, STRERROR(errno));
+		return errno != 0 ? errno : EPERM;
+    }
+
+    nproc = size / sizeof(struct kinfo_proc);
+    if (nproc == 0) {
+        return ENOENT;
+    }
+
+    success = false;
+    procs = NULL;
+    for (i=0; i<10; i++)
+    {
+        nproc += 32;
+        if (procs != NULL)
+        {
+            free(procs);
+        }
+
+        size = sizeof(struct kinfo_proc) * nproc;
+        procs = (struct kinfo_proc *)malloc(size);
+        if (procs == NULL)
+        {
+            logError("file: "__FILE__", line: %d, " \
+                    "malloc %d bytes fail, " \
+                    "errno: %d, error info: %s", \
+                    __LINE__, (int)size, errno, STRERROR(errno));
+            return errno != 0 ? errno : ENOMEM;
+        }
+
+        if (sysctl(mib, 4, procs, &size, NULL, 0) == 0)
+        {
+            success = true;
+            break;
+        }
+
+        if (errno != ENOMEM)
+        {
+            logError("file: "__FILE__", line: %d, " \
+                    "call sysctl  fail, " \
+                    "errno: %d, error info: %s", \
+                    __LINE__, errno, STRERROR(errno));
+            free(procs);
+            return errno != 0 ? errno : EPERM;
+        }
+    }
+
+    if (!success)
+    {
+        free(procs);
+        return ENOSPC;
+    }
+
+    nproc = size / sizeof(struct kinfo_proc);
+
+    bytes = sizeof(struct fast_process_info) * nproc;
+    *processes = (struct fast_process_info *)malloc(bytes);
+    if (*processes == NULL)
+    {
+		logError("file: "__FILE__", line: %d, "
+			 "malloc %d bytes fail", __LINE__, bytes);
+        free(procs);
+        return ENOMEM;
+    }
+    memset(*processes, 0, bytes);
+    process = *processes;
+    for (i=0; i<nproc; i++)
+    {
+        process->field_count = 9;
+        snprintf(process->comm, sizeof(process->comm),
+                "%s", procs[i].kp_proc.p_comm);
+        process->pid = procs[i].kp_proc.p_pid;
+        process->ppid = procs[i].kp_eproc.e_ppid;
+        process->starttime = procs[i].kp_proc.p_starttime.tv_sec;
+        process->flags = procs[i].kp_proc.p_flag;
+        process->state = procs[i].kp_proc.p_stat;
+
+        process->sigignore = procs[i].kp_proc.p_sigignore;
+        process->sigcatch = procs[i].kp_proc.p_sigcatch;
+        process->priority = procs[i].kp_proc.p_priority;
+
+        //process->uid = procs[i].kp_eproc.e_pcred.p_ruid;
+        //process->gid = procs[i].kp_eproc.e_pcred.p_rgid;
+
+        process++;
+    }
+
+    free(procs);
+    *count = nproc;
+    return 0;
+}
+#endif
 #endif
 

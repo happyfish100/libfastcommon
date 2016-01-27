@@ -127,7 +127,7 @@ int get_uptime(time_t *uptime);
 */
 int get_mounted_filesystems(struct fast_statfs *stats, const int size, int *count);
 
-#ifdef OS_LINUX
+#if defined(OS_LINUX) || defined(OS_FREEBSD)
 /** get processes
  *  parameters:
  *      processes: return the processes

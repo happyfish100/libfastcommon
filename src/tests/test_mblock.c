@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
                 stats[i].f_ffree);
     }
 
-#ifdef OS_LINUX
+#if defined(OS_LINUX) || defined(OS_FREEBSD)
     {
         FastProcessInfo *processes;
         get_processes(&processes, &count);
