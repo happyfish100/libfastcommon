@@ -421,12 +421,29 @@ int get_processes(struct fast_process_info **processes, int *count)
     char filename[128];
     char buff[4096];
     DIR *dir;
+    struct sysinfo info;
     struct dirent *ent;
     FastProcessArray proc_array;
     int64_t bytes;
+    int tickets;
     int result;
     int len;
     int i;
+
+    if (sysinfo(&info) == 0)
+    {
+        info.uptime = time(NULL) - info.uptime;
+    }
+    else
+    {
+        info.uptime = 0;
+    }
+
+    tickets = sysconf(_SC_CLK_TCK);
+    if (tickets == 0)
+    {
+        tickets = 100;
+    }
 
     dir = opendir(dirname);
     if (dir == NULL)
@@ -472,6 +489,9 @@ int get_processes(struct fast_process_info **processes, int *count)
         }
 
         parse_proc_stat(buff, bytes, proc_array.procs + proc_array.count);
+        proc_array.procs[proc_array.count].starttime =
+                info.uptime + proc_array.procs[proc_array.count].
+                starttime / tickets;
         proc_array.count++;
     }
     closedir(dir);
