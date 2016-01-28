@@ -86,6 +86,8 @@ int main(int argc, char *argv[])
 #if defined(OS_LINUX) || defined(OS_FREEBSD)
     {
         FastProcessInfo *processes;
+	struct sysinfo info;
+
         get_processes(&processes, &count);
         printf("process count: %d\n", count);
         for (i=0; i<count; i++)
@@ -97,6 +99,19 @@ int main(int argc, char *argv[])
         {
             free(processes);
         }
+
+	if (sysinfo(&info) == 0)
+	{
+		printf("uptime: %ld\n", info.uptime);
+		printf("loads: %ld, %ld, %ld\n", info.loads[0], info.loads[1], info.loads[2]);
+		printf("totalram: %ld\n", info.totalram);
+		printf("freeram: %ld\n", info.freeram);
+		printf("sharedram: %ld\n", info.sharedram);
+		printf("bufferram: %ld\n", info.bufferram);
+		printf("totalswap: %ld\n", info.totalswap);
+		printf("freeswap: %ld\n", info.freeswap);
+		printf("procs: %d\n", info.procs);
+	}
     }
 #endif
 

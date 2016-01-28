@@ -31,6 +31,7 @@
 #ifdef OS_FREEBSD
 #include <sys/sysctl.h>
 #include <sys/ucred.h>
+#include <sys/vmmeter.h>
 #endif
 #endif
 
@@ -618,6 +619,92 @@ int get_processes(struct fast_process_info **processes, int *count)
     *count = nproc;
     return 0;
 }
+
+int sysinfo(struct sysinfo *info)
+{
+	time_t uptime;
+        int mib[4];
+        size_t size;
+	struct loadavg loads;
+	struct vmtotal vm;
+	struct xsw_usage sw_usage;
+
+	memset(info, 0, sizeof(struct sysinfo));
+	get_uptime(&uptime);
+	info->uptime = uptime;
+
+	mib[0] = CTL_VM;
+	mib[1] = VM_LOADAVG;
+	size = sizeof(loads);
+	if (sysctl(mib, 2, &loads, &size, NULL, 0) != 0)
+	{
+		logError("file: "__FILE__", line: %d, " \
+				"call sysctl  fail, " \
+				"errno: %d, error info: %s", \
+				__LINE__, errno, STRERROR(errno));
+	}
+	else if (loads.fscale > 0)
+	{
+		info->loads[0] = loads.ldavg[0] / loads.fscale;
+		info->loads[1] = loads.ldavg[1] / loads.fscale;
+		info->loads[2] = loads.ldavg[2] / loads.fscale;
+	}
+
+	mib[0] = CTL_KERN;
+	mib[1] = KERN_PROC;
+	mib[2] = KERN_PROC_ALL;
+	mib[3] =  0;
+	size = 0;
+	if (sysctl(mib, 4, NULL, &size, NULL, 0) != 0)
+	{
+		logError("file: "__FILE__", line: %d, " \
+			"call sysctl  fail, " \
+			"errno: %d, error info: %s", \
+			__LINE__, errno, STRERROR(errno));
+	}
+	else
+	{
+		info->procs = size / sizeof(struct kinfo_proc);
+	}
+
+	get_sys_total_mem_size((int64_t *)&info->totalram);
+
+	mib[0] = CTL_VM;
+	mib[1] = VM_METER;
+	size = sizeof(vm);
+	if (sysctl(mib, 2, &vm, &size, NULL, 0) != 0)
+	{
+		logError("file: "__FILE__", line: %d, " \
+			"call sysctl  fail, " \
+			"errno: %d, error info: %s", \
+			__LINE__, errno, STRERROR(errno));
+	}
+	else
+	{
+		info->freeram = vm.t_free;
+		info->sharedram = vm.t_rmshr;
+		//info->bufferram = vm.   //TODO:
+	}
+
+	mib[0] = CTL_VM;
+	mib[1] = VM_SWAPUSAGE;
+	size = sizeof(sw_usage);
+	if (sysctl(mib, 2, &sw_usage, &size, NULL, 0) != 0)
+	{
+		logError("file: "__FILE__", line: %d, " \
+			"call sysctl  fail, " \
+			"errno: %d, error info: %s", \
+			__LINE__, errno, STRERROR(errno));
+	}
+	else
+	{
+		info->totalswap = sw_usage.xsu_total;
+		info->freeswap = sw_usage.xsu_avail;
+	}
+
+	return 0;
+}
+
 #endif
 #endif
 

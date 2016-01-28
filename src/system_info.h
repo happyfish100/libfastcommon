@@ -19,6 +19,10 @@
 #include <sys/mount.h>
 #include "common_define.h"
 
+#ifdef OS_LINUX
+#include <sys/sysinfo.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -46,6 +50,20 @@ extern "C" {
         char    f_mntfromname[MNAMELEN];  /* mounted file system */
         char    f_mntonname[MNAMELEN];    /* directory on which mounted */
     } FastStatFS;
+
+#if defined(OS_FREEBSD)
+           struct sysinfo {
+               long uptime;             /* Seconds since boot */
+               unsigned long loads[3];  /* 1, 5, and 15 minute load averages */
+               unsigned long totalram;  /* Total usable main memory size */
+               unsigned long freeram;   /* Available memory size */
+               unsigned long sharedram; /* Amount of shared memory */
+               unsigned long bufferram; /* Memory used by buffers */
+               unsigned long totalswap; /* Total swap space size */
+               unsigned long freeswap;  /* swap space still available */
+               unsigned short procs;    /* Number of current processes */
+           };
+#endif
 
 #if defined(OS_LINUX) || defined(OS_FREEBSD)
    typedef struct fast_process_info {
@@ -135,6 +153,10 @@ int get_mounted_filesystems(struct fast_statfs *stats, const int size, int *coun
  *  return: error no , 0 success, != 0 fail
 */
 int get_processes(struct fast_process_info **processes, int *count);
+#endif
+
+#if defined(OS_FREEBSD)
+int sysinfo(struct sysinfo *info);
 #endif
 
 #ifdef __cplusplus
