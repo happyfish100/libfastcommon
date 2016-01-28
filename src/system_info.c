@@ -502,6 +502,32 @@ int get_processes(struct fast_process_info **processes, int *count)
     return result;
 }
 
+int get_sysinfo(struct fast_sysinfo*info)
+{
+    struct sysinfo si;
+    if (sysinfo(&si) != 0)
+    {
+		logError("file: "__FILE__", line: %d, " \
+			 "call sysinfo fail, " \
+			 "errno: %d, error info: %s", \
+			 __LINE__, errno, STRERROR(errno));
+		return errno != 0 ? errno : EPERM;
+    }
+
+    info->loads[0] = si.loads[0] / (double)(1 << SI_LOAD_SHIFT);
+    info->loads[1] =  si.loads[1] / (double)(1 << SI_LOAD_SHIFT),
+    info->loads[2] = si.loads[2] / (double)(1 << SI_LOAD_SHIFT);
+    info->uptime = si.uptime;
+    info->totalram = si.totalram;
+    info->freeram = si.freeram;
+    info->sharedram = si.sharedram;
+    info->bufferram = si.bufferram;
+    info->totalswap = si.totalswap;
+    info->freeswap = si.freeswap;
+    info->procs = si.procs;
+    return 0;
+}
+
 #elif  defined(OS_FREEBSD)
 
 int get_processes(struct fast_process_info **processes, int *count)
@@ -620,7 +646,7 @@ int get_processes(struct fast_process_info **processes, int *count)
     return 0;
 }
 
-int sysinfo(struct sysinfo *info)
+int get_sysinfo(struct fast_sysinfo*info)
 {
 	time_t uptime;
         int mib[4];
