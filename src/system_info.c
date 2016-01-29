@@ -655,7 +655,7 @@ int get_sysinfo(struct fast_sysinfo*info)
 	struct vmtotal vm;
 	struct xsw_usage sw_usage;
 
-	memset(info, 0, sizeof(struct sysinfo));
+	memset(info, 0, sizeof(struct fast_sysinfo));
 	get_uptime(&uptime);
 	info->uptime = uptime;
 
@@ -671,9 +671,9 @@ int get_sysinfo(struct fast_sysinfo*info)
 	}
 	else if (loads.fscale > 0)
 	{
-		info->loads[0] = loads.ldavg[0] / loads.fscale;
-		info->loads[1] = loads.ldavg[1] / loads.fscale;
-		info->loads[2] = loads.ldavg[2] / loads.fscale;
+		info->loads[0] = (double)loads.ldavg[0] / loads.fscale;
+		info->loads[1] = (double)loads.ldavg[1] / loads.fscale;
+		info->loads[2] = (double)loads.ldavg[2] / loads.fscale;
 	}
 
 	mib[0] = CTL_KERN;
