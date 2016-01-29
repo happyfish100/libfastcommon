@@ -19,10 +19,10 @@ int mkdir_by_cascading(const char *path,mode_t mode)
 {
 	int length,pointer_postion = 0;
 	char *postion;
-	char *path_temp = path;
+	// some compiler reports warning without(char *)
+	char *path_temp = (char *)path;
 	char cwd[MAX_PATH_SIZE];
 	char *subfolder;
-	int is_error = 0;
 	int result = 0;
 	if(NULL == getcwd(cwd,sizeof(cwd)))
 	{
@@ -41,7 +41,7 @@ int mkdir_by_cascading(const char *path,mode_t mode)
 	while(pointer_postion != strlen(path_temp))
 	{
 		postion = strchr(path_temp+pointer_postion,'/');
-		if(0 == postion)
+		if(NULL == postion)
 		{
 			length = strlen(path_temp) - pointer_postion;
 		}
@@ -61,22 +61,28 @@ int mkdir_by_cascading(const char *path,mode_t mode)
 			memcpy(subfolder,path_temp+pointer_postion,length);
 			if(is_dir(subfolder))
 			{
+				// if subfolder exists, do not create, just chdir to it
 				if(-1 == chdir(subfolder))
 				{
 					result = -2;
 					break;
 				}
 			}
-			if(-1 == mkdir(subfolder,mode))
+			else
 			{
-				result = -4;
-				break;
+				// if subfolder not exists, creates it
+				if(-1 == mkdir(subfolder,mode))
+				{
+					result = -4;
+					break;
+				}
+				if(-1 == chdir(subfolder))
+				{
+					result = -2;
+					break;
+				}
 			}
-			if(-1 == chdir(subfolder))
-			{
-				result = -2;
-				break;
-			}
+
 		}while(0);
 
 		if(NULL != subfolder)
