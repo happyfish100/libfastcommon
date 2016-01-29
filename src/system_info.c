@@ -676,7 +676,6 @@ int get_processes(struct fast_process_info **processes, int *count)
 
 int get_sysinfo(struct fast_sysinfo*info)
 {
-	time_t uptime;
         int mib[4];
         size_t size;
 	struct loadavg loads;
