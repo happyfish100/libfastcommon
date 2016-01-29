@@ -53,7 +53,7 @@ extern "C" {
 
 #if defined(OS_LINUX) || defined(OS_FREEBSD)
    struct fast_sysinfo {
-       long uptime;             /* Seconds since boot */
+       struct timeval boot_time;   /* system boot times */
        double loads[3];  /* 1, 5, and 15 minute load averages */
        unsigned long totalram;  /* Total usable main memory size */
        unsigned long freeram;   /* Available memory size */
@@ -87,7 +87,7 @@ extern "C" {
        long nice;
        long num_threads;
        long itrealvalue;
-       unsigned long long starttime;
+       struct timeval starttime;
        unsigned long vsize;
        long rss;
        unsigned long rsslim;
@@ -127,12 +127,12 @@ int get_sys_total_mem_size(int64_t *mem_size);
 */
 int get_sys_cpu_count();
 
-/** get system up time
+/** get system boot time
  *  parameters:
  *      uptime: store the up time
  *  return: error no , 0 success, != 0 fail
 */
-int get_uptime(time_t *uptime);
+int get_boot_time(struct timeval *boot_time);
 
 /** get mounted file systems
  *  parameters:

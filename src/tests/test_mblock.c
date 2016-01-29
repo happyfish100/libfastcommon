@@ -92,8 +92,10 @@ int main(int argc, char *argv[])
         printf("process count: %d\n", count);
         for (i=0; i<count; i++)
         {
-            printf("%d %d %d %d %s %lld\n", processes[i].field_count, processes[i].pid,
-		processes[i].ppid, processes[i].state, processes[i].comm, processes[i].starttime);
+            printf("%d %d %d %d %s %d.%d\n", processes[i].field_count,
+                    processes[i].pid, processes[i].ppid, processes[i].state,
+                    processes[i].comm, (int)processes[i].starttime.tv_sec,
+                    (int)processes[i].starttime.tv_usec);
         }
         if (processes != NULL)
         {
@@ -102,7 +104,9 @@ int main(int argc, char *argv[])
 
 	if (get_sysinfo(&info) == 0)
 	{
-		printf("uptime: %ld\n", info.uptime);
+		printf("boot time: %d sec, %d usec\n",
+                (int)info.boot_time.tv_sec,
+                (int)info.boot_time.tv_usec);
 		printf("loads: %.2f, %.2f, %.2f\n",
                 info.loads[0], info.loads[1], info.loads[2]);
 		printf("totalram: %ld\n", info.totalram);

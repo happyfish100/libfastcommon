@@ -84,37 +84,65 @@ int get_sys_cpu_count()
 #endif
 }
 
-int get_uptime(time_t *uptime)
+#define TIMEVAL_TO_SECONDS(tv) \
+    ((double)tv.tv_sec + (double)tv.tv_usec / 1000000.00)
+
+#define SECONDS_TO_TIMEVAL(secs, tv) \
+    do { \
+        (tv).tv_sec = (time_t)secs; \
+        (tv).tv_usec = (secs - (tv).tv_sec) * 1000000; \
+    } while (0)
+
+int get_boot_time(struct timeval *boot_time)
 {
 #ifdef OS_LINUX
+    char buff[256];
+    int64_t bytes;
     struct sysinfo si;
+
+    bytes = sizeof(buff);
+    if (getFileContentEx("/proc/uptime", buff, 0, &bytes) == 0)
+    {
+        double uptime;
+        double btime;
+        struct timeval current_time;
+
+        if (sscanf(buff, "%lf", &uptime) == 1)
+        {
+            gettimeofday(&current_time, NULL);
+            btime = TIMEVAL_TO_SECONDS(current_time) - uptime;
+            SECONDS_TO_TIMEVAL(btime, *boot_time);
+            return 0;
+        }
+    }
+
     if (sysinfo(&si) != 0)
     {
-		logError("file: "__FILE__", line: %d, "
-			 "call sysinfo fail, "
-			 "errno: %d, error info: %s",
-			 __LINE__, errno, STRERROR(errno));
-		return errno != 0 ? errno : EPERM;
+        logError("file: "__FILE__", line: %d, "
+                "call sysinfo fail, "
+                "errno: %d, error info: %s",
+                __LINE__, errno, STRERROR(errno));
+        return errno != 0 ? errno : EPERM;
     }
-    *uptime = si.uptime;
+
+    boot_time->tv_sec = time(NULL) - si.uptime;
+    boot_time->tv_usec = 0;
     return 0;
 #elif defined(OS_FREEBSD)
-    struct timeval boottime;
     size_t size;
     int mib[2];
 
     mib[0] = CTL_KERN;
     mib[1] = KERN_BOOTTIME;
-    size = sizeof(boottime);
-    if (sysctl(mib, 2, &boottime, &size, NULL, 0) == 0 &&
-            boottime.tv_sec != 0)
+    size = sizeof(struct timeval);
+    if (sysctl(mib, 2, boot_time, &size, NULL, 0) == 0)
     {
-        *uptime = time(NULL) - boottime.tv_sec;
         return 0;
     }
     else
     {
-        *uptime = 0;
+        boot_time->tv_sec = 0;
+        boot_time->tv_usec = 0;
 		logError("file: "__FILE__", line: %d, "
 			 "call sysctl  fail, "
 			 "errno: %d, error info: %s",
@@ -122,7 +150,8 @@ int get_uptime(time_t *uptime)
 		return errno != 0 ? errno : EPERM;
     }
 #else
-    *uptime = 0;
+    boot_time->tv_sec = 0;
+    boot_time->tv_usec = 0;
     logError("file: "__FILE__", line: %d, "
             "please port me!", __LINE__);
     return EOPNOTSUPP;
@@ -309,7 +338,8 @@ static int check_process_capacity(FastProcessArray *proc_array)
     return 0;
 }
 
-static void parse_proc_stat(char *buff, const int len, struct fast_process_info *process)
+static void parse_proc_stat(char *buff, const int len,
+        struct fast_process_info *process, unsigned long long *starttime)
 {
     char *p;
     char *end;
@@ -391,7 +421,7 @@ static void parse_proc_stat(char *buff, const int len, struct fast_process_info 
        &process->nice,
        &process->num_threads,
        &process->itrealvalue,
-       &process->starttime,
+       starttime,
        &process->vsize,
        &process->rss,
        &process->rsslim,
@@ -422,23 +452,15 @@ int get_processes(struct fast_process_info **processes, int *count)
     char filename[128];
     char buff[4096];
     DIR *dir;
-    struct sysinfo info;
+    struct timeval boot_time;
     struct dirent *ent;
     FastProcessArray proc_array;
     int64_t bytes;
+    unsigned long long starttime;
     int tickets;
     int result;
     int len;
     int i;
-
-    if (sysinfo(&info) == 0)
-    {
-        info.uptime = time(NULL) - info.uptime;
-    }
-    else
-    {
-        info.uptime = 0;
-    }
 
     tickets = sysconf(_SC_CLK_TCK);
     if (tickets == 0)
@@ -477,6 +499,11 @@ int get_processes(struct fast_process_info **processes, int *count)
             continue;
         }
 
+        if ((result=check_process_capacity(&proc_array)) != 0)
+        {
+            break;
+        }
+
         sprintf(filename, "%s/%s/stat", dirname, ent->d_name);
         bytes = sizeof(buff);
         if (getFileContentEx(filename, buff, 0, &bytes) != 0)
@@ -484,15 +511,15 @@ int get_processes(struct fast_process_info **processes, int *count)
             continue;
         }
 
-        if ((result=check_process_capacity(&proc_array)) != 0)
-        {
-            break;
-        }
+        get_boot_time(&boot_time);
 
-        parse_proc_stat(buff, bytes, proc_array.procs + proc_array.count);
-        proc_array.procs[proc_array.count].starttime =
-                info.uptime + proc_array.procs[proc_array.count].
-                starttime / tickets;
+        parse_proc_stat(buff, bytes, proc_array.procs + proc_array.count,
+                &starttime);
+
+        SECONDS_TO_TIMEVAL(TIMEVAL_TO_SECONDS(boot_time) +
+                (double)starttime / (double)tickets,
+                proc_array.procs[proc_array.count].starttime);
+
         proc_array.count++;
     }
     closedir(dir);
@@ -505,6 +532,8 @@ int get_processes(struct fast_process_info **processes, int *count)
 int get_sysinfo(struct fast_sysinfo*info)
 {
     struct sysinfo si;
+
+    get_boot_time(&info->boot_time);
     if (sysinfo(&si) != 0)
     {
 		logError("file: "__FILE__", line: %d, " \
@@ -517,7 +546,6 @@ int get_sysinfo(struct fast_sysinfo*info)
     info->loads[0] = si.loads[0] / (double)(1 << SI_LOAD_SHIFT);
     info->loads[1] =  si.loads[1] / (double)(1 << SI_LOAD_SHIFT),
     info->loads[2] = si.loads[2] / (double)(1 << SI_LOAD_SHIFT);
-    info->uptime = si.uptime;
     info->totalram = si.totalram;
     info->freeram = si.freeram;
     info->sharedram = si.sharedram;
@@ -627,7 +655,7 @@ int get_processes(struct fast_process_info **processes, int *count)
                 "%s", procs[i].kp_proc.p_comm);
         process->pid = procs[i].kp_proc.p_pid;
         process->ppid = procs[i].kp_eproc.e_ppid;
-        process->starttime = procs[i].kp_proc.p_starttime.tv_sec;
+        process->starttime = procs[i].kp_proc.p_starttime;
         process->flags = procs[i].kp_proc.p_flag;
         process->state = procs[i].kp_proc.p_stat;
 
@@ -656,8 +684,7 @@ int get_sysinfo(struct fast_sysinfo*info)
 	struct xsw_usage sw_usage;
 
 	memset(info, 0, sizeof(struct fast_sysinfo));
-	get_uptime(&uptime);
-	info->uptime = uptime;
+	get_boot_time(&info->boot_time);
 
 	mib[0] = CTL_VM;
 	mib[1] = VM_LOADAVG;
