@@ -116,6 +116,18 @@ extern int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int kind);
 #define IS_UPPER_HEX(ch) ((ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F'))
 #define STRERROR(no) (strerror(no) != NULL ? strerror(no) : "Unkown error")
 
+#if defined(OS_LINUX)
+#if defined __USE_MISC || defined __USE_XOPEN2K8
+#define st_atimensec st_atim.tv_nsec
+#define st_mtimensec st_mtim.tv_nsec
+#define st_ctimensec st_ctim.tv_nsec
+#endif
+#elif defined(OS_FREEBSD)
+#define st_atimensec st_atimespec.tv_nsec
+#define st_mtimensec st_mtimespec.tv_nsec
+#define st_ctimensec st_ctimespec.tv_nsec
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -4,7 +4,9 @@
 #include <math.h>
 #include <time.h>
 #include <inttypes.h>
+#include <sys/types.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 #include "logger.h"
 #include "shared_func.h"
 #include "sched_thread.h"
@@ -87,6 +89,7 @@ int main(int argc, char *argv[])
     {
         FastProcessInfo *processes;
         struct fast_sysinfo info;
+        struct stat st;
 
         get_processes(&processes, &count);
         printf("process count: %d\n", count);
@@ -117,7 +120,13 @@ int main(int argc, char *argv[])
 		printf("freeswap: %ld\n", info.freeswap);
 		printf("procs: %d\n", info.procs);
 	}
+
+    stat("/dev/null", &st);
+    printf("file access time: %d.%ld\n", (int)st.st_atime, st.st_atimensec);
+    printf("file modify time: %d.%ld\n", (int)st.st_mtime, st.st_mtimensec);
+    printf("file change time: %d.%ld\n", (int)st.st_ctime, st.st_ctimensec);
     }
+
 #endif
 
     if ((result=iniLoadFromFile(filename, &iniContext)) != 0) {
