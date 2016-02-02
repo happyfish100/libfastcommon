@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
 
     stat("/etc/passwd", &st);
     printf("file inode: %ld\n", (long)st.st_ino);
-    printf("file device: %"PRId64"\n", *((int64_t *)&st.st_dev));
+    printf("file device: %ld\n", (long)st.st_dev);
     printf("file access time: %d.%ld\n", (int)st.st_atime, st.st_atimensec);
     printf("file modify time: %d.%ld\n", (int)st.st_mtime, st.st_mtimensec);
     printf("file change time: %d.%ld\n", (int)st.st_ctime, st.st_ctimensec);

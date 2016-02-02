@@ -112,6 +112,7 @@ int get_boot_time(struct timeval *boot_time)
             gettimeofday(&current_time, NULL);
             btime = TIMEVAL_TO_SECONDS(current_time) - uptime;
             SECONDS_TO_TIMEVAL(btime, *boot_time);
+            boot_time->tv_usec = 0;
             return 0;
         }
     }
@@ -519,6 +520,7 @@ int get_processes(struct fast_process_info **processes, int *count)
         SECONDS_TO_TIMEVAL(TIMEVAL_TO_SECONDS(boot_time) +
                 (double)starttime / (double)tickets,
                 proc_array.procs[proc_array.count].starttime);
+	proc_array.procs[proc_array.count].starttime.tv_usec = 0;
 
         proc_array.count++;
     }
