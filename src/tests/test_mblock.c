@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
 	}
 
     stat("/dev/null", &st);
-    printf("file inode: %ld\n", st.st_ino);
+    printf("file inode: %ld\n", (long)st.st_ino);
     printf("file access time: %d.%ld\n", (int)st.st_atime, st.st_atimensec);
     printf("file modify time: %d.%ld\n", (int)st.st_mtime, st.st_mtimensec);
     printf("file change time: %d.%ld\n", (int)st.st_ctime, st.st_ctimensec);
