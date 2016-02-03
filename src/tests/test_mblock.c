@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
 		printf("procs: %d\n", info.procs);
 	}
 
-    stat("/etc/passwd", &st);
+    stat("/dev/zero", &st);
     printf("file inode: %ld\n", (long)st.st_ino);
     printf("file device: %ld\n", (long)st.st_dev);
     printf("file access time: %d.%ld\n", (int)st.st_atime, st.st_atimensec);

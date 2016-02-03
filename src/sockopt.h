@@ -17,7 +17,7 @@
 #define FAST_WRITE_BUFF_SIZE  256 * 1024
 
 typedef struct fast_if_config {
-    char name[IF_NAMESIZE];
+    char name[IF_NAMESIZE];    //if name
     char mac[32];
     char ipv4[IP_ADDRESS_SIZE];
     char ipv6[48];
@@ -340,8 +340,8 @@ int gethostaddrs(char **if_alias_prefixes, const int prefix_count, \
 /** get local if configs
  *  parameters:
  *          if_configs: store the if configs
- *          max_count: max ip address (max ip_addrs elements)
- *          count: store the ip address count
+ *          max_count: max ifconfig elements
+ *          count: store the ifconfig count
  *  return: error no, 0 success, != 0 fail
 */
 int getifconfigs(FastIFConfig *if_configs, const int max_count, int *count);
