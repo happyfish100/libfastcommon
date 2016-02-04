@@ -14,7 +14,7 @@ functions including: string, logger, chain, hash, avl treee, socket,
 ini file reader, memory pool, object based allocator, connection pool,
 time wheel based timer, ioevent like epoll, local ip functions,
 process start/stop/restart control, task schedule, base64 encode / decode,
-url encode / decode etc.
+url encode / decode, skiplist, system info functions etc.
 
 detail info please see the c header files.
 
