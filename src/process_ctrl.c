@@ -42,6 +42,17 @@ int write_to_pid_file(const char *pidFilename)
 
 int delete_pid_file(const char *pidFilename)
 {
+  int result;
+  pid_t pid;
+
+  if ((result=get_pid_from_file(pidFilename, &pid)) != 0) {
+    return result;
+  }
+
+  if (pid != getpid()) {
+    return ESRCH;
+  }
+
   if (unlink(pidFilename) == 0) {
     return 0;
   }

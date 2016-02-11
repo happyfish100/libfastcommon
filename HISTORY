@@ -1,5 +1,5 @@
 
-Version 1.24  2016-01-28
+Version 1.24  2016-02-11
   * php extension compiled on PHP 7
   * add skiplist which support stable sort
   * make.sh: use sed to replace perl
