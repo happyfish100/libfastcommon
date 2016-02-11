@@ -108,21 +108,49 @@ extern volatile time_t g_current_time;  //the current time
 
 #define get_current_time() (g_schedule_flag ? g_current_time: time(NULL))
 
+/** add schedule entries
+ *  parameters:
+ *  	     pScheduleArray: the schedule tasks
+ * return: error no, 0 for success, != 0 fail
+*/
 int sched_add_entries(const ScheduleArray *pScheduleArray);
+
+/** delete a schedule entry
+ *  parameters:
+ *  	     id: the task id to delete
+ * return: error no, 0 for success, != 0 fail
+*/
 int sched_del_entry(const int id);
 
+//to enable delay tasks feature
 #define sched_enable_delay_task() sched_set_delay_params(0, 0)
 
+/** set dalay parameters
+ *  parameters:
+ *  	     slot_count: the slot count
+ *  	     alloc_once: alloc delay task entry once
+ * return: none
+*/
 void sched_set_delay_params(const int slot_count, const int alloc_once);
 
+/** add a delay task
+ *  parameters:
+ *  	     pContext: the ScheduleContext pointer
+ *  	     task_func: the task function pointer
+ *  	     func_args: the task function args pointer
+ *  	     delay_seconds: delay seconds to execute the task
+ *  	     new_thread: if execute the task in a new thread
+ * return: error no, 0 for success, != 0 fail
+*/
 int sched_add_delay_task_ex(ScheduleContext *pContext, TaskFunc task_func,
         void *func_args, const int delay_seconds, const bool new_thread);
+
 int sched_add_delay_task(TaskFunc task_func, void *func_args,
         const int delay_seconds, const bool new_thread);
 
 /** execute the schedule thread
  *  parameters:
- *  	     pScheduleArray: schedule task
+ *  	     pScheduleArray: the schedule tasks
  *  	     ptid: store the schedule thread id
  *  	     stack_size: set thread stack size (byes)
  *  	     pcontinue_flag: main process continue running flag
