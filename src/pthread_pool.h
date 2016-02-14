@@ -20,9 +20,9 @@ typedef void (*callback)(void *);
 /*
  * the thread pool state
  * member:
- * 			uninit : not initialize the thread pool.
- * 			initing : initializing the thread pool.
- * 			using : the pool can use.
+ * 			uninitialized : not initialize the thread pool.
+ * 			initializing : initializing the thread pool.
+ * 			initialized : the pool can use.
  * 			uninstalling : uninstalling the thread pool.
  * 			uninstalled : uninstall the thread pool is over.
  */
@@ -61,7 +61,7 @@ typedef struct thread_info
  * 			mutex_locker : the mutex locker for the thread operation.
  * 			run_locker : the locker for noticing the thread do running or waitting.
  * 			full_locker : the locker notice the thread is stoping when free the thread pool and the pool is not full .
- * 			empry_Locker : the locker notice the thread waitting for the busy thread work over,then do with the thread.
+ * 			empty_Locker : the locker notice the thread waitting for the busy thread work over,then do with the thread.
  * 			state : the pool's current state.
  *          total_size : the pool max size;
  *          current_size : the thread count for the current pool ;
@@ -79,6 +79,10 @@ typedef struct threadpool_info
 	int current_size;
 	int current_index;
 }threadpool_info_t;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  * initialize the thread pool
@@ -112,5 +116,8 @@ int threadpool_run(callback func,void *arg);
  */
 int threadpool_destroy();
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* PTHREAD_POOL_H_ */
