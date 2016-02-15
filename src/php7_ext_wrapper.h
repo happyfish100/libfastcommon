@@ -20,8 +20,9 @@
 
 #if PHP_MAJOR_VERSION < 7
 typedef int zend_size_t;
-#define ZEND_RETURN_STRINGL_DUP(s, l) RETURN_STRINGL(s, l, 1)
-#define ZEND_RETURN_STRINGL_EX(s, l, callback)  \
+#define ZEND_RETURN_STRING(s, dup) RETURN_STRING(s, dup)
+#define ZEND_RETURN_STRINGL(s, l, dup) RETURN_STRINGL(s, l, dup)
+#define ZEND_RETURN_STRINGL_CALLBACK(s, l, callback)  \
 	do { \
 		RETVAL_STRINGL(s, l, 1);  \
 		callback(s); /* generally for free the pointer */   \
@@ -50,6 +51,9 @@ typedef int zend_size_t;
 #define zend_add_assoc_bool_ex(z, key, key_len, b) \
 	add_assoc_bool_ex(z, key, key_len, b)
 
+#define zend_add_index_string(z, index, value, dup) \
+	add_index_string(z, index, value, dup)
+
 static inline int zend_hash_find_wrapper(HashTable *ht, char *key, int key_len,
         zval **value)
 {
@@ -77,8 +81,9 @@ static inline int zend_get_configuration_directive_wrapper(char *name, int len,
 #else
 
 typedef size_t zend_size_t;
-#define ZEND_RETURN_STRINGL_DUP(s, l) RETURN_STRINGL(s, l)
-#define ZEND_RETURN_STRINGL_EX(s, l, callback)  \
+#define ZEND_RETURN_STRING(s, dup) RETURN_STRING(s)
+#define ZEND_RETURN_STRINGL(s, l, dup) RETURN_STRINGL(s, l)
+#define ZEND_RETURN_STRINGL_CALLBACK(s, l, callback)  \
 	do { \
 		RETVAL_STRINGL(s, l);  \
 		callback(s);    \
@@ -107,6 +112,9 @@ typedef size_t zend_size_t;
 
 #define zend_add_assoc_bool_ex(z, key, key_len, b) \
 	add_assoc_bool_ex(z, key, key_len - 1, b)
+
+#define zend_add_index_string(z, index, value, dup) \
+	add_index_string(z, index, value)
 
 static inline int zend_hash_find_wrapper(HashTable *ht, char *key, int key_len,
         zval **value)

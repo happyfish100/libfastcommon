@@ -1,14 +1,4 @@
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-#include <php.h>
-
-#ifdef ZTS
-#include "TSRM.h"
-#endif
-
-#include <SAPI.h>
-#include <php_ini.h>
+#include "php7_ext_wrapper.h"
 #include "ext/standard/info.h"
 #include <zend_extensions.h>
 #include <zend_exceptions.h>
@@ -27,20 +17,6 @@
 #define MAJOR_VERSION  1
 #define MINOR_VERSION  0
 #define PATCH_VERSION  3
-
-#if PHP_MAJOR_VERSION < 7
-typedef int zend_size_t;
-#define ZEND_RETURN_STRINGL(s, l, dup) RETURN_STRINGL(s, l, dup)
-#define ZEND_RETURN_STRING(s, dup) RETURN_STRING(s, dup)
-#define zend_add_index_string(z, index, value, dup) \
-	add_index_string(z, index, value, dup)
-#else
-typedef size_t zend_size_t;
-#define ZEND_RETURN_STRINGL(s, l, dup) RETURN_STRINGL(s, l)
-#define ZEND_RETURN_STRING(s, dup) RETURN_STRING(s)
-#define zend_add_index_string(z, index, value, dup) \
-	add_index_string(z, index, value)
-#endif
 
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 3)
 const zend_fcall_info empty_fcall_info = { 0, NULL, NULL, NULL, NULL, 0, NULL, NULL, 0 };
