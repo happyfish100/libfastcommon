@@ -1,5 +1,5 @@
 
-Version 1.24  2016-02-11
+Version 1.24  2016-02-15
   * php extension compiled on PHP 7
   * add skiplist which support stable sort
   * make.sh: use sed to replace perl
@@ -11,6 +11,7 @@ Version 1.24  2016-02-11
   * add fast_blocked_queue.[hc]
   * iovent bug fixed for FreeBSD
   * sysinfo for FreeBSD
+  * add php7_ext_wrapper.h for php7 migration
 
 Version 1.23  2015-11-16
   * sched_thread.c: task can execute in a new thread

@@ -29,7 +29,8 @@ HEADER_FILES = common_define.h hash.h chain.h logger.h base64.h \
                fast_timer.h process_ctrl.h fast_mblock.h \
                connection_pool.h fast_mpool.h fast_allocator.h \
                fast_buffer.h skiplist.h multi_skiplist.h flat_skiplist.h \
-			   skiplist_common.h system_info.h fast_blocked_queue.h
+			   skiplist_common.h system_info.h fast_blocked_queue.h \
+			   php7_ext_wrapper.h
 
 ALL_OBJS = $(FAST_STATIC_OBJS) $(FAST_SHARED_OBJS)
 
