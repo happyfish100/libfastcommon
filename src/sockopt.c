@@ -44,8 +44,6 @@
 #include <sys/sysctl.h>
 #include <sys/uio.h>
 #include <net/if_dl.h>
-#include <netinet/if_ether.h>
-#include <net/route.h>
 #endif
 #endif
 

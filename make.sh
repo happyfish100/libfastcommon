@@ -62,6 +62,7 @@ fi
 LIBS='-lm'
 uname=`uname`
 
+HAVE_VMMETER_H=0
 if [ "$uname" = "Linux" ]; then
   OS_NAME=OS_LINUX
   IOEVENT_USE=IOEVENT_USE_EPOLL
@@ -71,6 +72,11 @@ elif [ "$uname" = "FreeBSD" ] || [ "$uname" = "Darwin" ]; then
   if [ "$uname" = "Darwin" ]; then
     CFLAGS="$CFLAGS -DDARWIN"
   fi
+
+  if [ -f /usr/include/sys/vmmeter.h ]; then
+     HAVE_VMMETER_H=1
+  fi
+
 elif [ "$uname" = "SunOS" ]; then
   OS_NAME=OS_SUNOS
   IOEVENT_USE=IOEVENT_USE_PORT
@@ -103,6 +109,10 @@ cat <<EOF > src/_os_define.h
 
 #ifndef $IOEVENT_USE
 #define $IOEVENT_USE  1
+#endif
+
+#ifndef HAVE_VMMETER_H
+#define HAVE_VMMETER_H $HAVE_VMMETER_H
 #endif
 
 #endif

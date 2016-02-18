@@ -31,7 +31,11 @@
 #ifdef OS_FREEBSD
 #include <sys/sysctl.h>
 #include <sys/ucred.h>
+
+#if HAVE_VMMETER_H == 1
 #include <sys/vmmeter.h>
+#endif
+
 #endif
 #endif
 
@@ -681,7 +685,9 @@ int get_sysinfo(struct fast_sysinfo*info)
         int mib[4];
         size_t size;
 	struct loadavg loads;
+#if HAVE_VMMETER_H == 1
 	struct vmtotal vm;
+#endif
 	struct xsw_usage sw_usage;
 
 	memset(info, 0, sizeof(struct fast_sysinfo));
@@ -723,6 +729,7 @@ int get_sysinfo(struct fast_sysinfo*info)
 
 	get_sys_total_mem_size((int64_t *)&info->totalram);
 
+#if HAVE_VMMETER_H == 1
 	mib[0] = CTL_VM;
 	mib[1] = VM_METER;
 	size = sizeof(vm);
@@ -739,6 +746,7 @@ int get_sysinfo(struct fast_sysinfo*info)
 		info->sharedram = vm.t_rmshr;
 		//info->bufferram = vm.   //TODO:
 	}
+#endif
 
 	mib[0] = CTL_VM;
 	mib[1] = VM_SWAPUSAGE;
