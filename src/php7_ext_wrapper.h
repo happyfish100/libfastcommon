@@ -51,8 +51,23 @@ typedef int zend_size_t;
 #define zend_add_assoc_bool_ex(z, key, key_len, b) \
 	add_assoc_bool_ex(z, key, key_len, b)
 
+#define zend_add_index_stringl(z, index, value, length, dup) \
+	add_index_stringl(z, index, value, length, dup)
+
 #define zend_add_index_string(z, index, value, dup) \
 	add_index_string(z, index, value, dup)
+
+#define zend_add_assoc_stringl(z, key, str, length, dup) \
+	add_assoc_stringl(z, key, str, length, dup)
+
+#define zend_add_assoc_string(z, key, str, dup) \
+	add_assoc_string(z, key, str, dup)
+
+#define zend_add_next_index_stringl(z, str, length, dup) \
+	add_next_index_stringl(z, str, length, dup)
+
+#define zend_add_next_index_string(z, str, dup) \
+	add_next_index_string(z, str, dup)
 
 static inline int zend_hash_find_wrapper(HashTable *ht, char *key, int key_len,
         zval **value)
@@ -113,8 +128,23 @@ typedef size_t zend_size_t;
 #define zend_add_assoc_bool_ex(z, key, key_len, b) \
 	add_assoc_bool_ex(z, key, key_len - 1, b)
 
+#define zend_add_index_stringl(z, index, value, length, dup) \
+	add_index_stringl(z, index, value, length)
+
 #define zend_add_index_string(z, index, value, dup) \
 	add_index_string(z, index, value)
+
+#define zend_add_assoc_stringl(z, key, str, length, dup) \
+	add_assoc_stringl(z, key, str, length)
+
+#define zend_add_assoc_string(z, key, str, dup) \
+	add_assoc_string(z, key, str)
+
+#define zend_add_next_index_stringl(z, str, length, dup) \
+	add_next_index_stringl(z, str, length)
+
+#define zend_add_next_index_string(z, str, dup) \
+	add_next_index_string(z, str)
 
 static inline int zend_hash_find_wrapper(HashTable *ht, char *key, int key_len,
         zval **value)
