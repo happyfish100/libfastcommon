@@ -31,6 +31,7 @@
 #ifdef OS_FREEBSD
 #include <sys/sysctl.h>
 #include <sys/ucred.h>
+#include <sys/user.h>
 
 #if HAVE_VMMETER_H == 1
 #include <sys/vmmeter.h>
@@ -58,7 +59,7 @@ int get_sys_total_mem_size(int64_t *mem_size)
    size_t len;
 
    mib[0] = CTL_HW;
-   mib[1] = HW_MEMSIZE;
+   mib[1] = HW_PHYSMEM;
    len = sizeof(*mem_size);
    if (sysctl(mib, 2, mem_size, &len, NULL, 0) != 0)
    {
@@ -564,6 +565,25 @@ int get_sysinfo(struct fast_sysinfo*info)
 
 #elif  defined(OS_FREEBSD)
 
+#ifdef DARWIN
+#define ki_pid  kp_proc.p_pid
+#define ki_comm kp_proc.p_comm
+#define ki_ppid kp_eproc.e_ppid
+#define ki_start kp_proc.p_starttime
+#define ki_flag kp_proc.p_flag
+#define ki_stat kp_proc.p_stat
+#define ki_sigignore kp_proc.p_sigignore
+#define ki_sigcatch kp_proc.p_sigcatch
+#define ki_priority kp_proc.p_priority
+#define ki_ruid kp_eproc.e_pcred.p_ruid
+#define ki_rgid kp_eproc.e_pcred.p_rgid
+#define GET_SIGNAL(sig) sig
+
+#else
+#define ki_priority ki_pri.pri_level
+#define GET_SIGNAL(sig) *((int *)&sig)
+#endif
+
 int get_processes(struct fast_process_info **processes, int *count)
 {
     struct kinfo_proc *procs;
@@ -658,19 +678,19 @@ int get_processes(struct fast_process_info **processes, int *count)
     {
         process->field_count = 9;
         snprintf(process->comm, sizeof(process->comm),
-                "%s", procs[i].kp_proc.p_comm);
-        process->pid = procs[i].kp_proc.p_pid;
-        process->ppid = procs[i].kp_eproc.e_ppid;
-        process->starttime = procs[i].kp_proc.p_starttime;
-        process->flags = procs[i].kp_proc.p_flag;
-        process->state = procs[i].kp_proc.p_stat;
+                "%s", procs[i].ki_comm);
+        process->pid = procs[i].ki_pid;
+        process->ppid = procs[i].ki_ppid;
+        process->starttime = procs[i].ki_start;
+        process->flags = procs[i].ki_flag;
+        process->state = procs[i].ki_stat;
 
-        process->sigignore = procs[i].kp_proc.p_sigignore;
-        process->sigcatch = procs[i].kp_proc.p_sigcatch;
-        process->priority = procs[i].kp_proc.p_priority;
+        process->sigignore = GET_SIGNAL(procs[i].ki_sigignore);
+        process->sigcatch = GET_SIGNAL(procs[i].ki_sigcatch);
+        process->priority = procs[i].ki_priority;
 
-        //process->uid = procs[i].kp_eproc.e_pcred.p_ruid;
-        //process->gid = procs[i].kp_eproc.e_pcred.p_rgid;
+        //process->uid = procs[i].ki_ruid;
+        //process->gid = procs[i].ki_rgid;
 
         process++;
     }
@@ -688,7 +708,10 @@ int get_sysinfo(struct fast_sysinfo*info)
 #if HAVE_VMMETER_H == 1
 	struct vmtotal vm;
 #endif
+
+#ifdef VM_SWAPUSAGE
 	struct xsw_usage sw_usage;
+#endif
 
 	memset(info, 0, sizeof(struct fast_sysinfo));
 	get_boot_time(&info->boot_time);
@@ -748,6 +771,7 @@ int get_sysinfo(struct fast_sysinfo*info)
 	}
 #endif
 
+#ifdef VM_SWAPUSAGE
 	mib[0] = CTL_VM;
 	mib[1] = VM_SWAPUSAGE;
 	size = sizeof(sw_usage);
@@ -763,6 +787,7 @@ int get_sysinfo(struct fast_sysinfo*info)
 		info->totalswap = sw_usage.xsu_total;
 		info->freeswap = sw_usage.xsu_avail;
 	}
+#endif
 
 	return 0;
 }

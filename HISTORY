@@ -1,5 +1,6 @@
 Version 1.25  2016-02-19
   * php7_ext_wrapper.h add more macro defines
+  * compile passed in FreeBSD 10.2
 
 Version 1.24  2016-02-15
   * php extension compiled on PHP 7

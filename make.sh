@@ -128,7 +128,7 @@ elif [ -f /usr/lib/libc_r.so ]; then
   fi
 fi
 
-function sed_replace()
+sed_replace()
 {
     sed_cmd=$1
     filename=$2
