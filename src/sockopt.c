@@ -1994,7 +1994,6 @@ int getifconfigs(FastIFConfig *if_configs, const int max_count, int *count)
 
 	freeifaddrs(ifc1);
 
-    printf ("count: %d\n", *count);
     for (i=0; i<*count; i++)
     {
         getifmac(if_configs + i);

@@ -63,6 +63,7 @@ LIBS='-lm'
 uname=`uname`
 
 HAVE_VMMETER_H=0
+HAVE_USER_H=0
 if [ "$uname" = "Linux" ]; then
   OS_NAME=OS_LINUX
   IOEVENT_USE=IOEVENT_USE_EPOLL
@@ -77,6 +78,9 @@ elif [ "$uname" = "FreeBSD" ] || [ "$uname" = "Darwin" ]; then
      HAVE_VMMETER_H=1
   fi
 
+  if [ -f /usr/include/sys/user.h ]; then
+     HAVE_USER_H=1
+  fi
 elif [ "$uname" = "SunOS" ]; then
   OS_NAME=OS_SUNOS
   IOEVENT_USE=IOEVENT_USE_PORT
@@ -115,9 +119,11 @@ cat <<EOF > src/_os_define.h
 #define HAVE_VMMETER_H $HAVE_VMMETER_H
 #endif
 
+#ifndef HAVE_USER_H
+#define HAVE_USER_H $HAVE_USER_H
+#endif
 #endif
 EOF
-
 
 if [ -f /usr/lib/libpthread.so ] || [ -f /usr/local/lib/libpthread.so ] || [ -f /usr/lib64/libpthread.so ] || [ -f /usr/lib/libpthread.a ] || [ -f /usr/local/lib/libpthread.a ] || [ -f /usr/lib64/libpthread.a ]; then
   LIBS="$LIBS -lpthread"
