@@ -31,7 +31,10 @@
 #ifdef OS_FREEBSD
 #include <sys/sysctl.h>
 #include <sys/ucred.h>
+
+#if HAVE_USER_H == 1
 #include <sys/user.h>
+#endif
 
 #if HAVE_VMMETER_H == 1
 #include <sys/vmmeter.h>
@@ -765,8 +768,11 @@ int get_sysinfo(struct fast_sysinfo*info)
 	}
 	else
 	{
-		info->freeram = vm.t_free;
-		info->sharedram = vm.t_rmshr;
+		int page_size;
+
+		page_size = sysconf(_SC_PAGESIZE);
+		info->freeram = vm.t_free * page_size;
+		info->sharedram = vm.t_rmshr * page_size;
 		//info->bufferram = vm.   //TODO:
 	}
 #endif
