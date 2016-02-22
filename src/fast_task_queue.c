@@ -313,17 +313,21 @@ void free_queue_destroy()
 		char *pCharEnd;
 		struct fast_task_info *pTask;
 
-		pCharEnd = ((char *)g_mpool.head->blocks) + g_free_queue.block_size *
-				g_free_queue.alloc_connections;
-		for (p=(char *)g_mpool.head->blocks; p<pCharEnd; p += g_free_queue.block_size)
-		{
-			pTask = (struct fast_task_info *)p;
-			if (pTask->data != NULL)
-			{
-				free(pTask->data);
-				pTask->data = NULL;
-			}
-		}
+        mpool = g_mpool.head;
+        while (mpool != NULL)
+        {
+            pCharEnd = (char *)mpool->last_block + g_free_queue.block_size;
+            for (p=(char *)mpool->blocks; p<pCharEnd; p += g_free_queue.block_size)
+            {
+                pTask = (struct fast_task_info *)p;
+                if (pTask->data != NULL)
+                {
+                    free(pTask->data);
+                    pTask->data = NULL;
+                }
+            }
+            mpool = mpool->next;
+        }
 	}
 
 	mpool = g_mpool.head;
