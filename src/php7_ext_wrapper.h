@@ -87,6 +87,18 @@ static inline int zend_hash_find_wrapper(HashTable *ht, char *key, int key_len,
 	}
 }
 
+static inline int zend_hash_index_find_wrapper(HashTable *ht, int index, zval **value)
+{
+    zval **pp = NULL;
+    if (zend_hash_index_find(ht, index, (void**)&pp) == SUCCESS) {
+        *value =  *pp;
+        return SUCCESS;
+    } else {
+        *value = NULL;
+        return FAILURE;
+    }
+}
+
 static inline int zend_get_configuration_directive_wrapper(char *name, int len,
         zval **value)
 {
@@ -154,7 +166,12 @@ static inline int zend_hash_find_wrapper(HashTable *ht, char *key, int key_len,
 	*value = zend_hash_find(ht, Z_STR(zkey));
 	return (*value != NULL ? SUCCESS : FAILURE);
 }
-
+static inline int zend_hash_index_find_wrapper(HashTable *ht, int index,
+        zval **value)
+{
+    *value = zend_hash_index_find(ht, index);
+	return (*value != NULL ? SUCCESS : FAILURE);
+}
 static inline int zend_hash_update_wrapper(HashTable *ht, char *k, int len,
         void *val, int size, void *ptr)
 {
