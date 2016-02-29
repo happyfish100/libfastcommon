@@ -288,6 +288,11 @@ void log_take_over_stdout_ex(LogContext *pContext)
     pContext->take_over_stdout = true;
 }
 
+void log_set_compress_log_flag_ex(LogContext *pContext, const bool compress_log_flag)
+{
+    pContext->compress_log_flag = compress_log_flag;
+}
+
 void log_set_fd_flags(LogContext *pContext, const int flags)
 {
     pContext->fd_flags = flags;
@@ -332,6 +337,33 @@ int log_notify_rotate(void *args)
 
 	((LogContext *)args)->rotate_immediately = true;
 	return 0;
+}
+
+static int log_delete_old_file(LogContext *pContext,
+        const char *old_filename)
+{
+    char full_filename[MAX_PATH_SIZE + 128];
+    if (pContext->compress_log_flag)
+    {
+        snprintf(full_filename, sizeof(full_filename), "%s.gz", old_filename);
+    }
+    else
+    {
+        snprintf(full_filename, sizeof(full_filename), "%s", old_filename);
+    }
+
+    if (unlink(full_filename) != 0)
+    {
+        if (errno != ENOENT)
+        {
+            fprintf(stderr, "file: "__FILE__", line: %d, " \
+                    "unlink %s fail, errno: %d, error info: %s\n", \
+                    __LINE__, full_filename, errno, STRERROR(errno));
+        }
+        return errno != 0 ? errno : EPERM;
+    }
+
+    return 0;
 }
 
 static int log_delete_matched_old_files(LogContext *pContext,
@@ -428,6 +460,7 @@ int log_delete_old_files(void *args)
     int full_len;
     int prefix_len;
     int len;
+    int result;
 	struct tm tm;
 
 	if (args == NULL)
@@ -480,19 +513,14 @@ int log_delete_old_files(void *args)
             len = sprintf(old_filename, "%s.", pContext->log_filename);
             strftime(old_filename + len, sizeof(old_filename) - len,
                     pContext->rotate_time_format, &tm);
-            if (unlink(old_filename) != 0)
+            if ((result=log_delete_old_file(pContext, old_filename)) != 0)
             {
-                if (errno != ENOENT)
+                if (result != ENOENT)
                 {
-                    fprintf(stderr, "file: "__FILE__", line: %d, " \
-                            "unlink %s fail, errno: %d, error info: %s\n", \
-                            __LINE__, old_filename, errno, STRERROR(errno));
-                    return errno != 0 ? errno : EPERM;
+                    return result;
                 }
-                else
-                {
-                    break;
-                }
+
+                break;
             }
         }
 
@@ -504,12 +532,36 @@ int log_delete_old_files(void *args)
     }
 }
 
+static void log_gzip(const char *filename)
+{
+    char *gzip;
+    char cmd[MAX_PATH_SIZE + 128];
+
+    if (access("/bin/gzip", F_OK) == 0)
+    {
+        gzip = "/bin/gzip";
+    }
+    else if (access("/usr/bin/gzip", F_OK) == 0)
+    {
+        gzip = "/usr/bin/gzip";
+    }
+    else
+    {
+        gzip = "gzip";
+    }
+
+    snprintf(cmd, sizeof(cmd), "%s %s", gzip, filename);
+    system(cmd);
+}
+
 int log_rotate(LogContext *pContext)
 {
 	struct tm tm;
 	time_t current_time;
     int len;
+    int result;
 	char old_filename[MAX_PATH_SIZE + 32];
+    bool exist;
 
 	if (*(pContext->log_filename) == '\0')
 	{
@@ -540,6 +592,7 @@ int log_rotate(LogContext *pContext)
 		fprintf(stderr, "file: "__FILE__", line: %d, " \
 			"file: %s already exist, rotate file fail\n",
 			__LINE__, old_filename);
+        exist = true;
     }
     else if (rename(pContext->log_filename, old_filename) != 0)
 	{
@@ -547,9 +600,21 @@ int log_rotate(LogContext *pContext)
 			"rename %s to %s fail, errno: %d, error info: %s\n", \
 			__LINE__, pContext->log_filename, old_filename, \
 			errno, STRERROR(errno));
+        exist = false;
 	}
+    else
+    {
+        exist = true;
+    }
 
-	return log_open(pContext);
+	result = log_open(pContext);
+
+    if (exist && pContext->compress_log_flag)
+    {
+        log_gzip(old_filename);
+    }
+
+    return result;
 }
 
 static int log_check_rotate(LogContext *pContext)

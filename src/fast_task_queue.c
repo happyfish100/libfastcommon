@@ -20,7 +20,9 @@ struct mpool_node {
 struct mpool_chain {
     struct mpool_node *head;
     struct mpool_node *tail;
-} g_mpool = {NULL, NULL};
+};
+
+static struct mpool_chain g_mpool = {NULL, NULL};
 
 #define ALIGNED_TASK_INFO_SIZE  MEM_ALIGN(sizeof(struct fast_task_info))
 

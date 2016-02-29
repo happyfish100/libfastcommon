@@ -67,6 +67,9 @@ typedef struct log_context
 	/* if stdout to the log file */
     bool take_over_stdout;
 
+    /* if compress the log file use gzip command */
+    bool compress_log_flag;
+
 	/* time precision */
 	char time_precision;
 
@@ -114,6 +117,9 @@ int log_init2();
 
 #define log_take_over_stderr()  log_take_over_stderr_ex(&g_log_context)
 #define log_take_over_stdout()  log_take_over_stdout_ex(&g_log_context)
+
+#define log_set_compress_log_flag(compress_log_flag) \
+    log_set_compress_log_flag_ex(&g_log_context, compress_log_flag)
 
 #define log_header(pContext, header, header_len) \
     log_it_ex2(pContext, NULL, header, header_len, false, false)
@@ -202,6 +208,11 @@ void log_take_over_stderr_ex(LogContext *pContext);
  *  return: none
 */
 void log_take_over_stdout_ex(LogContext *pContext);
+
+/** set compress_log_flag to true
+ *  return: none
+*/
+void log_set_compress_log_flag_ex(LogContext *pContext, const bool compress_log_flag);
 
 /** set log fd flags
  *  parameters:
