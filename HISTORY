@@ -1,4 +1,4 @@
-Version 1.25  2016-02-29
+Version 1.25  2016-03-01
   * php7_ext_wrapper.h add more macro defines
   * compile passed in FreeBSD 10.2
   * bugfixed: free task point correctly in free_queue_destroy

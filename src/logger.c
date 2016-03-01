@@ -31,6 +31,9 @@
 
 #define LOG_BUFF_SIZE    64 * 1024
 
+#define NEED_COMPRESS_LOG(flags) ((flags & LOG_COMPRESS_FLAGS_ENABLED) != 0)
+#define COMPRESS_IN_NEW_THREAD(flags) ((flags & LOG_COMPRESS_FLAGS_NEW_THREAD) != 0)
+
 LogContext g_log_context = {LOG_INFO, STDERR_FILENO, NULL};
 
 static int log_fsync(LogContext *pContext, const bool bNeedLock);
@@ -288,9 +291,9 @@ void log_take_over_stdout_ex(LogContext *pContext)
     pContext->take_over_stdout = true;
 }
 
-void log_set_compress_log_flag_ex(LogContext *pContext, const bool compress_log_flag)
+void log_set_compress_log_flags_ex(LogContext *pContext, const short compress_log_flags)
 {
-    pContext->compress_log_flag = compress_log_flag;
+    pContext->compress_log_flags = compress_log_flags;
 }
 
 void log_set_fd_flags(LogContext *pContext, const int flags)
@@ -343,7 +346,7 @@ static int log_delete_old_file(LogContext *pContext,
         const char *old_filename)
 {
     char full_filename[MAX_PATH_SIZE + 128];
-    if (pContext->compress_log_flag)
+    if (NEED_COMPRESS_LOG(pContext->compress_log_flags))
     {
         snprintf(full_filename, sizeof(full_filename), "%s.gz", old_filename);
     }
@@ -532,8 +535,9 @@ int log_delete_old_files(void *args)
     }
 }
 
-static void log_gzip(const char *filename)
+static void* log_gzip_func(void *args)
 {
+    char *filename;
     char *gzip;
     char cmd[MAX_PATH_SIZE + 128];
 
@@ -550,8 +554,50 @@ static void log_gzip(const char *filename)
         gzip = "gzip";
     }
 
+    filename = (char *)args;
     snprintf(cmd, sizeof(cmd), "%s %s", gzip, filename);
+    free(args);
+
     system(cmd);
+    return NULL;
+}
+
+static void log_gzip(LogContext *pContext, const char *filename)
+{
+    char *new_filename;
+
+    new_filename = strdup(filename);
+    if (new_filename == NULL)
+    {
+		fprintf(stderr, "file: "__FILE__", line: %d, "
+                "strdup %d bytes fail", __LINE__, (int)strlen(filename));
+        return;
+    }
+
+    if (COMPRESS_IN_NEW_THREAD(pContext->compress_log_flags))
+    {
+        int result;
+        pthread_t tid;
+        pthread_attr_t thread_attr;
+
+        if ((result=init_pthread_attr(&thread_attr, 0) != 0))
+        {
+            return;
+        }
+        if ((result=pthread_create(&tid, &thread_attr,
+                        log_gzip_func, new_filename)) != 0)
+        {
+            fprintf(stderr, "file: "__FILE__", line: %d, " \
+                    "create thread failed, " \
+                    "errno: %d, error info: %s", \
+                    __LINE__, result, STRERROR(result));
+        }
+        pthread_attr_destroy(&thread_attr);
+    }
+    else
+    {
+        log_gzip_func(new_filename);
+    }
 }
 
 int log_rotate(LogContext *pContext)
@@ -609,9 +655,9 @@ int log_rotate(LogContext *pContext)
 
 	result = log_open(pContext);
 
-    if (exist && pContext->compress_log_flag)
+    if (exist && NEED_COMPRESS_LOG(pContext->compress_log_flags))
     {
-        log_gzip(old_filename);
+        log_gzip(pContext, old_filename);
     }
 
     return result;
