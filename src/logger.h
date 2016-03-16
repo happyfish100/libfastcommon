@@ -97,6 +97,11 @@ typedef struct log_context
      * log the header (title line) callback
      * */
     LogHeaderCallback print_header_callback;
+
+    /*
+     * compress the log files before N days
+     * */
+    int compress_log_days_before;
 } LogContext;
 
 extern LogContext g_log_context;
@@ -124,8 +129,10 @@ int log_init2();
 #define log_take_over_stderr()  log_take_over_stderr_ex(&g_log_context)
 #define log_take_over_stdout()  log_take_over_stdout_ex(&g_log_context)
 
-#define log_set_compress_log_flags(compress_log_flags) \
-    log_set_compress_log_flags_ex(&g_log_context, compress_log_flags)
+#define log_set_compress_log_flags(flags) \
+    log_set_compress_log_flags_ex(&g_log_context, flags)
+#define log_set_compress_log_days_before(days_before) \
+    log_set_compress_log_days_before_ex(&g_log_context, days_before)
 
 #define log_header(pContext, header, header_len) \
     log_it_ex2(pContext, NULL, header, header_len, false, false)
@@ -206,19 +213,34 @@ void log_set_keep_days(LogContext *pContext, const int keep_days);
 void log_set_header_callback(LogContext *pContext, LogHeaderCallback header_callback);
 
 /** set take_over_stderr to true
+ *  parameters:
+ *           pContext: the log context
  *  return: none
 */
 void log_take_over_stderr_ex(LogContext *pContext);
 
 /** set take_over_stdout to true
+ *  parameters:
+ *           pContext: the log context
  *  return: none
 */
 void log_take_over_stdout_ex(LogContext *pContext);
 
 /** set compress_log_flags to true
+ *  parameters:
+ *           pContext: the log context
+ *           flags: the compress log flags
  *  return: none
 */
-void log_set_compress_log_flags_ex(LogContext *pContext, const short compress_log_flags);
+void log_set_compress_log_flags_ex(LogContext *pContext, const short flags);
+
+/** set compress log file before N days
+ *  parameters:
+ *           pContext: the log context
+ *           days_before: compress log file before N days
+ *  return: none
+*/
+void log_set_compress_log_days_before_ex(LogContext *pContext, const int days_before);
 
 /** set log fd flags
  *  parameters:

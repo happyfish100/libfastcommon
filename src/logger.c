@@ -34,6 +34,9 @@
 #define NEED_COMPRESS_LOG(flags) ((flags & LOG_COMPRESS_FLAGS_ENABLED) != 0)
 #define COMPRESS_IN_NEW_THREAD(flags) ((flags & LOG_COMPRESS_FLAGS_NEW_THREAD) != 0)
 
+#define GZIP_EXT_NAME_STR  ".gz"
+#define GZIP_EXT_NAME_LEN  (sizeof(GZIP_EXT_NAME_STR) - 1)
+
 LogContext g_log_context = {LOG_INFO, STDERR_FILENO, NULL};
 
 static int log_fsync(LogContext *pContext, const bool bNeedLock);
@@ -291,9 +294,14 @@ void log_take_over_stdout_ex(LogContext *pContext)
     pContext->take_over_stdout = true;
 }
 
-void log_set_compress_log_flags_ex(LogContext *pContext, const short compress_log_flags)
+void log_set_compress_log_flags_ex(LogContext *pContext, const short flags)
 {
-    pContext->compress_log_flags = compress_log_flags;
+    pContext->compress_log_flags = flags;
+}
+
+void log_set_compress_log_days_before_ex(LogContext *pContext, const int days_before)
+{
+    pContext->compress_log_days_before = days_before;
 }
 
 void log_set_fd_flags(LogContext *pContext, const int flags)
@@ -348,7 +356,8 @@ static int log_delete_old_file(LogContext *pContext,
     char full_filename[MAX_PATH_SIZE + 128];
     if (NEED_COMPRESS_LOG(pContext->compress_log_flags))
     {
-        snprintf(full_filename, sizeof(full_filename), "%s.gz", old_filename);
+        snprintf(full_filename, sizeof(full_filename), "%s%s",
+                old_filename, GZIP_EXT_NAME_STR);
     }
     else
     {
@@ -369,23 +378,149 @@ static int log_delete_old_file(LogContext *pContext,
     return 0;
 }
 
-static int log_delete_matched_old_files(LogContext *pContext,
-        const int prefix_len)
+static int log_get_prefix_len(LogContext *pContext, int *prefix_len)
+{
+    char *p;
+
+	if (*(pContext->log_filename) == '\0' || \
+            *(pContext->rotate_time_format) == '\0')
+	{
+        *prefix_len = 0;
+		return EINVAL;
+	}
+
+    p = pContext->rotate_time_format + strlen(pContext->rotate_time_format) - 1;
+    while (p > pContext->rotate_time_format)
+    {
+        if (*(p-1) != '%')
+        {
+            break;
+        }
+        if (*p == 'd' || *p == 'm' || *p == 'Y' || *p == 'y')
+        {
+            break;
+        }
+
+        p -= 2;
+    }
+
+    *prefix_len = (p - pContext->rotate_time_format) + 1;
+    if (*prefix_len == 0)
+    {
+        return EINVAL;
+    }
+
+    return 0;
+}
+
+struct log_filename_array {
+    char **filenames;
+    int count;
+    int size;
+};
+
+static int log_check_filename_array_size(struct log_filename_array *
+        filename_array)
+{
+    char **new_filenames;
+    int new_size;
+    int bytes;
+
+    if (filename_array->size > filename_array->count)
+    {
+        return 0;
+    }
+
+    new_size = filename_array->size == 0 ? 8 : filename_array->size * 2;
+    bytes = sizeof(char *) * new_size;
+    new_filenames = (char **)malloc(bytes);
+    if (new_filenames == NULL)
+    {
+        fprintf(stderr, "file: "__FILE__", line: %d, "
+                "malloc %d bytes fail, errno: %d, error info: %s\n",
+                __LINE__, bytes, errno, STRERROR(errno));
+        return errno != 0 ? errno : ENOMEM;
+    }
+
+    if (filename_array->count > 0)
+    {
+        memcpy(new_filenames, filename_array->filenames,
+                sizeof(char *) * filename_array->count);
+    }
+    if (filename_array->filenames != NULL)
+    {
+        free(filename_array->filenames);
+    }
+
+    filename_array->filenames = new_filenames;
+    filename_array->size = new_size;
+
+    return 0;
+}
+
+static void log_free_filename_array(struct log_filename_array *
+        filename_array)
+{
+    int i;
+
+    if (filename_array->filenames == NULL)
+    {
+        return;
+    }
+
+    for (i=0; i<filename_array->count; i++)
+    {
+        free(filename_array->filenames[i]);
+    }
+
+    free(filename_array->filenames);
+    filename_array->filenames = NULL;
+    filename_array->size = 0;
+    filename_array->count = 0;
+}
+
+static void log_get_file_path(LogContext *pContext, char *log_filepath)
+{
+    char *p;
+
+    p = strrchr(pContext->log_filename, '/');
+    if (p == NULL)
+    {
+        *log_filepath = '.';
+        *(log_filepath + 1) = '/';
+        *(log_filepath + 2) = '\0';
+    }
+    else
+    {
+        int path_len;
+        path_len = (p - pContext->log_filename) + 1;
+        memcpy(log_filepath, pContext->log_filename, path_len);
+        *(log_filepath + path_len) = '\0';
+    }
+}
+
+static int log_get_matched_files(LogContext *pContext,
+        const int prefix_len, const int days_before,
+        struct log_filename_array *filename_array)
 {
     char rotate_time_format_prefix[32];
 	char log_filepath[MAX_PATH_SIZE];
 	char filename_prefix[MAX_PATH_SIZE + 32];
-	char full_filename[MAX_PATH_SIZE + 32];
     int prefix_filename_len;
     int result;
     int len;
     char *p;
     char *log_filename;
+    char *filename;
     DIR *dir;
     struct dirent ent;
     struct dirent *pEntry;
     time_t the_time;
 	struct tm tm;
+
+    filename_array->filenames = NULL;
+    filename_array->count = 0;
+    filename_array->size = 0;
 
     p = strrchr(pContext->log_filename, '/');
     if (p == NULL)
@@ -417,7 +552,7 @@ static int log_delete_matched_old_files(LogContext *pContext,
     }
 
     result = 0;
-    the_time = get_current_time() - (pContext->keep_days + 1) * 86400;
+    the_time = get_current_time() - days_before * 86400;
     localtime_r(&the_time, &tm);
     memset(filename_prefix, 0, sizeof(filename_prefix));
     len = sprintf(filename_prefix, "%s.", log_filename);
@@ -435,19 +570,21 @@ static int log_delete_matched_old_files(LogContext *pContext,
                 memcmp(pEntry->d_name, filename_prefix,
                     prefix_filename_len) == 0)
         {
-            snprintf(full_filename, sizeof(full_filename), "%s%s",
-                    log_filepath, pEntry->d_name);
-            if (unlink(full_filename) != 0)
+            if ((result=log_check_filename_array_size(filename_array)) != 0)
             {
-                if (errno != ENOENT)
-                {
-                    fprintf(stderr, "file: "__FILE__", line: %d, " \
-                            "unlink %s fail, errno: %d, error info: %s\n", \
-                            __LINE__, full_filename, errno, STRERROR(errno));
-                    result = errno != 0 ? errno : EPERM;
-                    break;
-                }
+                break;
             }
+
+            filename = strdup(pEntry->d_name);
+            if (filename == NULL)
+            {
+                fprintf(stderr, "file: "__FILE__", line: %d, " \
+                        "strdup %s fail, errno: %d, error info: %s\n", \
+                        __LINE__, pEntry->d_name, errno, STRERROR(errno));
+                break;
+            }
+            filename_array->filenames[filename_array->count] = filename;
+            filename_array->count++;
         }
     }
 
@@ -455,12 +592,48 @@ static int log_delete_matched_old_files(LogContext *pContext,
     return result;
 }
 
+static int log_delete_matched_old_files(LogContext *pContext,
+        const int prefix_len)
+{
+    struct log_filename_array filename_array;
+    char log_filepath[MAX_PATH_SIZE];
+    char full_filename[MAX_PATH_SIZE + 32];
+    int result;
+    int i;
+
+    if ((result=log_get_matched_files(pContext,
+                    prefix_len, pContext->keep_days + 1,
+                    &filename_array)) != 0)
+    {
+        return result;
+    }
+
+    log_get_file_path(pContext, log_filepath);
+    for (i=0; i<filename_array.count; i++)
+    {
+        snprintf(full_filename, sizeof(full_filename), "%s%s",
+                log_filepath, filename_array.filenames[i]);
+        if (unlink(full_filename) != 0)
+        {
+            if (errno != ENOENT)
+            {
+                fprintf(stderr, "file: "__FILE__", line: %d, " \
+                        "unlink %s fail, errno: %d, error info: %s\n", \
+                        __LINE__, full_filename, errno, STRERROR(errno));
+                result = errno != 0 ? errno : EPERM;
+                break;
+            }
+        }
+    }
+
+    log_free_filename_array(&filename_array);
+    return result;
+}
+
 int log_delete_old_files(void *args)
 {
     LogContext *pContext;
-    char *p;
 	char old_filename[MAX_PATH_SIZE + 32];
-    int full_len;
     int prefix_len;
     int len;
     int result;
@@ -472,39 +645,16 @@ int log_delete_old_files(void *args)
 	}
 
 	pContext = (LogContext *)args;
-	if (*(pContext->log_filename) == '\0' || \
-            *(pContext->rotate_time_format) == '\0')
-	{
-		return EINVAL;
-	}
-
     if (pContext->keep_days <= 0) {
         return 0;
     }
 
-    full_len = strlen(pContext->rotate_time_format);
-    p = pContext->rotate_time_format + full_len - 1;
-    while (p > pContext->rotate_time_format)
+    if ((result=log_get_prefix_len(pContext, &prefix_len)) != 0)
     {
-        if (*(p-1) != '%')
-        {
-            break;
-        }
-        if (*p == 'd' || *p == 'm' || *p == 'Y' || *p == 'y')
-        {
-            break;
-        }
-
-        p -= 2;
+        return result;
     }
 
-    prefix_len = (p - pContext->rotate_time_format) + 1;
-    if (prefix_len == 0)
-    {
-        return EINVAL;
-    }
-
-    if (prefix_len == full_len)
+    if (prefix_len == (int)strlen(pContext->rotate_time_format))
     {
         time_t the_time;
 
@@ -537,10 +687,16 @@ int log_delete_old_files(void *args)
 
 static void* log_gzip_func(void *args)
 {
-    char *filename;
+    LogContext *pContext;
     char *gzip;
     char cmd[MAX_PATH_SIZE + 128];
+    struct log_filename_array filename_array;
+    char log_filepath[MAX_PATH_SIZE];
+    char full_filename[MAX_PATH_SIZE + 32];
+    int prefix_len;
+    int i;
 
+    pContext = (LogContext *)args;
     if (access("/bin/gzip", F_OK) == 0)
     {
         gzip = "/bin/gzip";
@@ -554,26 +710,42 @@ static void* log_gzip_func(void *args)
         gzip = "gzip";
     }
 
-    filename = (char *)args;
-    snprintf(cmd, sizeof(cmd), "%s %s", gzip, filename);
-    free(args);
+    if (log_get_prefix_len(pContext, &prefix_len) != 0)
+    {
+        return NULL;
+    }
+    if (log_get_matched_files(pContext, prefix_len,
+                pContext->compress_log_days_before, &filename_array) != 0)
+    {
+        return NULL;
+    }
 
-    system(cmd);
+    log_get_file_path(pContext, log_filepath);
+    for (i=0; i<filename_array.count; i++)
+    {
+        int len;
+        len = strlen(filename_array.filenames[i]);
+        if ((len > GZIP_EXT_NAME_LEN) && memcmp(filename_array.filenames[i]
+                    + len - GZIP_EXT_NAME_LEN, GZIP_EXT_NAME_STR,
+                    GZIP_EXT_NAME_LEN) == 0)
+        {
+            continue;
+        }
+
+        snprintf(full_filename, sizeof(full_filename), "%s%s",
+                log_filepath, filename_array.filenames[i]);
+        snprintf(cmd, sizeof(cmd), "%s %s", gzip, full_filename);
+        system(cmd);
+
+        fprintf(stderr, "%s\n", cmd);
+    }
+
+    log_free_filename_array(&filename_array);
     return NULL;
 }
 
-static void log_gzip(LogContext *pContext, const char *filename)
+static void log_gzip(LogContext *pContext)
 {
-    char *new_filename;
-
-    new_filename = strdup(filename);
-    if (new_filename == NULL)
-    {
-		fprintf(stderr, "file: "__FILE__", line: %d, "
-                "strdup %d bytes fail", __LINE__, (int)strlen(filename));
-        return;
-    }
-
     if (COMPRESS_IN_NEW_THREAD(pContext->compress_log_flags))
     {
         int result;
@@ -585,7 +757,7 @@ static void log_gzip(LogContext *pContext, const char *filename)
             return;
         }
         if ((result=pthread_create(&tid, &thread_attr,
-                        log_gzip_func, new_filename)) != 0)
+                        log_gzip_func, pContext)) != 0)
         {
             fprintf(stderr, "file: "__FILE__", line: %d, " \
                     "create thread failed, " \
@@ -596,7 +768,7 @@ static void log_gzip(LogContext *pContext, const char *filename)
     }
     else
     {
-        log_gzip_func(new_filename);
+        log_gzip_func(pContext);
     }
 }
 
@@ -657,7 +829,7 @@ int log_rotate(LogContext *pContext)
 
     if (exist && NEED_COMPRESS_LOG(pContext->compress_log_flags))
     {
-        log_gzip(pContext, old_filename);
+        log_gzip(pContext);
     }
 
     return result;
