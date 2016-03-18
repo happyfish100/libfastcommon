@@ -736,8 +736,6 @@ static void* log_gzip_func(void *args)
                 log_filepath, filename_array.filenames[i]);
         snprintf(cmd, sizeof(cmd), "%s %s", gzip, full_filename);
         system(cmd);
-
-        fprintf(stderr, "%s\n", cmd);
     }
 
     log_free_filename_array(&filename_array);
