@@ -1392,11 +1392,11 @@ void set_log_level(char *pLogLevel)
 	}
 }
 
-int fd_add_flags(int fd, int adding_flags)
+int fcntl_add_flags(int fd, int get_cmd, int set_cmd, int adding_flags)
 {
 	int flags;
 
-	flags = fcntl(fd, F_GETFL, 0);
+	flags = fcntl(fd, get_cmd, 0);
 	if (flags < 0)
 	{
 		logError("file: "__FILE__", line: %d, " \
@@ -1405,7 +1405,7 @@ int fd_add_flags(int fd, int adding_flags)
 		return errno != 0 ? errno : EACCES;
 	}
 
-	if (fcntl(fd, F_SETFL, flags | adding_flags) == -1)
+	if (fcntl(fd, set_cmd, flags | adding_flags) == -1)
 	{
 		logError("file: "__FILE__", line: %d, " \
 			"fcntl fail, errno: %d, error info: %s.", \
@@ -1414,6 +1414,16 @@ int fd_add_flags(int fd, int adding_flags)
 	}
 
 	return 0;
+}
+
+int fd_add_flags(int fd, int adding_flags)
+{
+    return fcntl_add_flags(fd, F_GETFL, F_SETFL, adding_flags);
+}
+
+int fd_set_cloexec(int fd)
+{
+    return fcntl_add_flags(fd, F_GETFD, F_SETFD, FD_CLOEXEC);
 }
 
 int set_run_by(const char *group_name, const char *username)

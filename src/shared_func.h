@@ -444,7 +444,17 @@ int fd_gets(int fd, char *buff, const int size, int once_bytes);
 */
 int set_rlimit(int resource, const rlim_t value);
 
-/** set non block mode
+/** fcntl add flags such as O_NONBLOCK or FD_CLOEXEC
+ *  parameters:
+ *  	fd: the fd to set
+ *  	get_cmd: the get command
+ *  	set_cmd: the set command
+ *  	adding_flags: the flags to add
+ *  return: error no , 0 success, != 0 fail
+*/
+int fcntl_add_flags(int fd, int get_cmd, int set_cmd, int adding_flags);
+
+/** set fd flags such as O_NONBLOCK
  *  parameters:
  *  	fd: the fd to set
  *  	adding_flags: the flags to add
@@ -458,6 +468,13 @@ int fd_add_flags(int fd, int adding_flags);
  *  return: error no , 0 success, != 0 fail
 */
 #define set_nonblock(fd) fd_add_flags(fd, O_NONBLOCK)
+
+/** set fd FD_CLOEXEC flags
+ *  parameters:
+ *  	fd: the fd to set
+ *  return: error no , 0 success, != 0 fail
+*/
+int fd_set_cloexec(int fd);
 
 /** set run by group and user
  *  parameters:
