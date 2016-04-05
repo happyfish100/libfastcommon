@@ -131,6 +131,11 @@ typedef size_t zend_size_t;
 #define ALLOC_INIT_ZVAL(p) MAKE_STD_ZVAL(p)
 #define INIT_ZVAL(z)
 
+#define ZEND_REGISTER_RESOURCE(return_value, result, le_result)  ZVAL_RES(return_value,zend_register_resource(result, le_result))
+
+#define ZEND_FETCH_RESOURCE(rsrc, rsrc_type, passed_id, default_id, resource_type_name, resource_type) \
+        (rsrc = (rsrc_type) zend_fetch_resource(Z_RES_P(*passed_id), resource_type_name, resource_type))
+
 #define zend_zval_ptr_dtor(p)  zval_ptr_dtor(*p)
 
 #define zend_add_assoc_long_ex(z, key, key_len, n) \
