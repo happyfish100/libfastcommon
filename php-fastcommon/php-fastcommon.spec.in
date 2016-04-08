@@ -1,5 +1,7 @@
+%define php_inidir %(php --ini | head -n 1 | awk -F ':' '{print $2;}' | sed 's/ //g')
+%define php_extdir %(php-config --extension-dir 2>/dev/null)
 Name: php-fastcommon
-Version: 1.0.3
+Version: 1.0.4
 Release: 1%{?dist}
 Summary: The php extension for libfastcommon
 License: GPL
@@ -26,10 +28,10 @@ make
 %install
 rm -rf %{buildroot}
 
-mkdir -p %{buildroot}/usr/lib64/php/modules
-mkdir -p %{buildroot}/etc/php.d
-cp -f .libs/fastcommon.so  %{buildroot}/usr/lib64/php/modules/
-cp -f fastcommon.ini %{buildroot}/etc/php.d/fastcommon.ini
+mkdir -p %{buildroot}%{php_extdir}
+mkdir -p %{buildroot}%{php_inidir}/php.d
+cp -f .libs/fastcommon.so  %{buildroot}%{php_extdir}
+cp -f fastcommon.ini %{buildroot}%{php_inidir}/php.d/fastcommon.ini
 
 %post
 
@@ -42,8 +44,8 @@ cp -f fastcommon.ini %{buildroot}/etc/php.d/fastcommon.ini
 
 %files
 %defattr(-,root,root,-)
-%{_libdir}/php/modules/*
-/etc/php.d/*
+%{php_extdir}/*
+%{php_inidir}/php.d/*
 
 %changelog
 * Wed Jan 14 2015  Yu Qing<yuqing@yongche.com>
