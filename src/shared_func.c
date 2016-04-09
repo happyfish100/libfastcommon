@@ -2299,3 +2299,40 @@ bool is_power2(const int64_t n)
 	return i == n;
 }
 
+static inline int do_lock_file(int fd, int cmd)
+{
+    struct flock lock;
+    int result;
+
+    memset(&lock, 0, sizeof(lock));
+    lock.l_type = cmd;
+    lock.l_whence = SEEK_SET;
+    do
+    {
+        if ((result=fcntl(fd, F_SETLKW, &lock)) != 0)
+        {
+            result = errno != 0 ? errno : ENOMEM;
+            fprintf(stderr, "call fcntl fail, "
+                   "errno: %d, error info: %s\n",
+                   result, STRERROR(result));
+        }
+    } while (result == EINTR);
+
+    return result;
+}
+
+int file_read_lock(int fd)
+{
+    return do_lock_file(fd, F_RDLCK);
+}
+
+int file_write_lock(int fd)
+{
+    return do_lock_file(fd, F_WRLCK);
+}
+
+int file_unlock(int fd)
+{
+    return do_lock_file(fd, F_UNLCK);
+}
+

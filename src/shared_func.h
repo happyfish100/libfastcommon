@@ -552,6 +552,27 @@ int64_t get_current_time_us();
 */
 bool is_power2(const int64_t n);
 
+/** set file read lock
+ *  parameters:
+ *  	fd: the file descriptor to lock
+ *  return: error no, 0 for success, != 0 fail
+*/
+int file_read_lock(int fd);
+
+/** set file write lock
+ *  parameters:
+ *  	fd: the file descriptor to lock
+ *  return: error no, 0 for success, != 0 fail
+*/
+int file_write_lock(int fd);
+
+/** file unlock
+ *  parameters:
+ *  	fd: the file descriptor to unlock
+ *  return: error no, 0 for success, != 0 fail
+*/
+int file_unlock(int fd);
+
 #ifdef __cplusplus
 }
 #endif
