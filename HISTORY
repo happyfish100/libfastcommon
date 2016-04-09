@@ -3,6 +3,7 @@ Version 1.27  2016-04-09
   * add function fd_set_cloexec
   * php-fastcommon.spec.in support PHP 7
   * add file lock and unlock functions
+  * add id generator for multi processes
 
 Version 1.26  2016-03-16
   * add logger parameter: compress_log_days_before
