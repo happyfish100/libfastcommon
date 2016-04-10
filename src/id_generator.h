@@ -37,17 +37,6 @@ struct idg_context {
 
 /**
 * init function
-    set mid_bits to 16
-    set machine_id to 2 bytes of local ip address
-* parameter:
-*   context: the id generator context
-*   filename: the filename to store id
-* return error no, 0 for success, none zero for fail
-*/
-int id_generator_init(struct idg_context *context, const char *filename);
-
-/**
-* init function
 * parameter:
 *   context: the id generator context
 *   filename: the filename to store id
@@ -57,6 +46,23 @@ int id_generator_init(struct idg_context *context, const char *filename);
 */
 int id_generator_init_ex(struct idg_context *context, const char *filename,
     const int machine_id, const int mid_bits);
+
+/**
+* init function
+    set mid_bits to 16
+    set machine_id to 2 bytes of local ip address
+* parameter:
+*   context: the id generator context
+*   filename: the filename to store id
+* return error no, 0 for success, none zero for fail
+*/
+static inline int id_generator_init(struct idg_context *context, const char *filename)
+{
+	const int machine_id = 0;
+	const int mid_bits = 16;
+	return id_generator_init_ex(context, filename, machine_id, mid_bits);
+}
+
 
 /**
 * init function

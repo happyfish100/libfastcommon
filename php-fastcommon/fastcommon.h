@@ -26,6 +26,10 @@ ZEND_FUNCTION(fastcommon_get_first_local_ip);
 ZEND_FUNCTION(fastcommon_get_next_local_ip);
 ZEND_FUNCTION(fastcommon_is_private_ip);
 
+ZEND_FUNCTION(fastcommon_id_generator_init);
+ZEND_FUNCTION(fastcommon_id_generator_next);
+ZEND_FUNCTION(fastcommon_id_generator_destroy);
+
 #ifdef __cplusplus
 }
 #endif

@@ -20,12 +20,13 @@ int main(int argc, char *argv[])
 	int result;
 	int i;
 	int64_t id;
-	const int machine_id = 0;
+	const int machine_id = 192;
 	const int mid_bits = 8;
 	
 	log_init();
 	g_log_context.log_level = LOG_DEBUG;
 
+	//result = id_generator_init(&context, "/tmp/sn.txt");
 	result = id_generator_init_ex(&context, "/tmp/sn.txt",
 		machine_id, mid_bits);
 	if (result != 0)
@@ -35,7 +36,7 @@ int main(int argc, char *argv[])
 
 	//id_generator_next(&context, &id);
 	//printf("id: %"PRId64", %016llX\n", id, id);
-	for (i=0; i<10; i++)
+	for (i=0; i<100000; i++)
 	{
 		result = id_generator_next(&context, &id);
 		if (result != 0)

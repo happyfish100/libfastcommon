@@ -15,3 +15,12 @@ while (($next_ip=fastcommon_get_next_local_ip($next_ip)))
     $is_private_ip = fastcommon_is_private_ip($next_ip);
     echo "local ip: $next_ip, private: $is_private_ip\n";
 }
+
+fastcommon_id_generator_init("/tmp/sn.txt");
+
+for ($i=0; $i<10; $i++) {
+	echo fastcommon_id_generator_next() . "\n";
+}
+
+fastcommon_id_generator_destroy();
+

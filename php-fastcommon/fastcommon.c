@@ -7,16 +7,22 @@
 #include <stdio.h>
 #include <errno.h>
 #include <time.h>
+#include "common_define.h"
 #include "local_ip_func.h"
 #include "logger.h"
 #include "hash.h"
 #include "sockopt.h"
 #include "shared_func.h"
+#include "id_generator.h"
 #include "fastcommon.h"
 
 #define MAJOR_VERSION  1
 #define MINOR_VERSION  0
-#define PATCH_VERSION  3
+#define PATCH_VERSION  5
+
+#define DEFAULT_SN_FILENAME  "/tmp/fastcommon_id_generator.sn"
+
+static struct idg_context idg_context = {-1, 0};
 
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 3)
 const zend_fcall_info empty_fcall_info = { 0, NULL, NULL, NULL, NULL, 0, NULL, NULL, 0 };
@@ -36,6 +42,9 @@ const zend_fcall_info empty_fcall_info = { 0, NULL, NULL, NULL, NULL, 0, NULL, N
 		ZEND_FE(fastcommon_get_first_local_ip, NULL)
 		ZEND_FE(fastcommon_get_next_local_ip, NULL)
 		ZEND_FE(fastcommon_is_private_ip, NULL)
+		ZEND_FE(fastcommon_id_generator_init, NULL)
+		ZEND_FE(fastcommon_id_generator_next, NULL)
+		ZEND_FE(fastcommon_id_generator_destroy, NULL)
 		{NULL, NULL, NULL}  /* Must be the last line */
 	};
 
@@ -334,7 +343,7 @@ return true for private ip, otherwise false
 */
 ZEND_FUNCTION(fastcommon_is_private_ip)
 {
-	int argc;
+    int argc;
     zend_size_t ip_len;
     char *ip;
 
@@ -355,5 +364,112 @@ ZEND_FUNCTION(fastcommon_is_private_ip)
 	}
 
     RETURN_BOOL(is_private_ip(ip));
+}
+
+/*
+bool fastcommon_id_generator_init([string filename = "/tmp/fastcommon_id_generator.sn",
+	int machine_id = 0, int mid_bits = 16])
+return true for success, false for fail
+*/
+ZEND_FUNCTION(fastcommon_id_generator_init)
+{
+    int argc;
+    zend_size_t filename_len;
+    long machine_id;
+    long mid_bits;
+    char *filename;
+
+	argc = ZEND_NUM_ARGS();
+	if (argc > 3) {
+		logError("file: "__FILE__", line: %d, "
+			"fastcommon_id_generator_init parameters count: %d is invalid",
+			__LINE__, argc);
+		RETURN_BOOL(false);
+	}
+
+	filename = DEFAULT_SN_FILENAME;
+	machine_id = 0;
+	mid_bits = 16;
+	if (zend_parse_parameters(argc TSRMLS_CC, "|sll", &filename,
+                &filename_len, &machine_id, &mid_bits) == FAILURE)
+	{
+		logError("file: "__FILE__", line: %d, "
+			"zend_parse_parameters fail!", __LINE__);
+		RETURN_BOOL(false);
+	}
+
+	if (idg_context.fd >= 0) {
+		logError("file: "__FILE__", line: %d, "
+			"already inited!", __LINE__);
+		RETURN_BOOL(false);
+	}
+
+	if (id_generator_init_ex(&idg_context, filename,
+			machine_id, mid_bits) != 0)
+	{
+		RETURN_BOOL(false);
+	}
+
+	RETURN_BOOL(true);
+}
+
+/*
+long/string fastcommon_id_generator_next()
+return id for success, false for fail
+return long in 64 bits OS, return string in 32 bits Os
+*/
+ZEND_FUNCTION(fastcommon_id_generator_next)
+{
+    int argc;
+    int64_t id;
+
+	argc = ZEND_NUM_ARGS();
+	if (argc != 0) {
+		logError("file: "__FILE__", line: %d, "
+			"fastcommon_id_generator_next parameters count: %d is invalid",
+			__LINE__, argc);
+		RETURN_BOOL(false);
+	}
+
+	if (idg_context.fd < 0) {
+		if (id_generator_init(&idg_context, DEFAULT_SN_FILENAME) != 0) {
+			RETURN_BOOL(false);
+		}
+	}
+
+	if (id_generator_next(&idg_context, &id) != 0) {
+		RETURN_BOOL(false);
+	}
+
+#if OS_BITS == 64
+	RETURN_LONG(id);
+#else
+	{
+		char buff[32];
+		int len;
+		len = sprintf(buff, "%"PRId64, id);
+		ZEND_RETURN_STRINGL(buff, len, 1);
+	}
+#endif
+}
+
+/*
+bool fastcommon_id_generator_destroy()
+return true for success, false for fail
+*/
+ZEND_FUNCTION(fastcommon_id_generator_destroy)
+{
+    int argc;
+
+	argc = ZEND_NUM_ARGS();
+	if (argc != 0) {
+		logError("file: "__FILE__", line: %d, "
+			"fastcommon_id_generator_destroy parameters count: %d is invalid",
+			__LINE__, argc);
+		RETURN_BOOL(false);
+	}
+
+	id_generator_destroy(&idg_context);
+	RETURN_BOOL(true);
 }
 
