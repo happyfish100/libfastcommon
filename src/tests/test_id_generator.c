@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
 	const int mid_bits = 8;
 	
 	log_init();
-	//g_log_context.log_level = LOG_DEBUG;
+	g_log_context.log_level = LOG_DEBUG;
 
 	result = id_generator_init_ex(&context, "/tmp/sn.txt",
 		machine_id, mid_bits);
@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
 
 	//id_generator_next(&context, &id);
 	//printf("id: %"PRId64", %016llX\n", id, id);
-	for (i=0; i<100000; i++)
+	for (i=0; i<10; i++)
 	{
 		result = id_generator_next(&context, &id);
 		if (result != 0)
