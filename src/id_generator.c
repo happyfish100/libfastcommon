@@ -49,15 +49,30 @@ int id_generator_init_ex(struct idg_context *context, const char *filename,
 	else
 	{
 		const char *local_ip;
+		const char *private_ip;
 		struct in_addr ip_addr;
 
-		local_ip = get_first_local_ip();
-		if (local_ip == NULL)
+		private_ip = get_first_local_private_ip();
+		if (private_ip != NULL)
 		{
-			logError("file: "__FILE__", line: %d, "
-				"can't get local ip address", __LINE__);
-			context->fd = -1;
-			return ENOENT;
+			local_ip = private_ip;
+		}
+		else
+		{
+			local_ip = get_first_local_ip();
+			if (local_ip == NULL)
+			{
+				logError("file: "__FILE__", line: %d, "
+					"can't get local ip address", __LINE__);
+				context->fd = -1;
+				return ENOENT;
+			}
+			else if (strcmp(local_ip, LOCAL_LOOPBACK_IP) == 0)
+			{
+				logWarning("file: "__FILE__", line: %d, "
+					"can't get local ip address, set to %s",
+					__LINE__, LOCAL_LOOPBACK_IP);
+			}
 		}
 
 		if (inet_pton(AF_INET, local_ip, &ip_addr) != 1)

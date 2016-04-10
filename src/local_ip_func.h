@@ -20,6 +20,8 @@
 #define FAST_IF_ALIAS_PREFIX_MAX_SIZE 32
 #define FAST_MAX_LOCAL_IP_ADDRS	  16
 
+#define LOCAL_LOOPBACK_IP  "127.0.0.1"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -34,6 +36,8 @@ bool is_local_host_ip(const char *client_ip);
 
 const char *get_first_local_ip();
 const char *get_next_local_ip(const char *previous_ip);
+
+const char *get_first_local_private_ip();
 
 int insert_into_local_host_ip(const char *client_ip);
 void log_local_host_ip_addrs();

@@ -14,8 +14,6 @@
 #include "shared_func.h"
 #include "local_ip_func.h"
 
-#define LOCAL_LOOPBACK_IP  "127.0.0.1"
-
 int g_local_host_ip_count = 0;
 char g_local_host_ip_addrs[FAST_MAX_LOCAL_IP_ADDRS * \
 				IP_ADDRESS_SIZE];
@@ -178,5 +176,26 @@ const char *get_first_local_ip()
     {
         return LOCAL_LOOPBACK_IP;
     }
+}
+
+const char *get_first_local_private_ip()
+{
+    const char *ip;
+
+    ip = NULL;
+    do
+    {
+        ip = get_next_local_ip(ip);
+        if (ip == NULL)
+        {
+            return NULL;
+        }
+        if (is_private_ip(ip))
+        {
+            return ip;
+        }
+    } while (1);
+
+    return NULL;
 }
 

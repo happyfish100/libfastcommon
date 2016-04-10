@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
 	int result;
 	int i;
 	int64_t id;
-	const int machine_id = 192;
+	const int machine_id = 0;
 	const int mid_bits = 8;
 	
 	log_init();
@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
 
 	//id_generator_next(&context, &id);
 	//printf("id: %"PRId64", %016llX\n", id, id);
-	for (i=0; i<100000; i++)
+	for (i=0; i<10000; i++)
 	{
 		result = id_generator_next(&context, &id);
 		if (result != 0)
