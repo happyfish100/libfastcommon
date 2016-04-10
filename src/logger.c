@@ -714,7 +714,10 @@ static void* log_gzip_func(void *args)
         snprintf(full_filename, sizeof(full_filename), "%s%s",
                 log_filepath, filename_array.filenames[i]);
         snprintf(cmd, sizeof(cmd), "%s %s", gzip, full_filename);
-        system(cmd);
+        if (system(cmd) == -1)
+	{
+		fprintf(stderr, "execute %s fail\n", cmd);
+	}
     }
 
     log_free_filename_array(&filename_array);

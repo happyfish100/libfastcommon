@@ -69,10 +69,10 @@ int id_generator_init_ex(struct idg_context *context, const char *filename,
 			return EINVAL;
 		}
 
-		printf("ip_addr: %s, s_addr: %08X\n", local_ip, ip_addr.s_addr);
-		printf("mask number: %08X\n", (1 << mid_bits));
+		logDebug("ip_addr: %s, s_addr: %08X, mask number: %08X",
+				local_ip, ip_addr.s_addr, (1 << mid_bits));
 
-		mid = (ip_addr.s_addr >> (32 - mid_bits))  & ((1 << mid_bits) - 1);
+		mid = ntohl(ip_addr.s_addr) & ((1 << mid_bits) - 1);
 	}
 
 	if ((context->fd = open(filename, O_RDWR | O_CREAT, 0644)) < 0)
@@ -91,7 +91,8 @@ int id_generator_init_ex(struct idg_context *context, const char *filename,
 	context->masked_mid = ((int64_t)mid) << context->sn_bits;
 	context->sn_mask = ((int64_t)1 << context->sn_bits) - 1;
 
-	printf("mid: %08X, masked_mid: %016llX, sn_mask: %08llX\n", mid, context->masked_mid, context->sn_mask);
+	logDebug("mid: %08X, masked_mid: %016llX, sn_mask: %08llX\n",
+		mid, context->masked_mid, context->sn_mask);
 
 	return 0;
 }
@@ -171,7 +172,7 @@ int id_generator_next(struct idg_context *context, int64_t *id)
 
 	file_unlock(context->fd);
 
-	*id = (time(NULL) << 32) | context->masked_mid | (sn & context->sn_mask);
+	*id = (((int64_t)time(NULL)) << 32) | context->masked_mid | (sn & context->sn_mask);
 	return result;
 }
 

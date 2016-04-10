@@ -1,5 +1,5 @@
 
-Version 1.27  2016-04-09
+Version 1.27  2016-04-10
   * add function fd_set_cloexec
   * php-fastcommon.spec.in support PHP 7
   * add file lock and unlock functions
