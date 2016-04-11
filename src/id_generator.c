@@ -173,7 +173,7 @@ int id_generator_next(struct idg_context *context, int64_t *id)
 			break;
 		}
 
-		len = sprintf(buff, "%019"PRId64, sn);
+		len = sprintf(buff, "%-20"PRId64, sn);
 		if ((bytes=write(context->fd, buff, len)) != len)
 		{
 			result = errno != 0 ? errno : EACCES;

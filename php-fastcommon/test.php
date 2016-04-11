@@ -18,6 +18,7 @@ while (($next_ip=fastcommon_get_next_local_ip($next_ip)))
 
 fastcommon_id_generator_init("/tmp/sn.txt");
 
+var_dump(fastcommon_id_generator_next());
 for ($i=0; $i<10; $i++) {
 	echo fastcommon_id_generator_next() . "\n";
 }
