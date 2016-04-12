@@ -34,8 +34,6 @@ int main(int argc, char *argv[])
 		return result;
 	}
 
-	//id_generator_next(&context, &id);
-	//printf("id: %"PRId64", %016lX\n", id, id);
 	for (i=0; i<100; i++)
 	{
 		result = id_generator_next(&context, &id);
@@ -43,7 +41,7 @@ int main(int argc, char *argv[])
 		{
 			break;
 		}
-		printf("%"PRId64", %016lX\n", id, id);
+		printf("%"PRId64"\n", id);
 	}
 
 	id_generator_destroy(&context);

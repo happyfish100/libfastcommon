@@ -66,6 +66,7 @@ int main(int argc, char *argv[])
 
     load_local_host_ip_addrs();
     print_local_host_ip_addrs();
+    printf("first_local_ip: %s\n", get_first_local_ip());
 
     getifconfigs(if_configs, sizeof(if_configs) / sizeof(if_configs[0]), &count);
     printf("ifconfig count: %d\n", count);
