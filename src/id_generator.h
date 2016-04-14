@@ -1,5 +1,5 @@
 /**
-* Copyright (C) 2008 Happy Fish / YuQing
+* Copyright (C) 2016 Happy Fish / YuQing
 *
 * FastDFS may be copied only under the terms of the GNU General
 * Public License V3, which may be found in the FastDFS source kit.
@@ -9,6 +9,7 @@
 /**
   64 bits id generator for multi processes, the generated id format:
   32 bits timestamp + X bits machine id  + Y bits serial number
+  such as 12 bits machine id and 20 bits serial number
 */
 
 #ifndef ID_GENERATOR_H
@@ -63,13 +64,11 @@ static inline int id_generator_init(struct idg_context *context, const char *fil
 	return id_generator_init_ex(context, filename, machine_id, mid_bits);
 }
 
-
 /**
-* init function
+* destroy function
 * parameter:
 *   context: the id generator context
-*   filename: the filename to store id
-* return error no, 0 for success, none zero for fail
+* return none
 */
 void id_generator_destroy(struct idg_context *context);
 
