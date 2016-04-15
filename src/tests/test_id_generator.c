@@ -22,13 +22,14 @@ int main(int argc, char *argv[])
 	int64_t id;
 	const int machine_id = 0;
 	const int mid_bits = 12;
+	const int sn_bits = 16;
 	
 	log_init();
 	g_log_context.log_level = LOG_DEBUG;
 
 	//result = id_generator_init(&context, "/tmp/sn.txt");
 	result = id_generator_init_ex(&context, "/tmp/sn.txt",
-		machine_id, mid_bits);
+		machine_id, mid_bits, sn_bits);
 	if (result != 0)
 	{
 		return result;

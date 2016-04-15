@@ -368,7 +368,7 @@ ZEND_FUNCTION(fastcommon_is_private_ip)
 
 /*
 bool fastcommon_id_generator_init([string filename = "/tmp/fastcommon_id_generator.sn",
-	int machine_id = 0, int mid_bits = 16])
+	int machine_id = 0, int mid_bits = 16, int sn_bits = 16])
 return true for success, false for fail
 */
 ZEND_FUNCTION(fastcommon_id_generator_init)
@@ -377,10 +377,11 @@ ZEND_FUNCTION(fastcommon_id_generator_init)
     zend_size_t filename_len;
     long machine_id;
     long mid_bits;
+    long sn_bits;
     char *filename;
 
 	argc = ZEND_NUM_ARGS();
-	if (argc > 3) {
+	if (argc > 4) {
 		logError("file: "__FILE__", line: %d, "
 			"fastcommon_id_generator_init parameters count: %d is invalid",
 			__LINE__, argc);
@@ -388,10 +389,12 @@ ZEND_FUNCTION(fastcommon_id_generator_init)
 	}
 
 	filename = DEFAULT_SN_FILENAME;
+    filename_len = 0;
 	machine_id = 0;
 	mid_bits = 16;
-	if (zend_parse_parameters(argc TSRMLS_CC, "|sll", &filename,
-                &filename_len, &machine_id, &mid_bits) == FAILURE)
+    sn_bits = 16;
+	if (zend_parse_parameters(argc TSRMLS_CC, "|slll", &filename,
+                &filename_len, &machine_id, &mid_bits, &sn_bits) == FAILURE)
 	{
 		logError("file: "__FILE__", line: %d, "
 			"zend_parse_parameters fail!", __LINE__);
@@ -399,13 +402,13 @@ ZEND_FUNCTION(fastcommon_id_generator_init)
 	}
 
 	if (idg_context.fd >= 0) {
-		logError("file: "__FILE__", line: %d, "
+		logWarning("file: "__FILE__", line: %d, "
 			"already inited!", __LINE__);
 		RETURN_BOOL(false);
 	}
 
 	if (id_generator_init_ex(&idg_context, filename,
-			machine_id, mid_bits) != 0)
+			machine_id, mid_bits, sn_bits) != 0)
 	{
 		RETURN_BOOL(false);
 	}

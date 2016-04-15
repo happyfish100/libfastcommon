@@ -32,6 +32,7 @@ struct idg_context {
     int machine_id;
     int mid_bits;   //bits of machine id
     int sn_bits;    //bits of serial number
+    int mid_sn_bits;  //mid_bits + sn_bits
     int64_t masked_mid;
     int64_t sn_mask;
 };
@@ -42,16 +43,18 @@ struct idg_context {
 *   context: the id generator context
 *   filename: the filename to store id
 *   machine_id: the machine id, 0 for auto generate by local ip address
-*   mid_bits:  the bits of the machine id, such as 16
+*   mid_bits:  the bits of machine id, such as 16
+*   sn_bits:  the bits of serial no, such as 16, mid_bits + sn_bits must <= 32
 * return error no, 0 for success, none zero for fail
 */
 int id_generator_init_ex(struct idg_context *context, const char *filename,
-    const int machine_id, const int mid_bits);
+    const int machine_id, const int mid_bits, const int sn_bits);
 
 /**
 * init function
-    set mid_bits to 16
     set machine_id to 2 bytes of local ip address
+    set mid_bits to 16
+    set sn_bits to 16
 * parameter:
 *   context: the id generator context
 *   filename: the filename to store id
@@ -61,7 +64,8 @@ static inline int id_generator_init(struct idg_context *context, const char *fil
 {
 	const int machine_id = 0;
 	const int mid_bits = 16;
-	return id_generator_init_ex(context, filename, machine_id, mid_bits);
+	const int sn_bits = 16;
+	return id_generator_init_ex(context, filename, machine_id, mid_bits, sn_bits);
 }
 
 /**

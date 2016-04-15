@@ -22,7 +22,7 @@
 #include "id_generator.h"
 
 int id_generator_init_ex(struct idg_context *context, const char *filename,
-    const int machine_id, const int mid_bits)
+    const int machine_id, const int mid_bits, const int sn_bits)
 {
 	int result;
 	int mid;
@@ -34,6 +34,23 @@ int id_generator_init_ex(struct idg_context *context, const char *filename,
 		context->fd = -1;
 		return EINVAL;
 	}
+	if (sn_bits < 8)
+	{
+		logError("file: "__FILE__", line: %d, "
+			"invalid bits of serial no: %d < 8",
+			__LINE__, sn_bits);
+		context->fd = -1;
+		return EINVAL;
+	}
+	if (mid_bits + sn_bits > 32)
+	{
+		logError("file: "__FILE__", line: %d, "
+			"invalid mid_bits + sn_bits: %d > 32",
+			__LINE__, mid_bits + sn_bits);
+		context->fd = -1;
+		return EINVAL;
+	}
+
 	if (machine_id < 0 || machine_id >= (1 << mid_bits))
 	{
 		logError("file: "__FILE__", line: %d, "
@@ -102,7 +119,8 @@ int id_generator_init_ex(struct idg_context *context, const char *filename,
 
 	context->machine_id = mid;
 	context->mid_bits = mid_bits;
-	context->sn_bits = 32 - mid_bits;
+	context->sn_bits = sn_bits;
+	context->mid_sn_bits = mid_bits + sn_bits;
 	context->masked_mid = ((int64_t)mid) << context->sn_bits;
 	context->sn_mask = ((int64_t)1 << context->sn_bits) - 1;
 
@@ -132,6 +150,7 @@ int id_generator_next(struct idg_context *context, int64_t *id)
 
 	if ((result=file_write_lock(context->fd)) != 0)
 	{
+        *id = 0;
 		return result;
 	}
 
@@ -187,7 +206,8 @@ int id_generator_next(struct idg_context *context, int64_t *id)
 
 	file_unlock(context->fd);
 
-	*id = (((int64_t)time(NULL)) << 32) | context->masked_mid | (sn & context->sn_mask);
+	*id = (((int64_t)time(NULL)) << context->mid_sn_bits) |
+        context->masked_mid | (sn & context->sn_mask);
 	return result;
 }
 
