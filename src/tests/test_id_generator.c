@@ -21,15 +21,16 @@ int main(int argc, char *argv[])
 	int i;
 	int64_t id;
 	const int machine_id = 0;
-	const int mid_bits = 12;
-	const int sn_bits = 16;
+	const int mid_bits = 8;
+	const int extra_bits = 10;
+	const int sn_bits = 14;
 	
 	log_init();
 	g_log_context.log_level = LOG_DEBUG;
 
 	//result = id_generator_init(&context, "/tmp/sn.txt");
-	result = id_generator_init_ex(&context, "/tmp/sn.txt",
-		machine_id, mid_bits, sn_bits);
+	result = id_generator_init_extra(&context, "/tmp/sn.txt",
+		machine_id, mid_bits, extra_bits, sn_bits);
 	if (result != 0)
 	{
 		return result;
@@ -37,12 +38,12 @@ int main(int argc, char *argv[])
 
 	for (i=0; i<100; i++)
 	{
-		result = id_generator_next(&context, &id);
+		result = id_generator_next_extra(&context, i, &id);
 		if (result != 0)
 		{
 			break;
 		}
-		printf("%"PRId64"\n", id);
+		printf("id: %"PRId64", extra: %d\n", id, id_generator_get_extra(&context, id));
 	}
 
 	id_generator_destroy(&context);

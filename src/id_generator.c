@@ -21,8 +21,9 @@
 #include "local_ip_func.h"
 #include "id_generator.h"
 
-int id_generator_init_ex(struct idg_context *context, const char *filename,
-    const int machine_id, const int mid_bits, const int sn_bits)
+int id_generator_init_extra(struct idg_context *context, const char *filename,
+    const int machine_id, const int mid_bits, const int extra_bits,
+    const int sn_bits)
 {
 	int result;
 	int mid;
@@ -34,6 +35,14 @@ int id_generator_init_ex(struct idg_context *context, const char *filename,
 		context->fd = -1;
 		return EINVAL;
 	}
+	if (extra_bits < 0 || extra_bits > 16)
+	{
+		logError("file: "__FILE__", line: %d, "
+			"invalid bits of extra data: %d",
+			__LINE__, extra_bits);
+		context->fd = -1;
+		return EINVAL;
+	}
 	if (sn_bits < 8)
 	{
 		logError("file: "__FILE__", line: %d, "
@@ -42,11 +51,11 @@ int id_generator_init_ex(struct idg_context *context, const char *filename,
 		context->fd = -1;
 		return EINVAL;
 	}
-	if (mid_bits + sn_bits > 32)
+	if (mid_bits + extra_bits + sn_bits > 32)
 	{
 		logError("file: "__FILE__", line: %d, "
-			"invalid mid_bits + sn_bits: %d > 32",
-			__LINE__, mid_bits + sn_bits);
+			"invalid mid_bits + extra_bits + sn_bits: %d > 32",
+			__LINE__, mid_bits + extra_bits + sn_bits);
 		context->fd = -1;
 		return EINVAL;
 	}
@@ -119,13 +128,17 @@ int id_generator_init_ex(struct idg_context *context, const char *filename,
 
 	context->machine_id = mid;
 	context->mid_bits = mid_bits;
+	context->extra_bits = extra_bits;
 	context->sn_bits = sn_bits;
-	context->mid_sn_bits = mid_bits + sn_bits;
-	context->masked_mid = ((int64_t)mid) << context->sn_bits;
-	context->sn_mask = ((int64_t)1 << context->sn_bits) - 1;
+	context->mes_bits_sum = mid_bits + extra_bits + sn_bits;
+	context->masked_mid = ((int64_t)mid) << (extra_bits + sn_bits);
+    context->extra_mask = ((int64_t)1 << (extra_bits + sn_bits)) -
+        ((int64_t)1 << sn_bits);
+	context->sn_mask = ((int64_t)1 << sn_bits) - 1;
 
-	logDebug("mid: 0x%08X, masked_mid: 0x%08llX, sn_mask: 0x%08llX\n",
-		mid, context->masked_mid, context->sn_mask);
+	logDebug("mid: 0x%08X, masked_mid: 0x%08llX, extra_mask: 0x%08llX, "
+            "sn_mask: 0x%08llX\n", mid, context->masked_mid,
+            context->extra_mask, context->sn_mask);
 
 	return 0;
 }
@@ -139,7 +152,8 @@ void id_generator_destroy(struct idg_context *context)
 	}
 }
 
-int id_generator_next(struct idg_context *context, int64_t *id)
+int id_generator_next_extra(struct idg_context *context, const int extra,
+        int64_t *id)
 {
 	int result;
 	int len;
@@ -206,8 +220,9 @@ int id_generator_next(struct idg_context *context, int64_t *id)
 
 	file_unlock(context->fd);
 
-	*id = (((int64_t)time(NULL)) << context->mid_sn_bits) |
-        context->masked_mid | (sn & context->sn_mask);
+	*id = (((int64_t)time(NULL)) << context->mes_bits_sum) |
+        context->masked_mid | ((extra << context->sn_bits) & context->extra_mask) |
+        (sn & context->sn_mask);
 	return result;
 }
 

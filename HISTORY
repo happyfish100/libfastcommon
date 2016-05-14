@@ -1,4 +1,7 @@
 
+Version 1.28  2016-05-14
+  * id generator support extra bits
+
 Version 1.27  2016-04-15
   * add function fd_set_cloexec
   * php-fastcommon.spec.in support PHP 7

@@ -44,6 +44,7 @@ const zend_fcall_info empty_fcall_info = { 0, NULL, NULL, NULL, NULL, 0, NULL, N
 		ZEND_FE(fastcommon_is_private_ip, NULL)
 		ZEND_FE(fastcommon_id_generator_init, NULL)
 		ZEND_FE(fastcommon_id_generator_next, NULL)
+		ZEND_FE(fastcommon_id_generator_get_extra, NULL)
 		ZEND_FE(fastcommon_id_generator_destroy, NULL)
 		{NULL, NULL, NULL}  /* Must be the last line */
 	};
@@ -368,7 +369,7 @@ ZEND_FUNCTION(fastcommon_is_private_ip)
 
 /*
 bool fastcommon_id_generator_init([string filename = "/tmp/fastcommon_id_generator.sn",
-	int machine_id = 0, int mid_bits = 16, int sn_bits = 16])
+	int machine_id = 0, int mid_bits = 16, int extra_bits = 0, int sn_bits = 16])
 return true for success, false for fail
 */
 ZEND_FUNCTION(fastcommon_id_generator_init)
@@ -377,11 +378,12 @@ ZEND_FUNCTION(fastcommon_id_generator_init)
     zend_size_t filename_len;
     long machine_id;
     long mid_bits;
+    long extra_bits;
     long sn_bits;
     char *filename;
 
 	argc = ZEND_NUM_ARGS();
-	if (argc > 4) {
+	if (argc > 5) {
 		logError("file: "__FILE__", line: %d, "
 			"fastcommon_id_generator_init parameters count: %d is invalid",
 			__LINE__, argc);
@@ -392,9 +394,11 @@ ZEND_FUNCTION(fastcommon_id_generator_init)
     filename_len = 0;
 	machine_id = 0;
 	mid_bits = 16;
+    extra_bits = 0;
     sn_bits = 16;
-	if (zend_parse_parameters(argc TSRMLS_CC, "|slll", &filename,
-                &filename_len, &machine_id, &mid_bits, &sn_bits) == FAILURE)
+	if (zend_parse_parameters(argc TSRMLS_CC, "|sllll", &filename,
+                &filename_len, &machine_id, &mid_bits, &extra_bits,
+                &sn_bits) == FAILURE)
 	{
 		logError("file: "__FILE__", line: %d, "
 			"zend_parse_parameters fail!", __LINE__);
@@ -407,8 +411,8 @@ ZEND_FUNCTION(fastcommon_id_generator_init)
 		RETURN_BOOL(false);
 	}
 
-	if (id_generator_init_ex(&idg_context, filename,
-			machine_id, mid_bits, sn_bits) != 0)
+	if (id_generator_init_extra(&idg_context, filename,
+			machine_id, mid_bits, extra_bits, sn_bits) != 0)
 	{
 		RETURN_BOOL(false);
 	}
@@ -417,20 +421,28 @@ ZEND_FUNCTION(fastcommon_id_generator_init)
 }
 
 /*
-long/string fastcommon_id_generator_next()
+long/string fastcommon_id_generator_next([int extra])
 return id for success, false for fail
 return long in 64 bits OS, return string in 32 bits Os
 */
 ZEND_FUNCTION(fastcommon_id_generator_next)
 {
     int argc;
+    long extra;
     int64_t id;
 
 	argc = ZEND_NUM_ARGS();
-	if (argc != 0) {
+	if (argc > 1) {
 		logError("file: "__FILE__", line: %d, "
 			"fastcommon_id_generator_next parameters count: %d is invalid",
 			__LINE__, argc);
+		RETURN_BOOL(false);
+	}
+    extra = 0;
+	if (zend_parse_parameters(argc TSRMLS_CC, "|l", &extra) == FAILURE)
+	{
+		logError("file: "__FILE__", line: %d, "
+			"zend_parse_parameters fail!", __LINE__);
 		RETURN_BOOL(false);
 	}
 
@@ -440,7 +452,7 @@ ZEND_FUNCTION(fastcommon_id_generator_next)
 		}
 	}
 
-	if (id_generator_next(&idg_context, &id) != 0) {
+	if (id_generator_next_extra(&idg_context, extra, &id) != 0) {
 		RETURN_BOOL(false);
 	}
 
@@ -454,6 +466,38 @@ ZEND_FUNCTION(fastcommon_id_generator_next)
 		ZEND_RETURN_STRINGL(buff, len, 1);
 	}
 #endif
+}
+
+/*
+int fastcommon_id_generator_get_extra(long id)
+return the extra data
+*/
+ZEND_FUNCTION(fastcommon_id_generator_get_extra)
+{
+    int argc;
+    long id;
+
+	argc = ZEND_NUM_ARGS();
+	if (argc != 1) {
+		logError("file: "__FILE__", line: %d, "
+			"fastcommon_id_generator_get_extra parameters count: %d is invalid",
+			__LINE__, argc);
+		RETURN_BOOL(false);
+	}
+
+	if (zend_parse_parameters(argc TSRMLS_CC, "l", &id) == FAILURE)
+	{
+		logError("file: "__FILE__", line: %d, "
+			"zend_parse_parameters fail!", __LINE__);
+		RETURN_BOOL(false);
+	}
+	if (idg_context.fd < 0) {
+		logError("file: "__FILE__", line: %d, "
+                "must call fastcommon_id_generator_init first", __LINE__);
+        RETURN_BOOL(false);
+	}
+
+	RETURN_LONG(id_generator_get_extra(&idg_context, id));
 }
 
 /*
