@@ -18,7 +18,7 @@
 
 #define MAJOR_VERSION  1
 #define MINOR_VERSION  0
-#define PATCH_VERSION  5
+#define PATCH_VERSION  6
 
 #define DEFAULT_SN_FILENAME  "/tmp/fastcommon_id_generator.sn"
 
@@ -421,7 +421,7 @@ ZEND_FUNCTION(fastcommon_id_generator_init)
 }
 
 /*
-long/string fastcommon_id_generator_next([int extra])
+long/string fastcommon_id_generator_next([int extra  = 0])
 return id for success, false for fail
 return long in 64 bits OS, return string in 32 bits Os
 */

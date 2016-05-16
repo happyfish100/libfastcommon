@@ -9,7 +9,7 @@
 /**
   64 bits id generator for multi processes, the generated id format:
   32 bits timestamp + X bits machine id  + Y bits of extra data + Z bits serial number
-  such as 12 bits machine id, 0 bits extra data  and 20 bits serial number
+  such as 12 bits machine id, 0 bits extra data and 20 bits serial number
 */
 
 #ifndef ID_GENERATOR_H
