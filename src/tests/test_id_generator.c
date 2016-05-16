@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
 		return result;
 	}
 
-	for (i=0; i<100; i++)
+	for (i=0; i<1024; i++)
 	{
 		result = id_generator_next_extra(&context, i, &id);
 		if (result != 0)
