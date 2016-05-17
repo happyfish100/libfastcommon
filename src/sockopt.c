@@ -465,7 +465,7 @@ int connectserverbyip(int sock, const char *server_ip, const short server_port)
 
 	addr.sin_family = PF_INET;
 	addr.sin_port = htons(server_port);
-	result = inet_aton(server_ip, &addr.sin_addr);
+	result = inet_pton(AF_INET, server_ip, &addr.sin_addr);
 	if (result == 0 )
 	{
 		return EINVAL;
@@ -501,7 +501,7 @@ int connectserverbyip_nb_ex(int sock, const char *server_ip, \
 
 	addr.sin_family = PF_INET;
 	addr.sin_port = htons(server_port);
-	result = inet_aton(server_ip, &addr.sin_addr);
+	result = inet_pton(AF_INET, server_ip, &addr.sin_addr);
 	if (result == 0 )
 	{
 		return EINVAL;
@@ -754,7 +754,7 @@ int socketBind(int sock, const char *bind_ipaddr, const int port)
 	}
 	else
 	{
-		if (inet_aton(bind_ipaddr, &bindaddr.sin_addr) == 0)
+		if (inet_pton(AF_INET, bind_ipaddr, &bindaddr.sin_addr) == 0)
 		{
 			logError("file: "__FILE__", line: %d, " \
 				"invalid ip addr %s", \

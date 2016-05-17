@@ -1886,8 +1886,10 @@ int load_allow_hosts(IniContext *pIniContext, \
 	for (i=0; i<*allow_ip_count; i++)
 	{
 		struct in_addr address;
+        char buff[INET_ADDRSTRLEN];
 		address.s_addr = (*allow_ip_addrs)[i];
-		logDebug("%d. %s", i + 1, inet_ntoa(address));
+		logDebug("%d. %s", i + 1, inet_ntop(AF_INET, &address,
+                    buff, sizeof(buff)));
 	}
 
 	return 0;

@@ -120,18 +120,18 @@ int conn_pool_connect_server(ConnectionInfo *pConnection, \
 
 static int conn_pool_get_key(const ConnectionInfo *conn, char *key, int *key_len)
 {
-	struct in_addr sin_addr;
+    struct in_addr sin_addr;
 
-        if (inet_aton(conn->ip_addr, &sin_addr) == 0)
-        {
-		*key_len = 0;
-                return EINVAL;
-        }
+    if (inet_pton(AF_INET, conn->ip_addr, &sin_addr) == 0)
+    {
+        *key_len = 0;
+        return EINVAL;
+    }
 
-	int2buff(sin_addr.s_addr, key);
-	*key_len = 4 + sprintf(key + 4, "%d", conn->port);
+    int2buff(sin_addr.s_addr, key);
+    *key_len = 4 + sprintf(key + 4, "%d", conn->port);
 
-	return 0;
+    return 0;
 }
 
 ConnectionInfo *conn_pool_get_connection(ConnectionPool *cp, 
