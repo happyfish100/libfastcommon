@@ -84,13 +84,8 @@ int conn_pool_init_ex(ConnectionPool *cp, int connect_timeout,
 *      max_idle_time: reconnect the server after max idle time in seconds
 *   return 0 for success, != 0 for error
 */
-static inline int conn_pool_init(ConnectionPool *cp, int connect_timeout,
-	const int max_count_per_entry, const int max_idle_time)
-{
-    const int socket_domain = AF_INET;
-    return conn_pool_init_ex(cp, connect_timeout, max_count_per_entry,
-            max_idle_time, socket_domain);
-}
+int conn_pool_init(ConnectionPool *cp, int connect_timeout,
+	const int max_count_per_entry, const int max_idle_time);
 
 /**
 *   destroy function
