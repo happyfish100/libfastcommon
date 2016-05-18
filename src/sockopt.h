@@ -12,6 +12,7 @@
 #define _SOCKETOPT_H_
 
 #include <net/if.h>
+#include <string.h>
 #include "common_define.h"
 
 #define FAST_WRITE_BUFF_SIZE  256 * 1024
@@ -345,6 +346,24 @@ int gethostaddrs(char **if_alias_prefixes, const int prefix_count, \
  *  return: error no, 0 success, != 0 fail
 */
 int getifconfigs(FastIFConfig *if_configs, const int max_count, int *count);
+
+/** set socket address by ip
+ *  parameters:
+ *          ip: the ip address
+ *          port: the port
+ *          addr: ipv4 addr
+ *          addr6: ipv6 addr
+ *          output: return addr pointer
+ *          size: return the size of addr
+ *  return: error no, 0 success, != 0 fail
+*/
+int setsockaddrbyip(const char *ip, const short port, struct sockaddr_in *addr,
+        struct sockaddr_in6 *addr6, void **output, int *size);
+
+static inline bool is_ipv6_addr(const char *ip)
+{
+    return (*ip == ':' || strchr(ip, ':') != NULL); //ipv6
+}
 
 #ifdef __cplusplus
 }

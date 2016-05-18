@@ -458,21 +458,55 @@ int tcpsenddata_nb(int sock, void* data, const int size, const int timeout)
 	return 0;
 }
 
+int setsockaddrbyip(const char *ip, const short port, struct sockaddr_in *addr,
+        struct sockaddr_in6 *addr6, void **output, int *size)
+{
+    int domain;
+    void *dest;
+
+    if (is_ipv6_addr(ip))
+    {
+        *output = addr6;
+        *size = sizeof(*addr6);
+        dest = &addr6->sin6_addr;
+
+        domain = AF_INET6;
+        addr6->sin6_family = PF_INET6;
+        addr6->sin6_port = htons(port);
+    }
+    else  //ipv4
+    {
+        *output = addr;
+        *size = sizeof(*addr);
+        dest = &addr->sin_addr;
+
+        domain = AF_INET;
+        addr->sin_family = PF_INET;
+        addr->sin_port = htons(port);
+    }
+
+    if (inet_pton(domain, ip, dest) == 0)
+    {
+        return EINVAL;
+    }
+    return 0;
+}
+
 int connectserverbyip(int sock, const char *server_ip, const short server_port)
 {
-	int result;
+    int result;
 	struct sockaddr_in addr;
+	struct sockaddr_in6 addr6;
+    void *dest;
+    int size;
 
-	addr.sin_family = PF_INET;
-	addr.sin_port = htons(server_port);
-	result = inet_pton(AF_INET, server_ip, &addr.sin_addr);
-	if (result == 0 )
-	{
-		return EINVAL;
-	}
+    if ((result=setsockaddrbyip(server_ip, server_port, &addr, &addr6,
+                    &dest, &size)) != 0)
+    {
+        return result;
+    }
 
-	result = connect(sock, (const struct sockaddr*)&addr, sizeof(addr));
-	if (result < 0)
+	if (connect(sock, (const struct sockaddr*)dest, size) < 0)
 	{
 		return errno != 0 ? errno : EINTR;
 	}
@@ -498,14 +532,15 @@ int connectserverbyip_nb_ex(int sock, const char *server_ip, \
 #endif
 
 	struct sockaddr_in addr;
+	struct sockaddr_in6 addr6;
+    void *dest;
+    int size;
 
-	addr.sin_family = PF_INET;
-	addr.sin_port = htons(server_port);
-	result = inet_pton(AF_INET, server_ip, &addr.sin_addr);
-	if (result == 0 )
-	{
-		return EINVAL;
-	}
+    if ((result=setsockaddrbyip(server_ip, server_port, &addr, &addr6,
+                    &dest, &size)) != 0)
+    {
+        return result;
+    }
 
 	if (auto_detect)
 	{
@@ -537,8 +572,7 @@ int connectserverbyip_nb_ex(int sock, const char *server_ip, \
 
 	do
 	{
-		if (connect(sock, (const struct sockaddr*)&addr, \
-			sizeof(addr)) < 0)
+		if (connect(sock, (const struct sockaddr*)dest, size) < 0)
 		{
 			result = errno != 0 ? errno : EINPROGRESS;
 			if (result != EINPROGRESS)

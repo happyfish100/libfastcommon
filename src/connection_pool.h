@@ -27,7 +27,8 @@ typedef struct
 {
 	int sock;
 	int port;
-	char ip_addr[IP_ADDRESS_SIZE];
+	char ip_addr[INET6_ADDRSTRLEN];
+    int socket_domain;  //socket domain, AF_INET, AF_INET6 or PF_UNSPEC for auto dedect
 } ConnectionInfo;
 
 struct tagConnectionManager;
@@ -57,7 +58,22 @@ typedef struct tagConnectionPool {
     unit: second
 	*/
 	int max_idle_time;
+    int socket_domain;  //socket domain
 } ConnectionPool;
+
+/**
+*   init ex function
+*   parameters:
+*      cp: the ConnectionPool
+*      connect_timeout: the connect timeout in seconds
+*      max_count_per_entry: max connection count per host:port
+*      max_idle_time: reconnect the server after max idle time in seconds
+*      socket_domain: the socket domain
+*   return 0 for success, != 0 for error
+*/
+int conn_pool_init_ex(ConnectionPool *cp, int connect_timeout,
+	const int max_count_per_entry, const int max_idle_time,
+    const int socket_domain);
 
 /**
 *   init function
@@ -68,8 +84,13 @@ typedef struct tagConnectionPool {
 *      max_idle_time: reconnect the server after max idle time in seconds
 *   return 0 for success, != 0 for error
 */
-int conn_pool_init(ConnectionPool *cp, int connect_timeout, \
-	const int max_count_per_entry, const int max_idle_time);
+static inline int conn_pool_init(ConnectionPool *cp, int connect_timeout,
+	const int max_count_per_entry, const int max_idle_time)
+{
+    const int socket_domain = AF_INET;
+    return conn_pool_init_ex(cp, connect_timeout, max_count_per_entry,
+            max_idle_time, socket_domain);
+}
 
 /**
 *   destroy function
