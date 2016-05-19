@@ -1,8 +1,9 @@
 
-Version 1.28  2016-05-18
+Version 1.28  2016-05-19
   * id generator support extra bits
   * change inet_aton to inet_pton
   * connect by ip and connection pool support ipv6
+  * id generator in php extension support multi instance
 
 Version 1.27  2016-04-15
   * add function fd_set_cloexec

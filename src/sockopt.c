@@ -706,7 +706,7 @@ in_addr_t getIpaddrByName(const char *name, char *buff, const int bufferSize)
 		return INADDR_NONE;
 	}
 
-        addr_list = (in_addr_t **)ent->h_addr_list;
+    addr_list = (in_addr_t **)ent->h_addr_list;
 	if (addr_list[0] == NULL)
 	{
 		return INADDR_NONE;
