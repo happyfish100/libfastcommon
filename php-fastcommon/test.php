@@ -16,7 +16,11 @@ while (($next_ip=fastcommon_get_next_local_ip($next_ip)))
     echo "local ip: $next_ip, private: $is_private_ip\n";
 }
 
-//fastcommon_id_generator_init();
+$handle = fastcommon_id_generator_init();
+
+$id = fastcommon_id_generator_next(1);
+printf("id1: %d %X, extra: %d\n", $id, $id, fastcommon_id_generator_get_extra($id));
+unset($handle);
 
 $handle1 = fastcommon_id_generator_init("/tmp/sn1.txt", 0, 16, 0, 16);
 $handle2 = fastcommon_id_generator_init("/tmp/sn2.txt", 0, 8, 8, 16);

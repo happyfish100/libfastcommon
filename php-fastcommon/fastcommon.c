@@ -29,7 +29,7 @@ typedef struct {
 
 static int le_consumer;
 
-static struct idg_context idg_context = {-1, 0};
+static PHPIDGContext *last_idg_context = NULL;
 
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 3)
 const zend_fcall_info empty_fcall_info = { 0, NULL, NULL, NULL, NULL, 0, NULL, NULL, 0 };
@@ -80,6 +80,10 @@ ZEND_RSRC_DTOR_FUNC(id_generator_dtor)
     {
         PHPIDGContext *php_idg_context = (PHPIDGContext *)rsrc->ptr;
         id_generator_destroy(&php_idg_context->idg_context);
+        if (last_idg_context == php_idg_context)
+        {
+            last_idg_context = NULL;
+        }
         efree(php_idg_context);
         rsrc->ptr = NULL;
     }
@@ -88,6 +92,10 @@ ZEND_RSRC_DTOR_FUNC(id_generator_dtor)
     {
         PHPIDGContext *php_idg_context = (PHPIDGContext *)res->ptr;
         id_generator_destroy(&php_idg_context->idg_context);
+        if (last_idg_context == php_idg_context)
+        {
+            last_idg_context = NULL;
+        }
         efree(php_idg_context);
         res->ptr = NULL;
     }
@@ -451,6 +459,7 @@ ZEND_FUNCTION(fastcommon_id_generator_init)
 		RETURN_BOOL(false);
 	}
 
+    last_idg_context = php_idg_context;
     ZEND_REGISTER_RESOURCE(return_value, php_idg_context, le_consumer);
 }
 
@@ -492,12 +501,13 @@ ZEND_FUNCTION(fastcommon_id_generator_next)
     }
     else
     {
-        context = &idg_context;
-        if (context->fd < 0) {
-            if (id_generator_init(context, DEFAULT_SN_FILENAME) != 0) {
-                RETURN_BOOL(false);
-            }
+        if (last_idg_context == NULL) {
+            logError("file: "__FILE__", line: %d, "
+                    "must call fastcommon_id_generator_init first", __LINE__);
+            RETURN_BOOL(false);
         }
+
+        context = &last_idg_context->idg_context;
     }
 
 	if (id_generator_next_extra(context, extra, &id) != 0) {
@@ -552,7 +562,12 @@ ZEND_FUNCTION(fastcommon_id_generator_get_extra)
     }
     else
     {
-        context = &idg_context;
+        if (last_idg_context == NULL) {
+            logError("file: "__FILE__", line: %d, "
+                    "must call fastcommon_id_generator_init first", __LINE__);
+            RETURN_BOOL(false);
+        }
+        context = &last_idg_context->idg_context;
     }
 
 	if (context->fd < 0) {
@@ -565,7 +580,7 @@ ZEND_FUNCTION(fastcommon_id_generator_get_extra)
 }
 
 /*
-bool fastcommon_id_generator_destroy([$handle = NULL])
+bool fastcommon_id_generator_destroy([resource handle = NULL])
 return true for success, false for fail
 */
 ZEND_FUNCTION(fastcommon_id_generator_destroy)
@@ -599,7 +614,13 @@ ZEND_FUNCTION(fastcommon_id_generator_destroy)
     }
     else
     {
-        context = &idg_context;
+        if (last_idg_context == NULL) {
+            logError("file: "__FILE__", line: %d, "
+                    "must call fastcommon_id_generator_init first", __LINE__);
+            RETURN_BOOL(false);
+        }
+        context = &last_idg_context->idg_context;
+        last_idg_context = NULL;
     }
 
 	id_generator_destroy(context);
