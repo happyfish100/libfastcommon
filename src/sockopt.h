@@ -24,6 +24,11 @@ typedef struct fast_if_config {
     char ipv6[48];
 } FastIFConfig;
 
+typedef struct ip_addr_s {
+    char ip_addr[INET6_ADDRSTRLEN];
+    int socket_domain;
+} ip_addr_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -228,6 +233,15 @@ char *getHostnameByIp(const char *szIpAddr, char *buff, const int bufferSize);
  *  return: in_addr_t, INADDR_NONE for fail
 */
 in_addr_t getIpaddrByName(const char *name, char *buff, const int bufferSize);
+
+/** get by ip addresses by it's hostname
+ *  parameters:
+ *          name: the hostname
+ *          ip_addr_arr: ip address array to store the ip address
+ *          ip_addr_arr_size: ip address array size
+ *  return: ip address count
+*/
+int getIpaddrsByName(const char *name, ip_addr_t *ip_addr_arr, const int ip_addr_arr_size);
 
 /** bind wrapper 
  *  parameters:

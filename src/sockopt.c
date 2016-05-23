@@ -725,6 +725,65 @@ in_addr_t getIpaddrByName(const char *name, char *buff, const int bufferSize)
 	return ip_addr.s_addr;
 }
 
+int getIpaddrsByName(const char *name,
+    ip_addr_t *ip_addr_arr, const int ip_addr_arr_size)
+{
+    int ip_count;
+    struct sockaddr_in *addr;
+    struct sockaddr_in6 *addr6;
+    struct addrinfo hints, *res, *res0;
+
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = PF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+
+    if (getaddrinfo(name, NULL, &hints, &res0) != 0) {
+        return 0;
+    }
+
+    for (ip_count = 0, res = res0; res; res = res->ai_next) {
+        if (res->ai_family != AF_INET6 && res->ai_family != AF_INET) {
+            logError("file: "__FILE__", line: %d, " \
+                     "unsupported family %d, " \
+                     "only suppport AF_INET6 and AF_INET", \
+                     __LINE__, res->ai_family);
+            continue;
+        }
+
+        if (ip_addr_arr_size <= ip_count) {
+            break;
+        }
+
+        if (res->ai_family == AF_INET6) {
+            addr6 = (struct sockaddr_in6 *) res->ai_addr;
+            if (inet_ntop(res->ai_family, &addr6->sin6_addr,
+                    ip_addr_arr[ip_count].ip_addr, INET6_ADDRSTRLEN) == NULL)
+            {
+                logError("file: "__FILE__", line: %d, " \
+                         "inet_ntop failed: %d, %s", \
+                         __LINE__, errno, strerror(errno));
+                continue;
+            }
+        } else {
+            addr = (struct sockaddr_in *) res->ai_addr;
+            if (inet_ntop(res->ai_family, &addr->sin_addr,
+                    ip_addr_arr[ip_count].ip_addr, INET6_ADDRSTRLEN) == NULL)
+            {
+                logError("file: "__FILE__", line: %d, " \
+                         "inet_ntop failed: %d, %s", \
+                         __LINE__, errno, strerror(errno));
+                continue;
+            }
+        }
+
+        ip_addr_arr[ip_count++].socket_domain = res->ai_family;
+    }
+
+    freeaddrinfo(res0);
+
+	return ip_count;
+}
+
 int nbaccept(int sock, const int timeout, int *err_no)
 {
 	struct sockaddr_in inaddr;
