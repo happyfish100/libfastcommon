@@ -536,6 +536,9 @@ int connectserverbyip_nb_ex(int sock, const char *server_ip, \
     void *dest;
     int size;
 
+    memset(&addr, 0, sizeof(struct sockaddr_in));
+    memset(&addr6, 0, sizeof(struct sockaddr_in6));
+
     if ((result=setsockaddrbyip(server_ip, server_port, &addr, &addr6,
                     &dest, &size)) != 0)
     {
