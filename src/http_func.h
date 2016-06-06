@@ -77,6 +77,18 @@ return: param count
 int http_parse_query_ex(char *url, const int url_len,
         int *uri_len, KeyValuePairEx *params, const int max_count);
 
+/**
+parse url params
+params:
+	param_str: the url params to parse, the params be modified after parse
+    param_len: the length of url params
+	params: params array to store param and it's value
+	max_count: max param count
+return: param count
+**/
+int http_parse_url_params(char *param_str, const int param_len,
+        KeyValuePairEx *params, const int max_count);
+
 #ifdef __cplusplus
 }
 #endif

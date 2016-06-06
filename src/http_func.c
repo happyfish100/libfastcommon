@@ -339,30 +339,20 @@ int http_parse_query(char *url, KeyValuePair *params, const int max_count)
 	return pCurrent - params;
 }
 
-int http_parse_query_ex(char *url, const int url_len,
-        int *uri_len, KeyValuePairEx *params, const int max_count)
+int http_parse_url_params(char *param_str, const int param_len,
+        KeyValuePairEx *params, const int max_count)
 {
 	KeyValuePairEx *pCurrent;
 	KeyValuePairEx *pEnd;
-	char *pParamStart;
 	char *p;
 	char *pStrEnd;
 	char *pKeyEnd;
 	char *pValueEnd;
 
-	pParamStart = (char *)memchr(url, '?', url_len);
-	if (pParamStart == NULL)
-	{
-        *uri_len = url_len;
-		return 0;
-	}
-
-    *uri_len = pParamStart - url;
-    pStrEnd = url + url_len;
-
+    pStrEnd = param_str + param_len;
 	pEnd = params + max_count;
 	pCurrent = params;
-	p = pParamStart + 1;
+	p = param_str;
 	while (p < pStrEnd)
 	{
 		if (pCurrent >= pEnd)
@@ -403,5 +393,24 @@ int http_parse_query_ex(char *url, const int url_len,
 	}
 
 	return pCurrent - params;
+}
+
+int http_parse_query_ex(char *url, const int url_len,
+        int *uri_len, KeyValuePairEx *params, const int max_count)
+{
+    char *pParamStart;
+    int param_len;
+
+    pParamStart = (char *)memchr(url, '?', url_len);
+    if (pParamStart == NULL)
+    {
+        *uri_len = url_len;
+        return 0;
+    }
+
+    *uri_len = pParamStart - url;
+    param_len = url_len - (*uri_len + 1);
+    return http_parse_url_params(pParamStart + 1, param_len,
+            params, max_count);
 }
 
