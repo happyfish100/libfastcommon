@@ -176,18 +176,20 @@ static inline int zend_hash_find_wrapper(HashTable *ht, char *key, int key_len,
 	*value = zend_hash_find(ht, Z_STR(zkey));
 	return (*value != NULL ? SUCCESS : FAILURE);
 }
+
 static inline int zend_hash_index_find_wrapper(HashTable *ht, int index,
         zval **value)
 {
     *value = zend_hash_index_find(ht, index);
 	return (*value != NULL ? SUCCESS : FAILURE);
 }
+
 static inline int zend_hash_update_wrapper(HashTable *ht, char *k, int len,
-        void *val, int size, void *ptr)
+        void **val, int size, void *ptr)
 {
 	zval key;
 	ZVAL_STRINGL(&key, k, len - 1);
-	return zend_hash_update(ht, Z_STR(key), val) ? SUCCESS : FAILURE;
+	return zend_hash_update(ht, Z_STR(key), *val) ? SUCCESS : FAILURE;
 }
 
 static inline int zend_call_user_function_wrapper(HashTable *function_table,
