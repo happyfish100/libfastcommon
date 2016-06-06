@@ -185,7 +185,7 @@ static inline int zend_hash_index_find_wrapper(HashTable *ht, int index,
 }
 
 static inline int zend_hash_update_wrapper(HashTable *ht, char *k, int len,
-        void **val, int size, void *ptr)
+        zval **val, int size, void *ptr)
 {
 	zval key;
 	ZVAL_STRINGL(&key, k, len - 1);
