@@ -1,10 +1,11 @@
 
-Version 1.28  2016-06-06
+Version 1.28  2016-06-08
   * id generator support extra bits
   * change inet_aton to inet_pton
   * connect by ip and connection pool support ipv6
   * id generator in php extension support multi instance
   * add function http_parse_url_params
+  * check g_free_queue.head == NULL before free_queue_realloc()
 
 Version 1.27  2016-04-15
   * add function fd_set_cloexec

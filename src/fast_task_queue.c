@@ -410,6 +410,8 @@ static int free_queue_realloc()
 struct fast_task_info *free_queue_pop()
 {
     struct fast_task_info *pTask;
+    int i;
+
 	if ((pTask=task_queue_pop(&g_free_queue)) != NULL)
     {
         return pTask;
@@ -420,26 +422,34 @@ struct fast_task_info *free_queue_pop()
         return NULL;
     }
 
-	pthread_mutex_lock(&g_free_queue.lock);
-    if (g_free_queue.alloc_connections >= g_free_queue.max_connections)
+    for (i=0; i<10; i++)
     {
-        if (g_free_queue.head == NULL)
+        pthread_mutex_lock(&g_free_queue.lock);
+        if (g_free_queue.alloc_connections >= g_free_queue.max_connections)
         {
-            pthread_mutex_unlock(&g_free_queue.lock);
-            return NULL;
+            if (g_free_queue.head == NULL)
+            {
+                pthread_mutex_unlock(&g_free_queue.lock);
+                return NULL;
+            }
         }
-    }
-    else
-    {
-        if (free_queue_realloc() != 0)
+        else
         {
-            pthread_mutex_unlock(&g_free_queue.lock);
-            return NULL;
+            if (g_free_queue.head == NULL && free_queue_realloc() != 0)
+            {
+                pthread_mutex_unlock(&g_free_queue.lock);
+                return NULL;
+            }
         }
-    }
-	pthread_mutex_unlock(&g_free_queue.lock);
+        pthread_mutex_unlock(&g_free_queue.lock);
 
-    return task_queue_pop(&g_free_queue);
+        if ((pTask=task_queue_pop(&g_free_queue)) != NULL)
+        {
+            return pTask;
+        }
+    }
+
+    return NULL;
 }
 
 static int _realloc_buffer(struct fast_task_info *pTask, const int new_size,
