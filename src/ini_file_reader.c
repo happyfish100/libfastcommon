@@ -43,6 +43,13 @@
 #define _PREPROCESS_VARIABLE_LEN_LOCAL_HOST \
     (sizeof(_PREPROCESS_VARIABLE_STR_LOCAL_HOST) - 1)
 
+#define _PREPROCESS_TAG_STR_FOR_FROM   "from"
+#define _PREPROCESS_TAG_LEN_FOR_FROM   (sizeof(_PREPROCESS_TAG_STR_FOR_FROM) - 1)
+#define _PREPROCESS_TAG_STR_FOR_TO     "to"
+#define _PREPROCESS_TAG_LEN_FOR_TO     (sizeof(_PREPROCESS_TAG_STR_FOR_TO) - 1)
+#define _PREPROCESS_TAG_STR_FOR_STEP   "step"
+#define _PREPROCESS_TAG_LEN_FOR_STEP   (sizeof(_PREPROCESS_TAG_STR_FOR_STEP) - 1)
+
 static AnnotationMap *g_annotataionMap = NULL;
 
 static int remallocSection(IniSection *pSection, IniItem **pItem);
@@ -705,6 +712,20 @@ static char *iniAllocContent(IniContext *pContext, const int content_len)
     return buff;
 }
 
+static bool iniMatchValue(const char *target, char **values, const int count)
+{
+    int i;
+    for (i=0; i<count; i++)
+    {
+        if (strcmp(target, values[i]) == 0)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 static bool iniCalcCondition(char *condition, const int condition_len)
 {
     /*
@@ -717,6 +738,7 @@ static bool iniCalcCondition(char *condition, const int condition_len)
 #define _PREPROCESS_MAX_LIST_VALUE_COUNT    32
     char *p;
     char *pEnd;
+    char *pSquareEnd;
     char *values[_PREPROCESS_MAX_LIST_VALUE_COUNT];
     int varType;
     int count;
@@ -735,7 +757,7 @@ static bool iniCalcCondition(char *condition, const int condition_len)
                 condition_len, condition);
         return false;
     }
-    *p = '\0';
+    pSquareEnd = p;
 
     p = condition;
     while (p < pEnd && (*p == ' ' || *p == '\t'))
@@ -782,6 +804,7 @@ static bool iniCalcCondition(char *condition, const int condition_len)
                 condition_len, condition);
         return false;
     }
+    p += 2;  //skip in
 
     while (p < pEnd && (*p == ' ' || *p == '\t'))
     {
@@ -795,7 +818,12 @@ static bool iniCalcCondition(char *condition, const int condition_len)
         return false;
     }
 
-    count = splitEx(p+1, ',', values, _PREPROCESS_MAX_LIST_VALUE_COUNT);
+    *pSquareEnd = '\0';
+    count = splitEx(p + 1, ',', values, _PREPROCESS_MAX_LIST_VALUE_COUNT);
+    for (i=0; i<count; i++)
+    {
+        values[i] = trim(values[i]);
+    }
     if (varType == _PREPROCESS_VARIABLE_TYPE_LOCAL_HOST)
     {
         char host[128];
@@ -807,6 +835,7 @@ static bool iniCalcCondition(char *condition, const int condition_len)
                     errno, STRERROR(errno));
             return false;
         }
+        return iniMatchValue(host, values, count);
     }
     else
     {
@@ -814,8 +843,9 @@ static bool iniCalcCondition(char *condition, const int condition_len)
         local_ip = get_first_local_ip();
         while (local_ip != NULL)
         {
-            for (i=0; i<count; i++)
+            if (iniMatchValue(local_ip, values, count))
             {
+                return true;
             }
             local_ip = get_next_local_ip(local_ip);
         }
@@ -922,6 +952,283 @@ static char *iniProccessIf(char *content, const int content_len,
     return newContent;
 }
 
+static char *iniGetInteger(char *str, char *pEnd, int *nlen)
+{
+    char *p;
+    char *pNumber;
+
+    p = str;
+    while (p < pEnd && (*p == ' ' || *p == '\t'))
+    {
+        p++;
+    }
+
+    pNumber = p;
+    while (p < pEnd && (*p >= '0' && *p <= '9'))
+    {
+        p++;
+    }
+
+    *nlen = p - pNumber;
+    return pNumber;
+}
+
+static int iniParseForRange(char *range, const int range_len,
+        char **id, int *idLen, int *start, int *end, int *step)
+{
+    /**
+     *
+     * #@for i from 0 to 15 step 1
+     */
+
+
+    char *p;
+    char *pEnd;
+    char *pNumber;
+    int nlen;
+
+    pEnd = range + range_len;
+    p = range;
+    while (p < pEnd && (*p == ' ' || *p == '\t'))
+    {
+        p++;
+    }
+
+    if (pEnd - p < 10)
+    {
+		logWarning("file: "__FILE__", line: %d, "
+                "unkown for range: %.*s", __LINE__,
+                range_len, range);
+        return EINVAL;
+    }
+
+    *id = p;
+    while (p < pEnd && !(*p == ' ' || *p == '\t'))
+    {
+        p++;
+    }
+    *idLen = p - *id;
+    if (*idLen == 0 || *idLen > 64)
+    {
+		logWarning("file: "__FILE__", line: %d, "
+                "invalid for range: %.*s", __LINE__,
+                range_len, range);
+        return EINVAL;
+    }
+
+    if (pEnd - p < 8)
+    {
+		logWarning("file: "__FILE__", line: %d, "
+                "invalid for range: %.*s", __LINE__,
+                range_len, range);
+        return EINVAL;
+    }
+
+    p++;
+    if (!(memcmp(p, _PREPROCESS_TAG_STR_FOR_FROM,
+                    _PREPROCESS_TAG_LEN_FOR_FROM) == 0 &&
+                (*p == ' ' || *p == '\t')))
+    {
+		logWarning("file: "__FILE__", line: %d, "
+                "invalid for range: %.*s", __LINE__,
+                range_len, range);
+        return EINVAL;
+    }
+    p += _PREPROCESS_TAG_LEN_FOR_FROM + 1;
+    pNumber = iniGetInteger(p, pEnd, &nlen);
+    if (nlen == 0)
+    {
+		logWarning("file: "__FILE__", line: %d, "
+                "invalid for range: %.*s", __LINE__,
+                range_len, range);
+        return EINVAL;
+    }
+    *start = atoi(pNumber);
+    p = pNumber + nlen;
+
+    if (pEnd - p < 4 || !(*p == ' ' || *p == '\t'))
+    {
+		logWarning("file: "__FILE__", line: %d, "
+                "invalid for range: %.*s", __LINE__,
+                range_len, range);
+        return EINVAL;
+    }
+    p++;
+    while (p < pEnd && !(*p == ' ' || *p == '\t'))
+    {
+        p++;
+    }
+    if (!(memcmp(p, _PREPROCESS_TAG_STR_FOR_TO,
+                    _PREPROCESS_TAG_LEN_FOR_TO) == 0 &&
+                (*p == ' ' || *p == '\t')))
+    {
+		logWarning("file: "__FILE__", line: %d, "
+                "unkown for range: %.*s", __LINE__,
+                range_len, range);
+        return EINVAL;
+    }
+    p += _PREPROCESS_TAG_LEN_FOR_TO + 1;
+    pNumber = iniGetInteger(p, pEnd, &nlen);
+    if (nlen == 0)
+    {
+		logWarning("file: "__FILE__", line: %d, "
+                "invalid for range: %.*s", __LINE__,
+                range_len, range);
+        return EINVAL;
+    }
+    *end = atoi(pNumber);
+    p = pNumber + nlen;
+
+    if (p == pEnd)
+    {
+        *step = 1;
+        return 0;
+    }
+
+    if (!(*p == ' ' || *p == '\t'))
+    {
+		logWarning("file: "__FILE__", line: %d, "
+                "invalid for range: %.*s", __LINE__,
+                range_len, range);
+        return EINVAL;
+    }
+    while (p < pEnd && (*p == ' ' || *p == '\t'))
+    {
+        p++;
+    }
+    if (!(memcmp(p, _PREPROCESS_TAG_STR_FOR_STEP,
+                    _PREPROCESS_TAG_LEN_FOR_STEP) == 0 &&
+                (*p == ' ' || *p == '\t')))
+    {
+		logWarning("file: "__FILE__", line: %d, "
+                "unkown for range: %.*s", __LINE__,
+                range_len, range);
+        return EINVAL;
+    }
+    p += _PREPROCESS_TAG_LEN_FOR_STEP + 1;
+    pNumber = iniGetInteger(p, pEnd, &nlen);
+    if (nlen == 0)
+    {
+		logWarning("file: "__FILE__", line: %d, "
+                "invalid for range: %.*s", __LINE__,
+                range_len, range);
+        return EINVAL;
+    }
+    *step = atoi(pNumber);
+    p = pNumber + nlen;
+    while (p < pEnd && (*p == ' ' || *p == '\t'))
+    {
+        p++;
+    }
+    if (p != pEnd)
+    {
+		logWarning("file: "__FILE__", line: %d, "
+                "invalid for range: %.*s", __LINE__,
+                range_len, range);
+        return EINVAL;
+    }
+
+    return 0;
+}
+
+static char *iniProccessFor(char *content, const int content_len,
+        IniContext *pContext, int *new_content_len)
+{
+    char *pStart;
+    char *pEnd;
+    char *pForRange;
+    char *pForBlock;
+    char *id;
+    char tag[80];
+    char value[16];
+    int idLen;
+    int rangeLen;
+    int forBlockLen;
+    int start;
+    int end;
+    int step;
+    int count;
+    int i;
+    int copyLen;
+    int tagLen;
+    int valueLen;
+    char *newContent;
+    char *pDest;
+
+    *new_content_len = content_len;
+    pStart = strstr(content, _PREPROCESS_TAG_STR_FOR);
+    if (pStart == NULL)
+    {
+        return content;
+    }
+    pForRange = pStart + _PREPROCESS_TAG_LEN_FOR;
+    pForBlock = strchr(pForRange, '\n');
+    if (pForBlock == NULL)
+    {
+        return content;
+    }
+    rangeLen = pForBlock - pForRange;
+
+    pEnd = strstr(pForBlock, _PREPROCESS_TAG_STR_ENDFOR);
+    if (pEnd == NULL)
+    {
+        return content;
+    }
+    forBlockLen = pEnd - pForBlock;
+
+    if (iniParseForRange(pForRange, rangeLen, &id, &idLen,
+                &start, &end, &step) != 0)
+    {
+        return NULL;
+    }
+    if (step == 0)
+    {
+		logWarning("file: "__FILE__", line: %d, "
+                "invalid step: %d for range: %.*s", __LINE__,
+                step, rangeLen, pForRange);
+        return NULL;
+    }
+    count = (end - start) / step;
+    if (count < 0)
+    {
+		logWarning("file: "__FILE__", line: %d, "
+                "invalid step: %d for range: %.*s", __LINE__,
+                step, rangeLen, pForRange);
+        return NULL;
+    }
+
+    newContent = iniAllocContent(pContext, content_len + (forBlockLen + 16) * count);
+    if (newContent == NULL)
+    {
+        return NULL;
+    }
+
+    pDest = newContent;
+    copyLen = pStart - content;
+    if (copyLen > 0)
+    {
+        memcpy(pDest, content, copyLen);
+        pDest += copyLen;
+    }
+
+    tagLen = sprintf(tag, "{$%.*s}", idLen, id);
+    for (i=start; i<=end; i+=step)
+    {
+        valueLen = sprintf(value, "%d", i);
+    }
+
+    copyLen = (content + content_len) - (pEnd + _PREPROCESS_TAG_LEN_ENDFOR);
+    if (copyLen > 0)
+    {
+        memcpy(pDest, pEnd + _PREPROCESS_TAG_LEN_ENDFOR, copyLen);
+        pDest += copyLen;
+    }
+
+    *pDest = '\0';
+    *new_content_len = pDest - newContent;
+    return newContent;
+}
+
 static int iniLoadItemsFromBuffer(char *content, IniContext *pContext)
 {
     char *pContent;
@@ -942,6 +1249,19 @@ static int iniLoadItemsFromBuffer(char *content, IniContext *pContext)
             return ENOMEM;
         }
     } while (new_content != pContent);
+
+    do
+    {
+        pContent = new_content;
+        content_len = new_content_len;
+        if ((new_content=iniProccessFor(pContent, content_len,
+                        pContext, &new_content_len)) == NULL)
+        {
+            return ENOMEM;
+        }
+    } while (new_content != pContent);
+
+    logInfo("new_content(%d): %s", new_content_len, new_content);
 
     return iniDoLoadItemsFromBuffer(new_content, pContext);
 }
