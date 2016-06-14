@@ -669,6 +669,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 static char *iniAllocContent(IniContext *pContext, const int content_len)
 {
     char *buff;
+    int index;
     if (pContext->dynamicContents.count >= pContext->dynamicContents.alloc_count)
     {
         int alloc_count;
@@ -708,7 +709,8 @@ static char *iniAllocContent(IniContext *pContext, const int content_len)
                 "malloc %d bytes fail", __LINE__, content_len);
         return NULL;
     }
-    pContext->dynamicContents.contents[pContext->dynamicContents.count++] = buff;
+    index = pContext->dynamicContents.count++;
+    pContext->dynamicContents.contents[index] = buff;
     return buff;
 }
 
@@ -1025,9 +1027,14 @@ static int iniParseForRange(char *range, const int range_len,
     }
 
     p++;
+    while (p < pEnd && (*p == ' ' || *p == '\t'))
+    {
+        p++;
+    }
     if (!(memcmp(p, _PREPROCESS_TAG_STR_FOR_FROM,
                     _PREPROCESS_TAG_LEN_FOR_FROM) == 0 &&
-                (*p == ' ' || *p == '\t')))
+                (*(p+_PREPROCESS_TAG_LEN_FOR_FROM) == ' ' ||
+                 *(p+_PREPROCESS_TAG_LEN_FOR_FROM) == '\t')))
     {
 		logWarning("file: "__FILE__", line: %d, "
                 "invalid for range: %.*s", __LINE__,
@@ -1054,13 +1061,14 @@ static int iniParseForRange(char *range, const int range_len,
         return EINVAL;
     }
     p++;
-    while (p < pEnd && !(*p == ' ' || *p == '\t'))
+    while (p < pEnd && (*p == ' ' || *p == '\t'))
     {
         p++;
     }
     if (!(memcmp(p, _PREPROCESS_TAG_STR_FOR_TO,
                     _PREPROCESS_TAG_LEN_FOR_TO) == 0 &&
-                (*p == ' ' || *p == '\t')))
+                (*(p+_PREPROCESS_TAG_LEN_FOR_TO) == ' ' ||
+                 *(p+_PREPROCESS_TAG_LEN_FOR_TO) == '\t')))
     {
 		logWarning("file: "__FILE__", line: %d, "
                 "unkown for range: %.*s", __LINE__,
@@ -1098,7 +1106,8 @@ static int iniParseForRange(char *range, const int range_len,
     }
     if (!(memcmp(p, _PREPROCESS_TAG_STR_FOR_STEP,
                     _PREPROCESS_TAG_LEN_FOR_STEP) == 0 &&
-                (*p == ' ' || *p == '\t')))
+                (*(p+_PREPROCESS_TAG_LEN_FOR_STEP) == ' ' ||
+                 *(p+_PREPROCESS_TAG_LEN_FOR_STEP) == '\t')))
     {
 		logWarning("file: "__FILE__", line: %d, "
                 "unkown for range: %.*s", __LINE__,
@@ -1214,7 +1223,36 @@ static char *iniProccessFor(char *content, const int content_len,
     tagLen = sprintf(tag, "{$%.*s}", idLen, id);
     for (i=start; i<=end; i+=step)
     {
+        char *p;
+        char *pRemain;
+        int remainLen;
+
         valueLen = sprintf(value, "%d", i);
+
+        pRemain = pForBlock;
+        remainLen = forBlockLen;
+        while (remainLen >= tagLen)
+        {
+            p = (char *)memmem(pRemain, remainLen, tag, tagLen);
+            if (p == NULL)
+            {
+                memcpy(pDest, pRemain, remainLen);
+                pDest += remainLen;
+                break;
+            }
+
+            copyLen = p - pRemain;
+            if (copyLen > 0)
+            {
+                memcpy(pDest, pRemain, copyLen);
+                pDest += copyLen;
+            }
+            memcpy(pDest, value, valueLen);
+            pDest += valueLen;
+
+            pRemain = p + tagLen;
+            remainLen -= copyLen + tagLen;
+        }
     }
 
     copyLen = (content + content_len) - (pEnd + _PREPROCESS_TAG_LEN_ENDFOR);
@@ -1260,8 +1298,6 @@ static int iniLoadItemsFromBuffer(char *content, IniContext *pContext)
             return ENOMEM;
         }
     } while (new_content != pContent);
-
-    logInfo("new_content(%d): %s", new_content_len, new_content);
 
     return iniDoLoadItemsFromBuffer(new_content, pContext);
 }
@@ -1342,7 +1378,7 @@ void iniFreeContext(IniContext *pContext)
 	hash_walk(&pContext->sections, iniFreeHashData, NULL);
 	hash_destroy(&pContext->sections);
 
-    if (pContext->dynamicContents.contents != NULL)
+    if (pContext->dynamicContents.count > 0)
     {
         for (i=0; i<pContext->dynamicContents.count; i++)
         {

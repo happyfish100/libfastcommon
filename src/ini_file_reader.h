@@ -53,8 +53,8 @@ typedef struct
 	char config_path[MAX_PATH_SIZE];  //save the config filepath
     bool ignore_annotation;
     struct {
-        int count;
-        int alloc_count;
+        char count;
+        char alloc_count;
         char **contents;
     } dynamicContents;  //dynamic alloced contents which will be freed when destroy
 } IniContext;
