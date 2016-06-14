@@ -17,17 +17,38 @@
 #include "shared_func.h"
 #include "logger.h"
 #include "http_func.h"
+#include "local_ip_func.h"
 #include "ini_file_reader.h"
 
 #define _LINE_BUFFER_SIZE	   512
 #define _INIT_ALLOC_ITEM_COUNT	32
+
+#define _PREPROCESS_TAG_STR_IF  "#@if "
+#define _PREPROCESS_TAG_STR_ELSE "#@else"
+#define _PREPROCESS_TAG_STR_ENDIF "#@endif"
+#define _PREPROCESS_TAG_STR_FOR "#@for "
+#define _PREPROCESS_TAG_STR_ENDFOR "#@endfor"
+
+#define _PREPROCESS_TAG_LEN_IF (sizeof(_PREPROCESS_TAG_STR_IF) - 1)
+#define _PREPROCESS_TAG_LEN_ELSE (sizeof(_PREPROCESS_TAG_STR_ELSE) - 1)
+#define _PREPROCESS_TAG_LEN_ENDIF (sizeof(_PREPROCESS_TAG_STR_ENDIF) - 1)
+#define _PREPROCESS_TAG_LEN_FOR (sizeof(_PREPROCESS_TAG_STR_FOR) - 1)
+#define _PREPROCESS_TAG_LEN_ENDFOR (sizeof(_PREPROCESS_TAG_STR_ENDFOR) - 1)
+
+#define _PREPROCESS_VARIABLE_STR_LOCAL_IP "%{LOCAL_IP}"
+#define _PREPROCESS_VARIABLE_STR_LOCAL_HOST "%{LOCAL_HOST}"
+
+#define _PREPROCESS_VARIABLE_LEN_LOCAL_IP \
+    (sizeof(_PREPROCESS_VARIABLE_STR_LOCAL_IP) - 1)
+#define _PREPROCESS_VARIABLE_LEN_LOCAL_HOST \
+    (sizeof(_PREPROCESS_VARIABLE_STR_LOCAL_HOST) - 1)
 
 static AnnotationMap *g_annotataionMap = NULL;
 
 static int remallocSection(IniSection *pSection, IniItem **pItem);
 static int iniDoLoadFromFile(const char *szFilename, \
 		IniContext *pContext);
-static int iniDoLoadItemsFromBuffer(char *content, \
+static int iniLoadItemsFromBuffer(char *content, \
 		IniContext *pContext);
 
 int iniSetAnnotationCallBack(AnnotationMap *map, int count)
@@ -278,7 +299,7 @@ static int iniDoLoadFromFile(const char *szFilename, \
 		}
 	}
 
-	result = iniDoLoadItemsFromBuffer(content, pContext);
+	result = iniLoadItemsFromBuffer(content, pContext);
 	free(content);
 
 	return result;
@@ -293,7 +314,7 @@ int iniLoadFromBuffer(char *content, IniContext *pContext)
 		return result;
 	}
 
-	result = iniDoLoadItemsFromBuffer(content, pContext);
+	result = iniLoadItemsFromBuffer(content, pContext);
 	if (result == 0)
 	{
 		iniSortItems(pContext);
@@ -638,6 +659,293 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 	return result;
 }
 
+static char *iniAllocContent(IniContext *pContext, const int content_len)
+{
+    char *buff;
+    if (pContext->dynamicContents.count >= pContext->dynamicContents.alloc_count)
+    {
+        int alloc_count;
+        int bytes;
+        char **contents;
+        if (pContext->dynamicContents.alloc_count == 0)
+        {
+            alloc_count = 8;
+        }
+        else
+        {
+            alloc_count = pContext->dynamicContents.alloc_count * 2;
+        }
+        bytes = sizeof(char *) * alloc_count;
+        contents = (char **)malloc(bytes);
+        if (contents == NULL)
+        {
+            logError("file: "__FILE__", line: %d, "
+                    "malloc %d bytes fail", __LINE__, bytes);
+            return NULL;
+        }
+        memset(contents, 0, bytes);
+        if (pContext->dynamicContents.count > 0)
+        {
+            memcpy(contents, pContext->dynamicContents.contents,
+                    sizeof(char *) * pContext->dynamicContents.count);
+            free(pContext->dynamicContents.contents);
+        }
+        pContext->dynamicContents.contents = contents;
+        pContext->dynamicContents.alloc_count = alloc_count;
+    }
+
+    buff = malloc(content_len);
+    if (buff == NULL)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "malloc %d bytes fail", __LINE__, content_len);
+        return NULL;
+    }
+    pContext->dynamicContents.contents[pContext->dynamicContents.count++] = buff;
+    return buff;
+}
+
+static bool iniCalcCondition(char *condition, const int condition_len)
+{
+    /*
+     * current only support %{VARIABLE} in [x,y,..]
+     * support variables are: LOCAL_IP and LOCAL_HOST
+     * such as: %{LOCAL_IP} in [10.0.11.89,10.0.11.99]
+     **/
+#define _PREPROCESS_VARIABLE_TYPE_LOCAL_IP   1
+#define _PREPROCESS_VARIABLE_TYPE_LOCAL_HOST 2
+#define _PREPROCESS_MAX_LIST_VALUE_COUNT    32
+    char *p;
+    char *pEnd;
+    char *values[_PREPROCESS_MAX_LIST_VALUE_COUNT];
+    int varType;
+    int count;
+    int i;
+
+    pEnd = condition + condition_len;
+    p = pEnd - 1;
+    while (p > condition && (*p == ' ' || *p == '\t'))
+    {
+        p--;
+    }
+    if (*p != ']')
+    {
+		logWarning("file: "__FILE__", line: %d, "
+                "expect \"]\", condition: %.*s", __LINE__,
+                condition_len, condition);
+        return false;
+    }
+    *p = '\0';
+
+    p = condition;
+    while (p < pEnd && (*p == ' ' || *p == '\t'))
+    {
+        p++;
+    }
+
+    if (pEnd - p < 12)
+    {
+		logWarning("file: "__FILE__", line: %d, "
+                "unkown condition: %.*s", __LINE__,
+                condition_len, condition);
+        return false;
+    }
+
+    if (memcmp(p, _PREPROCESS_VARIABLE_STR_LOCAL_IP,
+                _PREPROCESS_VARIABLE_LEN_LOCAL_IP) == 0)
+    {
+        varType = _PREPROCESS_VARIABLE_TYPE_LOCAL_IP;
+        p += _PREPROCESS_VARIABLE_LEN_LOCAL_IP;
+    }
+    else if (memcmp(p, _PREPROCESS_VARIABLE_STR_LOCAL_HOST,
+                _PREPROCESS_VARIABLE_LEN_LOCAL_HOST) == 0)
+    {
+        varType = _PREPROCESS_VARIABLE_TYPE_LOCAL_HOST;
+        p += _PREPROCESS_VARIABLE_LEN_LOCAL_HOST;
+    }
+    else
+    {
+		logWarning("file: "__FILE__", line: %d, "
+                "unkown condition: %.*s", __LINE__,
+                condition_len, condition);
+        return false;
+    }
+
+    while (p < pEnd && (*p == ' ' || *p == '\t'))
+    {
+        p++;
+    }
+    if (pEnd - p < 4 || memcmp(p, "in", 2) != 0)
+    {
+		logWarning("file: "__FILE__", line: %d, "
+                "expect \"in\", condition: %.*s", __LINE__,
+                condition_len, condition);
+        return false;
+    }
+
+    while (p < pEnd && (*p == ' ' || *p == '\t'))
+    {
+        p++;
+    }
+    if (*p != '[')
+    {
+		logWarning("file: "__FILE__", line: %d, "
+                "expect \"[\", condition: %.*s", __LINE__,
+                condition_len, condition);
+        return false;
+    }
+
+    count = splitEx(p+1, ',', values, _PREPROCESS_MAX_LIST_VALUE_COUNT);
+    if (varType == _PREPROCESS_VARIABLE_TYPE_LOCAL_HOST)
+    {
+        char host[128];
+        if (gethostname(host, sizeof(host)) != 0)
+        {
+            logWarning("file: "__FILE__", line: %d, "
+                    "call gethostname fail, "
+                    "errno: %d, error info: %s", __LINE__,
+                    errno, STRERROR(errno));
+            return false;
+        }
+    }
+    else
+    {
+        const char *local_ip;
+        local_ip = get_first_local_ip();
+        while (local_ip != NULL)
+        {
+            for (i=0; i<count; i++)
+            {
+            }
+            local_ip = get_next_local_ip(local_ip);
+        }
+    }
+
+    return false;
+}
+
+static char *iniProccessIf(char *content, const int content_len,
+        IniContext *pContext, int *new_content_len)
+{
+    char *pStart;
+    char *pEnd;
+    char *pCondition;
+    char *pElse;
+    char *pIfPart;
+    char *pElsePart;
+    int conditionLen;
+    int ifPartLen;
+    int elsePartLen;
+    int copyLen;
+    char *newContent;
+    char *pDest;
+
+    *new_content_len = content_len;
+    pStart = strstr(content, _PREPROCESS_TAG_STR_IF);
+    if (pStart == NULL)
+    {
+        return content;
+    }
+    pCondition = pStart + _PREPROCESS_TAG_LEN_IF;
+    pIfPart = strchr(pCondition, '\n');
+    if (pIfPart == NULL)
+    {
+        return content;
+    }
+    conditionLen = pIfPart - pCondition;
+
+    pEnd = strstr(pIfPart, _PREPROCESS_TAG_STR_ENDIF);
+    if (pEnd == NULL)
+    {
+        return content;
+    }
+
+    pElse = strstr(pIfPart, _PREPROCESS_TAG_STR_ELSE);
+    if (pElse == NULL || pElse > pEnd)
+    {
+        ifPartLen = pEnd - pIfPart;
+        pElsePart = NULL;
+        elsePartLen = 0;
+    }
+    else
+    {
+        ifPartLen = pElse - pIfPart;
+        pElsePart = strchr(pElse + _PREPROCESS_TAG_LEN_ELSE, '\n');
+        if (pElsePart == NULL)
+        {
+            return content;
+        }
+
+        elsePartLen = pEnd - pElsePart;
+    }
+
+    newContent = iniAllocContent(pContext, content_len);
+    if (newContent == NULL)
+    {
+        return NULL;
+    }
+
+    pDest = newContent;
+    copyLen = pStart - content;
+    if (copyLen > 0)
+    {
+        memcpy(pDest, content, copyLen);
+        pDest += copyLen;
+    }
+
+    if (iniCalcCondition(pCondition, conditionLen))
+    {
+        if (ifPartLen > 0)
+        {
+            memcpy(pDest, pIfPart, ifPartLen);
+            pDest += ifPartLen;
+        }
+    }
+    else
+    {
+        if (elsePartLen > 0)
+        {
+            memcpy(pDest, pElsePart, elsePartLen);
+            pDest += elsePartLen;
+        }
+    }
+
+    copyLen = (content + content_len) - (pEnd + _PREPROCESS_TAG_LEN_ENDIF);
+    if (copyLen > 0)
+    {
+        memcpy(pDest, pEnd + _PREPROCESS_TAG_LEN_ENDIF, copyLen);
+        pDest += copyLen;
+    }
+
+    *pDest = '\0';
+    *new_content_len = pDest - newContent;
+    return newContent;
+}
+
+static int iniLoadItemsFromBuffer(char *content, IniContext *pContext)
+{
+    char *pContent;
+    char *new_content;
+    int content_len;
+    int new_content_len;
+
+    new_content = content;
+    new_content_len = strlen(content);
+
+    do
+    {
+        pContent = new_content;
+        content_len = new_content_len;
+        if ((new_content=iniProccessIf(pContent, content_len,
+                        pContext, &new_content_len)) == NULL)
+        {
+            return ENOMEM;
+        }
+    } while (new_content != pContent);
+
+    return iniDoLoadItemsFromBuffer(new_content, pContext);
+}
+
 static int remallocSection(IniSection *pSection, IniItem **pItem)
 {
     int bytes, result;
@@ -699,6 +1007,7 @@ static int iniFreeHashData(const int index, const HashData *data, void *args)
 
 void iniFreeContext(IniContext *pContext)
 {
+    int i;
 	if (pContext == NULL)
 	{
 		return;
@@ -712,6 +1021,19 @@ void iniFreeContext(IniContext *pContext)
 
 	hash_walk(&pContext->sections, iniFreeHashData, NULL);
 	hash_destroy(&pContext->sections);
+
+    if (pContext->dynamicContents.contents != NULL)
+    {
+        for (i=0; i<pContext->dynamicContents.count; i++)
+        {
+            if (pContext->dynamicContents.contents[i] != NULL)
+            {
+                free(pContext->dynamicContents.contents[i]);
+            }
+        }
+        free(pContext->dynamicContents.contents);
+        pContext->dynamicContents.contents = NULL;
+    }
 }
 
 

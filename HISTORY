@@ -1,4 +1,7 @@
 
+Version 1.28  2016-06-14
+  * ini_file_reader support #@if
+
 Version 1.28  2016-06-08
   * id generator support extra bits
   * change inet_aton to inet_pton
