@@ -50,7 +50,27 @@
 #define _PREPROCESS_TAG_STR_FOR_STEP   "step"
 #define _PREPROCESS_TAG_LEN_FOR_STEP   (sizeof(_PREPROCESS_TAG_STR_FOR_STEP) - 1)
 
+#define _MAX_DYNAMIC_CONTENTS     8
+
 static AnnotationMap *g_annotataionMap = NULL;
+
+typedef struct {
+    int count;
+    int alloc_count;
+    char **contents;
+} DynamicContents;
+
+typedef struct {
+    bool used;
+    IniContext *context;
+    DynamicContents dynamicContents;
+} CDCPair;
+
+static int g_dynamic_content_count = 0;
+static int g_dynamic_content_index = 0;
+static CDCPair g_dynamic_contents[_MAX_DYNAMIC_CONTENTS] = {{false, NULL, {0, 0, NULL}}};
+
+//dynamic alloced contents which will be freed when destroy
 
 static int remallocSection(IniSection *pSection, IniItem **pItem);
 static int iniDoLoadFromFile(const char *szFilename, \
@@ -666,22 +686,121 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 	return result;
 }
 
+static DynamicContents *iniAllocDynamicContent(IniContext *pContext)
+{
+    int i;
+    if (g_dynamic_contents[g_dynamic_content_index].context == pContext)
+    {
+        return &g_dynamic_contents[g_dynamic_content_index].dynamicContents;
+    }
+
+    if (g_dynamic_content_count > 0)
+    {
+        for (i=0; i<_MAX_DYNAMIC_CONTENTS; i++)
+        {
+            if (g_dynamic_contents[i].context == pContext)
+            {
+                g_dynamic_content_index = i;
+                return &g_dynamic_contents[g_dynamic_content_index].dynamicContents;
+            }
+        }
+    }
+
+    if (g_dynamic_content_count == _MAX_DYNAMIC_CONTENTS)
+    {
+        return NULL;
+    }
+
+    for (i=0; i<_MAX_DYNAMIC_CONTENTS; i++)
+    {
+        if (!g_dynamic_contents[i].used)
+        {
+            g_dynamic_contents[i].used = true;
+            g_dynamic_contents[i].context = pContext;
+            g_dynamic_content_index = i;
+            g_dynamic_content_count++;
+            return &g_dynamic_contents[g_dynamic_content_index].dynamicContents;
+        }
+    }
+
+    return NULL;
+}
+
+static void iniFreeDynamicContent(IniContext *pContext)
+{
+    CDCPair *pCDCPair;
+    DynamicContents *pDynamicContents;
+    int i;
+
+    if (g_dynamic_content_count == 0)
+    {
+        return;
+    }
+
+    if (g_dynamic_contents[g_dynamic_content_index].context == pContext)
+    {
+        pCDCPair = g_dynamic_contents + g_dynamic_content_index;
+    }
+    else
+    {
+        pCDCPair = NULL;
+        for (i=0; i<_MAX_DYNAMIC_CONTENTS; i++)
+        {
+            if (g_dynamic_contents[i].context == pContext)
+            {
+                pCDCPair = g_dynamic_contents + i;
+                break;
+            }
+        }
+        if (pCDCPair == NULL)
+        {
+            return;
+        }
+    }
+
+    pCDCPair->used = false;
+    pCDCPair->context = NULL;
+    pDynamicContents = &pCDCPair->dynamicContents;
+    if (pDynamicContents->contents != NULL)
+    {
+        for (i=0; i<pDynamicContents->count; i++)
+        {
+            if (pDynamicContents->contents[i] != NULL)
+            {
+                free(pDynamicContents->contents[i]);
+            }
+        }
+        free(pDynamicContents->contents);
+        pDynamicContents->contents = NULL;
+    }
+    pDynamicContents->alloc_count = 0;
+    pDynamicContents->count = 0;
+    g_dynamic_content_count--;
+}
+
 static char *iniAllocContent(IniContext *pContext, const int content_len)
 {
     char *buff;
-    int index;
-    if (pContext->dynamicContents.count >= pContext->dynamicContents.alloc_count)
+    DynamicContents *pDynamicContents;
+    pDynamicContents = iniAllocDynamicContent(pContext);
+    if (pDynamicContents == NULL)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "malloc dynamic contents fail", __LINE__);
+        return NULL;
+    }
+    if (pDynamicContents->count >= pDynamicContents->alloc_count)
     {
         int alloc_count;
         int bytes;
         char **contents;
-        if (pContext->dynamicContents.alloc_count == 0)
+        if (pDynamicContents->alloc_count == 0)
         {
             alloc_count = 8;
         }
         else
         {
-            alloc_count = pContext->dynamicContents.alloc_count * 2;
+            alloc_count = pDynamicContents->alloc_count * 2;
         }
         bytes = sizeof(char *) * alloc_count;
         contents = (char **)malloc(bytes);
@@ -692,14 +811,14 @@ static char *iniAllocContent(IniContext *pContext, const int content_len)
             return NULL;
         }
         memset(contents, 0, bytes);
-        if (pContext->dynamicContents.count > 0)
+        if (pDynamicContents->count > 0)
         {
-            memcpy(contents, pContext->dynamicContents.contents,
-                    sizeof(char *) * pContext->dynamicContents.count);
-            free(pContext->dynamicContents.contents);
+            memcpy(contents, pDynamicContents->contents,
+                    sizeof(char *) * pDynamicContents->count);
+            free(pDynamicContents->contents);
         }
-        pContext->dynamicContents.contents = contents;
-        pContext->dynamicContents.alloc_count = alloc_count;
+        pDynamicContents->contents = contents;
+        pDynamicContents->alloc_count = alloc_count;
     }
 
     buff = malloc(content_len);
@@ -709,8 +828,7 @@ static char *iniAllocContent(IniContext *pContext, const int content_len)
                 "malloc %d bytes fail", __LINE__, content_len);
         return NULL;
     }
-    index = pContext->dynamicContents.count++;
-    pContext->dynamicContents.contents[index] = buff;
+    pDynamicContents->contents[pDynamicContents->count++] = buff;
     return buff;
 }
 
@@ -1363,7 +1481,6 @@ static int iniFreeHashData(const int index, const HashData *data, void *args)
 
 void iniFreeContext(IniContext *pContext)
 {
-    int i;
 	if (pContext == NULL)
 	{
 		return;
@@ -1378,18 +1495,7 @@ void iniFreeContext(IniContext *pContext)
 	hash_walk(&pContext->sections, iniFreeHashData, NULL);
 	hash_destroy(&pContext->sections);
 
-    if (pContext->dynamicContents.count > 0)
-    {
-        for (i=0; i<pContext->dynamicContents.count; i++)
-        {
-            if (pContext->dynamicContents.contents[i] != NULL)
-            {
-                free(pContext->dynamicContents.contents[i]);
-            }
-        }
-        free(pContext->dynamicContents.contents);
-        pContext->dynamicContents.contents = NULL;
-    }
+    iniFreeDynamicContent(pContext);
 }
 
 
