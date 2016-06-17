@@ -19,25 +19,35 @@ while (($next_ip=fastcommon_get_next_local_ip($next_ip)))
 $handle = fastcommon_id_generator_init();
 
 $id = fastcommon_id_generator_next(1);
-printf("id: %d %X, extra: %d\n", $id, $id, fastcommon_id_generator_get_extra($id));
+printf("id: %d %X, extra: %d, timestamp: %d\n", $id, $id,
+        fastcommon_id_generator_get_extra($id),
+        fastcommon_id_generator_get_timestamp($id));
 unset($handle);
 
 $handle1 = fastcommon_id_generator_init("/tmp/sn1.txt", 0, 8, 10, 14);
 $handle2 = fastcommon_id_generator_init("/tmp/sn2.txt", 0, 8, 8, 16);
 
 $id = fastcommon_id_generator_next(1, $handle1);
-printf("id1: %d %X, extra: %d\n", $id, $id, fastcommon_id_generator_get_extra($id, $handle1));
+printf("id1: %d %X, extra: %d, timestamp: %d\n", $id, $id,
+        fastcommon_id_generator_get_extra($id, $handle1),
+        fastcommon_id_generator_get_timestamp($id, $handle1));
 
 $id = fastcommon_id_generator_next(2, $handle2);
-printf("id2: %d %X, extra: %d\n", $id, $id, fastcommon_id_generator_get_extra($id, $handle2));
+printf("id2: %d %X, extra: %d, timestamp: %d\n", $id, $id,
+        fastcommon_id_generator_get_extra($id, $handle2),
+        fastcommon_id_generator_get_timestamp($id, $handle2));
 
 $handle = fastcommon_id_generator_init("/tmp/sn.txt", 0, 8, 10, 14);
 $id = fastcommon_id_generator_next(512, $handle);
-printf("%d %X, extra: %d\n", $id, $id, fastcommon_id_generator_get_extra($id, $handle));
+printf("%d %X, extra: %d, timestamp: %d\n", $id, $id,
+        fastcommon_id_generator_get_extra($id, $handle),
+        fastcommon_id_generator_get_timestamp($id, $handle));
 
 for ($i=0; $i<10; $i++) {
 	$id = fastcommon_id_generator_next($i, $handle);
-    printf("%d %X, extra: %d\n", $id, $id, fastcommon_id_generator_get_extra($id, $handle));
+    printf("%d %X, extra: %d, timestamp: %d\n", $id, $id,
+            fastcommon_id_generator_get_extra($id, $handle),
+            fastcommon_id_generator_get_timestamp($id, $handle));
 }
 
 fastcommon_id_generator_destroy($handle);

@@ -132,9 +132,23 @@ static inline int id_generator_next(struct idg_context *context, int64_t *id)
 *   id: the id
 * return the extra data
 */
-static inline int id_generator_get_extra(struct idg_context *context, const int64_t id)
+static inline int id_generator_get_extra(struct idg_context *context,
+        const int64_t id)
 {
     return (int)((id & context->extra_mask) >> context->sn_bits);
+}
+
+/**
+* get timestamp from id
+* parameter:
+*   context: the id generator context
+*   id: the id
+* return the timestamp
+*/
+static inline long id_generator_get_timestamp(struct idg_context *context,
+        const int64_t id)
+{
+    return (long)(id >> context->mes_bits_sum);
 }
 
 #ifdef __cplusplus

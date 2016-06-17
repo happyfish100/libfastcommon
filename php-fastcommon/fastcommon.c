@@ -52,6 +52,7 @@ const zend_fcall_info empty_fcall_info = { 0, NULL, NULL, NULL, NULL, 0, NULL, N
 		ZEND_FE(fastcommon_id_generator_init, NULL)
 		ZEND_FE(fastcommon_id_generator_next, NULL)
 		ZEND_FE(fastcommon_id_generator_get_extra, NULL)
+		ZEND_FE(fastcommon_id_generator_get_timestamp, NULL)
 		ZEND_FE(fastcommon_id_generator_destroy, NULL)
 		{NULL, NULL, NULL}  /* Must be the last line */
 	};
@@ -625,5 +626,58 @@ ZEND_FUNCTION(fastcommon_id_generator_destroy)
 
 	id_generator_destroy(context);
 	RETURN_BOOL(true);
+}
+
+/*
+long fastcommon_id_generator_get_timestamp(long id [, $handle = NULL])
+return the timestamp
+*/
+ZEND_FUNCTION(fastcommon_id_generator_get_timestamp)
+{
+    int argc;
+    long id;
+    zval *zhandle;
+    PHPIDGContext *php_idg_context;
+    struct idg_context *context;
+
+	argc = ZEND_NUM_ARGS();
+	if (argc > 2) {
+		logError("file: "__FILE__", line: %d, "
+			"fastcommon_id_generator_get_timestamp parameters count: %d is invalid",
+			__LINE__, argc);
+		RETURN_BOOL(false);
+	}
+
+    zhandle = NULL;
+	if (zend_parse_parameters(argc TSRMLS_CC, "l|z", &id, &zhandle) == FAILURE)
+	{
+		logError("file: "__FILE__", line: %d, "
+			"zend_parse_parameters fail!", __LINE__);
+		RETURN_BOOL(false);
+	}
+
+    if (zhandle != NULL && !ZVAL_IS_NULL(zhandle))
+    {
+        ZEND_FETCH_RESOURCE(php_idg_context, PHPIDGContext *, &zhandle, -1,
+                PHP_IDG_RESOURCE_NAME, le_consumer);
+        context = &php_idg_context->idg_context;
+    }
+    else
+    {
+        if (last_idg_context == NULL) {
+            logError("file: "__FILE__", line: %d, "
+                    "must call fastcommon_id_generator_init first", __LINE__);
+            RETURN_BOOL(false);
+        }
+        context = &last_idg_context->idg_context;
+    }
+
+	if (context->fd < 0) {
+		logError("file: "__FILE__", line: %d, "
+                "must call fastcommon_id_generator_init first", __LINE__);
+        RETURN_BOOL(false);
+	}
+
+	RETURN_LONG(id_generator_get_timestamp(context, id));
 }
 

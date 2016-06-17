@@ -1,7 +1,8 @@
 
-Version 1.28  2016-06-15
+Version 1.29  2016-06-17
   * ini_file_reader support #@if
   * ini_file_reader support #@for
+  * add function id_generator_get_timestamp
 
 Version 1.28  2016-06-08
   * id generator support extra bits

@@ -29,6 +29,7 @@ ZEND_FUNCTION(fastcommon_is_private_ip);
 ZEND_FUNCTION(fastcommon_id_generator_init);
 ZEND_FUNCTION(fastcommon_id_generator_next);
 ZEND_FUNCTION(fastcommon_id_generator_get_extra);
+ZEND_FUNCTION(fastcommon_id_generator_get_timestamp);
 ZEND_FUNCTION(fastcommon_id_generator_destroy);
 
 #ifdef __cplusplus
