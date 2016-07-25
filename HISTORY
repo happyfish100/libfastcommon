@@ -1,4 +1,7 @@
 
+Version 1.30  2016-07-25
+  * modify php-fastcommon/test.php
+
 Version 1.29  2016-06-17
   * ini_file_reader support #@if
   * ini_file_reader support #@for

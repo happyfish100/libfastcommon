@@ -791,7 +791,7 @@ OUTER:
                 "reclaim trunks for %p, reclaimed trunks: %d, "
                 "free node count: %d", __LINE__,
                 mblock, *reclaim_count, fast_mblock_free_count(mblock));
-        mblock->need_lock = mblock->need_lock;
+        mblock->need_lock = old_need_lock;
     }
 
     *ppFreelist = freelist;

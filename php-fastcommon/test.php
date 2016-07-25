@@ -24,7 +24,15 @@ printf("id: %d %X, extra: %d, timestamp: %d\n", $id, $id,
         fastcommon_id_generator_get_timestamp($id));
 unset($handle);
 
+/*
+resource fastcommon_id_generator_init([string filename = "/tmp/fastcommon_id_generator.sn",
+        int machine_id = 0, int mid_bits = 16, int extra_bits = 0, int sn_bits = 16])
+*/
+
+$id = 6301319781687017475;
 $handle1 = fastcommon_id_generator_init("/tmp/sn1.txt", 0, 8, 10, 14);
+echo 'extra no: ' . fastcommon_id_generator_get_extra($id, $handle1) . "\n"; 
+
 $handle2 = fastcommon_id_generator_init("/tmp/sn2.txt", 0, 8, 8, 16);
 
 $id = fastcommon_id_generator_next(1, $handle1);
