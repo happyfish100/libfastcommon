@@ -171,9 +171,12 @@ typedef size_t zend_size_t;
 static inline int zend_hash_find_wrapper(HashTable *ht, char *key, int key_len,
         zval **value)
 {
-	zval zkey;
-	ZVAL_STRINGL(&zkey, key, key_len - 1);
-	*value = zend_hash_find(ht, Z_STR(zkey));
+	zend_string *zkey;
+    bool use_heap;
+
+    ZSTR_ALLOCA_INIT(zkey, key, key_len - 1, use_heap);
+	*value = zend_hash_find(ht, zkey);
+    ZSTR_ALLOCA_FREE(zkey, use_heap);
 	return (*value != NULL ? SUCCESS : FAILURE);
 }
 
