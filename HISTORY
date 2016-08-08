@@ -1,5 +1,5 @@
 
-Version 1.30  2016-08-01
+Version 1.30  2016-08-07
   * modify php-fastcommon/test.php
   * php7_ext_wrapper.h: fix memory leak in php 7
 

@@ -5,6 +5,7 @@
 #ifndef _PHP7_EXT_WRAPPER_H
 #define _PHP7_EXT_WRAPPER_H
 
+#include <stdbool.h>
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
