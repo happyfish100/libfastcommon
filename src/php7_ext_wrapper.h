@@ -172,12 +172,7 @@ typedef size_t zend_size_t;
 static inline int zend_hash_find_wrapper(HashTable *ht, char *key, int key_len,
         zval **value)
 {
-	zend_string *zkey;
-    bool use_heap;
-
-    ZSTR_ALLOCA_INIT(zkey, key, key_len - 1, use_heap);
-	*value = zend_hash_find(ht, zkey);
-    ZSTR_ALLOCA_FREE(zkey, use_heap);
+	*value = zend_hash_str_find(ht, key, key_len - 1);
 	return (*value != NULL ? SUCCESS : FAILURE);
 }
 
@@ -191,14 +186,7 @@ static inline int zend_hash_index_find_wrapper(HashTable *ht, int index,
 static inline int zend_hash_update_wrapper(HashTable *ht, char *k, int len,
         zval **val, int size, void *ptr)
 {
-	zend_string *key;
-    bool use_heap;
-    int result;
-
-    ZSTR_ALLOCA_INIT(key, k, len - 1, use_heap);
-	result = zend_hash_update(ht, key, *val) ? SUCCESS : FAILURE;
-    ZSTR_ALLOCA_FREE(key, use_heap);
-    return result;
+	return zend_hash_str_update(ht, k, len - 1, *val) ? SUCCESS : FAILURE;
 }
 
 static inline int zend_call_user_function_wrapper(HashTable *function_table,
