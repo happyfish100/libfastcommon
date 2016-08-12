@@ -1,7 +1,8 @@
 
-Version 1.30  2016-08-07
+Version 1.30  2016-08-12
   * modify php-fastcommon/test.php
   * php7_ext_wrapper.h: fix memory leak in php 7
+  * setsockopt SO_NOSIGPIPE when nessary
 
 Version 1.29  2016-06-17
   * ini_file_reader support #@if
