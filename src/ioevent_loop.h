@@ -17,6 +17,8 @@ int ioevent_remove(IOEventPoller *ioevent, void *data);
 int ioevent_set(struct fast_task_info *pTask, struct nio_thread_data *pThread,
 	int sock, short event, IOEventCallback callback, const int timeout);
 
+void iovent_add_to_deleted_list(struct fast_task_info *pTask);
+
 #ifdef __cplusplus
 }
 #endif

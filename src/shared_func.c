@@ -959,7 +959,16 @@ void chopPath(char *filePath)
 int getFileContent(const char *filename, char **buff, int64_t *file_size)
 {
 	int fd;
-	
+
+    if (!isFile(filename))
+    {
+		*buff = NULL;
+		*file_size = 0;
+		logError("file: "__FILE__", line: %d, "
+                "%s is not a regular file", __LINE__, filename);
+        return EINVAL;
+    }
+
 	fd = open(filename, O_RDONLY);
 	if (fd < 0)
 	{

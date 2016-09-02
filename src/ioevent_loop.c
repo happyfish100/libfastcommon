@@ -16,6 +16,10 @@ static void deal_ioevents(IOEventPoller *ioevent)
         if (pEntry != NULL) {
             pEntry->callback(pEntry->fd, event, pEntry->timer.data);
         }
+        else {
+            logDebug("file: "__FILE__", line: %d, "
+                    "ignore iovent : %d, index: %d", __LINE__, event, ioevent->iterator.index);
+        }
 	}
 }
 
@@ -40,6 +44,8 @@ int ioevent_remove(IOEventPoller *ioevent, void *data)
     {
         pEntry = (IOEventEntry *)IOEVENT_GET_DATA(ioevent, index);
         if (pEntry != NULL && pEntry->timer.data == data) {
+            logDebug("file: "__FILE__", line: %d, "
+                    "clear iovent data: %p", __LINE__, data);
             IOEVENT_CLEAR_DATA(ioevent, index);
             return 0;
         }
@@ -70,6 +76,16 @@ static void deal_timeouts(FastTimerEntry *head)
 	}
 }
 
+void iovent_add_to_deleted_list(struct fast_task_info *pTask)
+{
+    if (pTask->thread_data == NULL) {
+        return;
+    }
+
+    pTask->next = pTask->thread_data->deleted_list;
+    pTask->thread_data->deleted_list = pTask;
+}
+
 int ioevent_loop(struct nio_thread_data *pThreadData,
 	IOEventCallback recv_notify_callback, TaskCleanUpCallback
 	clean_up_callback, volatile bool *continue_flag)
@@ -96,10 +112,10 @@ int ioevent_loop(struct nio_thread_data *pThreadData,
 		return result;
 	}
 
+    pThreadData->deleted_list = NULL;
 	last_check_time = g_current_time;
 	while (*continue_flag)
 	{
-		pThreadData->deleted_list = NULL;
 		pThreadData->ev_puller.iterator.count = ioevent_poll(&pThreadData->ev_puller);
 		if (pThreadData->ev_puller.iterator.count > 0)
 		{
