@@ -339,13 +339,13 @@ int tcprecvdata_nb_ms(int sock, void *data, const int size, \
 		}
 
 #ifdef USE_SELECT
-		if (timeout <= 0)
+		if (timeout_ms <= 0)
 		{
 			res = select(sock+1, &read_set, NULL, NULL, NULL);
 		}
 		else
 		{
-			t.tv_usec = timeout_ms * 1000;
+			t.tv_usec = (timeout_ms % 1000) * 1000;
 			t.tv_sec = timeout_ms / 1000;
 			res = select(sock+1, &read_set, NULL, NULL, &t);
 		}
