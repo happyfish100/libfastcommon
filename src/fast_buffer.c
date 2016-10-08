@@ -80,7 +80,7 @@ int fast_buffer_append(FastBuffer *buffer, const char *format, ...)
     int result;
     int len;
 
-    if ((result=fast_buffer_check(buffer, 10)) != 0)
+    if ((result=fast_buffer_check(buffer, 64)) != 0)
     {
         return result;
     }
@@ -102,8 +102,12 @@ int fast_buffer_append(FastBuffer *buffer, const char *format, ...)
                     buffer->alloc_size - buffer->length, format, ap);
             va_end(ap);
         }
+        else
+        {
+            *(buffer->data + buffer->length) = '\0';  //restore
+        }
     }
-    return 0;
+    return result;
 }
 
 int fast_buffer_append_buff(FastBuffer *buffer, const char *data, const int len)
