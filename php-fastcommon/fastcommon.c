@@ -18,7 +18,7 @@
 
 #define MAJOR_VERSION  1
 #define MINOR_VERSION  0
-#define PATCH_VERSION  7
+#define PATCH_VERSION  8
 
 #define PHP_IDG_RESOURCE_NAME "fastcommon_idg"
 #define DEFAULT_SN_FILENAME  "/tmp/fastcommon_id_generator.sn"
@@ -66,7 +66,7 @@ zend_module_entry fastcommon_module_entry = {
 	NULL,//PHP_RINIT(fastcommon),
 	NULL,//PHP_RSHUTDOWN(fastcommon),
 	PHP_MINFO(fastcommon),
-	"1.00", 
+	"1.08",
 	STANDARD_MODULE_PROPERTIES
 };
 
