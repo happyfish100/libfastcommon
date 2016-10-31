@@ -19,9 +19,12 @@
 #include <stdlib.h>
 #include <time.h>
 #include <sys/types.h>
-#include <sys/time.h>
+#include <sys/stat.h>
 #include <inttypes.h>
+#include <fcntl.h>
 #include "common_define.h"
+
+#define ID_GENERATOR_DEFAULT_FILE_MODE  0666
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,6 +41,22 @@ struct idg_context {
     int64_t extra_mask;
     int64_t sn_mask;
 };
+
+/**
+* init function
+* parameter:
+*   context: the id generator context
+*   filename: the filename to store id
+*   machine_id: the machine id, 0 for auto generate by local ip address
+*   mid_bits:  the bits of machine id, such as 16
+*   extra_bits: the extra bits, such as 0
+*   sn_bits:  the bits of serial no, such as 16, mid_bits + sn_bits must <= 32
+*   mode:     the mode for file open
+* return error no, 0 for success, none zero for fail
+*/
+int id_generator_init_extra_ex(struct idg_context *context, const char *filename,
+    const int machine_id, const int mid_bits, const int extra_bits,
+    const int sn_bits, const mode_t mode);
 
 /**
 * init function

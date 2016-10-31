@@ -53,7 +53,7 @@ mpool init
 parameters:
 	mpool: the mpool pointer
 	alloc_size_once: malloc elements once, 0 for malloc 1MB memory once
-    discard_size: discard when remain size <= discard_size, 0 for 8 bytes
+    discard_size: discard when remain size <= discard_size, 0 for 64 bytes
 return error no, 0 for success, != 0 fail
 */
 int fast_mpool_init(struct fast_mpool_man *mpool,

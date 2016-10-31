@@ -21,9 +21,9 @@
 #include "local_ip_func.h"
 #include "id_generator.h"
 
-int id_generator_init_extra(struct idg_context *context, const char *filename,
+int id_generator_init_extra_ex(struct idg_context *context, const char *filename,
     const int machine_id, const int mid_bits, const int extra_bits,
-    const int sn_bits)
+    const int sn_bits, const mode_t mode)
 {
 	int result;
 	int mid;
@@ -116,14 +116,35 @@ int id_generator_init_extra(struct idg_context *context, const char *filename,
 		mid = ntohl(ip_addr.s_addr) & ((1 << mid_bits) - 1);
 	}
 
-	if ((context->fd = open(filename, O_RDWR | O_CREAT, 0644)) < 0)
+	if ((context->fd = open(filename, O_RDWR)) < 0)
 	{
-		result = errno != 0 ? errno : EACCES;
-		logError("file: "__FILE__", line: %d, "
-			"open file \"%s\" fail, "
-			"errno: %d, error info: %s", __LINE__,
-			filename, result, STRERROR(result));
-		return result;
+        if (errno == ENOENT)
+        {
+            mode_t old_mode;
+            old_mode = umask(0);
+            if ((context->fd=open(filename, O_RDWR | O_CREAT, mode)) < 0)
+            {
+		        result = errno != 0 ? errno : EACCES;
+            }
+            else
+            {
+                result = 0;
+            }
+            umask(old_mode);
+        }
+        else
+        {
+		    result = errno != 0 ? errno : EACCES;
+        }
+
+        if (result != 0)
+        {
+    		logError("file: "__FILE__", line: %d, "
+	    		"open file \"%s\" fail, "
+		    	"errno: %d, error info: %s", __LINE__,
+		    	filename, result, STRERROR(result));
+		    return result;
+        }
 	}
 
 	context->machine_id = mid;
@@ -141,6 +162,15 @@ int id_generator_init_extra(struct idg_context *context, const char *filename,
             context->extra_mask, context->sn_mask);
 
 	return 0;
+}
+
+int id_generator_init_extra(struct idg_context *context, const char *filename,
+    const int machine_id, const int mid_bits, const int extra_bits,
+    const int sn_bits)
+{
+    return id_generator_init_extra_ex(context, filename,
+            machine_id, mid_bits, extra_bits, sn_bits,
+            ID_GENERATOR_DEFAULT_FILE_MODE);
 }
 
 void id_generator_destroy(struct idg_context *context)

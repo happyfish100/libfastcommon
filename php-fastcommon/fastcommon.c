@@ -409,7 +409,7 @@ ZEND_FUNCTION(fastcommon_is_private_ip)
 
 /*
 resource fastcommon_id_generator_init([string filename = "/tmp/fastcommon_id_generator.sn",
-	int machine_id = 0, int mid_bits = 16, int extra_bits = 0, int sn_bits = 16])
+	int machine_id = 0, int mid_bits = 16, int extra_bits = 0, int sn_bits = 16, int mode = 0644])
 return resource handle for success, false for fail
 */
 ZEND_FUNCTION(fastcommon_id_generator_init)
@@ -420,11 +420,12 @@ ZEND_FUNCTION(fastcommon_id_generator_init)
     long mid_bits;
     long extra_bits;
     long sn_bits;
+    long mode;
     char *filename;
     PHPIDGContext *php_idg_context;
 
 	argc = ZEND_NUM_ARGS();
-	if (argc > 5) {
+	if (argc > 6) {
 		logError("file: "__FILE__", line: %d, "
 			"fastcommon_id_generator_init parameters count: %d is invalid",
 			__LINE__, argc);
@@ -437,9 +438,10 @@ ZEND_FUNCTION(fastcommon_id_generator_init)
 	mid_bits = 16;
     extra_bits = 0;
     sn_bits = 16;
-	if (zend_parse_parameters(argc TSRMLS_CC, "|sllll", &filename,
+    mode = ID_GENERATOR_DEFAULT_FILE_MODE;
+	if (zend_parse_parameters(argc TSRMLS_CC, "|slllll", &filename,
                 &filename_len, &machine_id, &mid_bits, &extra_bits,
-                &sn_bits) == FAILURE)
+                &sn_bits, &mode) == FAILURE)
 	{
 		logError("file: "__FILE__", line: %d, "
 			"zend_parse_parameters fail!", __LINE__);
@@ -454,8 +456,8 @@ ZEND_FUNCTION(fastcommon_id_generator_init)
 		RETURN_BOOL(false);
     }
 
-	if (id_generator_init_extra(&php_idg_context->idg_context, filename,
-			machine_id, mid_bits, extra_bits, sn_bits) != 0)
+	if (id_generator_init_extra_ex(&php_idg_context->idg_context, filename,
+			machine_id, mid_bits, extra_bits, sn_bits, mode) != 0)
 	{
 		RETURN_BOOL(false);
 	}

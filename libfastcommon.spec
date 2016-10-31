@@ -1,5 +1,6 @@
 
 %define LibFastcommonDevel  libfastcommon-devel
+%define LibFastcommonDebuginfo  libfastcommon-debuginfo
 
 Name: libfastcommon
 Version: 1.0.30

@@ -30,7 +30,7 @@ resource fastcommon_id_generator_init([string filename = "/tmp/fastcommon_id_gen
 */
 
 $id = 6301319781687017475;
-$handle1 = fastcommon_id_generator_init("/tmp/sn1.txt", 0, 8, 10, 14);
+$handle1 = fastcommon_id_generator_init("/tmp/sn1.txt", 0, 8, 10, 14, 0666);
 echo 'extra no: ' . fastcommon_id_generator_get_extra($id, $handle1) . "\n"; 
 
 $handle2 = fastcommon_id_generator_init("/tmp/sn2.txt", 0, 8, 8, 16);
