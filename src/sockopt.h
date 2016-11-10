@@ -13,6 +13,9 @@
 
 #include <net/if.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/socket.h>
 #include "common_define.h"
 
 #define FAST_WRITE_BUFF_SIZE  256 * 1024
@@ -28,6 +31,16 @@ typedef struct ip_addr_s {
     char ip_addr[INET6_ADDRSTRLEN];
     int socket_domain;
 } ip_addr_t;
+
+#ifdef SO_NOSIGPIPE
+#define SET_SOCKOPT_NOSIGPIPE(sock) \
+    do { \
+    int set = 1;  \
+    setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, &set, sizeof(int)); \
+    } while (0)
+#else
+#define SET_SOCKOPT_NOSIGPIPE(sock)
+#endif
 
 #ifdef __cplusplus
 extern "C" {
