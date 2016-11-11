@@ -1605,10 +1605,7 @@ bool iniGetBoolValue(const char *szSectionName, const char *szItemName, \
 	}
 	else
 	{
-		return  strcasecmp(pValue, "true") == 0 ||
-			strcasecmp(pValue, "yes") == 0 ||
-			strcasecmp(pValue, "on") == 0 ||
-			strcmp(pValue, "1") == 0;
+		return INI_STRING_IS_TRUE(pValue);
 	}
 }
 

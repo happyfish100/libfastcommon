@@ -58,6 +58,12 @@ typedef struct
 extern "C" {
 #endif
 
+#define INI_STRING_IS_TRUE(pValue)  \
+    (strcasecmp(pValue, "true") == 0 || \
+     strcasecmp(pValue, "yes") == 0 ||  \
+     strcasecmp(pValue, "on") == 0 ||   \
+     strcmp(pValue, "1") == 0)
+
 int iniSetAnnotationCallBack(AnnotationMap *map, int count);
 void iniDestroyAnnotationCallBack();
 
