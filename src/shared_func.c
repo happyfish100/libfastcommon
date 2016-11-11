@@ -1964,16 +1964,25 @@ int get_time_item_from_conf(IniContext *pIniContext, \
 		const byte default_hour, const byte default_minute)
 {
 	char *pValue;
+	pValue = iniGetStrValue(NULL, item_name, pIniContext);
+    return get_time_item_from_str(pValue, item_name, pTimeInfo,
+		default_hour, default_minute);
+}
+
+int get_time_item_from_str(const char *pValue, const char *item_name,
+        TimeInfo *pTimeInfo, const byte default_hour,
+        const byte default_minute)
+{
 	int hour;
 	int minute;
 	int second;
     int count;
 
-	pValue = iniGetStrValue(NULL, item_name, pIniContext);
 	if (pValue == NULL)
 	{
 		pTimeInfo->hour = default_hour;
 		pTimeInfo->minute = default_minute;
+		pTimeInfo->second = 0;
 		return 0;
 	}
 

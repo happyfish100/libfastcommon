@@ -370,7 +370,7 @@ int load_allow_hosts(IniContext *pIniContext, \
 /** get time item from config context
  *  parameters:
  *  	pIniContext: the config context
- *  	item_name: item name in config file, time format: hour:minute, such as 15:25
+ *  	item_name: item name in config file, time format as hour:minute, such as 15:25
  *  	pTimeInfo: store time info
  *  	default_hour: default hour value
  *  	default_minute: default minute value
@@ -379,6 +379,20 @@ int load_allow_hosts(IniContext *pIniContext, \
 int get_time_item_from_conf(IniContext *pIniContext, \
 		const char *item_name, TimeInfo *pTimeInfo, \
 		const byte default_hour, const byte default_minute);
+
+
+/** get time item from string
+ *  parameters:
+ *  	pValue: the time string, format as hour:minute, such as 15:25
+ *  	item_name: item name in config file
+ *  	pTimeInfo: store time info
+ *  	default_hour: default hour value
+ *  	default_minute: default minute value
+ *  return: error no , 0 success, != 0 fail
+*/
+int get_time_item_from_str(const char *pValue, const char *item_name,
+        TimeInfo *pTimeInfo, const byte default_hour,
+        const byte default_minute);
 
 /** trim path tail char /
  *  parameters:
