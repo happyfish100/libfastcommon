@@ -138,6 +138,18 @@ int process_restart(const char *pidFilename)
   return result;
 }
 
+static const char *process_get_exename(const char* program)
+{
+    const char *exename;
+    exename = strrchr(program, '/');
+    if (exename != NULL) {
+        return exename + 1;
+    }
+    else {
+        return program;
+    }
+}
+
 int process_start(const char* pidFilename)
 {
     pid_t pid;
@@ -160,6 +172,7 @@ int process_start(const char* pidFilename)
     }
 
     if (kill(pid, 0) == 0) {
+        const char *exename1, *exename2;
         cmdsz = sizeof(cmdline);
         cmdline[cmdsz-1] = argv0[cmdsz-1] = '\0';
         sprintf(cmdfile, "/proc/%d/cmdline", pid);
@@ -175,7 +188,11 @@ int process_start(const char* pidFilename)
                 cmdfile, errno, strerror(errno));
             return result;
         }
-        if (strcmp(cmdline, argv0) == 0) {
+        exename1 = process_get_exename(cmdline);
+        exename2 = process_get_exename(argv0);
+        if (strcmp(exename1, exename2) == 0) {
+            fprintf(stderr, "process %s already running, pid: %d\n",
+                argv0, (int)pid);
             return EEXIST;
         }
         return 0;
