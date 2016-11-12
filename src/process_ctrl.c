@@ -50,6 +50,8 @@ int delete_pid_file(const char *pidFilename)
   }
 
   if (pid != getpid()) {
+    fprintf(stderr, "pid file: %s not mine, pid: %d != mine: %d",
+        pidFilename, (int)pid, (int)getpid());
     return ESRCH;
   }
 
@@ -57,6 +59,9 @@ int delete_pid_file(const char *pidFilename)
     return 0;
   }
   else {
+    fprintf(stderr, "unlink file: %s fail, "
+        "errno: %d, error info: %s!\n",
+        pidFilename, errno, strerror(errno));
     return errno != 0 ? errno : ENOENT;
   }
 }
@@ -159,13 +164,15 @@ int process_start(const char* pidFilename)
         cmdline[cmdsz-1] = argv0[cmdsz-1] = '\0';
         sprintf(cmdfile, "/proc/%d/cmdline", pid);
         if ((result=getFileContentEx(cmdfile, cmdline, 0, &cmdsz)) != 0) {
-            fprintf(stderr, "read file %s failed. %d %s\n", cmdfile, errno, strerror(errno));
+            fprintf(stderr, "read file %s failed. %d %s\n",
+                cmdfile, errno, strerror(errno));
             return result;
         }
         cmdsz = sizeof(argv0);
         sprintf(cmdfile, "/proc/%d/cmdline", getpid());
         if ((result=getFileContentEx(cmdfile, argv0, 0, &cmdsz)) != 0) {
-            fprintf(stderr, "read file %s failed. %d %s\n", cmdfile, errno, strerror(errno));
+            fprintf(stderr, "read file %s failed. %d %s\n",
+                cmdfile, errno, strerror(errno));
             return result;
         }
         if (strcmp(cmdline, argv0) == 0) {
@@ -177,7 +184,7 @@ int process_start(const char* pidFilename)
         return 0;
     }
     else {
-        result = errno;
+        result = errno != 0 ? errno : EPERM;
         fprintf(stderr, "kill pid: %d fail, errno: %d, error info: %s\n",
             (int)pid, errno, strerror(errno));
         return result;
