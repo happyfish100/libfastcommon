@@ -2319,17 +2319,17 @@ bool is_power2(const int64_t n)
 	return i == n;
 }
 
-static inline int do_lock_file(int fd, int cmd)
+static inline int do_lock_file(int fd, int cmd, int type)
 {
     struct flock lock;
     int result;
 
     memset(&lock, 0, sizeof(lock));
-    lock.l_type = cmd;
+    lock.l_type = type;
     lock.l_whence = SEEK_SET;
     do
     {
-        if ((result=fcntl(fd, F_SETLKW, &lock)) != 0)
+        if ((result=fcntl(fd, cmd, &lock)) != 0)
         {
             result = errno != 0 ? errno : ENOMEM;
             fprintf(stderr, "call fcntl fail, "
@@ -2343,16 +2343,31 @@ static inline int do_lock_file(int fd, int cmd)
 
 int file_read_lock(int fd)
 {
-    return do_lock_file(fd, F_RDLCK);
+    return do_lock_file(fd, F_SETLKW, F_RDLCK);
 }
 
 int file_write_lock(int fd)
 {
-    return do_lock_file(fd, F_WRLCK);
+    return do_lock_file(fd, F_SETLKW, F_WRLCK);
 }
 
 int file_unlock(int fd)
 {
-    return do_lock_file(fd, F_UNLCK);
+    return do_lock_file(fd, F_SETLKW, F_UNLCK);
+}
+
+int file_try_read_lock(int fd)
+{
+    return do_lock_file(fd, F_SETLK, F_RDLCK);
+}
+
+int file_try_write_lock(int fd)
+{
+    return do_lock_file(fd, F_SETLK, F_WRLCK);
+}
+
+int file_try_unlock(int fd)
+{
+    return do_lock_file(fd, F_SETLK, F_UNLCK);
 }
 

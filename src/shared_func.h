@@ -587,6 +587,27 @@ int file_write_lock(int fd);
 */
 int file_unlock(int fd);
 
+/** try file read lock
+ *  parameters:
+ *  	fd: the file descriptor to lock
+ *  return: error no, 0 for success, != 0 fail
+*/
+int file_try_read_lock(int fd);
+
+/** try file write lock
+ *  parameters:
+ *  	fd: the file descriptor to lock
+ *  return: error no, 0 for success, != 0 fail
+*/
+int file_try_write_lock(int fd);
+
+/** try file unlock
+ *  parameters:
+ *  	fd: the file descriptor to unlock
+ *  return: error no, 0 for success, != 0 fail
+*/
+int file_try_unlock(int fd);
+
 #ifdef __cplusplus
 }
 #endif
