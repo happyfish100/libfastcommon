@@ -114,33 +114,40 @@ static int log_print_header(LogContext *pContext)
 {
     int result;
 
-    if ((result=file_write_lock(pContext->log_fd)) != 0)
+    if (!pContext->use_file_write_lock)
     {
-        return result;
+        if ((result=file_write_lock(pContext->log_fd)) != 0)
+        {
+            return result;
+        }
     }
 
     pContext->current_size = lseek(pContext->log_fd, 0, SEEK_END);
     if (pContext->current_size < 0)
     {
         result = errno != 0 ? errno : EACCES;
-        file_unlock(pContext->log_fd);
-
         fprintf(stderr, "lseek file \"%s\" fail, " \
                 "errno: %d, error info: %s\n", \
                 pContext->log_filename, result, STRERROR(result));
-        return result;
     }
-    if (pContext->current_size == 0)
-    {
-        pContext->print_header_callback(pContext);
+    else {
+        result = 0;
+        if (pContext->current_size == 0) {
+            pContext->print_header_callback(pContext);
+        }
     }
-    file_unlock(pContext->log_fd);
 
-    return 0;
+    if (!pContext->use_file_write_lock)
+    {
+        file_unlock(pContext->log_fd);
+    }
+
+    return result;
 }
 
 static int log_open(LogContext *pContext)
 {
+    int result;
 	if ((pContext->log_fd = open(pContext->log_filename, O_WRONLY | \
 				O_CREAT | O_APPEND | pContext->fd_flags, 0644)) < 0)
 	{
@@ -150,6 +157,14 @@ static int log_open(LogContext *pContext)
 		pContext->log_fd = STDERR_FILENO;
 		return errno != 0 ? errno : EACCES;
 	}
+
+    if (pContext->use_file_write_lock) {
+        if ((result=file_try_write_lock(pContext->log_fd)) != 0) {
+            close(pContext->log_fd);
+            pContext->log_fd = STDERR_FILENO;
+            return result;
+        }
+    }
 
     if (pContext->take_over_stderr) {
         if (dup2(pContext->log_fd, STDERR_FILENO) < 0) {
@@ -227,6 +242,11 @@ int log_set_filename_ex(LogContext *pContext, const char *log_filename)
 void log_set_cache_ex(LogContext *pContext, const bool bLogCache)
 {
 	pContext->log_to_cache = bLogCache;
+}
+
+void log_set_use_file_write_lock_ex(LogContext *pContext, const bool use_lock)
+{
+	pContext->use_file_write_lock = use_lock;
 }
 
 void log_set_time_precision(LogContext *pContext, const int time_precision)

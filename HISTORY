@@ -3,6 +3,7 @@ Version 1.31  2016-11-13
   * move SET_SOCKOPT_NOSIGPIPE from sockopt.c to sockopt.h
   * add function get_time_item_from_str
   * add file trylock functions
+  * logger context add field: use_file_write_lock
 
 Version 1.30  2016-10-31
   * modify php-fastcommon/test.php

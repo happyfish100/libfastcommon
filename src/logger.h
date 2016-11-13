@@ -76,6 +76,9 @@ typedef struct log_context
 	/* time precision */
 	char time_precision;
 
+    /* if use file write lock */
+    bool use_file_write_lock;
+
     /* compress the log file use gzip command */
     short compress_log_flags;
 
@@ -134,6 +137,9 @@ int log_init2();
 #define log_set_compress_log_days_before(days_before) \
     log_set_compress_log_days_before_ex(&g_log_context, days_before)
 
+#define log_set_use_file_write_lock(use_lock)  \
+    log_set_use_file_write_lock_ex(&g_log_context, use_lock)
+
 #define log_header(pContext, header, header_len) \
     log_it_ex2(pContext, NULL, header, header_len, false, false)
 
@@ -179,6 +185,14 @@ int log_set_filename_ex(LogContext *pContext, const char *log_filename);
  *  return: none
 */
 void log_set_cache_ex(LogContext *pContext, const bool bLogCache);
+
+/** set if use file write lock
+ *  parameters:
+ *           pContext: the log context
+ *           use_lock: true for use write lock, false NOT use write lock
+ *  return: none
+*/
+void log_set_use_file_write_lock_ex(LogContext *pContext, const bool use_lock);
 
 /** set time precision
  *  parameters:
