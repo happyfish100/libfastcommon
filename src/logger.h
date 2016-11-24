@@ -28,24 +28,10 @@ extern "C" {
 #define LOG_COMPRESS_FLAGS_ENABLED    1
 #define LOG_COMPRESS_FLAGS_NEW_THREAD 2
 
-#define LOG_MAX_SPACE_CHAR_PAIRS      16
-
 struct log_context;
 
 //log header line callback
 typedef void (*LogHeaderCallback)(struct log_context *pContext);
-
-typedef struct log_space_char_pair
-{
-    unsigned char src;
-    unsigned char dest;
-} LogSpaceCharPair;
-
-typedef struct log_space_char_pair_array
-{
-    int count;
-    LogSpaceCharPair pairs[LOG_MAX_SPACE_CHAR_PAIRS];
-} LogSpaceCharPairArray;
 
 typedef struct log_context
 {
@@ -119,16 +105,6 @@ typedef struct log_context
      * compress the log files before N days
      * */
     int compress_log_days_before;
-
-    /*
-     * space char pairs count
-     * */
-    int  space_char_count;
-
-    /*
-     * space char table to replace
-     * */
-    unsigned char space_char_table[256];
 } LogContext;
 
 extern LogContext g_log_context;
@@ -163,12 +139,6 @@ int log_init2();
 
 #define log_set_use_file_write_lock(use_lock)  \
     log_set_use_file_write_lock_ex(&g_log_context, use_lock)
-
-#define log_set_space_char_pairs(pSpaceCharPairs) \
-        log_set_space_char_pairs_ex(&g_log_context, pSpaceCharPairs)
-
-#define log_set_standard_space_chars(dest_base) \
-        log_set_standard_space_chars_ex(&g_log_context, dest_base)
 
 #define log_header(pContext, header, header_len) \
     log_it_ex2(pContext, NULL, header, header_len, false, false)
@@ -223,26 +193,6 @@ void log_set_cache_ex(LogContext *pContext, const bool bLogCache);
  *  return: none
 */
 void log_set_use_file_write_lock_ex(LogContext *pContext, const bool use_lock);
-
-
-/** set space char pairs to replace
- *  parameters:
- *           pContext: the log context
- *           pSpaceCharPairs: the space char pairs
- *  return: 0 for success, != 0 fail
-*/
-int log_set_space_char_pairs_ex(LogContext *pContext,
-        LogSpaceCharPairArray *pSpaceCharPairs);
-
-
-/** set standard space chars to replace
- *  parameters:
- *           pContext: the log context
- *           dest_base: the dest base char
- *  return: 0 for success, != 0 fail
-*/
-void log_set_standard_space_chars_ex(LogContext *pContext,
-        const unsigned char dest_base);
 
 /** set time precision
  *  parameters:
