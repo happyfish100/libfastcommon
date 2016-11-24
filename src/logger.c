@@ -249,6 +249,55 @@ void log_set_use_file_write_lock_ex(LogContext *pContext, const bool use_lock)
 	pContext->use_file_write_lock = use_lock;
 }
 
+int log_set_space_char_pairs_ex(LogContext *pContext,
+        LogSpaceCharPairArray *pSpaceCharPairs)
+{
+    int i;
+    unsigned char src;
+    if (pSpaceCharPairs->count > LOG_MAX_SPACE_CHAR_PAIRS)
+    {
+		fprintf(stderr, "file: "__FILE__", line: %d, "
+                "count: %d is too large, exceeds %d!\n", __LINE__,
+                pSpaceCharPairs->count, LOG_MAX_SPACE_CHAR_PAIRS);
+        return EINVAL;
+    }
+
+    if (pContext->space_char_count > 0)
+    {
+        memset(pContext->space_char_table, 0, sizeof(pContext->space_char_table));
+    }
+
+    pContext->space_char_count = pSpaceCharPairs->count;
+    for (i=0; i<pSpaceCharPairs->count; i++)
+    {
+        src = pSpaceCharPairs->pairs[i].src;
+        pContext->space_char_table[src] = pSpaceCharPairs->pairs[i].dest;
+    }
+    return 0;
+}
+
+void log_set_standard_space_chars_ex(LogContext *pContext,
+        const unsigned char dest_base)
+{
+    int i;
+    LogSpaceCharPairArray pair_array;
+
+    pair_array.count = 7;
+    pair_array.pairs[0].src = '\0';
+    pair_array.pairs[1].src = '\t';
+    pair_array.pairs[2].src = '\n';
+    pair_array.pairs[3].src = '\v';
+    pair_array.pairs[4].src = '\f';
+    pair_array.pairs[5].src = '\r';
+    pair_array.pairs[6].src = ' ';
+
+    for (i=0; i<pair_array.count; i++) {
+        pair_array.pairs[i].dest = dest_base + i;
+    }
+
+    log_set_space_char_pairs_ex(pContext, &pair_array);
+}
+
 void log_set_time_precision(LogContext *pContext, const int time_precision)
 {
 	pContext->time_precision = time_precision;
@@ -1004,8 +1053,29 @@ static void doLogEx(LogContext *pContext, struct timeval *tv, \
 		buff_len = sprintf(pContext->pcurrent_buff, "%s - ", caption);
 		pContext->pcurrent_buff += buff_len;
 	}
-	memcpy(pContext->pcurrent_buff, text, text_len);
-	pContext->pcurrent_buff += text_len;
+
+    if (pContext->space_char_count > 0)
+    {
+        const unsigned char *p;
+        const unsigned char *end;
+        end = (const unsigned char *)text + text_len;
+        for (p=(const unsigned char *)text; p<end; p++)
+        {
+            if (pContext->space_char_table[*p] != 0)
+            {
+                *pContext->pcurrent_buff++ = pContext->space_char_table[*p];
+            }
+            else
+            {
+                *pContext->pcurrent_buff++ = *p;
+            }
+        }
+    }
+    else
+    {
+        memcpy(pContext->pcurrent_buff, text, text_len);
+        pContext->pcurrent_buff += text_len;
+    }
 	*pContext->pcurrent_buff++ = '\n';
 
 	if (!pContext->log_to_cache || bNeedSync)
