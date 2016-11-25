@@ -61,6 +61,17 @@ int std_space_char_converter_init(FastCharConverter *pCharConverter,
         const unsigned char dest_base);
 
 /**
+ *  standard space chars to convert
+ *  parameters:
+ *           pCharConverter: the char converter
+ *           src: the src char
+ *           dest: the dest char
+ *  return: none
+*/
+void char_converter_set_pair(FastCharConverter *pCharConverter,
+        const unsigned char src, const unsigned char dest);
+
+/**
  *  char convert function
  *  parameters:
  *           pCharConverter: the char converter

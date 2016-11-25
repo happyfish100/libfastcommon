@@ -60,6 +60,12 @@ int std_space_char_converter_init(FastCharConverter *pCharConverter,
     return char_converter_init(pCharConverter, pairs, SPACE_CHAR_PAIR_COUNT);
 }
 
+void char_converter_set_pair(FastCharConverter *pCharConverter,
+        const unsigned char src, const unsigned char dest)
+{
+    pCharConverter->char_table[src] = dest;
+}
+
 int fast_char_convert(FastCharConverter *pCharConverter,
         char *text, const int text_len)
 {
