@@ -28,6 +28,7 @@ int char_converter_init(FastCharConverter *pCharConverter,
         return EINVAL;
     }
 
+    memset(pCharConverter, 0, sizeof(FastCharConverter));
     pCharConverter->count = count;
     for (i=0; i<count; i++)
     {
