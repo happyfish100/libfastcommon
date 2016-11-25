@@ -20,11 +20,21 @@ extern "C" {
 
 #define FAST_MAX_CHAR_COUNT    256
 
+#define FAST_CHAR_OP_NONE           0
+#define FAST_CHAR_OP_ADD_BACKSLASH  1
+#define FAST_CHAR_OP_NO_BACKSLASH   2
+
 typedef struct fast_char_pair
 {
     unsigned char src;
     unsigned char dest;
 } FastCharPair;
+
+typedef struct fast_char_target
+{
+    unsigned char op;
+    unsigned char dest;
+} FastCharTarget;
 
 typedef struct fast_char_converter
 {
@@ -36,7 +46,7 @@ typedef struct fast_char_converter
     /*
      * char table to convert
      * */
-    unsigned char char_table[FAST_MAX_CHAR_COUNT];
+    FastCharTarget char_table[FAST_MAX_CHAR_COUNT];
 } FastCharConverter;
 
 /**
@@ -61,7 +71,7 @@ int std_space_char_converter_init(FastCharConverter *pCharConverter,
         const unsigned char dest_base);
 
 /**
- *  standard space chars to convert
+ *  set char pair to converter
  *  parameters:
  *           pCharConverter: the char converter
  *           src: the src char
@@ -72,16 +82,28 @@ void char_converter_set_pair(FastCharConverter *pCharConverter,
         const unsigned char src, const unsigned char dest);
 
 /**
+ *  set char pair to converter
+ *  parameters:
+ *           pCharConverter: the char converter
+ *           src: the src char
+ *           op: the operator type
+ *           dest: the dest char
+ *  return: none
+*/
+void char_converter_set_pair_ex(FastCharConverter *pCharConverter,
+        const unsigned char src, const unsigned op, const unsigned char dest);
+
+/**
  *  char convert function
  *  parameters:
  *           pCharConverter: the char converter
- *           text: the text to convert
- *           text_len: the length of text
+ *           text: the text to convert (input and output)
+ *           text_len: the length of text (input and output)
+ *           max_size: max buff size
  *  return: converted char count
 */
 int fast_char_convert(FastCharConverter *pCharConverter,
-        char *text, const int text_len);
-
+        char *text, int *text_len, const int max_size);
 
 #ifdef __cplusplus
 }
