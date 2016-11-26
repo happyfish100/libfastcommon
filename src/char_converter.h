@@ -97,13 +97,16 @@ void char_converter_set_pair_ex(FastCharConverter *pCharConverter,
  *  char convert function
  *  parameters:
  *           pCharConverter: the char converter
- *           text: the text to convert (input and output)
- *           text_len: the length of text (input and output)
- *           max_size: max buff size
+ *           input: the input to convert
+ *           input_len: the length of input
+ *           output: the input to convert
+ *           out_len: the length of output
+ *           out_size: output buff size
  *  return: converted char count
 */
 int fast_char_convert(FastCharConverter *pCharConverter,
-        char *text, int *text_len, const int max_size);
+        const char *input, const int input_len,
+        char *output, int *out_len, const int out_size);
 
 #ifdef __cplusplus
 }

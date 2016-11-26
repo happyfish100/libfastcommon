@@ -85,83 +85,62 @@ void char_converter_set_pair_ex(FastCharConverter *pCharConverter,
 }
 
 int fast_char_convert(FastCharConverter *pCharConverter,
-        char *text, int *text_len, const int max_size)
+        const char *input, const int input_len,
+        char *output, int *out_len, const int out_size)
 {
     int count;
-    unsigned char *p;
     unsigned char *pi;
+    unsigned char *po;
     unsigned char *end;
-    char fixed_buff[16 * 1024];
-    char *buff;
-    int max_size_sub1;
+    int out_size_sub1;
     int remain_len;
 
-    if (pCharConverter->count <= 0) {
-        return 0;
-    }
-
     count = 0;
-    end = (unsigned char *)text + *text_len;
-    for (p=(unsigned char *)text; p<end; p++)
-    {
-        if (pCharConverter->char_table[*p].op != FAST_CHAR_OP_NONE)
-        {
-            if (pCharConverter->char_table[*p].op == FAST_CHAR_OP_ADD_BACKSLASH) {
+    po = (unsigned char *)output;
+    if (out_size >= input_len) {
+        end = (unsigned char *)input + input_len;
+    } else {
+        end = (unsigned char *)input + out_size;
+    }
+    for (pi=(unsigned char *)input; pi<end; pi++) {
+        if (pCharConverter->char_table[*pi].op != FAST_CHAR_OP_NONE) {
+            if (pCharConverter->char_table[*pi].op == FAST_CHAR_OP_ADD_BACKSLASH) {
                 break;
             }
 
-            *p = pCharConverter->char_table[*p].dest;
+            *po++ = pCharConverter->char_table[*pi].dest;
             ++count;
+        } else {
+            *po++ = *pi;
         }
     }
 
-    remain_len = end - p;
+    remain_len = end - pi;
     if (remain_len == 0) {
+        *out_len = po - (unsigned char *)output;
         return count;
     }
 
-    if (remain_len < sizeof(fixed_buff)) {
-        buff = fixed_buff;
-    } else {
-        buff = (char *)malloc(remain_len);
-        if (buff == NULL) {
-            logError("file: "__FILE__", line: %d, "
-                    "malloc %d bytes fail", __LINE__, remain_len);
-            return count;
-        }
-    }
-    memcpy(buff, p, remain_len);
-
-    max_size_sub1 = max_size - 1;
-    end = (unsigned char *)buff + remain_len;
-    for (pi=(unsigned char *)buff; pi<end; pi++)
-    {
-        if (p - (unsigned char *)text >= max_size_sub1)
-        {
+    out_size_sub1 = out_size - 1;
+    for (; pi<end; pi++) {
+        if (po - (unsigned char *)output >= out_size_sub1) {
             logWarning("file: "__FILE__", line: %d, "
-                    "exceeds max size: %d", __LINE__, max_size);
+                    "exceeds max size: %d", __LINE__, out_size);
             break;
         }
-        if (pCharConverter->char_table[*pi].op != FAST_CHAR_OP_NONE)
-        {
-            if (pCharConverter->char_table[*pi].op == FAST_CHAR_OP_ADD_BACKSLASH)
-            {
-                *p++ = '\\';
+        if (pCharConverter->char_table[*pi].op != FAST_CHAR_OP_NONE) {
+            if (pCharConverter->char_table[*pi].op == FAST_CHAR_OP_ADD_BACKSLASH) {
+                *po++ = '\\';
             }
 
-            *p++ = pCharConverter->char_table[*pi].dest;
+            *po++ = pCharConverter->char_table[*pi].dest;
             ++count;
-        }
-        else
-        {
-            *p++ = *pi;
+        } else {
+            *po++ = *pi;
         }
     }
 
-    if (buff != fixed_buff) {
-        free(buff);
-    }
-    *text_len = p - (unsigned char *)text;
+    *out_len = po - (unsigned char *)output;
     return count;
 }
 
