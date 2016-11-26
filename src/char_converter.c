@@ -15,8 +15,9 @@
 #include "shared_func.h"
 #include "char_converter.h"
 
-int char_converter_init(FastCharConverter *pCharConverter,
-        const FastCharPair *charPairs, const int count)
+int char_converter_init_ex(FastCharConverter *pCharConverter,
+        const FastCharPair *charPairs, const int count,
+        const unsigned op)
 {
     int i;
     unsigned char src;
@@ -33,7 +34,7 @@ int char_converter_init(FastCharConverter *pCharConverter,
     for (i=0; i<count; i++)
     {
         src = charPairs[i].src;
-        pCharConverter->char_table[src].op = FAST_CHAR_OP_NO_BACKSLASH;
+        pCharConverter->char_table[src].op = op;
         pCharConverter->char_table[src].dest = charPairs[i].dest;
     }
     return 0;
@@ -61,10 +62,28 @@ int std_space_char_converter_init(FastCharConverter *pCharConverter,
     return char_converter_init(pCharConverter, pairs, SPACE_CHAR_PAIR_COUNT);
 }
 
+int std_spaces_add_backslash_converter_init(FastCharConverter *pCharConverter)
+{
+#define SPACE_CHAR_PAIR_COUNT 7
+    FastCharPair pairs[SPACE_CHAR_PAIR_COUNT];
+
+    pairs[0].src = '\0'; pairs[0].dest = '0';
+    pairs[1].src = '\t'; pairs[1].dest = 't';
+    pairs[2].src = '\n'; pairs[2].dest = 'n';
+    pairs[3].src = '\v'; pairs[3].dest = 'v';
+    pairs[4].src = '\f'; pairs[4].dest = 'f';
+    pairs[5].src = '\r'; pairs[5].dest = 'r';
+    pairs[6].src = ' ';  pairs[6].dest = '-';
+
+    return char_converter_init_ex(pCharConverter, pairs,
+            SPACE_CHAR_PAIR_COUNT, FAST_CHAR_OP_ADD_BACKSLASH);
+}
+
 void char_converter_set_pair(FastCharConverter *pCharConverter,
         const unsigned char src, const unsigned char dest)
 {
-    char_converter_set_pair_ex(pCharConverter, src, FAST_CHAR_OP_NO_BACKSLASH, dest);
+    char_converter_set_pair_ex(pCharConverter, src,
+            FAST_CHAR_OP_NO_BACKSLASH, dest);
 }
 
 void char_converter_set_pair_ex(FastCharConverter *pCharConverter,
@@ -93,7 +112,6 @@ int fast_char_convert(FastCharConverter *pCharConverter,
     unsigned char *po;
     unsigned char *end;
     int out_size_sub1;
-    int remain_len;
 
     count = 0;
     po = (unsigned char *)output;
@@ -115,8 +133,7 @@ int fast_char_convert(FastCharConverter *pCharConverter,
         }
     }
 
-    remain_len = end - pi;
-    if (remain_len == 0) {
+    if (pi == end) {
         *out_len = po - (unsigned char *)output;
         return count;
     }

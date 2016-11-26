@@ -32,6 +32,17 @@ int char_convert_loader_init(FastCharConverter *pCharConverter,
         const IniItem *items, const int count);
 
 /**
+ *  char converter init function
+ *  parameters:
+ *           pCharConverter: the char converter
+ *           items: the char key value pairs
+ *           count: the count of kv pairs
+ *  return: 0 for success, != 0 fail
+*/
+int char_convert_loader_add(FastCharConverter *pCharConverter,
+        const IniItem *items, const int count);
+
+/**
  *  set char src and dest pair
  *  parameters:
  *           pCharConverter: the char converter

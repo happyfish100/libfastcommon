@@ -19,11 +19,17 @@
 int char_convert_loader_init(FastCharConverter *pCharConverter,
         const IniItem *items, const int count)
 {
+    char_convert_loader_init(pCharConverter, NULL, 0);
+    return char_convert_loader_add(pCharConverter, items, count);
+}
+
+int char_convert_loader_add(FastCharConverter *pCharConverter,
+        const IniItem *items, const int count)
+{
     const IniItem *pItem;
     const IniItem *pEnd;
     int result;
 
-    char_convert_loader_init(pCharConverter, NULL, 0);
     pEnd = items + count;
     for (pItem=items; pItem<pEnd; pItem++) {
         result = char_convert_loader_set_pair(pCharConverter,

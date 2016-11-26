@@ -55,10 +55,27 @@ typedef struct fast_char_converter
  *           pCharConverter: the char converter
  *           charPairs: the char pairs
  *           count: the count of char pairs
+ *           op: the operator type
  *  return: 0 for success, != 0 fail
 */
-int char_converter_init(FastCharConverter *pCharConverter,
-        const FastCharPair *charPairs, const int count);
+int char_converter_init_ex(FastCharConverter *pCharConverter,
+        const FastCharPair *charPairs, const int count,
+        const unsigned op);
+
+/**
+ *  char converter init function
+ *  parameters:
+ *           pCharConverter: the char converter
+ *           charPairs: the char pairs
+ *           count: the count of char pairs
+ *  return: 0 for success, != 0 fail
+*/
+static inline int char_converter_init(FastCharConverter *pCharConverter,
+        const FastCharPair *charPairs, const int count)
+{
+    return char_converter_init_ex(pCharConverter, charPairs, count,
+            FAST_CHAR_OP_NO_BACKSLASH);
+}
 
 /**
  *  standard space chars to convert
@@ -69,6 +86,14 @@ int char_converter_init(FastCharConverter *pCharConverter,
 */
 int std_space_char_converter_init(FastCharConverter *pCharConverter,
         const unsigned char dest_base);
+
+/**
+ *  standard space chars init to add backslash
+ *  parameters:
+ *           pCharConverter: the char converter
+ *  return: 0 for success, != 0 fail
+*/
+int std_spaces_add_backslash_converter_init(FastCharConverter *pCharConverter);
 
 /**
  *  set char pair to converter
