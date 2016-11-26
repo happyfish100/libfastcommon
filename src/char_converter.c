@@ -43,9 +43,9 @@ int char_converter_init_ex(FastCharConverter *pCharConverter,
 int std_space_char_converter_init(FastCharConverter *pCharConverter,
         const unsigned char dest_base)
 {
-#define SPACE_CHAR_PAIR_COUNT 7
+#define SPACE_CHAR_PAIR_COUNT1 7
     int i;
-    FastCharPair pairs[SPACE_CHAR_PAIR_COUNT];
+    FastCharPair pairs[SPACE_CHAR_PAIR_COUNT1];
 
     pairs[0].src = '\0';
     pairs[1].src = '\t';
@@ -55,17 +55,17 @@ int std_space_char_converter_init(FastCharConverter *pCharConverter,
     pairs[5].src = '\r';
     pairs[6].src = ' ';
 
-    for (i=0; i<SPACE_CHAR_PAIR_COUNT; i++) {
+    for (i=0; i<SPACE_CHAR_PAIR_COUNT1; i++) {
         pairs[i].dest = dest_base + i;
     }
 
-    return char_converter_init(pCharConverter, pairs, SPACE_CHAR_PAIR_COUNT);
+    return char_converter_init(pCharConverter, pairs, SPACE_CHAR_PAIR_COUNT1);
 }
 
 int std_spaces_add_backslash_converter_init(FastCharConverter *pCharConverter)
 {
-#define SPACE_CHAR_PAIR_COUNT 7
-    FastCharPair pairs[SPACE_CHAR_PAIR_COUNT];
+#define SPACE_CHAR_PAIR_COUNT2 8
+    FastCharPair pairs[SPACE_CHAR_PAIR_COUNT2];
 
     pairs[0].src = '\0'; pairs[0].dest = '0';
     pairs[1].src = '\t'; pairs[1].dest = 't';
@@ -74,9 +74,10 @@ int std_spaces_add_backslash_converter_init(FastCharConverter *pCharConverter)
     pairs[4].src = '\f'; pairs[4].dest = 'f';
     pairs[5].src = '\r'; pairs[5].dest = 'r';
     pairs[6].src = ' ';  pairs[6].dest = '-';
+    pairs[7].src = '\\'; pairs[7].dest = '\\';
 
     return char_converter_init_ex(pCharConverter, pairs,
-            SPACE_CHAR_PAIR_COUNT, FAST_CHAR_OP_ADD_BACKSLASH);
+            SPACE_CHAR_PAIR_COUNT2, FAST_CHAR_OP_ADD_BACKSLASH);
 }
 
 void char_converter_set_pair(FastCharConverter *pCharConverter,
