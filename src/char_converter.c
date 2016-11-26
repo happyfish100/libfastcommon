@@ -70,6 +70,16 @@ void char_converter_set_pair(FastCharConverter *pCharConverter,
 void char_converter_set_pair_ex(FastCharConverter *pCharConverter,
         const unsigned char src, const unsigned op, const unsigned char dest)
 {
+    if (op == FAST_CHAR_OP_NONE) {
+        if (pCharConverter->char_table[src].op != FAST_CHAR_OP_NONE) {
+            --pCharConverter->count;
+        }
+    } else {
+        if (pCharConverter->char_table[src].op == FAST_CHAR_OP_NONE) {
+            ++pCharConverter->count;
+        }
+    }
+
     pCharConverter->char_table[src].op = op;
     pCharConverter->char_table[src].dest = dest;
 }
@@ -86,8 +96,7 @@ int fast_char_convert(FastCharConverter *pCharConverter,
     int max_size_sub1;
     int remain_len;
 
-    if (pCharConverter->count <= 0)
-    {
+    if (pCharConverter->count <= 0) {
         return 0;
     }
 
