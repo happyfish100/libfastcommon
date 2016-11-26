@@ -10,11 +10,59 @@ Chinese language: http://www.csource.org/
 c common functions library extracted from my open source projects FastDFS and 
 FastDHT. this library is very simple and stable.
 
-functions including: string, logger, chain, hash, avl treee, socket,
-ini file reader, memory pool, object based allocator, connection pool,
-time wheel based timer, ioevent like epoll, local ip functions,
-process start/stop/restart control, task schedule, base64 encode / decode,
-url encode / decode, skiplist, system info functions etc.
+function including:
+  logger: [logger.h] asynchronously sync to disk for high performance, thread safe,
+          log rotate, auto delete old log files, compress log file etc.
+
+  ini file reader: [ini_file_reader.h] support sections marked by [SectionName]
+          support a config item ocurs multiple times for multiple values, such as:
+             tracker_server = ip1
+             tracker_server = ip2
+          #include directive to include other ini file
+          #@function directive for annotation
+          support control statements for special purpose as:
+              #@if, #@else, #@endif, #@for, #@endfor
+
+  string operation: [shared_func.h] uppercase, lowercase, trim etc.
+
+  base64 encode / decode: [base64.h] for standard base64 or variable base64
+
+  url encode / decode: [shared_func.h]
+
+  md5 encode: [md5.h]
+
+  hash: [hash.h] hash table
+
+  chain: [chain.h] singly linked list
+
+  blocked queue: [fast_blocked_queue.h]
+
+  avl tree: [avl_tree.h] AVL tree
+
+  skiplist: [skiplist.h] [flat_skiplist.h] [multi_skiplist.h] flat skiplist and multi skiplist
+
+  socket: [sockopt.h] socket wrapper for connect, recv, send etc.
+
+  ioevent: [ioevent.h] [ioevent_loop.h] like epoll (support Linux, FreeBSD and SunOS),
+
+  io buffer management: [fast_task_queue.h] for network io buffer
+
+  memory pool: [fast_mpool.h]
+
+  object based allocator: [fast_mblock.h]
+
+  connection pool: [connection_pool.h]
+
+  time wheel based timer: [fast_timer.h] for network timeout management, very high performance
+
+  local ip functions: [local_ip_func.h] get local ipv4 addresses
+
+  system info functions: [system_info.h] get cpu count, memory size, system load,
+          mounted filesystems and processes info etc.
+
+  process control: [process_ctrl.h] for process start/stop/restart control
+
+  task schedule: [sched_thread.h] task shedule management/thead for repeat tasks
 
 detail info please see the c header files.
 
