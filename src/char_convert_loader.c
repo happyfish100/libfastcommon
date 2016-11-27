@@ -19,7 +19,7 @@
 int char_convert_loader_init(FastCharConverter *pCharConverter,
         const IniItem *items, const int count)
 {
-    char_convert_loader_init(pCharConverter, NULL, 0);
+    char_converter_init(pCharConverter, NULL, 0);
     return char_convert_loader_add(pCharConverter, items, count);
 }
 
@@ -84,6 +84,9 @@ static int char_convert_loader_parse(const char *s, unsigned char *out_char)
                 break;
             case 's':
                 *out_char = ' ';
+                break;
+            case '\\':
+                *out_char = '\\';
                 break;
             default:
                 logError("file: "__FILE__", line: %d, "
