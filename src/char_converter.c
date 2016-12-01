@@ -142,7 +142,7 @@ int fast_char_convert(FastCharConverter *pCharConverter,
     out_size_sub1 = out_size - 1;
     for (; pi<end; pi++) {
         if (po - (unsigned char *)output >= out_size_sub1) {
-            logWarning("file: "__FILE__", line: %d, "
+            logDebug("file: "__FILE__", line: %d, "
                     "exceeds max size: %d", __LINE__, out_size);
             break;
         }
