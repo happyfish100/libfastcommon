@@ -373,6 +373,8 @@ int CRC32_ex(void *key, const int key_len, \
 	hash_codes[0] = CRC32_FINAL(hash_codes[0]); \
 
 
+unsigned int *hash_get_prime_capacity(const int capacity);
+
 #ifdef __cplusplus
 }
 #endif

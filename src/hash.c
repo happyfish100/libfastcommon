@@ -71,25 +71,30 @@ static int _hash_alloc_buckets(HashArray *pHash, const unsigned int old_capacity
 	return 0;
 }
 
-int hash_init_ex(HashArray *pHash, HashFunc hash_func, \
-		const unsigned int capacity, const double load_factor, \
-		const int64_t max_bytes, const bool bMallocValue)
+unsigned int *hash_get_prime_capacity(const int capacity)
 {
 	unsigned int *pprime;
 	unsigned int *prime_end;
-	int result;
-
-	memset(pHash, 0, sizeof(HashArray));
 	prime_end = prime_array + PRIME_ARRAY_SIZE;
 	for (pprime = prime_array; pprime!=prime_end; pprime++)
 	{
 		if (*pprime > capacity)
 		{
-			pHash->capacity = pprime;
-			break;
+            return pprime;
 		}
 	}
 
+    return NULL;
+}
+
+int hash_init_ex(HashArray *pHash, HashFunc hash_func, \
+		const unsigned int capacity, const double load_factor, \
+		const int64_t max_bytes, const bool bMallocValue)
+{
+	int result;
+
+	memset(pHash, 0, sizeof(HashArray));
+    pHash->capacity = hash_get_prime_capacity(capacity);
 	if (pHash->capacity == NULL)
 	{
 		return EINVAL;
@@ -367,20 +372,7 @@ static int _rehash(HashArray *pHash)
 	pOldCapacity = pHash->capacity;
 	if (pHash->is_malloc_capacity)
 	{
-		unsigned int *pprime;
-		unsigned int *prime_end;
-
-		pHash->capacity = NULL;
-
-		prime_end = prime_array + PRIME_ARRAY_SIZE;
-		for (pprime = prime_array; pprime!=prime_end; pprime++)
-		{
-			if (*pprime > *pOldCapacity)
-			{
-				pHash->capacity = pprime;
-				break;
-			}
-		}
+        pHash->capacity = hash_get_prime_capacity(*pOldCapacity);
 	}
 	else
 	{
