@@ -2306,17 +2306,9 @@ int64_t get_current_time_us()
 	return ((int64_t)tv.tv_sec * 1000 * 1000 + (int64_t)tv.tv_usec);
 }
 
-bool is_power2(const int64_t n)
+inline bool is_power2(const int64_t n)
 {
-	int64_t i;
-
-	i = 2;
-	while (i < n)
-	{
-		i *= 2;
-	}
-
-	return i == n;
+    return ((n != 0) && !(n & (n - 1)));	
 }
 
 static inline int do_lock_file(int fd, int cmd, int type)
