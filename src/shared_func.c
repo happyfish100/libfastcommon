@@ -960,13 +960,32 @@ int getFileContent(const char *filename, char **buff, int64_t *file_size)
 {
 	int fd;
 
+    errno = 0;
     if (!isFile(filename))
     {
 		*buff = NULL;
 		*file_size = 0;
-		logError("file: "__FILE__", line: %d, "
-                "%s is not a regular file", __LINE__, filename);
-        return EINVAL;
+        if (errno != 0)
+        {
+            if (errno == ENOENT)
+            {
+                logError("file: "__FILE__", line: %d, "
+                        "file %s not exist", __LINE__, filename);
+            }
+            else
+            {
+                logError("file: "__FILE__", line: %d, "
+                        "stat %s fail, errno: %d, error info: %s",
+                        __LINE__, filename, errno, STRERROR(errno));
+            }
+            return errno != 0 ? errno : ENOENT;
+        }
+        else
+        {
+            logError("file: "__FILE__", line: %d, "
+                    "%s is not a regular file", __LINE__, filename);
+            return EINVAL;
+        }
     }
 
 	fd = open(filename, O_RDONLY);
