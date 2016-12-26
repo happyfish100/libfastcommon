@@ -32,6 +32,10 @@ ZEND_FUNCTION(fastcommon_id_generator_get_extra);
 ZEND_FUNCTION(fastcommon_id_generator_get_timestamp);
 ZEND_FUNCTION(fastcommon_id_generator_destroy);
 
+ZEND_FUNCTION(fastcommon_get_ifconfigs);
+ZEND_FUNCTION(fastcommon_get_cpu_count);
+ZEND_FUNCTION(fastcommon_get_sysinfo);
+
 #ifdef __cplusplus
 }
 #endif

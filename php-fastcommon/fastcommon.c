@@ -14,6 +14,7 @@
 #include "sockopt.h"
 #include "shared_func.h"
 #include "id_generator.h"
+#include "system_info.h"
 #include "fastcommon.h"
 
 #define MAJOR_VERSION  1
@@ -54,6 +55,9 @@ const zend_fcall_info empty_fcall_info = { 0, NULL, NULL, NULL, NULL, 0, NULL, N
 		ZEND_FE(fastcommon_id_generator_get_extra, NULL)
 		ZEND_FE(fastcommon_id_generator_get_timestamp, NULL)
 		ZEND_FE(fastcommon_id_generator_destroy, NULL)
+		ZEND_FE(fastcommon_get_ifconfigs, NULL)
+		ZEND_FE(fastcommon_get_cpu_count, NULL)
+		ZEND_FE(fastcommon_get_sysinfo, NULL)
 		{NULL, NULL, NULL}  /* Must be the last line */
 	};
 
@@ -681,5 +685,115 @@ ZEND_FUNCTION(fastcommon_id_generator_get_timestamp)
 	}
 
 	RETURN_LONG(id_generator_get_timestamp(context, id));
+}
+
+/*
+array fastcommon_get_ifconfigs()
+return the ifconfig array, return false for error
+*/
+ZEND_FUNCTION(fastcommon_get_ifconfigs)
+{
+#define MAX_IFCONFIGS  16
+    int argc;
+    int count;
+    int i;
+    FastIFConfig if_configs[MAX_IFCONFIGS];
+    zval *ifconfig_array;
+
+	argc = ZEND_NUM_ARGS();
+	if (argc != 0) {
+		logError("file: "__FILE__", line: %d, "
+			"fastcommon_get_ifconfigs parameters count: %d is invalid, expect 0",
+			__LINE__, argc);
+		RETURN_BOOL(false);
+	}
+
+    if ((getifconfigs(if_configs, MAX_IFCONFIGS, &count)) != 0) {
+		RETURN_BOOL(false);
+    }
+
+	array_init(return_value);
+    for (i=0; i<count; i++) {
+        ALLOC_INIT_ZVAL(ifconfig_array);
+        array_init(ifconfig_array);
+        add_index_zval(return_value, i, ifconfig_array);
+        zend_add_assoc_stringl_ex(ifconfig_array, "name", sizeof("name"),
+                  if_configs[i].name, strlen(if_configs[i].name), 1);
+        zend_add_assoc_stringl_ex(ifconfig_array, "mac", sizeof("mac"),
+                  if_configs[i].mac, strlen(if_configs[i].mac), 1);
+        zend_add_assoc_stringl_ex(ifconfig_array, "ipv4", sizeof("ipv4"),
+                  if_configs[i].ipv4, strlen(if_configs[i].ipv4), 1);
+        zend_add_assoc_stringl_ex(ifconfig_array, "ipv6", sizeof("ipv6"),
+                  if_configs[i].ipv6, strlen(if_configs[i].ipv6), 1);
+    }
+}
+
+/*
+long fastcommon_get_cpu_count()
+return the cpu count
+*/
+ZEND_FUNCTION(fastcommon_get_cpu_count)
+{
+    int argc;
+
+	argc = ZEND_NUM_ARGS();
+	if (argc != 0) {
+		logError("file: "__FILE__", line: %d, "
+			"fastcommon_get_cpu_count parameters count: %d is invalid, expect 0",
+			__LINE__, argc);
+		RETURN_BOOL(false);
+	}
+
+     RETURN_LONG(get_sys_cpu_count());
+}
+
+/*
+array fastcommon_get_sysinfo()
+return system info array
+*/
+ZEND_FUNCTION(fastcommon_get_sysinfo)
+{
+    int argc;
+    int i;
+    struct fast_sysinfo info;
+    zval *load_array;
+
+	argc = ZEND_NUM_ARGS();
+	if (argc != 0) {
+		logError("file: "__FILE__", line: %d, "
+			"fastcommon_get_sysinfo parameters count: %d is invalid, expect 0",
+			__LINE__, argc);
+		RETURN_BOOL(false);
+	}
+
+    if ((get_sysinfo(&info)) != 0) {
+		RETURN_BOOL(false);
+    }
+
+	array_init(return_value);
+    zend_add_assoc_long_ex(return_value, "boot_time", sizeof("boot_time"),
+            info.boot_time.tv_sec);
+
+    ALLOC_INIT_ZVAL(load_array);
+    array_init(load_array);
+    add_assoc_zval_ex(return_value, "load", sizeof("load"), load_array);
+    for (i=0; i<3; i++) {
+        add_index_double(load_array, i, info.loads[i]);
+    }
+
+    zend_add_assoc_long_ex(return_value, "totalram", sizeof("totalram"),
+            info.totalram);
+    zend_add_assoc_long_ex(return_value, "freeram", sizeof("freeram"),
+            info.freeram);
+    zend_add_assoc_long_ex(return_value, "sharedram", sizeof("sharedram"),
+            info.sharedram);
+    zend_add_assoc_long_ex(return_value, "bufferram", sizeof("bufferram"),
+            info.bufferram);
+    zend_add_assoc_long_ex(return_value, "totalswap", sizeof("totalswap"),
+            info.totalswap);
+    zend_add_assoc_long_ex(return_value, "freeswap", sizeof("freeswap"),
+            info.freeswap);
+    zend_add_assoc_long_ex(return_value, "procs", sizeof("procs"),
+            info.procs);
 }
 
