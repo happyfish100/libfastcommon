@@ -10,7 +10,10 @@ Chinese language: http://www.csource.org/
 c common functions library extracted from my open source projects FastDFS and 
 FastDHT. this library is very simple and stable.
 
-function including:
+some functions are wrappered into php extension, such as fastcommon_gethostaddrs,
+     fastcommon_id_generator_xxx, fastcommon_get_ifconfigs, fastcommon_get_sysinfo etc.
+
+C function including:
   logger: [logger.h] asynchronously sync to disk for high performance, thread safe,
           log rotate, auto delete old log files, compress log file etc.
 
@@ -22,6 +25,8 @@ function including:
           #@function directive for annotation
           support control statements for special purpose as:
               #@if, #@else, #@endif, #@for, #@endfor
+
+  id generator: [id_generator.h] generate unique 64 bits integer ID for multi processes
 
   string operation: [shared_func.h] uppercase, lowercase, trim etc.
 
@@ -63,6 +68,8 @@ function including:
   process control: [process_ctrl.h] for process start/stop/restart control
 
   task schedule: [sched_thread.h] task shedule management/thead for repeat tasks
+
+  char convert: [char_converter.h] and [char_convert_loader.h] for fast char convert
 
 detail info please see the c header files.
 
