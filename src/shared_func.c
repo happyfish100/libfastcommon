@@ -1323,10 +1323,48 @@ int set_rlimit(int resource, const rlim_t value)
 	limit.rlim_cur = value;
 	if (setrlimit(resource, &limit) != 0)
 	{
+        const char *label;
+        switch (resource)
+        {
+            case RLIMIT_CPU:
+                label = "CPU time in sec";
+                break;
+            case RLIMIT_STACK:
+                label = "max stack size";
+                break;
+            case RLIMIT_DATA:
+                label = "max data size";
+                break;
+            case RLIMIT_FSIZE:
+                label = "max file size";
+                break;
+            case RLIMIT_RSS:
+                label = "max RSS";
+                break;
+            case RLIMIT_CORE:
+                label = "max core file size";
+                break;
+            case RLIMIT_NPROC:
+                label = "max processes";
+                break;
+            case RLIMIT_NOFILE:
+                label = "max open files";
+                break;
+            case RLIMIT_MSGQUEUE:
+                label = "max bytes in msg queues";
+                break;
+            case RLIMIT_MEMLOCK:
+                label = "max locked-in-memory address space";
+                break;
+            default:
+                label = "unkown";
+                break;
+        }
+
 		logError("file: "__FILE__", line: %d, " \
-			"call setrlimit fail, resource=%d, value=%d, " \
+			"call setrlimit fail, resource=%d (%s), value=%"PRId64", " \
 			"errno: %d, error info: %s", \
-			__LINE__, resource, (int)value, \
+			__LINE__, resource, label, (int64_t)value, \
 			errno, STRERROR(errno));
 		return errno != 0 ? errno : EPERM;
 	}

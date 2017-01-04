@@ -157,8 +157,8 @@ int id_generator_init_extra_ex(struct idg_context *context, const char *filename
         ((int64_t)1 << sn_bits);
 	context->sn_mask = ((int64_t)1 << sn_bits) - 1;
 
-	logDebug("mid: 0x%08X, masked_mid: 0x%08llX, extra_mask: 0x%08llX, "
-            "sn_mask: 0x%08llX\n", mid, context->masked_mid,
+	logDebug("mid: 0x%08X, masked_mid: 0x%08"PRIX64", extra_mask: 0x%08"PRIX64", "
+            "sn_mask: 0x%08"PRIX64, mid, context->masked_mid,
             context->extra_mask, context->sn_mask);
 
 	return 0;
