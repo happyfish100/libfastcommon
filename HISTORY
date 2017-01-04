@@ -1,7 +1,8 @@
 
-Version 1.33  2016-12-22
+Version 1.33  2017-01-04
   * add function hash_get_prime_capacity
   * refine getFileContent log info
+  * show resource label when setrlimit fail
 
 Version 1.32  2016-12-01
   * downgrade log level from warning to debug
