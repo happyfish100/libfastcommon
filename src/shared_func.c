@@ -1350,9 +1350,11 @@ int set_rlimit(int resource, const rlim_t value)
             case RLIMIT_NOFILE:
                 label = "max open files";
                 break;
+#ifdef RLIMIT_MSGQUEUE
             case RLIMIT_MSGQUEUE:
                 label = "max bytes in msg queues";
                 break;
+#endif
             case RLIMIT_MEMLOCK:
                 label = "max locked-in-memory address space";
                 break;
