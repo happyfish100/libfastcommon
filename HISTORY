@@ -1,6 +1,8 @@
 
 Version 1.34  2017-01-19
   * ini_file_reader: LOCAL_IP support CIDR addresses
+  * ini_file_reader: return the last when get single value,
+    such as iniGetStrValue and iniGetIntValue
 
 Version 1.33  2017-01-04
   * add function hash_get_prime_capacity

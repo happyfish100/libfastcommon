@@ -1591,29 +1591,31 @@ void iniFreeContext(IniContext *pContext)
 
 
 #define INI_FIND_ITEM(szSectionName, szItemName, pContext, pSection, \
-			targetItem, pItem, return_val) \
-	if (szSectionName == NULL || *szSectionName == '\0') \
-	{ \
-		pSection = &pContext->global; \
-	} \
-	else \
-	{ \
-		pSection = (IniSection *)hash_find(&pContext->sections, \
-				szSectionName, strlen(szSectionName)); \
-		if (pSection == NULL) \
-		{ \
-			return return_val; \
-		} \
-	} \
-	\
-	if (pSection->count <= 0) \
-	{ \
-		return return_val; \
-	} \
-	\
-	snprintf(targetItem.name, sizeof(targetItem.name), "%s", szItemName); \
-	pItem = (IniItem *)bsearch(&targetItem, pSection->items, \
-			pSection->count, sizeof(IniItem), iniCompareByItemName);
+        targetItem, pItem, return_val) \
+do { \
+    if (szSectionName == NULL || *szSectionName == '\0') \
+    { \
+        pSection = &pContext->global; \
+    } \
+    else \
+    { \
+        pSection = (IniSection *)hash_find(&pContext->sections, \
+                szSectionName, strlen(szSectionName)); \
+        if (pSection == NULL) \
+        { \
+            return return_val; \
+        } \
+    } \
+    \
+    if (pSection->count <= 0) \
+    { \
+        return return_val; \
+    } \
+    \
+    snprintf(targetItem.name, sizeof(targetItem.name), "%s", szItemName); \
+    pItem = (IniItem *)bsearch(&targetItem, pSection->items, \
+            pSection->count, sizeof(IniItem), iniCompareByItemName); \
+} while (0)
 
 
 char *iniGetStrValue(const char *szSectionName, const char *szItemName, \
@@ -1621,19 +1623,29 @@ char *iniGetStrValue(const char *szSectionName, const char *szItemName, \
 {
 	IniItem targetItem;
 	IniSection *pSection;
+	IniItem *pFound;
 	IniItem *pItem;
+	IniItem *pItemEnd;
 
 	INI_FIND_ITEM(szSectionName, szItemName, pContext, pSection, \
-			targetItem, pItem, NULL)
-
-	if (pItem == NULL)
+			targetItem, pFound, NULL);
+	if (pFound == NULL)
 	{
 		return NULL;
 	}
-	else
+
+	pItemEnd = pSection->items + pSection->count;
+	for (pItem=pFound+1; pItem<pItemEnd; pItem++)
 	{
-		return pItem->value;
+		if (strcmp(pItem->name, szItemName) != 0)
+		{
+			break;
+		}
+
+        pFound = pItem;
 	}
+
+    return pFound->value;
 }
 
 int64_t iniGetInt64Value(const char *szSectionName, const char *szItemName, \
@@ -1746,7 +1758,7 @@ IniItem *iniGetValuesEx(const char *szSectionName, const char *szItemName, \
 
 	*nTargetCount = 0;
 	INI_FIND_ITEM(szSectionName, szItemName, pContext, pSection, \
-			targetItem, pFound, NULL)
+			targetItem, pFound, NULL);
 	if (pFound == NULL)
 	{
 		return NULL;

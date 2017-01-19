@@ -15,6 +15,10 @@ int main(int argc, char *argv[])
 	int result;
     IniContext context;
     const char *szFilename = "/home/yuqing/watchd-config/order.conf";
+
+    if (argc > 1) {
+        szFilename = argv[1];
+    }
 	
 	log_init();
 	g_log_context.log_level = LOG_DEBUG;
