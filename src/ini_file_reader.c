@@ -846,12 +846,103 @@ static bool iniMatchValue(const char *target, char **values, const int count)
     return false;
 }
 
+
+static bool iniMatchCIDR(const char *target, const char *ip_addr,
+        const char *pSlash)
+{
+	char *pReservedEnd;
+	char ip_part[IP_ADDRESS_SIZE];
+	int ip_len;
+	int network_bits;
+	struct in_addr addr;
+	uint32_t network_hip;
+	uint32_t target_hip;
+    uint32_t network_mask;
+
+	ip_len = pSlash - ip_addr;
+	if (ip_len == 0 || ip_len >= IP_ADDRESS_SIZE)
+	{
+		logWarning("file: "__FILE__", line: %d, "
+			"invalid ip address: %s", __LINE__, ip_addr);
+		return false;
+	}
+	memcpy(ip_part, ip_addr, ip_len);
+	*(ip_part + ip_len) = '\0';
+	
+	pReservedEnd = NULL;
+	network_bits = strtol(pSlash + 1, &pReservedEnd, 10);
+	if (!(pReservedEnd == NULL || *pReservedEnd == '\0'))
+	{
+		logError("file: "__FILE__", line: %d, " \
+			"ip address: %s, invalid network bits: %s",
+			__LINE__, ip_addr, pSlash + 1);
+		return false;
+	}
+
+	if (network_bits < 8 || network_bits > 30)
+	{
+		logError("file: "__FILE__", line: %d, " \
+			"ip address: %s, invalid network bits: %d, " \
+			"it should >= 8 and <= 30", \
+			__LINE__, ip_addr, network_bits);
+		return false;
+	}
+
+	if (inet_pton(AF_INET, ip_part, &addr) != 1)
+	{
+		logError("file: "__FILE__", line: %d, " \
+			"ip address: %s, invalid ip part: %s", \
+			__LINE__, ip_addr, ip_part);
+		return false;
+	}
+	network_hip = ntohl(addr.s_addr);
+
+	if (inet_pton(AF_INET, target, &addr) != 1)
+	{
+		logError("file: "__FILE__", line: %d, "
+			"invalid ip: %s", __LINE__, ip_addr, target);
+		return false;
+	}
+	target_hip = ntohl(addr.s_addr);
+
+    network_mask = ((1 << network_bits) - 1) << (32 - network_bits);
+    return (target_hip & network_mask) == (network_hip & network_mask);
+}
+
+static bool iniMatchIP(const char *target, char **values, const int count)
+{
+    int i;
+	char *pSlash;
+
+    for (i=0; i<count; i++)
+    {
+        pSlash = strchr(values[i], '/');
+        if (pSlash == NULL)
+        {
+            if (strcmp(target, values[i]) == 0)
+            {
+                return true;
+            }
+        }
+        else
+        {
+            if (iniMatchCIDR(target, values[i], pSlash))
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 static bool iniCalcCondition(char *condition, const int condition_len)
 {
     /*
      * current only support %{VARIABLE} in [x,y,..]
      * support variables are: LOCAL_IP and LOCAL_HOST
      * such as: %{LOCAL_IP} in [10.0.11.89,10.0.11.99]
+     * local ip support CIDR addresses such as 172.16.12.0/22
      **/
 #define _PREPROCESS_VARIABLE_TYPE_LOCAL_IP   1
 #define _PREPROCESS_VARIABLE_TYPE_LOCAL_HOST 2
@@ -963,7 +1054,7 @@ static bool iniCalcCondition(char *condition, const int condition_len)
         local_ip = get_first_local_ip();
         while (local_ip != NULL)
         {
-            if (iniMatchValue(local_ip, values, count))
+            if (iniMatchIP(local_ip, values, count))
             {
                 return true;
             }
