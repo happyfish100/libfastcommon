@@ -51,7 +51,9 @@ extern int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int kind);
 #include "_os_define.h"
 
 #ifdef OS_LINUX
+#ifndef PTHREAD_MUTEX_ERRORCHECK
 #define PTHREAD_MUTEX_ERRORCHECK PTHREAD_MUTEX_ERRORCHECK_NP
+#endif
 #endif
 
 #ifdef OS_BITS
