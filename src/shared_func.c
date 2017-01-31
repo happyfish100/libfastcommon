@@ -2422,3 +2422,32 @@ int file_try_unlock(int fd)
     return do_lock_file(fd, F_SETLK, F_UNLCK);
 }
 
+bool isLeadingSpacesLine(const char *content, const char *current)
+{
+    const char *p;
+    p = current - 1;
+    while (p >= content)
+    {
+        if (!(*p == ' ' || *p == '\t'))
+        {
+            break;
+        }
+        --p;
+    }
+    return (p < content || *p == '\n');
+}
+
+bool isTrailingSpacesLine(const char *tail, const char *end)
+{
+    const char *p;
+    p = tail;
+    while (p < end)
+    {
+        if (!(*p == ' ' || *p == '\t'))
+        {
+            break;
+        }
+        ++p;
+    }
+    return (p == end || *p == '\n');
+}

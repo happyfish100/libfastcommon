@@ -608,6 +608,22 @@ int file_try_write_lock(int fd);
 */
 int file_try_unlock(int fd);
 
+/** is a leading spaces line
+ *  parameters:
+ *  	content: the whole string content
+ *  	current: the current line
+ *  return: error no, 0 for success, != 0 fail
+*/
+bool isLeadingSpacesLine(const char *content, const char *current);
+
+/** is a trailing spaces line
+ *  parameters:
+ *  	tail: the current line tail
+ *  	end: the string end ptr
+ *  return: error no, 0 for success, != 0 fail
+*/
+bool isTrailingSpacesLine(const char *tail, const char *end);
+
 #ifdef __cplusplus
 }
 #endif

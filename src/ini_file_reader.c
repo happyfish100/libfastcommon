@@ -28,12 +28,14 @@
 #define _PREPROCESS_TAG_STR_ENDIF "#@endif"
 #define _PREPROCESS_TAG_STR_FOR "#@for "
 #define _PREPROCESS_TAG_STR_ENDFOR "#@endfor"
+#define _PREPROCESS_TAG_STR_SET "#@set "
 
 #define _PREPROCESS_TAG_LEN_IF (sizeof(_PREPROCESS_TAG_STR_IF) - 1)
 #define _PREPROCESS_TAG_LEN_ELSE (sizeof(_PREPROCESS_TAG_STR_ELSE) - 1)
 #define _PREPROCESS_TAG_LEN_ENDIF (sizeof(_PREPROCESS_TAG_STR_ENDIF) - 1)
 #define _PREPROCESS_TAG_LEN_FOR (sizeof(_PREPROCESS_TAG_STR_FOR) - 1)
 #define _PREPROCESS_TAG_LEN_ENDFOR (sizeof(_PREPROCESS_TAG_STR_ENDFOR) - 1)
+#define _PREPROCESS_TAG_LEN_SET (sizeof(_PREPROCESS_TAG_STR_SET) - 1)
 
 #define _PREPROCESS_VARIABLE_STR_LOCAL_IP "%{LOCAL_IP}"
 #define _PREPROCESS_VARIABLE_STR_LOCAL_HOST "%{LOCAL_HOST}"
@@ -900,7 +902,7 @@ static bool iniMatchCIDR(const char *target, const char *ip_addr,
 	if (inet_pton(AF_INET, target, &addr) != 1)
 	{
 		logError("file: "__FILE__", line: %d, "
-			"invalid ip: %s", __LINE__, ip_addr, target);
+			"invalid ip: %s", __LINE__, target);
 		return false;
 	}
 	target_hip = ntohl(addr.s_addr);
@@ -936,23 +938,30 @@ static bool iniMatchIP(const char *target, char **values, const int count)
     return false;
 }
 
-static bool iniCalcCondition(char *condition, const int condition_len)
+static bool iniCalcCondition(char *condition, const int condition_len,
+         IniContext *pContext)
 {
     /*
      * current only support %{VARIABLE} in [x,y,..]
-     * support variables are: LOCAL_IP and LOCAL_HOST
+     * support variables are: LOCAL_IP, LOCAL_HOST and
+     * variables by #@set directive.
      * such as: %{LOCAL_IP} in [10.0.11.89,10.0.11.99]
      * local ip support CIDR addresses such as 172.16.12.0/22
      **/
 #define _PREPROCESS_VARIABLE_TYPE_LOCAL_IP   1
 #define _PREPROCESS_VARIABLE_TYPE_LOCAL_HOST 2
+#define _PREPROCESS_VARIABLE_TYPE_SET        3
 #define _PREPROCESS_MAX_LIST_VALUE_COUNT    32
     char *p;
     char *pEnd;
+    char *pBraceEnd;
     char *pSquareEnd;
     char *values[_PREPROCESS_MAX_LIST_VALUE_COUNT];
+    char *varStr = NULL;
+    int varLen = 0;
     int varType;
     int count;
+    int len;
     int i;
 
     pEnd = condition + condition_len;
@@ -976,21 +985,25 @@ static bool iniCalcCondition(char *condition, const int condition_len)
         p++;
     }
 
-    if (pEnd - p < 12)
+    len = pEnd - p;
+    if (len < 8 || !(*p == '%' && *(p+1) == '{'))
     {
 		logWarning("file: "__FILE__", line: %d, "
-                "unkown condition: %.*s", __LINE__,
-                condition_len, condition);
+                "invalid condition: %.*s, "
+                "correct format: %%{variable} in [...]",
+                __LINE__, condition_len, condition);
         return false;
     }
 
-    if (memcmp(p, _PREPROCESS_VARIABLE_STR_LOCAL_IP,
-                _PREPROCESS_VARIABLE_LEN_LOCAL_IP) == 0)
+    if ((len > _PREPROCESS_VARIABLE_LEN_LOCAL_IP) &&
+            (memcmp(p, _PREPROCESS_VARIABLE_STR_LOCAL_IP,
+                _PREPROCESS_VARIABLE_LEN_LOCAL_IP) == 0))
     {
         varType = _PREPROCESS_VARIABLE_TYPE_LOCAL_IP;
         p += _PREPROCESS_VARIABLE_LEN_LOCAL_IP;
     }
-    else if (memcmp(p, _PREPROCESS_VARIABLE_STR_LOCAL_HOST,
+    else if ((len > _PREPROCESS_VARIABLE_LEN_LOCAL_HOST) &&
+            memcmp(p, _PREPROCESS_VARIABLE_STR_LOCAL_HOST,
                 _PREPROCESS_VARIABLE_LEN_LOCAL_HOST) == 0)
     {
         varType = _PREPROCESS_VARIABLE_TYPE_LOCAL_HOST;
@@ -998,10 +1011,27 @@ static bool iniCalcCondition(char *condition, const int condition_len)
     }
     else
     {
-		logWarning("file: "__FILE__", line: %d, "
-                "unkown condition: %.*s", __LINE__,
-                condition_len, condition);
-        return false;
+        varType = _PREPROCESS_VARIABLE_TYPE_SET;
+        pBraceEnd = (char *)memchr(p + 2, '}', len - 2);
+        if (pBraceEnd == NULL)
+        {
+            logWarning("file: "__FILE__", line: %d, "
+                    "invalid condition: %.*s, expect }",
+                    __LINE__, condition_len, condition);
+            return false;
+        }
+
+        varStr = p + 2;
+        varLen = pBraceEnd - varStr;
+        if (varLen == 0)
+        {
+            logWarning("file: "__FILE__", line: %d, "
+                    "invalid condition: %.*s, "
+                    "expect variable name", __LINE__,
+                    condition_len, condition);
+            return false;
+        }
+        p = pBraceEnd + 1;
     }
 
     while (p < pEnd && (*p == ' ' || *p == '\t'))
@@ -1030,7 +1060,8 @@ static bool iniCalcCondition(char *condition, const int condition_len)
     }
 
     *pSquareEnd = '\0';
-    count = splitEx(p + 1, ',', values, _PREPROCESS_MAX_LIST_VALUE_COUNT);
+    count = splitEx(p + 1, ',', values,
+            _PREPROCESS_MAX_LIST_VALUE_COUNT);
     for (i=0; i<count; i++)
     {
         values[i] = trim(values[i]);
@@ -1048,7 +1079,7 @@ static bool iniCalcCondition(char *condition, const int condition_len)
         }
         return iniMatchValue(host, values, count);
     }
-    else
+    else if (varType == _PREPROCESS_VARIABLE_TYPE_LOCAL_IP)
     {
         const char *local_ip;
         local_ip = get_first_local_ip();
@@ -1061,12 +1092,185 @@ static bool iniCalcCondition(char *condition, const int condition_len)
             local_ip = get_next_local_ip(local_ip);
         }
     }
+    else
+    {
+        char *value;
+        value = (char *)hash_find(pContext->set.vars, varStr, varLen);
+        if (value == NULL)
+        {
+            logWarning("file: "__FILE__", line: %d, "
+                    "variable \"%.*s\" not exist", __LINE__,
+                    varLen, varStr);
+        }
+        else
+        {
+            return iniMatchValue(value, values, count);
+        }
+    }
 
     return false;
 }
 
+static char *iniFindTag(char *content, char *pStart,
+        const char *tagStr, const int tagLen)
+{
+    char *p;
+
+    while (1)
+    {
+        p = strstr(pStart, tagStr);
+        if (p == NULL)
+        {
+            return NULL;
+        }
+        if (isLeadingSpacesLine(content, p))
+        {
+            return p;
+        }
+        pStart = p + tagLen;
+    }
+}
+
+static char *iniFindAloneTag(char *content, const int content_len,
+        char *pStart, const char *tagStr, const int tagLen)
+{
+    char *p;
+
+    while ((p=iniFindTag(content, pStart, tagStr, tagLen)) != NULL)
+    {
+        if (isTrailingSpacesLine(p + tagLen, content + content_len))
+        {
+            return p;
+        }
+    }
+
+    return NULL;
+}
+
+static int iniDoProccessSet(char *pSet, char **ppSetEnd,
+        IniContext *pContext)
+{
+    char *pStart;
+    char buff[FAST_INI_ITEM_NAME_LEN + FAST_INI_ITEM_VALUE_LEN];
+    char output[256];
+    int result;
+    int len;
+    char *parts[2];
+    char *key;
+    char *value;
+    int value_len;
+
+    pStart = pSet + _PREPROCESS_TAG_LEN_SET;
+    *ppSetEnd = strchr(pStart, '\n');
+    if (*ppSetEnd == NULL)
+    {
+        return EINVAL;
+    }
+
+    len = *ppSetEnd - pStart;
+    if (len <= 1 || len >= (int)sizeof(buff))
+    {
+        return EINVAL;
+    }
+
+    memcpy(buff, pStart, len);
+    *(buff + len) = '\0';
+
+    if (splitEx(buff, '=', parts, 2) != 2)
+    {
+        logWarning("file: "__FILE__", line: %d, "
+                "invalid set format: %s%s",
+                __LINE__, _PREPROCESS_TAG_STR_SET, buff);
+        return EFAULT;
+    }
+
+    if (pContext->set.vars == NULL)
+    {
+        pContext->set.vars = (HashArray *)malloc(sizeof(HashArray));
+        if (pContext->set.vars == NULL)
+        {
+            logWarning("file: "__FILE__", line: %d, "
+                    "malloc %d bytes fail",
+                    __LINE__, (int)sizeof(HashArray));
+            return ENOMEM;
+        }
+        if ((result=hash_init_ex(pContext->set.vars,
+                        simple_hash, 17, 0.75, 0, true)) != 0)
+        {
+            return result;
+        }
+    }
+
+    key = trim(parts[0]);
+    value = trim(parts[1]);
+    value_len = strlen(value);
+    if (value_len > 3 && (*value == '$' && *(value + 1) == '(')
+            &&  *(value + value_len - 1) == ')')
+    {
+        char *cmd;
+        cmd = value + 2;
+        *(value + value_len - 1) = '\0';
+        if ((result=getExecResult(cmd, output, sizeof(output))) != 0)
+        {
+            logWarning("file: "__FILE__", line: %d, "
+                    "exec %s fail, errno: %d, error info: %s",
+                    __LINE__, cmd, result, STRERROR(result));
+            return result;
+        }
+        value = trim(output);
+        value_len = strlen(value);
+    }
+
+    return hash_insert_ex(pContext->set.vars, key, strlen(key),
+            value, value_len + 1, false);
+}
+
+static int iniProccessSet(char *content, char *pEnd,
+        IniContext *pContext)
+{
+    int result;
+    char *pStart;
+    char *pSet;
+    char *pSetEnd;
+
+    pStart = content + pContext->set.offset;
+    while (pStart < pEnd)
+    {
+        pSet = iniFindTag(content, pStart, _PREPROCESS_TAG_STR_SET,
+                _PREPROCESS_TAG_LEN_SET);
+        if (pSet == NULL || pSet >= pEnd)
+        {
+            break;
+        }
+
+        if ((result=iniDoProccessSet(pSet, &pSetEnd, pContext)) == 0)
+        {
+            pStart = pSetEnd;
+        }
+        else
+        {
+            if (result == EINVAL)
+            {
+                char *pNewLine;;
+                pNewLine = pSet + _PREPROCESS_TAG_LEN_SET;
+                while (pNewLine < pEnd && *pNewLine != '\n')
+                {
+                    ++pNewLine;
+                }
+                logWarning("file: "__FILE__", line: %d, "
+                        "invalid set format: %.*s", __LINE__,
+                        (int)(pNewLine - pSet), pSet);
+            }
+            pStart = pSet + _PREPROCESS_TAG_LEN_SET;
+        }
+    }
+
+    pContext->set.offset = pEnd - content;
+    return 0;
+}
+
 static char *iniProccessIf(char *content, const int content_len,
-        IniContext *pContext, int *new_content_len)
+        int *offset, IniContext *pContext, int *new_content_len)
 {
     char *pStart;
     char *pEnd;
@@ -1082,26 +1286,43 @@ static char *iniProccessIf(char *content, const int content_len,
     char *pDest;
 
     *new_content_len = content_len;
-    pStart = strstr(content, _PREPROCESS_TAG_STR_IF);
+    pStart = iniFindTag(content, content + (*offset),
+            _PREPROCESS_TAG_STR_IF, _PREPROCESS_TAG_LEN_IF);
     if (pStart == NULL)
     {
+        *offset = *new_content_len;
+        iniProccessSet(content, content + content_len, pContext);
         return content;
     }
+
+    iniProccessSet(content, pStart, pContext);
+
     pCondition = pStart + _PREPROCESS_TAG_LEN_IF;
     pIfPart = strchr(pCondition, '\n');
     if (pIfPart == NULL)
     {
+        logWarning("file: "__FILE__", line: %d, "
+                "expect new line (\\n) for %s",
+                __LINE__, pStart);
+        *offset = *new_content_len;
         return content;
     }
     conditionLen = pIfPart - pCondition;
 
-    pEnd = strstr(pIfPart, _PREPROCESS_TAG_STR_ENDIF);
+    pEnd = iniFindAloneTag(content, content_len, pIfPart,
+            _PREPROCESS_TAG_STR_ENDIF, _PREPROCESS_TAG_LEN_ENDIF);
     if (pEnd == NULL)
     {
+        logWarning("file: "__FILE__", line: %d, "
+                "expect %s for %.*s",
+                __LINE__, _PREPROCESS_TAG_STR_ENDIF,
+                (int)(pIfPart - pStart), pStart);
+        *offset = *new_content_len;
         return content;
     }
 
-    pElse = strstr(pIfPart, _PREPROCESS_TAG_STR_ELSE);
+    pElse = iniFindAloneTag(content, content_len, pIfPart,
+            _PREPROCESS_TAG_STR_ELSE, _PREPROCESS_TAG_LEN_ELSE);
     if (pElse == NULL || pElse > pEnd)
     {
         ifPartLen = pEnd - pIfPart;
@@ -1114,6 +1335,7 @@ static char *iniProccessIf(char *content, const int content_len,
         pElsePart = strchr(pElse + _PREPROCESS_TAG_LEN_ELSE, '\n');
         if (pElsePart == NULL)
         {
+            *offset = (pEnd + _PREPROCESS_TAG_LEN_ENDIF) - content;
             return content;
         }
 
@@ -1123,6 +1345,7 @@ static char *iniProccessIf(char *content, const int content_len,
     newContent = iniAllocContent(pContext, content_len);
     if (newContent == NULL)
     {
+        *offset = (pEnd + _PREPROCESS_TAG_LEN_ENDIF) - content;
         return NULL;
     }
 
@@ -1133,8 +1356,9 @@ static char *iniProccessIf(char *content, const int content_len,
         memcpy(pDest, content, copyLen);
         pDest += copyLen;
     }
+    *offset = copyLen;
 
-    if (iniCalcCondition(pCondition, conditionLen))
+    if (iniCalcCondition(pCondition, conditionLen, pContext))
     {
         if (ifPartLen > 0)
         {
@@ -1350,7 +1574,7 @@ static int iniParseForRange(char *range, const int range_len,
 }
 
 static char *iniProccessFor(char *content, const int content_len,
-        IniContext *pContext, int *new_content_len)
+        int *offset, IniContext *pContext, int *new_content_len)
 {
     char *pStart;
     char *pEnd;
@@ -1374,22 +1598,33 @@ static char *iniProccessFor(char *content, const int content_len,
     char *pDest;
 
     *new_content_len = content_len;
-    pStart = strstr(content, _PREPROCESS_TAG_STR_FOR);
+    pStart = iniFindTag(content, content + (*offset),
+            _PREPROCESS_TAG_STR_FOR, _PREPROCESS_TAG_LEN_FOR);
     if (pStart == NULL)
     {
+        *offset = *new_content_len;
         return content;
     }
     pForRange = pStart + _PREPROCESS_TAG_LEN_FOR;
     pForBlock = strchr(pForRange, '\n');
     if (pForBlock == NULL)
     {
+        logWarning("file: "__FILE__", line: %d, "
+                "expect new line (\\n) for %s",
+                __LINE__, pStart);
+        *offset = *new_content_len;
         return content;
     }
     rangeLen = pForBlock - pForRange;
 
-    pEnd = strstr(pForBlock, _PREPROCESS_TAG_STR_ENDFOR);
+    pEnd = iniFindAloneTag(content, content_len, pForBlock,
+            _PREPROCESS_TAG_STR_ENDFOR, _PREPROCESS_TAG_LEN_ENDFOR);
     if (pEnd == NULL)
     {
+        logWarning("file: "__FILE__", line: %d, "
+                "expect %s for %s", __LINE__,
+                _PREPROCESS_TAG_STR_ENDFOR, pStart);
+        *offset = *new_content_len;
         return content;
     }
     forBlockLen = pEnd - pForBlock;
@@ -1397,27 +1632,37 @@ static char *iniProccessFor(char *content, const int content_len,
     if (iniParseForRange(pForRange, rangeLen, &id, &idLen,
                 &start, &end, &step) != 0)
     {
-        return NULL;
+        logWarning("file: "__FILE__", line: %d, "
+                "invalid statement: %.*s",
+                __LINE__, (int)(pForBlock - pStart), pStart);
+        *offset = (pEnd + _PREPROCESS_TAG_LEN_ENDFOR) - content;
+        return content;
     }
     if (step == 0)
     {
 		logWarning("file: "__FILE__", line: %d, "
-                "invalid step: %d for range: %.*s", __LINE__,
-                step, rangeLen, pForRange);
-        return NULL;
+                "invalid step: %d for range: %.*s, set step to 1",
+                __LINE__, step, rangeLen, pForRange);
+        step = 1;
+        count = 0;
     }
-    count = (end - start) / step;
-    if (count < 0)
+    else
     {
-		logWarning("file: "__FILE__", line: %d, "
-                "invalid step: %d for range: %.*s", __LINE__,
-                step, rangeLen, pForRange);
-        return NULL;
+        count = (end - start) / step;
+        if (count < 0)
+        {
+            logWarning("file: "__FILE__", line: %d, "
+                    "invalid step: %d for range: %.*s", __LINE__,
+                    step, rangeLen, pForRange);
+            count = 0;
+        }
     }
 
-    newContent = iniAllocContent(pContext, content_len + (forBlockLen + 16) * count);
+    newContent = iniAllocContent(pContext, content_len +
+            (forBlockLen + 16) * count);
     if (newContent == NULL)
     {
+        *offset = (pEnd + _PREPROCESS_TAG_LEN_ENDFOR) - content;
         return NULL;
     }
 
@@ -1428,6 +1673,7 @@ static char *iniProccessFor(char *content, const int content_len,
         memcpy(pDest, content, copyLen);
         pDest += copyLen;
     }
+    *offset = copyLen;
 
     tagLen = sprintf(tag, "{$%.*s}", idLen, id);
     for (i=start; i<=end; i+=step)
@@ -1482,31 +1728,34 @@ static int iniLoadItemsFromBuffer(char *content, IniContext *pContext)
     char *new_content;
     int content_len;
     int new_content_len;
+    int offset;
 
     new_content = content;
     new_content_len = strlen(content);
 
     do
     {
+        offset = 0;
         pContent = new_content;
         content_len = new_content_len;
         if ((new_content=iniProccessIf(pContent, content_len,
-                        pContext, &new_content_len)) == NULL)
+                        &offset, pContext, &new_content_len)) == NULL)
         {
             return ENOMEM;
         }
-    } while (new_content != pContent);
+    } while (offset < new_content_len);
 
     do
     {
+        offset = 0;
         pContent = new_content;
         content_len = new_content_len;
         if ((new_content=iniProccessFor(pContent, content_len,
-                        pContext, &new_content_len)) == NULL)
+                        &offset, pContext, &new_content_len)) == NULL)
         {
             return ENOMEM;
         }
-    } while (new_content != pContent);
+    } while (offset < new_content_len);
 
     return iniDoLoadItemsFromBuffer(new_content, pContext);
 }
@@ -1585,8 +1834,13 @@ void iniFreeContext(IniContext *pContext)
 
 	hash_walk(&pContext->sections, iniFreeHashData, NULL);
 	hash_destroy(&pContext->sections);
-
     iniFreeDynamicContent(pContext);
+
+    if (pContext->set.vars != NULL)
+    {
+        hash_destroy(pContext->set.vars);
+        pContext->set.vars = NULL;
+    }
 }
 
 
