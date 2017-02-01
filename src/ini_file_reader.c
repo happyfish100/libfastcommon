@@ -1839,6 +1839,7 @@ void iniFreeContext(IniContext *pContext)
     if (pContext->set.vars != NULL)
     {
         hash_destroy(pContext->set.vars);
+        free(pContext->set.vars);
         pContext->set.vars = NULL;
     }
 }
