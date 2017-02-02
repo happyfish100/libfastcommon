@@ -387,27 +387,22 @@ int getExecResult(const char *command, char *output, const int buff_size)
 
 	if((fp=popen(command, "r")) == NULL)
 	{
+        *output = '\0';
 		return errno != 0 ? errno : EMFILE;
 	}
 
 	pCurrent = output;
-	remain_bytes = buff_size;
+	remain_bytes = buff_size - 1;
 	while (remain_bytes > 0 && \
 		(bytes_read=fread(pCurrent, 1, remain_bytes, fp)) > 0)
 	{
 		pCurrent += bytes_read;
 		remain_bytes -= bytes_read;
 	}
-
 	pclose(fp);
 
-	if (remain_bytes <= 0)
-	{
-		return ENOSPC;
-	}
-
 	*pCurrent = '\0';
-	return 0;
+	return remain_bytes > 0 ? 0 : ENOSPC;
 }
 
 #endif

@@ -1209,13 +1209,18 @@ static int iniDoProccessSet(char *pSet, char **ppSetEnd,
     {
         char *cmd;
         cmd = value + 2;
-        *(value + value_len - 1) = '\0';
+        *(value + value_len - 1) = '\0'; //remove '}'
         if ((result=getExecResult(cmd, output, sizeof(output))) != 0)
         {
             logWarning("file: "__FILE__", line: %d, "
                     "exec %s fail, errno: %d, error info: %s",
                     __LINE__, cmd, result, STRERROR(result));
             return result;
+        }
+        if (*output == '\0')
+        {
+            logWarning("file: "__FILE__", line: %d, "
+                    "empty reply when exec: %s", __LINE__, cmd);
         }
         value = trim(output);
         value_len = strlen(value);
