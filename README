@@ -23,6 +23,7 @@ C function including:
              tracker_server = ip2
           #include directive to include other ini file
           #@function directive for annotation
+          #@set directive to set variables for condition of #@if directive
           support control statements for special purpose as:
               #@if, #@else, #@endif, #@for, #@endfor
 
