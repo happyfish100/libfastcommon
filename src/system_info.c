@@ -185,7 +185,8 @@ int get_boot_time(struct timeval *boot_time)
         snprintf(left.f_mntonname, sizeof(left.f_mntonname), "%s", mntonname); \
     } while (0)
 
-int get_mounted_filesystems(struct fast_statfs *stats, const int size, int *count)
+int get_mounted_filesystems(struct fast_statfs *stats,
+        const int size, int *count)
 {
 #ifdef OS_LINUX
     const char *filename = "/proc/mounts";

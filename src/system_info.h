@@ -141,7 +141,8 @@ int get_boot_time(struct timeval *boot_time);
  *      count: return the count of the array
  *  return: error no , 0 success, != 0 fail
 */
-int get_mounted_filesystems(struct fast_statfs *stats, const int size, int *count);
+int get_mounted_filesystems(struct fast_statfs *stats,
+        const int size, int *count);
 
 #if defined(OS_LINUX) || defined(OS_FREEBSD)
 /** get processes

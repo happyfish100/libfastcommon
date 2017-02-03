@@ -1648,8 +1648,8 @@ static char *iniProccessFor(char *content, const int content_len,
 		logWarning("file: "__FILE__", line: %d, "
                 "invalid step: %d for range: %.*s, set step to 1",
                 __LINE__, step, rangeLen, pForRange);
-        step = 1;
-        count = 0;
+        *offset = (pEnd + _PREPROCESS_TAG_LEN_ENDFOR) - content;
+        return content;
     }
     else
     {
@@ -1659,7 +1659,8 @@ static char *iniProccessFor(char *content, const int content_len,
             logWarning("file: "__FILE__", line: %d, "
                     "invalid step: %d for range: %.*s", __LINE__,
                     step, rangeLen, pForRange);
-            count = 0;
+            *offset = (pEnd + _PREPROCESS_TAG_LEN_ENDFOR) - content;
+            return content;
         }
     }
 
