@@ -63,14 +63,20 @@ typedef struct {
 } DynamicContents;
 
 typedef struct {
+    int offset;  //deal offset
+    HashArray *vars;  //variables with #@set
+} SetDirectiveVars;
+
+typedef struct {
     bool used;
     IniContext *context;
     DynamicContents dynamicContents;
+    SetDirectiveVars set;
 } CDCPair;
 
 static int g_dynamic_content_count = 0;
 static int g_dynamic_content_index = 0;
-static CDCPair g_dynamic_contents[_MAX_DYNAMIC_CONTENTS] = {{false, NULL, {0, 0, NULL}}};
+static CDCPair g_dynamic_contents[_MAX_DYNAMIC_CONTENTS] = {{false, NULL, {0, 0, NULL}, {0, NULL}}};
 
 //dynamic alloced contents which will be freed when destroy
 
@@ -688,12 +694,12 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 	return result;
 }
 
-static DynamicContents *iniAllocDynamicContent(IniContext *pContext)
+static CDCPair *iniGetCDCPair(IniContext *pContext)
 {
     int i;
     if (g_dynamic_contents[g_dynamic_content_index].context == pContext)
     {
-        return &g_dynamic_contents[g_dynamic_content_index].dynamicContents;
+        return g_dynamic_contents + g_dynamic_content_index;
     }
 
     if (g_dynamic_content_count > 0)
@@ -703,9 +709,21 @@ static DynamicContents *iniAllocDynamicContent(IniContext *pContext)
             if (g_dynamic_contents[i].context == pContext)
             {
                 g_dynamic_content_index = i;
-                return &g_dynamic_contents[g_dynamic_content_index].dynamicContents;
+                return g_dynamic_contents + g_dynamic_content_index;
             }
         }
+    }
+
+    return NULL;
+}
+
+static CDCPair *iniAllocCDCPair(IniContext *pContext)
+{
+    int i;
+    CDCPair *pair;
+    if ((pair=iniGetCDCPair(pContext)) != NULL)
+    {
+        return pair;
     }
 
     if (g_dynamic_content_count == _MAX_DYNAMIC_CONTENTS)
@@ -721,11 +739,72 @@ static DynamicContents *iniAllocDynamicContent(IniContext *pContext)
             g_dynamic_contents[i].context = pContext;
             g_dynamic_content_index = i;
             g_dynamic_content_count++;
-            return &g_dynamic_contents[g_dynamic_content_index].dynamicContents;
+            return g_dynamic_contents + g_dynamic_content_index;
         }
     }
 
     return NULL;
+}
+
+static DynamicContents *iniAllocDynamicContent(IniContext *pContext)
+{
+    static CDCPair *pair;
+
+    pair = iniAllocCDCPair(pContext);
+    if (pair == NULL)
+    {
+        return NULL;
+    }
+    return &pair->dynamicContents;
+}
+
+static SetDirectiveVars *iniGetVars(IniContext *pContext)
+{
+    static CDCPair *pair;
+
+    pair = iniGetCDCPair(pContext);
+    if (pair == NULL)
+    {
+        return NULL;
+    }
+    return &pair->set;
+}
+
+static SetDirectiveVars *iniAllocVars(IniContext *pContext, const bool initVars)
+{
+    static CDCPair *pair;
+    SetDirectiveVars *set;
+
+    set = iniGetVars(pContext);
+    if (set == NULL)
+    {
+        pair = iniAllocCDCPair(pContext);
+        if (pair == NULL)
+        {
+            return NULL;
+        }
+        set = &pair->set;
+    }
+
+    if (initVars && set->vars == NULL)
+    {
+        set->vars = (HashArray *)malloc(sizeof(HashArray));
+        if (set->vars == NULL)
+        {
+            logWarning("file: "__FILE__", line: %d, "
+                    "malloc %d bytes fail",
+                    __LINE__, (int)sizeof(HashArray));
+            return NULL;
+        }
+        if (hash_init_ex(set->vars, simple_hash, 17, 0.75, 0, true) != 0)
+        {
+            free(set->vars);
+            set->vars = NULL;
+            return NULL;
+        }
+    }
+
+    return set;
 }
 
 static void iniFreeDynamicContent(IniContext *pContext)
@@ -1095,16 +1174,29 @@ static bool iniCalcCondition(char *condition, const int condition_len,
     else
     {
         char *value;
-        value = (char *)hash_find(pContext->set.vars, varStr, varLen);
-        if (value == NULL)
+        SetDirectiveVars *set;
+
+        set = iniGetVars(pContext);
+        if (set != NULL && set->vars != NULL)
+        {
+            value = (char *)hash_find(set->vars, varStr, varLen);
+            if (value == NULL)
+            {
+                logWarning("file: "__FILE__", line: %d, "
+                        "variable \"%.*s\" not exist", __LINE__,
+                        varLen, varStr);
+            }
+            else
+            {
+                return iniMatchValue(value, values, count);
+            }
+        }
+        else
         {
             logWarning("file: "__FILE__", line: %d, "
                     "variable \"%.*s\" not exist", __LINE__,
                     varLen, varStr);
-        }
-        else
-        {
-            return iniMatchValue(value, values, count);
+            return false;
         }
     }
 
@@ -1159,6 +1251,7 @@ static int iniDoProccessSet(char *pSet, char **ppSetEnd,
     char *key;
     char *value;
     int value_len;
+    SetDirectiveVars *set;
 
     pStart = pSet + _PREPROCESS_TAG_LEN_SET;
     *ppSetEnd = strchr(pStart, '\n');
@@ -1184,21 +1277,9 @@ static int iniDoProccessSet(char *pSet, char **ppSetEnd,
         return EFAULT;
     }
 
-    if (pContext->set.vars == NULL)
+    if ((set=iniAllocVars(pContext, true)) == NULL)
     {
-        pContext->set.vars = (HashArray *)malloc(sizeof(HashArray));
-        if (pContext->set.vars == NULL)
-        {
-            logWarning("file: "__FILE__", line: %d, "
-                    "malloc %d bytes fail",
-                    __LINE__, (int)sizeof(HashArray));
-            return ENOMEM;
-        }
-        if ((result=hash_init_ex(pContext->set.vars,
-                        simple_hash, 17, 0.75, 0, true)) != 0)
-        {
-            return result;
-        }
+        return ENOMEM;
     }
 
     key = trim(parts[0]);
@@ -1226,7 +1307,7 @@ static int iniDoProccessSet(char *pSet, char **ppSetEnd,
         value_len = strlen(value);
     }
 
-    return hash_insert_ex(pContext->set.vars, key, strlen(key),
+    return hash_insert_ex(set->vars, key, strlen(key),
             value, value_len + 1, false);
 }
 
@@ -1234,11 +1315,17 @@ static int iniProccessSet(char *content, char *pEnd,
         IniContext *pContext)
 {
     int result;
+    SetDirectiveVars *set;
     char *pStart;
     char *pSet;
     char *pSetEnd;
 
-    pStart = content + pContext->set.offset;
+    if ((set=iniAllocVars(pContext, false)) == NULL)
+    {
+        return ENOMEM;
+    }
+
+    pStart = content + set->offset;
     while (pStart < pEnd)
     {
         pSet = iniFindTag(content, pStart, _PREPROCESS_TAG_STR_SET,
@@ -1270,7 +1357,7 @@ static int iniProccessSet(char *content, char *pEnd,
         }
     }
 
-    pContext->set.offset = pEnd - content;
+    set->offset = pEnd - content;
     return 0;
 }
 
@@ -1827,6 +1914,7 @@ static int iniFreeHashData(const int index, const HashData *data, void *args)
 
 void iniFreeContext(IniContext *pContext)
 {
+    SetDirectiveVars *set;
 	if (pContext == NULL)
 	{
 		return;
@@ -1840,16 +1928,16 @@ void iniFreeContext(IniContext *pContext)
 
 	hash_walk(&pContext->sections, iniFreeHashData, NULL);
 	hash_destroy(&pContext->sections);
-    iniFreeDynamicContent(pContext);
 
-    if (pContext->set.vars != NULL)
+    set = iniGetVars(pContext);
+    if (set != NULL && set->vars != NULL)
     {
-        hash_destroy(pContext->set.vars);
-        free(pContext->set.vars);
-        pContext->set.vars = NULL;
+        hash_destroy(set->vars);
+        free(set->vars);
+        set->vars = NULL;
     }
+    iniFreeDynamicContent(pContext);
 }
-
 
 #define INI_FIND_ITEM(szSectionName, szItemName, pContext, pSection, \
         targetItem, pItem, return_val) \

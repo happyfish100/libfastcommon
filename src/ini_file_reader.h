@@ -52,10 +52,6 @@ typedef struct
 	IniSection *current_section; //for load from ini file
 	char config_path[MAX_PATH_SIZE];  //save the config filepath
     bool ignore_annotation;
-    struct {
-        int offset;  //deal offset
-        HashArray *vars;  //variables with #@set
-    } set;
 } IniContext;
 
 #ifdef __cplusplus
