@@ -907,7 +907,7 @@ static LogContext *get_logger_context(const char *filename, const int time_preci
          if (s == NULL) { \
              ZVAL_NULL(&z); \
          } else { \
-             ZVAL_STRINGL(&z, s, len, 0); \
+             ZEND_ZVAL_STRINGL(&z, s, len, 0); \
          } \
     } while (0)
 
