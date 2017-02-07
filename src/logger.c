@@ -940,7 +940,8 @@ static void doLogEx(LogContext *pContext, struct timeval *tv, \
 	int buff_len;
 	int result;
 
-	if (pContext->time_precision == LOG_TIME_PRECISION_SECOND)
+	if ((pContext->time_precision == LOG_TIME_PRECISION_SECOND)
+            || (pContext->time_precision == LOG_TIME_PRECISION_NONE))
 	{
 		time_fragment = 0;
 	}
@@ -956,7 +957,6 @@ static void doLogEx(LogContext *pContext, struct timeval *tv, \
 		}
 	}
 
-	localtime_r(&tv->tv_sec, &tm);
 	if (bNeedLock && (result=pthread_mutex_lock(&pContext->log_thread_lock)) != 0)
 	{
 		fprintf(stderr, "file: "__FILE__", line: %d, " \
@@ -983,21 +983,25 @@ static void doLogEx(LogContext *pContext, struct timeval *tv, \
 		log_fsync(pContext, false);
 	}
 
-	if (pContext->time_precision == LOG_TIME_PRECISION_SECOND)
-	{
-		buff_len = sprintf(pContext->pcurrent_buff, \
-			"[%04d-%02d-%02d %02d:%02d:%02d] ", \
-			tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday, \
-			tm.tm_hour, tm.tm_min, tm.tm_sec);
-	}
-	else
-	{
-		buff_len = sprintf(pContext->pcurrent_buff, \
-			"[%04d-%02d-%02d %02d:%02d:%02d.%03d] ", \
-			tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday, \
-			tm.tm_hour, tm.tm_min, tm.tm_sec, time_fragment);
-	}
-	pContext->pcurrent_buff += buff_len;
+    if (pContext->time_precision != LOG_TIME_PRECISION_NONE)
+    {
+        localtime_r(&tv->tv_sec, &tm);
+        if (pContext->time_precision == LOG_TIME_PRECISION_SECOND)
+        {
+            buff_len = sprintf(pContext->pcurrent_buff, \
+                    "[%04d-%02d-%02d %02d:%02d:%02d] ", \
+                    tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday, \
+                    tm.tm_hour, tm.tm_min, tm.tm_sec);
+        }
+        else
+        {
+            buff_len = sprintf(pContext->pcurrent_buff, \
+                    "[%04d-%02d-%02d %02d:%02d:%02d.%03d] ", \
+                    tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday, \
+                    tm.tm_hour, tm.tm_min, tm.tm_sec, time_fragment);
+        }
+        pContext->pcurrent_buff += buff_len;
+    }
 
 	if (caption != NULL)
 	{
@@ -1033,7 +1037,7 @@ void log_it_ex2(LogContext *pContext, const char *caption, \
 		tv.tv_sec = get_current_time();
 		tv.tv_usec = 0;
 	}
-	else
+	else if (pContext->time_precision != LOG_TIME_PRECISION_NONE)
 	{
 		gettimeofday(&tv, NULL);
 	}

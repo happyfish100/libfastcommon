@@ -119,12 +119,29 @@ ZEND_RSRC_DTOR_FUNC(id_generator_dtor)
 
 }
 
+#define FASTCOMMON_REGISTER_CHAR_STR_CONSTANT(key, c, buff) \
+    *(buff) = c;   \
+    REGISTER_STRING_CONSTANT(key, buff, CONST_CS | CONST_PERSISTENT)
+
 PHP_MINIT_FUNCTION(fastcommon)
 {
-	log_init();
+    static char buff[16];
+
+    log_init();
     le_consumer = zend_register_list_destructors_ex(id_generator_dtor, NULL,
             PHP_IDG_RESOURCE_NAME, module_number);
-	return SUCCESS;
+
+    memset(buff, 0, sizeof(buff));
+    FASTCOMMON_REGISTER_CHAR_STR_CONSTANT("FASTCOMMON_LOG_TIME_PRECISION_SECOND",
+            LOG_TIME_PRECISION_SECOND, buff);
+    FASTCOMMON_REGISTER_CHAR_STR_CONSTANT("FASTCOMMON_LOG_TIME_PRECISION_MSECOND",
+            LOG_TIME_PRECISION_MSECOND, buff + 2);
+    FASTCOMMON_REGISTER_CHAR_STR_CONSTANT("FASTCOMMON_LOG_TIME_PRECISION_USECOND",
+            LOG_TIME_PRECISION_USECOND, buff + 4);
+    FASTCOMMON_REGISTER_CHAR_STR_CONSTANT("FASTCOMMON_LOG_TIME_PRECISION_NONE",
+            LOG_TIME_PRECISION_NONE, buff + 6);
+
+    return SUCCESS;
 }
 
 PHP_MSHUTDOWN_FUNCTION(fastcommon)
@@ -835,7 +852,7 @@ static LogContext *fetch_logger_context(const char *filename)
     return NULL;
 }
 
-static LogContext *alloc_logger_context(const char *filename)
+static LogContext *alloc_logger_context(const char *filename, const int time_precision)
 {
     LogContext *ctx;
     if (logger_array.alloc <= logger_array.count) {
@@ -868,19 +885,20 @@ static LogContext *alloc_logger_context(const char *filename)
     if (log_set_filename_ex(ctx, filename) != 0) {
         return NULL;
     }
+    log_set_time_precision(ctx, time_precision);
 
     logger_array.count++;
     return ctx;
 }
 
-static LogContext *get_logger_context(const char *filename)
+static LogContext *get_logger_context(const char *filename, const int time_precision)
 {
     LogContext *ctx;
     if ((ctx=fetch_logger_context(filename)) != NULL) {
         return ctx;
     }
 
-    return alloc_logger_context(filename);
+    return alloc_logger_context(filename, time_precision);
 }
 
 #define _INIT_ZSTRING(z, s, len) \
@@ -933,7 +951,15 @@ ZEND_FUNCTION(fastcommon_error_log)
 
     if (message_type == 3 && filename != NULL) {
         LogContext *ctx;
-        if ((ctx=get_logger_context(filename)) != NULL) {
+        int time_precision;
+
+        if (extra_headers == NULL) {
+            time_precision = LOG_TIME_PRECISION_NONE;
+        } else {
+            time_precision = extra_headers[0];
+        }
+
+        if ((ctx=get_logger_context(filename, time_precision)) != NULL) {
             if (msg_len > 0 && message[msg_len - 1] == '\n') {
                 --msg_len;
             }

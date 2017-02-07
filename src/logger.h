@@ -21,7 +21,8 @@ extern "C" {
 //log time precision
 #define LOG_TIME_PRECISION_SECOND	's'  //second
 #define LOG_TIME_PRECISION_MSECOND	'm'  //millisecond
-#define LOG_TIME_PRECISION_USSECOND	'u'  //microsecond
+#define LOG_TIME_PRECISION_USECOND	'u'  //microsecond
+#define LOG_TIME_PRECISION_NONE 	'0'  //do NOT output timestamp
 
 //log compress flags
 #define LOG_COMPRESS_FLAGS_NONE       0
