@@ -978,7 +978,7 @@ ZEND_FUNCTION(fastcommon_error_log)
         if (error_log_func == NULL) {
             error_log_func = &php_error_log;
             INIT_ZVAL(php_error_log);
-            ZVAL_STRINGL(&php_error_log, "error_log",
+            ZEND_ZVAL_STRINGL(&php_error_log, "error_log",
                     sizeof("error_log") - 1, 1);
         }
 
