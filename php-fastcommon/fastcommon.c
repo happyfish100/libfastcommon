@@ -32,6 +32,16 @@ static int le_consumer;
 
 static PHPIDGContext *last_idg_context = NULL;
 
+typedef struct {
+    int alloc;
+    int count;
+    LogContext *contexts;
+} LoggerArray;
+
+static LoggerArray logger_array = {0, 0, NULL};
+static zval php_error_log;
+static zval *error_log_func = NULL;
+
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 3)
 const zend_fcall_info empty_fcall_info = { 0, NULL, NULL, NULL, NULL, 0, NULL, NULL, 0 };
 #undef ZEND_BEGIN_ARG_INFO_EX
@@ -58,6 +68,7 @@ const zend_fcall_info empty_fcall_info = { 0, NULL, NULL, NULL, NULL, 0, NULL, N
 		ZEND_FE(fastcommon_get_ifconfigs, NULL)
 		ZEND_FE(fastcommon_get_cpu_count, NULL)
 		ZEND_FE(fastcommon_get_sysinfo, NULL)
+		ZEND_FE(fastcommon_error_log, NULL)
 		{NULL, NULL, NULL}  /* Must be the last line */
 	};
 
@@ -118,6 +129,15 @@ PHP_MINIT_FUNCTION(fastcommon)
 
 PHP_MSHUTDOWN_FUNCTION(fastcommon)
 {
+    if (logger_array.count > 0) {
+        LogContext *ctx;
+        LogContext *end;
+        end = logger_array.contexts + logger_array.count;
+        for (ctx=logger_array.contexts; ctx<end; ctx++) {
+            log_destroy_ex(ctx);
+        }
+    }
+
 	log_destroy();
 	return SUCCESS;
 }
@@ -797,3 +817,165 @@ ZEND_FUNCTION(fastcommon_get_sysinfo)
             info.procs);
 }
 
+static LogContext *fetch_logger_context(const char *filename)
+{
+    LogContext *ctx;
+    LogContext *end;
+
+    if (logger_array.count == 0) {
+        return NULL;
+    }
+
+    end = logger_array.contexts + logger_array.count;
+    for (ctx=logger_array.contexts; ctx<end; ctx++) {
+        if (strcmp(ctx->log_filename, filename) == 0) {
+            return ctx;
+        }
+    }
+    return NULL;
+}
+
+static LogContext *alloc_logger_context(const char *filename)
+{
+    LogContext *ctx;
+    if (logger_array.alloc <= logger_array.count) {
+        int alloc;
+        int bytes;
+        LogContext *contexts;
+
+        alloc = logger_array.alloc == 0 ? 2 : 2 * logger_array.alloc;
+        bytes = sizeof(LogContext) * alloc;
+        contexts = (LogContext *)malloc(bytes);
+        if (contexts == NULL) {
+            logError("file: "__FILE__", line: %d, "
+                    "malloc %d bytes fail", __LINE__, bytes);
+            return NULL;
+        }
+
+        if (logger_array.count > 0) {
+            memcpy(contexts, logger_array.contexts,
+                    sizeof(LogContext) * logger_array.count);
+            free(logger_array.contexts);
+        }
+        logger_array.contexts = contexts;
+        logger_array.alloc = alloc;
+    }
+
+    ctx = logger_array.contexts + logger_array.count;
+    if (log_init_ex(ctx) != 0) {
+        return NULL;
+    }
+    if (log_set_filename_ex(ctx, filename) != 0) {
+        return NULL;
+    }
+
+    logger_array.count++;
+    return ctx;
+}
+
+static LogContext *get_logger_context(const char *filename)
+{
+    LogContext *ctx;
+    if ((ctx=fetch_logger_context(filename)) != NULL) {
+        return ctx;
+    }
+
+    return alloc_logger_context(filename);
+}
+
+#define _INIT_ZSTRING(z, s, len) \
+    do { \
+         INIT_ZVAL(z); \
+         if (s == NULL) { \
+             ZVAL_NULL(&z); \
+         } else { \
+             ZVAL_STRINGL(&z, s, len, 0); \
+         } \
+    } while (0)
+
+/*
+boolean fastcommon_error_log(string $message [, int $message_type = 0,
+    string $destination = null, string $extra_headers = null])
+return true on success, false on failure
+*/
+ZEND_FUNCTION(fastcommon_error_log)
+{
+    int argc;
+    zend_size_t message_type;
+    char *message;
+    char *filename;
+    char *extra_headers;
+    long msg_len;
+    long filename_len;
+    long header_len;
+
+    argc = ZEND_NUM_ARGS();
+    if (argc == 0) {
+        logError("file: "__FILE__", line: %d, "
+                "fastcommon_error_log parameters count: %d is invalid",
+                __LINE__, argc);
+        RETURN_BOOL(false);
+    }
+
+    message_type = 0;
+    filename = NULL;
+    extra_headers = NULL;
+    filename_len = 0;
+    header_len = 0;
+    if (zend_parse_parameters(argc TSRMLS_CC, "s|lss", &message, &msg_len,
+                &message_type, &filename, &filename_len,
+                &extra_headers, &header_len) == FAILURE)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "zend_parse_parameters fail!", __LINE__);
+        RETURN_BOOL(false);
+    }
+
+    if (message_type == 3 && filename != NULL) {
+        LogContext *ctx;
+        if ((ctx=get_logger_context(filename)) != NULL) {
+            if (msg_len > 0 && message[msg_len - 1] == '\n') {
+                --msg_len;
+            }
+            log_it_ex2(ctx, NULL, message, msg_len, false, false);
+            RETURN_BOOL(true);
+        }
+    }
+
+    {
+        zval *args[4];
+        zval zmessage;
+        zval ztype;
+        zval zfilename;
+        zval zheader;
+
+        if (error_log_func == NULL) {
+            error_log_func = &php_error_log;
+            INIT_ZVAL(php_error_log);
+            ZVAL_STRINGL(&php_error_log, "error_log",
+                    sizeof("error_log") - 1, 1);
+        }
+
+        _INIT_ZSTRING(zmessage, message, msg_len);
+
+        INIT_ZVAL(ztype);
+        ZVAL_LONG(&ztype, message_type);
+
+        _INIT_ZSTRING(zfilename, filename, filename_len);
+        _INIT_ZSTRING(zheader, extra_headers, header_len);
+
+        args[0] = &zmessage;
+        args[1] = &ztype;
+        args[2] = &zfilename;
+        args[3] = &zheader;
+        if (zend_call_user_function_wrapper(EG(function_table), NULL,
+                    error_log_func, return_value,
+                    4, args TSRMLS_CC) == FAILURE)
+        {
+            logError("file: "__FILE__", line: %d, "
+                    "call function: %s fail", __LINE__,
+                    Z_STRVAL_P(error_log_func));
+            RETURN_BOOL(false);
+        }
+    }
+}

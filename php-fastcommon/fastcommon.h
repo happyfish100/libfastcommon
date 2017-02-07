@@ -36,6 +36,8 @@ ZEND_FUNCTION(fastcommon_get_ifconfigs);
 ZEND_FUNCTION(fastcommon_get_cpu_count);
 ZEND_FUNCTION(fastcommon_get_sysinfo);
 
+ZEND_FUNCTION(fastcommon_error_log);
+
 #ifdef __cplusplus
 }
 #endif
