@@ -929,7 +929,7 @@ static LogContext *get_logger_context(const char *filename, const int time_preci
 #define FASTCOMMON_ALLOCA_FREE(s) \
     do { \
         if (s != NULL) { \
-            ZSTR_ALLOCA_FREE(sz_##s, use_heap_#ss); \
+            ZSTR_ALLOCA_FREE(sz_##s, use_heap_##s); \
         } \
     } while (0)
 
@@ -1005,9 +1005,9 @@ ZEND_FUNCTION(fastcommon_error_log)
         zend_string *sz_message;
         zend_string *sz_filename;
         zend_string *sz_headers;
-        bool use_heap_msg;
-        bool use_heap_filename;
-        bool use_heap_header;
+        bool use_heap_message = false;
+        bool use_heap_filename = false;
+        bool use_heap_headers = false;
 #endif
 
         if (error_log_func == NULL) {
