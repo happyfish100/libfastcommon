@@ -928,7 +928,7 @@ static LogContext *get_logger_context(const char *filename, const int time_preci
 
 #define FASTCOMMON_ALLOCA_FREE(s) \
     do { \
-        if (s != NULL) { \
+        if (sz_##s != NULL) { \
             ZSTR_ALLOCA_FREE(sz_##s, use_heap_##s); \
         } \
     } while (0)
@@ -1002,9 +1002,9 @@ ZEND_FUNCTION(fastcommon_error_log)
         zval zfilename;
         zval zheaders;
 #if PHP_MAJOR_VERSION >= 7
-        zend_string *sz_message;
-        zend_string *sz_filename;
-        zend_string *sz_headers;
+        zend_string *sz_message = NULL;
+        zend_string *sz_filename = NULL;
+        zend_string *sz_headers = NULL;
         bool use_heap_message = false;
         bool use_heap_filename = false;
         bool use_heap_headers = false;
