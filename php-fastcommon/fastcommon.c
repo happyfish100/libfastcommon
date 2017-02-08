@@ -901,31 +901,55 @@ static LogContext *get_logger_context(const char *filename, const int time_preci
     return alloc_logger_context(filename, time_precision);
 }
 
-#define _INIT_ZSTRING(z, s, len) \
+#if PHP_MAJOR_VERSION < 7
+
+#define FASTCOMMON_INIT_ZSTRING(z, s, len) \
     do { \
-         INIT_ZVAL(z); \
+        INIT_ZVAL(z); \
          if (s == NULL) { \
              ZVAL_NULL(&z); \
          } else { \
-             ZEND_ZVAL_STRINGL(&z, s, len, 0); \
+             ZVAL_STRINGL(&z, s, len, 0); \
          } \
     } while (0)
 
+#else
+
+#define FASTCOMMON_INIT_ZSTRING(z, s, len) \
+    do { \
+         if (s == NULL) { \
+             INIT_ZVAL(z); \
+             ZVAL_NULL(&z); \
+         } else { \
+             ZSTR_ALLOCA_INIT(sz_##s, s, len, use_heap_##s); \
+             ZVAL_NEW_STR(&z, sz_##s); \
+         } \
+    } while (0)
+
+#define FASTCOMMON_ALLOCA_FREE(s) \
+    do { \
+        if (s != NULL) { \
+            ZSTR_ALLOCA_FREE(sz_##s, use_heap_#ss); \
+        } \
+    } while (0)
+
+#endif
+
 /*
 boolean fastcommon_error_log(string $message [, int $message_type = 0,
-    string $destination = null, string $extra_headers = null])
+    string $destination = null, string $headers = null])
 return true on success, false on failure
 */
 ZEND_FUNCTION(fastcommon_error_log)
 {
     int argc;
-    zend_size_t message_type;
+    long message_type;
     char *message;
     char *filename;
-    char *extra_headers;
-    long msg_len;
-    long filename_len;
-    long header_len;
+    char *headers;
+    zend_size_t msg_len;
+    zend_size_t filename_len;
+    zend_size_t header_len;
 
     argc = ZEND_NUM_ARGS();
     if (argc == 0) {
@@ -935,14 +959,16 @@ ZEND_FUNCTION(fastcommon_error_log)
         RETURN_BOOL(false);
     }
 
+    message = NULL;
     message_type = 0;
     filename = NULL;
-    extra_headers = NULL;
+    headers = NULL;
+    msg_len = 0;
     filename_len = 0;
     header_len = 0;
     if (zend_parse_parameters(argc TSRMLS_CC, "s|lss", &message, &msg_len,
                 &message_type, &filename, &filename_len,
-                &extra_headers, &header_len) == FAILURE)
+                &headers, &header_len) == FAILURE)
     {
         logError("file: "__FILE__", line: %d, "
                 "zend_parse_parameters fail!", __LINE__);
@@ -953,10 +979,10 @@ ZEND_FUNCTION(fastcommon_error_log)
         LogContext *ctx;
         int time_precision;
 
-        if (extra_headers == NULL) {
+        if (headers == NULL) {
             time_precision = LOG_TIME_PRECISION_NONE;
         } else {
-            time_precision = extra_headers[0];
+            time_precision = headers[0];
         }
 
         if ((ctx=get_logger_context(filename, time_precision)) != NULL) {
@@ -969,11 +995,20 @@ ZEND_FUNCTION(fastcommon_error_log)
     }
 
     {
+        int result;
         zval *args[4];
         zval zmessage;
         zval ztype;
         zval zfilename;
-        zval zheader;
+        zval zheaders;
+#if PHP_MAJOR_VERSION >= 7
+        zend_string *sz_message;
+        zend_string *sz_filename;
+        zend_string *sz_headers;
+        bool use_heap_msg;
+        bool use_heap_filename;
+        bool use_heap_header;
+#endif
 
         if (error_log_func == NULL) {
             error_log_func = &php_error_log;
@@ -982,26 +1017,31 @@ ZEND_FUNCTION(fastcommon_error_log)
                     sizeof("error_log") - 1, 1);
         }
 
-        _INIT_ZSTRING(zmessage, message, msg_len);
+        FASTCOMMON_INIT_ZSTRING(zmessage, message, msg_len);
 
         INIT_ZVAL(ztype);
         ZVAL_LONG(&ztype, message_type);
 
-        _INIT_ZSTRING(zfilename, filename, filename_len);
-        _INIT_ZSTRING(zheader, extra_headers, header_len);
+        FASTCOMMON_INIT_ZSTRING(zfilename, filename, filename_len);
+        FASTCOMMON_INIT_ZSTRING(zheaders, headers, header_len);
 
         args[0] = &zmessage;
         args[1] = &ztype;
         args[2] = &zfilename;
-        args[3] = &zheader;
-        if (zend_call_user_function_wrapper(EG(function_table), NULL,
-                    error_log_func, return_value,
-                    4, args TSRMLS_CC) == FAILURE)
-        {
+        args[3] = &zheaders;
+        result = zend_call_user_function_wrapper(EG(function_table), NULL,
+                    error_log_func, return_value, 4, args TSRMLS_CC);
+#if PHP_MAJOR_VERSION >= 7
+        FASTCOMMON_ALLOCA_FREE(message);
+        FASTCOMMON_ALLOCA_FREE(filename);
+        FASTCOMMON_ALLOCA_FREE(headers);
+#endif
+        if (result == FAILURE) {
             logError("file: "__FILE__", line: %d, "
                     "call function: %s fail", __LINE__,
                     Z_STRVAL_P(error_log_func));
             RETURN_BOOL(false);
         }
+        RETURN_BOOL(true);
     }
 }

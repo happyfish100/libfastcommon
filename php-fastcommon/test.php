@@ -67,6 +67,7 @@ fastcommon_error_log("this is a test11\n", 3, "/tmp/test1.log", FASTCOMMON_LOG_T
 fastcommon_error_log("this is a test12\n", 3, "/tmp/test1.log", FASTCOMMON_LOG_TIME_PRECISION_MSECOND);
 fastcommon_error_log("this is a test21\n", 3, "/tmp/test2.log", FASTCOMMON_LOG_TIME_PRECISION_USECOND);
 fastcommon_error_log("this is a test22\n", 3, "/tmp/test2.log", FASTCOMMON_LOG_TIME_PRECISION_USECOND);
+fastcommon_error_log("this is a test23\n", 3, "/tmp/test2.log", FASTCOMMON_LOG_TIME_PRECISION_USECOND);
 fastcommon_error_log("this is a test31\n", 3, "/tmp/test3.log", FASTCOMMON_LOG_TIME_PRECISION_SECOND);
 fastcommon_error_log("this is a test32\n", 3, "/tmp/test3.log", FASTCOMMON_LOG_TIME_PRECISION_SECOND);
 fastcommon_error_log("this is a test33\n", 3, "/tmp/test3.log", FASTCOMMON_LOG_TIME_PRECISION_SECOND);
