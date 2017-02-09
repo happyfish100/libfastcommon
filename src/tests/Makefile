@@ -5,7 +5,7 @@ INC_PATH = -I/usr/include/fastcommon
 LIB_PATH = -lfastcommon -lpthread
 
 ALL_PRGS = test_allocator test_skiplist test_multi_skiplist test_mblock test_blocked_queue \
-           test_id_generator test_ini_parser test_char_convert test_char_convert_loader
+           test_id_generator test_ini_parser test_char_convert test_char_convert_loader test_logger
 
 all: $(ALL_PRGS)
 .c:

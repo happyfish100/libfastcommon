@@ -1051,7 +1051,12 @@ void log_it_ex1(LogContext *pContext, const int priority, \
 	bool bNeedSync;
 	char *caption;
 
-	switch(priority)
+	if (pContext->log_level < priority)
+	{
+		return;
+	}
+
+	switch (priority)
 	{
 		case LOG_DEBUG:
 			bNeedSync = true;
@@ -1100,8 +1105,13 @@ void log_it_ex(LogContext *pContext, const int priority, const char *format, ...
 	char text[LINE_MAX];
 	char *caption;
 	int len;
-
 	va_list ap;
+
+	if (pContext->log_level < priority)
+	{
+		return;
+	}
+
 	va_start(ap, format);
 	len = vsnprintf(text, sizeof(text), format, ap);
 	va_end(ap);
@@ -1110,7 +1120,7 @@ void log_it_ex(LogContext *pContext, const int priority, const char *format, ...
         len = sizeof(text) - 1;
     }
 
-	switch(priority)
+	switch (priority)
 	{
 		case LOG_DEBUG:
 			bNeedSync = true;
