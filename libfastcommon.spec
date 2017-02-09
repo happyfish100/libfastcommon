@@ -3,7 +3,7 @@
 %define LibFastcommonDebuginfo  libfastcommon-debuginfo
 
 Name: libfastcommon
-Version: 1.0.34
+Version: 1.0.35
 Release: 1%{?dist}
 Summary: c common functions library extracted from my open source projects FastDFS
 License: GPL
