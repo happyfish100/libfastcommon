@@ -624,9 +624,26 @@ bool isLeadingSpacesLine(const char *content, const char *current);
 */
 bool isTrailingSpacesLine(const char *tail, const char *end);
 
+/** write to file
+ *  parameters:
+ *  	fd: the fd to write
+ *  	buf: the buffer
+ *  	nbyte: the buffer length
+ *  return: written bytes for success, -1 when fail
+*/
+ssize_t fc_safe_write(int fd, const char *buf, const size_t nbyte);
+
+/** lock and write to file
+ *  parameters:
+ *  	fd: the fd to write
+ *  	buf: the buffer
+ *  	nbyte: the buffer length
+ *  return: written bytes for success, -1 when fail
+*/
+ssize_t fc_lock_write(int fd, const char *buf, const size_t nbyte);
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif
-

@@ -3,7 +3,7 @@
 function test_fastcommon_error_log()
 {
     $start = microtime(true);
-    for ($i=0; $i<10240; $i++)
+    for ($i=0; $i<102400; $i++)
     {
         fastcommon_error_log("this is a test\n", 3, "/tmp/test.log");
         fastcommon_error_log("this is a test11\n", 3, "/tmp/test1.log", FASTCOMMON_LOG_TIME_PRECISION_MSECOND);
@@ -24,7 +24,7 @@ function test_fastcommon_error_log()
 function test_error_log()
 {
     $start = microtime(true);
-    for ($i=0; $i<10240; $i++)
+    for ($i=0; $i<102400; $i++)
     {
         error_log("this is a test\n", 3, "/tmp/test.log");
         error_log("this is a test11\n", 3, "/tmp/test1.log", FASTCOMMON_LOG_TIME_PRECISION_MSECOND);
@@ -43,5 +43,8 @@ function test_error_log()
 }
 
 test_fastcommon_error_log();
+echo "sleep ...\n";
+sleep(2);
+echo "sleep done.\n";
 test_error_log();
 

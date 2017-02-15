@@ -2446,3 +2446,62 @@ bool isTrailingSpacesLine(const char *tail, const char *end)
     }
     return (p == end || *p == '\n');
 }
+
+ssize_t fc_safe_write(int fd, const char *buf, const size_t nbyte)
+{
+    int n;
+    int remain;
+    const char *p;
+
+    n = write(fd, buf, nbyte);
+    if (n < 0)
+    {
+        if (errno != EINTR)
+        {
+            return -1;
+        }
+        n = 0;
+    }
+    else if (n == nbyte)
+    {
+        return nbyte;
+    }
+
+    p = buf + n;
+    remain = nbyte - n;
+    while (remain > 0)
+    {
+        n = write(fd, p, remain);
+        if (n < 0)
+        {
+            int written;
+            if (errno == EINTR)
+            {
+                continue;
+            }
+
+            written = nbyte - remain;
+            return written > 0 ? written : -1;
+        }
+
+        p += n;
+        remain -= n;
+    }
+
+    return nbyte;
+}
+
+ssize_t fc_lock_write(int fd, const char *buf, const size_t nbyte)
+{
+    int lock_result;
+    int result;
+
+    lock_result = file_write_lock(fd);
+    result = fc_safe_write(fd, buf, nbyte);
+    if (lock_result == 0)
+    {
+        file_unlock(fd);
+    }
+
+    return result;
+}

@@ -25,7 +25,7 @@
  * 				-3 : malloc memory to subfolder is error
  * 				-4 : create dir is error;
  */
-int mkdir_by_cascading(const char *path,mode_t mode);
+int mkdir_by_cascading(const char *path, mode_t mode);
 
 /*
  * check the first parameter is the dir

@@ -1,5 +1,7 @@
 #include "php7_ext_wrapper.h"
 #include "ext/standard/info.h"
+#include "ext/standard/file.h"
+#include "ext/standard/flock_compat.h"
 #include <zend_extensions.h>
 #include <zend_exceptions.h>
 #include <string.h>
@@ -36,11 +38,25 @@ typedef struct {
     int alloc;
     int count;
     LogContext *contexts;
-} LoggerArray;
+} PHPLoggerArray;
 
-static LoggerArray logger_array = {0, 0, NULL};
+typedef struct {
+    char *filename;
+    int fd;
+} PHPFileContext;
+
+typedef struct {
+    int alloc;
+    int count;
+    PHPFileContext *contexts;
+} PHPFileArray;
+
+static PHPLoggerArray logger_array = {0, 0, NULL};
+static PHPFileArray file_array = {0, 0, NULL};
 static zval php_error_log;
+static zval php_file_put_contents;
 static zval *error_log_func = NULL;
+static zval *file_put_contents_func = NULL;
 
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 3)
 const zend_fcall_info empty_fcall_info = { 0, NULL, NULL, NULL, NULL, 0, NULL, NULL, 0 };
@@ -69,6 +85,7 @@ const zend_fcall_info empty_fcall_info = { 0, NULL, NULL, NULL, NULL, 0, NULL, N
 		ZEND_FE(fastcommon_get_cpu_count, NULL)
 		ZEND_FE(fastcommon_get_sysinfo, NULL)
 		ZEND_FE(fastcommon_error_log, NULL)
+		ZEND_FE(fastcommon_file_put_contents, NULL)
 		{NULL, NULL, NULL}  /* Must be the last line */
 	};
 
@@ -147,11 +164,23 @@ PHP_MINIT_FUNCTION(fastcommon)
 PHP_MSHUTDOWN_FUNCTION(fastcommon)
 {
     if (logger_array.count > 0) {
-        LogContext *ctx;
-        LogContext *end;
-        end = logger_array.contexts + logger_array.count;
-        for (ctx=logger_array.contexts; ctx<end; ctx++) {
-            log_destroy_ex(ctx);
+        LogContext *lctx;
+        LogContext *lend;
+        lend = logger_array.contexts + logger_array.count;
+        for (lctx=logger_array.contexts; lctx<lend; lctx++) {
+            log_destroy_ex(lctx);
+        }
+    }
+
+    if (file_array.count > 0) {
+        PHPFileContext *fctx;
+        PHPFileContext *fend;
+        fend = file_array.contexts + file_array.count;
+        for (fctx=file_array.contexts; fctx<fend; fctx++) {
+            if (fctx->fd >= 0) {
+                close(fctx->fd);
+                fctx->fd = -1;
+            }
         }
     }
 
@@ -1042,6 +1071,214 @@ ZEND_FUNCTION(fastcommon_error_log)
                     Z_STRVAL_P(error_log_func));
             RETURN_BOOL(false);
         }
-        RETURN_BOOL(true);
+    }
+}
+
+static PHPFileContext *fetch_file_context(const char *filename)
+{
+    PHPFileContext *ctx;
+    PHPFileContext *end;
+
+    if (file_array.count == 0) {
+        return NULL;
+    }
+
+    end = file_array.contexts + file_array.count;
+    for (ctx=file_array.contexts; ctx<end; ctx++) {
+        if (strcmp(ctx->filename, filename) == 0) {
+            return ctx;
+        }
+    }
+    return NULL;
+}
+
+static int fc_open_file(PHPFileContext *ctx)
+{
+	if ((ctx->fd = open(ctx->filename, O_WRONLY |
+				O_CREAT | O_APPEND, 0644)) < 0)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "open file \"%s\" to write fail, "
+                "errno: %d, error info: %s", __LINE__,
+                ctx->filename, errno, strerror(errno));
+		return errno != 0 ? errno : EACCES;
+	}
+
+    return 0;
+}
+
+static PHPFileContext *alloc_file_context(const char *filename)
+{
+    PHPFileContext *ctx;
+    if (file_array.alloc <= file_array.count) {
+        int alloc;
+        int bytes;
+        PHPFileContext *contexts;
+
+        alloc = file_array.alloc == 0 ? 4 : 2 * file_array.alloc;
+        bytes = sizeof(PHPFileContext) * alloc;
+        contexts = (PHPFileContext *)malloc(bytes);
+        if (contexts == NULL) {
+            logError("file: "__FILE__", line: %d, "
+                    "malloc %d bytes fail", __LINE__, bytes);
+            return NULL;
+        }
+
+        if (file_array.count > 0) {
+            memcpy(contexts, file_array.contexts,
+                    sizeof(PHPFileContext) * file_array.count);
+            free(file_array.contexts);
+        }
+        file_array.contexts = contexts;
+        file_array.alloc = alloc;
+    }
+
+    ctx = file_array.contexts + file_array.count;
+    ctx->filename = strdup(filename);
+    if (ctx->filename == NULL) {
+        logError("file: "__FILE__", line: %d, "
+                "strdup %d bytes fail",
+                __LINE__, (int)strlen(filename));
+        return NULL;
+    }
+    file_array.count++;
+
+    if (fc_open_file(ctx) != 0) {
+        return NULL;
+    }
+    return ctx;
+}
+
+static PHPFileContext *fc_get_file_context(const char *filename)
+{
+    PHPFileContext *ctx;
+    if ((ctx=fetch_file_context(filename)) != NULL) {
+        if (ctx->fd < 0) {
+            if (fc_open_file(ctx) != 0) {
+                return NULL;
+            }
+        }
+        return ctx;
+    }
+
+    return alloc_file_context(filename);
+}
+
+static int fc_file_put_contents(const char *filename,
+        const char *data, const int data_len, const long flags)
+{
+    PHPFileContext *ctx;
+    int bytes;
+
+    ctx = fc_get_file_context(filename);
+    if (ctx == NULL) {
+        return -1;
+    }
+
+    if ((flags & PHP_LOCK_EX) != 0) {
+        bytes = fc_lock_write(ctx->fd, data, data_len);
+    } else {
+        bytes = fc_safe_write(ctx->fd, data, data_len);
+    }
+    if (bytes < 0) {
+        logError("file: "__FILE__", line: %d, "
+                "write to file %s fail, errno: %d, error info: %s",
+                __LINE__, filename, errno, strerror(errno));
+        close(ctx->fd);
+        ctx->fd = -1;
+    }
+    return bytes;
+}
+
+/*
+int fastcommon_file_put_contents(string $filename , mixed $data
+        [, int $flags = 0, resource $context])
+return the number of bytes that were written to the file, or FALSE on failure
+*/
+ZEND_FUNCTION(fastcommon_file_put_contents)
+{
+    int argc;
+    long flags;
+    zval *zdata;
+    char *filename;
+    zval *zcontext;
+    zend_size_t filename_len;
+
+    argc = ZEND_NUM_ARGS();
+    if (argc < 2) {
+        logError("file: "__FILE__", line: %d, "
+                "fastcommon_file_put_contents parameters count: %d is invalid",
+                __LINE__, argc);
+        RETURN_BOOL(false);
+    }
+
+    flags = 0;
+    zcontext = NULL;
+    if (zend_parse_parameters(argc TSRMLS_CC, "sz|lz",
+                &filename, &filename_len, &zdata,
+                &flags, &zcontext) == FAILURE)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "zend_parse_parameters fail!", __LINE__);
+        RETURN_BOOL(false);
+    }
+
+    if ((flags == PHP_FILE_APPEND || flags == (PHP_FILE_APPEND | PHP_LOCK_EX))
+        && (Z_TYPE_P(zdata) == IS_STRING) && (zcontext == NULL))
+    {
+        int bytes;
+        if ((bytes=fc_file_put_contents(filename, Z_STRVAL_P(zdata),
+                    Z_STRLEN_P(zdata), flags)) >= 0)
+        {
+            RETURN_LONG(bytes);
+        } else {
+            RETURN_BOOL(false);
+        }
+    }
+
+    {
+        int result;
+        zval *args[4];
+        zval zflags;
+        zval zfilename;
+#if PHP_MAJOR_VERSION >= 7
+        zend_string *sz_filename = NULL;
+        bool use_heap_filename = false;
+#endif
+
+        if (file_put_contents_func == NULL) {
+            file_put_contents_func = &php_file_put_contents;
+            INIT_ZVAL(php_file_put_contents);
+            ZEND_ZVAL_STRINGL(&php_file_put_contents, "file_put_contents",
+                    sizeof("file_put_contents") - 1, 1);
+        }
+
+        FASTCOMMON_INIT_ZSTRING(zfilename, filename, filename_len);
+
+        INIT_ZVAL(zflags);
+        ZVAL_LONG(&zflags, flags);
+
+        if (zcontext == NULL) {
+            zval ctx;
+            zcontext = &ctx;
+            INIT_ZVAL(*zcontext);
+            ZVAL_NULL(zcontext);
+        }
+
+        args[0] = &zfilename;
+        args[1] = zdata;
+        args[1] = &zflags;
+        args[3] = zcontext;
+        result = zend_call_user_function_wrapper(EG(function_table), NULL,
+                    file_put_contents_func, return_value, 4, args TSRMLS_CC);
+#if PHP_MAJOR_VERSION >= 7
+        FASTCOMMON_ALLOCA_FREE(filename);
+#endif
+        if (result == FAILURE) {
+            logError("file: "__FILE__", line: %d, "
+                    "call function: %s fail", __LINE__,
+                    Z_STRVAL_P(file_put_contents_func));
+            RETURN_BOOL(false);
+        }
     }
 }

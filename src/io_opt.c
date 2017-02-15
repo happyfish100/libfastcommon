@@ -15,7 +15,7 @@
 
 #include "io_opt.h"
 
-int mkdir_by_cascading(const char *path,mode_t mode)
+int mkdir_by_cascading(const char *path, mode_t mode)
 {
 	int length,pointer_postion = 0;
 	char *postion;
