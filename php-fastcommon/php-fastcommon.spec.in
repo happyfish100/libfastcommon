@@ -1,7 +1,7 @@
 %define php_inidir %(php --ini | head -n 1 | awk -F ':' '{print $2;}' | sed 's/ //g')
 %define php_extdir %(php-config --extension-dir 2>/dev/null)
 Name: php-fastcommon
-Version: 1.0.11
+Version: 1.0.12
 Release: 1%{?dist}
 Summary: The php extension for libfastcommon
 License: GPL
@@ -11,8 +11,8 @@ Source: https://github.com/happyfish100/libfastcommon/%{name}-%{version}.tar.gz
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n) 
 
-BuildRequires: libfastcommon-devel >= 1.0.34
-Requires: libfastcommon >= 1.0.34
+BuildRequires: libfastcommon-devel >= 1.0.35
+Requires: libfastcommon >= 1.0.35
 
 %description
 This package provides the php extension for libfastcommon
