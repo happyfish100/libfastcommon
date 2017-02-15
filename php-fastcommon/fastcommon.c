@@ -1267,7 +1267,7 @@ ZEND_FUNCTION(fastcommon_file_put_contents)
 
         args[0] = &zfilename;
         args[1] = zdata;
-        args[1] = &zflags;
+        args[2] = &zflags;
         args[3] = zcontext;
         result = zend_call_user_function_wrapper(EG(function_table), NULL,
                     file_put_contents_func, return_value, 4, args TSRMLS_CC);
