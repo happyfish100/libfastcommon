@@ -44,9 +44,9 @@ function test_file_put_contents()
     echo "file_put_contents time used: $timeUsed\n";
 }
 
-test_file_put_contents();
+test_fastcommon_file_put_contents();
 echo "sleep ...\n";
 sleep(2);
 echo "sleep done.\n";
-test_fastcommon_file_put_contents();
+test_file_put_contents();
 
