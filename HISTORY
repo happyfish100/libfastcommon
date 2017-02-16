@@ -1,7 +1,8 @@
 
-Version 1.35  2017-02-15
+Version 1.35  2017-02-16
   * logger judge log_level in function log_it_ex and log_it_ex1
   * add php extension function: fastcommon_file_put_contents
+  * add function fc_safe_read and fc_safe_write
 
 Version 1.34  2017-02-06
   * ini_file_reader: LOCAL_IP support CIDR addresses

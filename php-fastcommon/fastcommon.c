@@ -1164,11 +1164,11 @@ static PHPFileContext *fc_get_file_context(const char *filename)
     return alloc_file_context(filename);
 }
 
-static int fc_file_put_contents(const char *filename,
+static ssize_t fc_file_put_contents(const char *filename,
         const char *data, const int data_len, const long flags)
 {
     PHPFileContext *ctx;
-    int bytes;
+    ssize_t bytes;
 
     ctx = fc_get_file_context(filename);
     if (ctx == NULL) {
@@ -1226,7 +1226,7 @@ ZEND_FUNCTION(fastcommon_file_put_contents)
     if ((flags == PHP_FILE_APPEND || flags == (PHP_FILE_APPEND | PHP_LOCK_EX))
         && (Z_TYPE_P(zdata) == IS_STRING) && (zcontext == NULL))
     {
-        int bytes;
+        ssize_t bytes;
         if ((bytes=fc_file_put_contents(filename, Z_STRVAL_P(zdata),
                     Z_STRLEN_P(zdata), flags)) >= 0)
         {

@@ -2449,8 +2449,8 @@ bool isTrailingSpacesLine(const char *tail, const char *end)
 
 ssize_t fc_safe_write(int fd, const char *buf, const size_t nbyte)
 {
-    int n;
-    int remain;
+    ssize_t n;
+    ssize_t remain;
     const char *p;
 
     n = write(fd, buf, nbyte);
@@ -2474,7 +2474,7 @@ ssize_t fc_safe_write(int fd, const char *buf, const size_t nbyte)
         n = write(fd, p, remain);
         if (n < 0)
         {
-            int written;
+            ssize_t written;
             if (errno == EINTR)
             {
                 continue;
@@ -2494,7 +2494,7 @@ ssize_t fc_safe_write(int fd, const char *buf, const size_t nbyte)
 ssize_t fc_lock_write(int fd, const char *buf, const size_t nbyte)
 {
     int lock_result;
-    int result;
+    ssize_t result;
 
     lock_result = file_write_lock(fd);
     result = fc_safe_write(fd, buf, nbyte);
@@ -2504,4 +2504,55 @@ ssize_t fc_lock_write(int fd, const char *buf, const size_t nbyte)
     }
 
     return result;
+}
+
+ssize_t fc_safe_read(int fd, char *buf, const size_t count)
+{
+    ssize_t n;
+    ssize_t remain;
+    char *p;
+
+    n = read(fd, buf, count);
+    if (n < 0)
+    {
+        if (errno != EINTR)
+        {
+            return -1;
+        }
+        n = 0;
+    }
+    else
+    {
+        if (n == 0 || n == count)
+        {
+            return n;
+        }
+    }
+
+    p = buf + n;
+    remain = count - n;
+    while (remain > 0)
+    {
+        n = read(fd, p, remain);
+        if (n < 0)
+        {
+            ssize_t done;
+            if (errno == EINTR)
+            {
+                continue;
+            }
+
+            done = count - remain;
+            return done > 0 ? done : -1;
+        }
+        else if (n == 0)
+        {
+            break;
+        }
+
+        p += n;
+        remain -= n;
+    }
+
+    return count - remain;
 }

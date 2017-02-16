@@ -642,6 +642,15 @@ ssize_t fc_safe_write(int fd, const char *buf, const size_t nbyte);
 */
 ssize_t fc_lock_write(int fd, const char *buf, const size_t nbyte);
 
+/** read from file
+ *  parameters:
+ *  	fd: the fd to read
+ *  	buf: the buffer
+ *  	count: expect read bytes
+ *  return: read bytes for success, -1 when fail
+*/
+ssize_t fc_safe_read(int fd, char *buf, const size_t count);
+
 #ifdef __cplusplus
 }
 #endif
