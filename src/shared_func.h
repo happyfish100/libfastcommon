@@ -651,6 +651,14 @@ ssize_t fc_lock_write(int fd, const char *buf, const size_t nbyte);
 */
 ssize_t fc_safe_read(int fd, char *buf, const size_t count);
 
+/** ftok with hash code
+ *  parameters:
+ *  	path: the file path
+ *  	proj_id: the project id
+ *  return: read bytes for success, -1 when fail
+*/
+key_t fc_ftok(const char *path, const int proj_id);
+
 #ifdef __cplusplus
 }
 #endif
