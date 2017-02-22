@@ -44,6 +44,9 @@ typedef int zend_size_t;
 #define zend_add_assoc_long_ex(z, key, key_len, n) \
 	add_assoc_long_ex(z, key, key_len, n)
 
+#define zend_add_assoc_double_ex(z, key, key_len, n) \
+	add_assoc_double_ex(z, key, key_len, n)
+
 #define zend_add_assoc_stringl_ex(z, key, key_len, str, length, dup) \
 	add_assoc_stringl_ex(z, key, key_len, str, length, dup)
 
@@ -141,6 +144,9 @@ typedef size_t zend_size_t;
 
 #define zend_add_assoc_long_ex(z, key, key_len, n) \
 	add_assoc_long_ex(z, key, key_len - 1, n)
+
+#define zend_add_assoc_double_ex(z, key, key_len, n) \
+	add_assoc_double_ex(z, key, key_len - 1, n)
 
 #define zend_add_assoc_stringl_ex(z, key, key_len, str, length, dup) \
 	add_assoc_stringl_ex(z, key, key_len - 1, str, length)
