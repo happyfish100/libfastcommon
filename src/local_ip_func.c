@@ -96,7 +96,7 @@ void load_local_host_ip_addrs()
 			if_alias_prefixes, STORAGE_MAX_ALIAS_PREFIX_COUNT);
 		for (k=0; k<alias_count; k++)
 		{
-			trim(if_alias_prefixes[k]);
+			fc_trim(if_alias_prefixes[k]);
 		}
 	}
 

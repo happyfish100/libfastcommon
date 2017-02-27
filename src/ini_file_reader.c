@@ -86,6 +86,12 @@ static int iniDoLoadFromFile(const char *szFilename, \
 static int iniLoadItemsFromBuffer(char *content, \
 		IniContext *pContext);
 
+#define STR_TRIM(pStr) \
+    do { \
+        trim_right(pStr); \
+        trim_left(pStr);  \
+    } while (0)
+
 int iniSetAnnotationCallBack(AnnotationMap *map, int count)
 {
     int bytes;
@@ -423,7 +429,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 				break;
 			}
 
-			trim(pIncludeFilename);
+			STR_TRIM(pIncludeFilename);
 			if (strncasecmp(pIncludeFilename, "http://", 7) == 0)
 			{
 				snprintf(full_filename, sizeof(full_filename),\
@@ -482,7 +488,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
                 }
                 memcpy(pFuncName, pLine + 11, nNameLen);
                 pFuncName[nNameLen] = '\0';
-                trim(pFuncName);
+                STR_TRIM(pFuncName);
                 if ((int)strlen(pFuncName) > 0)
                 {
                     isAnnotation = 1;
@@ -498,7 +504,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
             continue;
         }
 
-		trim(pLine);
+		STR_TRIM(pLine);
 		if (*pLine == '#' || *pLine == '\0')
 		{
 			continue;
@@ -513,7 +519,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 			*(pLine + (nLineLen - 1)) = '\0';
 			section_name = pLine + 1; //skip [
 
-			trim(section_name);
+			STR_TRIM(section_name);
 			if (*section_name == '\0') //global section
 			{
 				pContext->current_section = &pContext->global;
@@ -595,8 +601,8 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 		memcpy(pItem->name, pLine, nNameLen);
 		memcpy(pItem->value, pEqualChar + 1, nValueLen);
 
-		trim(pItem->name);
-		trim(pItem->value);
+		STR_TRIM(pItem->name);
+		STR_TRIM(pItem->value);
 
         if (isAnnotation)
         {
@@ -1143,7 +1149,7 @@ static bool iniCalcCondition(char *condition, const int condition_len,
             _PREPROCESS_MAX_LIST_VALUE_COUNT);
     for (i=0; i<count; i++)
     {
-        values[i] = trim(values[i]);
+        values[i] = fc_trim(values[i]);
     }
     if (varType == _PREPROCESS_VARIABLE_TYPE_LOCAL_HOST)
     {
@@ -1282,8 +1288,8 @@ static int iniDoProccessSet(char *pSet, char **ppSetEnd,
         return ENOMEM;
     }
 
-    key = trim(parts[0]);
-    value = trim(parts[1]);
+    key = fc_trim(parts[0]);
+    value = fc_trim(parts[1]);
     value_len = strlen(value);
     if (value_len > 3 && (*value == '$' && *(value + 1) == '(')
             &&  *(value + value_len - 1) == ')')
@@ -1303,7 +1309,7 @@ static int iniDoProccessSet(char *pSet, char **ppSetEnd,
             logWarning("file: "__FILE__", line: %d, "
                     "empty reply when exec: %s", __LINE__, cmd);
         }
-        value = trim(output);
+        value = fc_trim(output);
         value_len = strlen(value);
     }
 
