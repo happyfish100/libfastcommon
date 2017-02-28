@@ -376,7 +376,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 	char *pLine;
 	char *pLastEnd;
 	char *pEqualChar;
-    char *pItemName;
+    char pItemName[FAST_INI_ITEM_NAME_LEN + 1];
     char *pAnnoItemLine;
 	char *pIncludeFilename;
     char *pItemValues[100];
@@ -581,18 +581,28 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 		nValueLen = strlen(pLine) - (nNameLen + 1);
 		if (nNameLen > FAST_INI_ITEM_NAME_LEN)
 		{
+            logWarning("file: "__FILE__", line: %d, "
+                    "name length: %d exceeds %d, "
+                    "truncate it to \"%.*s\"", __LINE__,
+                    nNameLen, FAST_INI_ITEM_NAME_LEN,
+                    FAST_INI_ITEM_NAME_LEN, pLine);
 			nNameLen = FAST_INI_ITEM_NAME_LEN;
 		}
 
 		if (nValueLen > FAST_INI_ITEM_VALUE_LEN)
 		{
+            logWarning("file: "__FILE__", line: %d, "
+                    "value length: %d exceeds %d, "
+                    "truncate it to \"%.*s\"", __LINE__,
+                    nValueLen, FAST_INI_ITEM_VALUE_LEN,
+                    FAST_INI_ITEM_VALUE_LEN, pEqualChar + 1);
 			nValueLen = FAST_INI_ITEM_VALUE_LEN;
 		}
 
 		if (pSection->count >= pSection->alloc_count)
         {
             result = remallocSection(pSection, &pItem);
-            if (result)
+            if (result != 0)
             {
                 break;
             }
@@ -607,7 +617,6 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
         if (isAnnotation)
         {
             isAnnotation = 0;
-
             if (g_annotataionMap == NULL)
             {
                 logWarning("file: "__FILE__", line: %d, " \
@@ -660,16 +669,21 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
                 continue;
             }
 
-            pItemName = pItem->name;
+            strcpy(pItemName, pItem->name);
             nNameLen = strlen(pItemName);
             for (i = 0; i < nItemCnt; i++)
             {
                 nValueLen = strlen(pItemValues[i]);
                 if (nValueLen > FAST_INI_ITEM_VALUE_LEN)
                 {
+                    logWarning("file: "__FILE__", line: %d, "
+                            "value length: %d exceeds %d, "
+                            "truncate it to \"%.*s\"", __LINE__,
+                            nValueLen, FAST_INI_ITEM_VALUE_LEN,
+                            FAST_INI_ITEM_VALUE_LEN, pItemValues[i]);
                     nValueLen = FAST_INI_ITEM_VALUE_LEN;
                 }
-                memcpy(pItem->name, pItemName, nNameLen);
+                strcpy(pItem->name, pItemName);
                 memcpy(pItem->value, pItemValues[i], nValueLen);
                 pItem->value[nValueLen] = '\0';
                 pSection->count++;
@@ -677,7 +691,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
                 if (pSection->count >= pSection->alloc_count)
                 {
                     result = remallocSection(pSection, &pItem);
-                    if (result)
+                    if (result != 0)
                     {
                         break;
                     }
@@ -1861,18 +1875,20 @@ static int iniLoadItemsFromBuffer(char *content, IniContext *pContext)
 
 static int remallocSection(IniSection *pSection, IniItem **pItem)
 {
-    int bytes, result;
+    int bytes;
+    int result;
+    int alloc_count;
     IniItem *pNew;
 
     if (pSection->alloc_count == 0)
     {
-        pSection->alloc_count = _INIT_ALLOC_ITEM_COUNT;
+        alloc_count = _INIT_ALLOC_ITEM_COUNT;
     }
     else
     {
-        pSection->alloc_count *= 2;
+        alloc_count = pSection->alloc_count * 2;
     }
-    bytes = sizeof(IniItem) * pSection->alloc_count;
+    bytes = sizeof(IniItem) * alloc_count;
     pNew = (IniItem *)malloc(bytes);
     if (pNew == NULL)
     {
@@ -1889,9 +1905,10 @@ static int remallocSection(IniSection *pSection, IniItem **pItem)
         free(pSection->items);
     }
 
+    pSection->alloc_count = alloc_count;
     pSection->items = pNew;
     *pItem = pSection->items + pSection->count;
-    memset(*pItem, 0, sizeof(IniItem) * \
+    memset(*pItem, 0, sizeof(IniItem) *
         (pSection->alloc_count - pSection->count));
 
     return 0;
