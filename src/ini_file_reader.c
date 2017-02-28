@@ -54,7 +54,8 @@
 
 #define _MAX_DYNAMIC_CONTENTS     8
 
-static AnnotationMap *g_annotataionMap = NULL;
+static AnnotationMap *g_annotataion_map = NULL;
+static int g_annotataion_count = 0;
 
 typedef struct {
     int count;
@@ -74,11 +75,10 @@ typedef struct {
     SetDirectiveVars set;
 } CDCPair;
 
+//dynamic alloced contents which will be freed when destroy
 static int g_dynamic_content_count = 0;
 static int g_dynamic_content_index = 0;
 static CDCPair g_dynamic_contents[_MAX_DYNAMIC_CONTENTS] = {{false, NULL, {0, 0, NULL}, {0, NULL}}};
-
-//dynamic alloced contents which will be freed when destroy
 
 static int remallocSection(IniSection *pSection, IniItem **pItem);
 static int iniDoLoadFromFile(const char *szFilename, \
@@ -95,7 +95,10 @@ static int iniLoadItemsFromBuffer(char *content, \
 int iniSetAnnotationCallBack(AnnotationMap *map, int count)
 {
     int bytes;
-    AnnotationMap *p;
+    AnnotationMap *pSrc;
+    AnnotationMap *pSrcEnd;
+    AnnotationMap *pDest;
+    AnnotationMap *pDestEnd;
 
     if (count <= 0)
     {
@@ -105,23 +108,44 @@ int iniSetAnnotationCallBack(AnnotationMap *map, int count)
         return EINVAL;
     }
 
-    bytes = sizeof(AnnotationMap) * (count + 1);
-    g_annotataionMap = (AnnotationMap *) malloc(bytes);
-    if (g_annotataionMap == NULL)
+    bytes = sizeof(AnnotationMap) * (g_annotataion_count + count + 1);
+    g_annotataion_map = (AnnotationMap *)realloc(g_annotataion_map, bytes);
+    if (g_annotataion_map == NULL)
     {
 		logError("file: "__FILE__", line: %d, " \
-			"malloc (%d) fail, errno: %d, error info: %s", \
+			"realloc %d fail, errno: %d, error info: %s", \
 			__LINE__, bytes, errno, STRERROR(errno));
         return ENOMEM;
     }
 
-    memcpy(g_annotataionMap, map, sizeof(AnnotationMap) * count);
+    pSrcEnd = map + count;
+    pDestEnd = g_annotataion_map + g_annotataion_count;
+    for (pSrc=map; pSrc<pSrcEnd; pSrc++)
+    {
+        for (pDest=g_annotataion_map; pDest<pDestEnd; pDest++)
+        {
+            if (strcmp(pSrc->func_name, pDest->func_name) == 0)
+            {
+                break;
+            }
+        }
 
-    p = g_annotataionMap + count;
-    p->func_name = NULL;
-    p->func_init = NULL;
-    p->func_destroy = NULL;
-    p->func_get = NULL;
+        pDest->func_name = pSrc->func_name;
+        pDest->func_init = pSrc->func_init;
+        pDest->func_destroy = pSrc->func_destroy;
+        pDest->func_get = pSrc->func_get;
+        if (pDest == pDestEnd)  //insert
+        {
+            ++g_annotataion_count;
+            pDestEnd = g_annotataion_map + g_annotataion_count;
+        }
+    }
+
+    pDest = g_annotataion_map + g_annotataion_count;
+    pDest->func_name = NULL;
+    pDest->func_init = NULL;
+    pDest->func_destroy = NULL;
+    pDest->func_get = NULL;
 
     return 0;
 }
@@ -130,22 +154,24 @@ void iniDestroyAnnotationCallBack()
 {
     AnnotationMap *pAnnoMap;
 
-    pAnnoMap = g_annotataionMap;
-
-    if (pAnnoMap == NULL)
+    if (g_annotataion_map == NULL)
     {
         return;
     }
 
+    pAnnoMap = g_annotataion_map;
     while (pAnnoMap->func_name)
     {
-        if (pAnnoMap->func_destroy)
+        if (pAnnoMap->func_destroy != NULL)
         {
             pAnnoMap->func_destroy();
         }
         pAnnoMap++;
     }
-    g_annotataionMap = NULL;
+
+    free(g_annotataion_map);
+    g_annotataion_map = NULL;
+    g_annotataion_count = 0;
 }
 
 static int iniCompareByItemName(const void *p1, const void *p2)
@@ -617,7 +643,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
         if (isAnnotation)
         {
             isAnnotation = 0;
-            if (g_annotataionMap == NULL)
+            if (g_annotataion_map == NULL)
             {
                 logWarning("file: "__FILE__", line: %d, " \
                     "not set annotataionMap and (%s) will use " \
@@ -629,17 +655,17 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
             }
 
             nItemCnt = -1;
-            pAnnoMap = g_annotataionMap;
-            while (pAnnoMap->func_name)
+            pAnnoMap = g_annotataion_map;
+            while (pAnnoMap->func_name != NULL)
             {
                 if (strcmp(pFuncName, pAnnoMap->func_name) == 0)
                 {
-                    if (pAnnoMap->func_init)
+                    if (pAnnoMap->func_init != NULL)
                     {
                         pAnnoMap->func_init();
                     }
 
-                    if (pAnnoMap->func_get)
+                    if (pAnnoMap->func_get != NULL)
                     {
                         nItemCnt = pAnnoMap->func_get(pItem->value, pItemValues, 100);
                     }
