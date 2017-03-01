@@ -8,21 +8,54 @@
 #include <sys/time.h>
 #include <sys/stat.h>
 #include "logger.h"
+#include "shared_func.h"
 #include "ini_file_reader.h"
+
+static int iniAnnotationFuncExpressCalc(char *param, char **pOutValue, int max_values)
+{
+    int count;
+    int result;
+    char cmd[512];
+    static char output[256];
+
+    count = 0;
+    sprintf(cmd, "echo \'%s\' | bc -l", param);
+    if ((result=getExecResult(cmd, output, sizeof(output))) != 0)
+    {
+        logWarning("file: "__FILE__", line: %d, "
+                "exec %s fail, errno: %d, error info: %s",
+                __LINE__, cmd, result, STRERROR(result));
+        return count;
+    }
+    if (*output == '\0')
+    {
+        logWarning("file: "__FILE__", line: %d, "
+                "empty reply when exec: %s", __LINE__, param);
+    }
+    pOutValue[count++] = fc_trim(output);
+    return count;
+}
 
 int main(int argc, char *argv[])
 {
 	int result;
     IniContext context;
-    const char *szFilename = "/home/yuqing/watchd-config/order.conf";
+    const char *szFilename = "test.ini";
+    AnnotationMap annotations[1];
 
     if (argc > 1) {
         szFilename = argv[1];
     }
 	
 	log_init();
+
+    annotations[0].func_name = "EXPRESS_CALC";
+    annotations[0].func_init = NULL;
+    annotations[0].func_destroy = NULL;
+    annotations[0].func_get = iniAnnotationFuncExpressCalc;
+
     if ((result=iniLoadFromFileEx(szFilename, &context,
-                    INI_ANNOTATION_WITH_BUILTIN, NULL, 0)) != 0)
+                    INI_ANNOTATION_WITH_BUILTIN, annotations, 1)) != 0)
     {
         return result;
     }
@@ -32,4 +65,3 @@ int main(int argc, char *argv[])
     iniFreeContext(&context);
 	return 0;
 }
-
