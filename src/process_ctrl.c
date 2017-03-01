@@ -245,9 +245,8 @@ int get_base_path_from_conf_file(const char *filename, char *base_path,
 	IniContext iniContext;
 	int result;
 
-	memset(&iniContext, 0, sizeof(IniContext));
-
-	if ((result=iniLoadFromFileEx(filename, &iniContext, true)) != 0)
+	if ((result=iniLoadFromFileEx(filename, &iniContext,
+                    INI_ANNOTATION_DISABLE, NULL, 0)) != 0)
 	{
 		logError("file: "__FILE__", line: %d, " \
 			"load conf file \"%s\" fail, ret code: %d", \

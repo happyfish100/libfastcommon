@@ -1,11 +1,12 @@
 
-Version 1.35  2017-02-28
+Version 1.35  2017-03-01
   * logger judge log_level in function log_it_ex and log_it_ex1
   * add php extension function: fastcommon_file_put_contents
   * add function fc_safe_read and fc_safe_write
   * add function fc_ftok
   * add function fc_trim to avoid conflict with trim
   * ini_file_reader support annotataion map set incrementally
+  * init context support dynamic annotations and build-in annotations
 
 Version 1.34  2017-02-06
   * ini_file_reader: LOCAL_IP support CIDR addresses

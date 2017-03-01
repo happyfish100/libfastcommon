@@ -21,7 +21,8 @@ int main(int argc, char *argv[])
     }
 	
 	log_init();
-    if ((result=iniLoadFromFile(szFilename, &context)) != 0)
+    if ((result=iniLoadFromFileEx(szFilename, &context,
+                    INI_ANNOTATION_WITH_BUILTIN, NULL, 0)) != 0)
     {
         return result;
     }
