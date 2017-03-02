@@ -190,21 +190,29 @@ static int iniAnnotationFuncShellExec(char *param, char **pOutValue, int max_val
     return count;
 }
 
-static void iniSetBuiltinAnnotations(AnnotationMap *dest, int *dest_count)
+static void iniSetBuiltinAnnotations(IniContext *pContext,
+        AnnotationMap *dest, int *dest_count)
 {
     AnnotationMap builtins[_BUILTIN_ANNOTATION_COUNT];
+    AnnotationMap *pAnnotation;
 
-    builtins[0].func_name = "LOCAL_IP_GET";
-    builtins[0].func_init = NULL;
-    builtins[0].func_destroy = NULL;
-    builtins[0].func_get = iniAnnotationFuncLocalIpGet;
+    pAnnotation = builtins;
+    pAnnotation->func_name = "LOCAL_IP_GET";
+    pAnnotation->func_init = NULL;
+    pAnnotation->func_destroy = NULL;
+    pAnnotation->func_get = iniAnnotationFuncLocalIpGet;
+    pAnnotation++;
 
-    builtins[1].func_name = "SHELL_EXEC";
-    builtins[1].func_init = NULL;
-    builtins[1].func_destroy = NULL;
-    builtins[1].func_get = iniAnnotationFuncShellExec;
+    if ((pContext->flags & FAST_INI_FLAGS_SHELL_EXECUTE) != 0)
+    {
+        pAnnotation->func_name = "SHELL_EXEC";
+        pAnnotation->func_init = NULL;
+        pAnnotation->func_destroy = NULL;
+        pAnnotation->func_get = iniAnnotationFuncShellExec;
+        pAnnotation++;
+    }
 
-    iniDoSetAnnotations(builtins, _BUILTIN_ANNOTATION_COUNT, dest, dest_count);
+    iniDoSetAnnotations(builtins, pAnnotation - builtins, dest, dest_count);
 }
 
 static int iniSetAnnotations(IniContext *pContext, const char annotation_type,
@@ -213,11 +221,11 @@ static int iniSetAnnotations(IniContext *pContext, const char annotation_type,
     DynamicAnnotations *pDynamicAnnotations;
 
     pContext->annotation_type = annotation_type;
-    if (pContext->annotation_type == INI_ANNOTATION_DISABLE)
+    if (pContext->annotation_type == FAST_INI_ANNOTATION_DISABLE)
     {
         return 0;
     }
-    if (pContext->annotation_type == INI_ANNOTATION_WITHOUT_BUILTIN &&
+    if (pContext->annotation_type == FAST_INI_ANNOTATION_WITHOUT_BUILTIN &&
             annotations == NULL)
     {
         return 0;
@@ -228,9 +236,9 @@ static int iniSetAnnotations(IniContext *pContext, const char annotation_type,
     {
         return ENOMEM;
     }
-    if (pContext->annotation_type == INI_ANNOTATION_WITH_BUILTIN)
+    if (pContext->annotation_type == FAST_INI_ANNOTATION_WITH_BUILTIN)
     {
-        iniSetBuiltinAnnotations(pDynamicAnnotations->annotations,
+        iniSetBuiltinAnnotations(pContext, pDynamicAnnotations->annotations,
                 &pDynamicAnnotations->count);
     }
 
@@ -307,7 +315,8 @@ static int iniCompareByItemName(const void *p1, const void *p2)
 }
 
 static int iniInitContext(IniContext *pContext, const char annotation_type,
-        AnnotationMap *annotations, const int count)
+        AnnotationMap *annotations, const int count,
+        const char flags)
 {
 	int result;
 
@@ -320,6 +329,7 @@ static int iniInitContext(IniContext *pContext, const char annotation_type,
 			__LINE__, result, STRERROR(result));
 	}
 
+	pContext->flags = flags;
     return iniSetAnnotations(pContext, annotation_type, annotations, count);
 }
 
@@ -351,11 +361,13 @@ static void iniSortItems(IniContext *pContext)
 int iniLoadFromFile(const char *szFilename, IniContext *pContext)
 {
     return iniLoadFromFileEx(szFilename, pContext,
-            INI_ANNOTATION_WITHOUT_BUILTIN, NULL, 0);
+            FAST_INI_ANNOTATION_WITH_BUILTIN,
+            NULL, 0, FAST_INI_FLAGS_NONE);
 }
 
 int iniLoadFromFileEx(const char *szFilename, IniContext *pContext,
-    const char annotation_type, AnnotationMap *annotations, const int count)
+    const char annotation_type, AnnotationMap *annotations, const int count,
+    const char flags)
 {
 	int result;
 	int len;
@@ -363,7 +375,7 @@ int iniLoadFromFileEx(const char *szFilename, IniContext *pContext,
 	char full_filename[MAX_PATH_SIZE];
 
 	if ((result=iniInitContext(pContext, annotation_type,
-                    annotations, count)) != 0)
+                    annotations, count, flags)) != 0)
 	{
 		return result;
 	}
@@ -501,12 +513,13 @@ static int iniDoLoadFromFile(const char *szFilename, \
 }
 
 int iniLoadFromBufferEx(char *content, IniContext *pContext,
-    const char annotation_type, AnnotationMap *annotations, const int count)
+    const char annotation_type, AnnotationMap *annotations, const int count,
+    const char flags)
 {
 	int result;
 
 	if ((result=iniInitContext(pContext, annotation_type,
-                    annotations, count)) != 0)
+                    annotations, count, flags)) != 0)
 	{
 		return result;
 	}
@@ -527,7 +540,8 @@ int iniLoadFromBufferEx(char *content, IniContext *pContext,
 int iniLoadFromBuffer(char *content, IniContext *pContext)
 {
     return iniLoadFromBufferEx(content, pContext,
-            INI_ANNOTATION_WITHOUT_BUILTIN, NULL, 0);
+            FAST_INI_ANNOTATION_WITH_BUILTIN,
+            NULL, 0, FAST_INI_FLAGS_NONE);
 }
 
 static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
@@ -641,7 +655,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
             strncasecmp(pLine+1, "@function", 9) == 0 && \
             (*(pLine+10) == ' ' || *(pLine+10) == '\t')))
         {
-            if (pContext->annotation_type != INI_ANNOTATION_DISABLE)
+            if (pContext->annotation_type != FAST_INI_ANNOTATION_DISABLE)
             {
                 nNameLen = strlen(pLine + 11);
                 if (nNameLen > FAST_INI_ITEM_NAME_LEN)
@@ -1599,21 +1613,29 @@ static int iniDoProccessSet(char *pSet, char **ppSetEnd,
     {
         char *cmd;
         cmd = value + 2;
-        *(value + value_len - 1) = '\0'; //remove '}'
-        if ((result=getExecResult(cmd, output, sizeof(output))) != 0)
+        *(value + value_len - 1) = '\0'; //remove ')'
+        if ((pContext->flags & FAST_INI_FLAGS_SHELL_EXECUTE) != 0)
+        {
+            if ((result=getExecResult(cmd, output, sizeof(output))) != 0)
+            {
+                logWarning("file: "__FILE__", line: %d, "
+                        "exec %s fail, errno: %d, error info: %s",
+                        __LINE__, cmd, result, STRERROR(result));
+                return result;
+            }
+            if (*output == '\0')
+            {
+                logWarning("file: "__FILE__", line: %d, "
+                        "empty reply when exec: %s", __LINE__, cmd);
+            }
+            value = fc_trim(output);
+            value_len = strlen(value);
+        }
+        else
         {
             logWarning("file: "__FILE__", line: %d, "
-                    "exec %s fail, errno: %d, error info: %s",
-                    __LINE__, cmd, result, STRERROR(result));
-            return result;
+                    "shell execute disabled, cmd: %s", __LINE__, cmd);
         }
-        if (*output == '\0')
-        {
-            logWarning("file: "__FILE__", line: %d, "
-                    "empty reply when exec: %s", __LINE__, cmd);
-        }
-        value = fc_trim(output);
-        value_len = strlen(value);
     }
 
     return hash_insert_ex(set->vars, key, strlen(key),
@@ -2369,7 +2391,7 @@ bool iniGetBoolValue(const char *szSectionName, const char *szItemName, \
 	}
 	else
 	{
-		return INI_STRING_IS_TRUE(pValue);
+		return FAST_INI_STRING_IS_TRUE(pValue);
 	}
 }
 

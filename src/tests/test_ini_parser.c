@@ -54,8 +54,11 @@ int main(int argc, char *argv[])
     annotations[0].func_destroy = NULL;
     annotations[0].func_get = iniAnnotationFuncExpressCalc;
 
-    if ((result=iniLoadFromFileEx(szFilename, &context,
-                    INI_ANNOTATION_WITH_BUILTIN, annotations, 1)) != 0)
+    //printf("sizeof(IniContext): %d\n", (int)sizeof(IniContext));
+    result = iniLoadFromFileEx(szFilename, &context,
+            FAST_INI_ANNOTATION_WITH_BUILTIN, annotations, 1,
+            FAST_INI_FLAGS_SHELL_EXECUTE);
+    if (result != 0)
     {
         return result;
     }
