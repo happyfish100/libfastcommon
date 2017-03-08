@@ -1085,7 +1085,7 @@ int getFileContentEx(const char *filename, char *buff, \
 		return errno != 0 ? errno : EIO;
 	}
 
-	if ((read_bytes=read(fd, buff, *size)) < 0)
+	if ((read_bytes=read(fd, buff, *size - 1)) < 0)
 	{
 		*size = 0;
 		close(fd);

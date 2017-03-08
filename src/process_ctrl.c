@@ -17,12 +17,11 @@ int get_pid_from_file(const char *pidFilename, pid_t *pid)
     return errno != 0 ? errno : EPERM;
   }
 
-  file_size = sizeof(buff) - 1;
+  file_size = sizeof(buff);
   if ((result=getFileContentEx(pidFilename, buff, 0, &file_size)) != 0) {
     return result;
   }
 
-  *(buff + file_size) = '\0';
   *pid = strtol(buff, NULL, 10);
   if (*pid == 0) {
     return EINVAL;
@@ -150,14 +149,27 @@ static const char *process_get_exename(const char* program)
     }
 }
 
+static const char *get_exename_by_pid(const pid_t pid, char *buff,
+        const int buff_size, int *result)
+{
+    char cmdfile[MAX_PATH_SIZE];
+    int64_t cmdsz;
+
+    cmdsz = buff_size;
+    sprintf(cmdfile, "/proc/%d/cmdline", pid);
+    if ((*result=getFileContentEx(cmdfile, buff, 0, &cmdsz)) != 0) {
+        fprintf(stderr, "read file %s fail, errno: %d, error info: %s\n",
+                cmdfile, *result, strerror(*result));
+        return NULL;
+    }
+
+    return process_get_exename(buff);
+}
+
 int process_start(const char* pidFilename)
 {
     pid_t pid;
     int result;
-    char cmdline[MAX_PATH_SIZE];
-    char cmdfile[MAX_PATH_SIZE];
-    char argv0[MAX_PATH_SIZE];
-    int64_t cmdsz;
 
     if ((result=get_pid_from_file(pidFilename, &pid)) != 0) {
         if (result == ENOENT) {
@@ -172,30 +184,30 @@ int process_start(const char* pidFilename)
     }
 
     if (kill(pid, 0) == 0) {
-        const char *exename1, *exename2;
-        cmdsz = sizeof(cmdline);
-        cmdline[cmdsz-1] = argv0[cmdsz-1] = '\0';
-        sprintf(cmdfile, "/proc/%d/cmdline", pid);
-        if ((result=getFileContentEx(cmdfile, cmdline, 0, &cmdsz)) != 0) {
-            fprintf(stderr, "read file %s failed. %d %s\n",
-                cmdfile, errno, strerror(errno));
-            return result;
+        if (access("/proc", F_OK) == 0) {
+            char cmdline[MAX_PATH_SIZE];
+            char argv0[MAX_PATH_SIZE];
+            const char *exename1, *exename2;
+
+            exename1 = get_exename_by_pid(pid, cmdline, sizeof(cmdline), &result);
+            if (exename1 == NULL) {
+                return result;
+            }
+            exename2 = get_exename_by_pid(getpid(), argv0, sizeof(argv0), &result);
+            if (exename2 == NULL) {
+                return result;
+            }
+            if (strcmp(exename1, exename2) == 0) {
+                fprintf(stderr, "process %s already running, pid: %d\n",
+                        argv0, (int)pid);
+                return EEXIST;
+            }
+            return 0;
         }
-        cmdsz = sizeof(argv0);
-        sprintf(cmdfile, "/proc/%d/cmdline", getpid());
-        if ((result=getFileContentEx(cmdfile, argv0, 0, &cmdsz)) != 0) {
-            fprintf(stderr, "read file %s failed. %d %s\n",
-                cmdfile, errno, strerror(errno));
-            return result;
-        }
-        exename1 = process_get_exename(cmdline);
-        exename2 = process_get_exename(argv0);
-        if (strcmp(exename1, exename2) == 0) {
-            fprintf(stderr, "process %s already running, pid: %d\n",
-                argv0, (int)pid);
+        else {
+            fprintf(stderr, "process already running, pid: %d\n", (int)pid);
             return EEXIST;
         }
-        return 0;
     }
     else if (errno == ENOENT || errno == ESRCH) {
         return 0;
