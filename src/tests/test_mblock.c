@@ -31,11 +31,8 @@ static int test_delay(void *args)
 
 int main(int argc, char *argv[])
 {
-    int result;
     int64_t start_time;
     int64_t end_time;
-    char *filename;
-    IniContext iniContext;
     int64_t mem_size;
     struct fast_mblock_man mblock1;
     struct fast_mblock_man mblock2;
@@ -52,12 +49,6 @@ int main(int argc, char *argv[])
     volatile bool continue_flag = true;
     FastIFConfig if_configs[32];
     struct fast_statfs stats[32];
-
-    if (argc > 1) {
-        filename  = argv[1];
-    } else {
-        filename = "/etc/mc/worker.conf";
-    }
 
     start_time = get_current_time_ms();
     srand(time(NULL));
@@ -133,6 +124,18 @@ int main(int argc, char *argv[])
 
 #endif
 
+    /*
+    {
+    int result;
+    char *filename;
+    IniContext iniContext;
+    if (argc > 1) {
+        filename  = argv[1];
+    } else {
+        filename = "/etc/mc/worker.conf";
+    }
+
+
     if ((result=iniLoadFromFile(filename, &iniContext)) != 0) {
         logError("file: "__FILE__", line: %d, "
                 "load conf file \"%s\" fail, ret code: %d",
@@ -143,6 +146,8 @@ int main(int argc, char *argv[])
 
     //iniPrintItems(&iniContext);
     iniFreeContext(&iniContext);
+    }
+    */
 
     sched_enable_delay_task();
     scheduleArray.entries = scheduleEntries;
