@@ -7,7 +7,7 @@ Name: libfastcommon
 Version: 1.0.36
 Release: 1%{?dist}
 Summary: c common functions library extracted from my open source projects FastDFS
-License: GPL
+License: LGPL
 Group: Arch/Tech
 URL:  http://github.com/happyfish100/libfastcommon/
 Source: http://github.com/happyfish100/libfastcommon/%{name}-%{version}.tar.gz
