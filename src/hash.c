@@ -137,6 +137,7 @@ int hash_set_locks(HashArray *pHash, const int lock_count)
 		return EINVAL;
 	}
 
+    //do NOT support rehash
 	if (pHash->load_factor >= 0.10)
 	{
 		return EINVAL;

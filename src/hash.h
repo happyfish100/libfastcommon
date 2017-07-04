@@ -103,7 +103,7 @@ typedef int (*HashWalkFunc)(const int index, const HashData *data, void *args);
  *         pHash: the hash table
  *         hash_func: hash function
  *         capacity: init capacity
- *         load_factor: hash load factor, such as 0.75
+ *         load_factor: hash load factor (or watermark), >= 0.10 for auto rehash. eg. 0.75
  *         max_bytes:  max memory can be used (bytes)
  *         bMallocValue: if need malloc value buffer
  * return 0 for success, != 0 for error
