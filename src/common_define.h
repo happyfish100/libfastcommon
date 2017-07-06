@@ -116,6 +116,8 @@ extern int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int kind);
 #endif
 
 #define IS_UPPER_HEX(ch) ((ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F'))
+#define IS_HEX_CHAR(ch)  (IS_UPPER_HEX(ch) || (ch >= 'a' && ch <= 'f'))
+
 #define STRERROR(no) (strerror(no) != NULL ? strerror(no) : "Unkown error")
 
 #if defined(OS_LINUX)

@@ -1379,14 +1379,14 @@ static unsigned int crc_table[256] = {
 		crc = crc_table[(crc ^ *pKey) & 0xFF] ^ (crc >> 8); \
 	} \
 
-int CRC32(void *key, const int key_len)
+int CRC32(const void *key, const int key_len)
 {
 	CRC32_BODY(CRC32_XINIT)
 
 	return crc ^ CRC32_XOROT;
 }
 
-int CRC32_ex(void *key, const int key_len, \
+int CRC32_ex(const void *key, const int key_len, \
 	const int init_value)
 {
 	CRC32_BODY(init_value)

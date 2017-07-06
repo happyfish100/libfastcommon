@@ -350,8 +350,8 @@ int simple_hash(const void* key, const int key_len);
 int simple_hash_ex(const void* key, const int key_len, \
 	const int init_value);
 
-int CRC32(void *key, const int key_len);
-int CRC32_ex(void *key, const int key_len, \
+int CRC32(const void *key, const int key_len);
+int CRC32_ex(const void *key, const int key_len, \
 	const int init_value);
 
 #define CRC32_FINAL(crc)  (crc ^ CRC32_XOROT)

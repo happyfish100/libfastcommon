@@ -2113,11 +2113,6 @@ char *urldecode(const char *src, const int src_len, char *dest, int *dest_len)
 
 char *urldecode_ex(const char *src, const int src_len, char *dest, int *dest_len)
 {
-#define IS_HEX_CHAR(ch) \
-	((ch >= '0' && ch <= '9') || \
-	 (ch >= 'a' && ch <= 'f') || \
-	 (ch >= 'A' && ch <= 'F'))
-
 #define HEX_VALUE(ch, value) \
 	if (ch >= '0' && ch <= '9') \
 	{ \
