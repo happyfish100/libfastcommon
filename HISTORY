@@ -1,4 +1,9 @@
 
+Version 1.37  2018-02-24
+  * ini_file_reader.c function annotations LOCAL_IP_GET support index, such as:
+   #@function LOCAL_IP_GET
+    bind_addr=private[0]
+
 Version 1.36  2017-03-08
   * correct getFileContentEx read bytes
 

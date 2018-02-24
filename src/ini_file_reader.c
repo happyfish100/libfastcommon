@@ -140,10 +140,24 @@ static int iniAnnotationFuncLocalIpGet(char *param, char **pOutValue, int max_va
 {
     bool need_private_ip;
     int count;
+    int index;
     const char *next_ip;
+    char *square_start;
+    char name_part[16];
 
-    need_private_ip = strcasecmp(param, "inner") == 0 ||
-        strcasecmp(param, "private") == 0;
+    memset(name_part, 0, sizeof(name_part));
+    square_start = strchr(param, '[');
+    if (square_start != NULL && param[strlen(param) - 1] == ']') {
+        snprintf(name_part, sizeof(name_part) - 1, "%.*s",
+                (int)(square_start - param), param);
+        index = atoi(square_start + 1);
+    } else {
+        snprintf(name_part, sizeof(name_part) - 1, "%s", param);
+        index = -2;
+    }
+
+    need_private_ip = strcasecmp(name_part, "inner") == 0 ||
+        strcasecmp(name_part, "private") == 0;
     next_ip = NULL;
     count = 0;
     while ((next_ip=get_next_local_ip(next_ip)) != NULL) {
@@ -163,6 +177,20 @@ static int iniAnnotationFuncLocalIpGet(char *param, char **pOutValue, int max_va
 
     if (count == 0) {
         pOutValue[count++] = "";
+    } else if (index > -2) {
+        if (index == -1) {  //get the last one
+            if (count > 1) {
+                pOutValue[0] = pOutValue[count - 1];
+            }
+        } else if (index >= count) { //index overflow
+            logWarning("file: "__FILE__", line: %d, "
+                    "index: %d >= count: %d, set value to empty",
+                    __LINE__, index, count);
+            pOutValue[0] = "";
+        } else if (index > 0) {
+            pOutValue[0] = pOutValue[index];
+        }
+        count = 1;
     }
     return count;
 }
