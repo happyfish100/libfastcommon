@@ -192,6 +192,53 @@ void long2buff(int64_t n, char *buff);
 */
 int64_t buff2long(const char *buff);
 
+
+/** 32 bits float convert to buffer (big-endian)
+ *  parameters:
+ *  	n: 32 bits float value
+ *  	buff: the buffer, at least 4 bytes space, no tail \0
+ *  return: none
+*/
+static inline void float2buff(float f, char *buff)
+{
+    int2buff(*((int *)&f), buff);
+}
+
+/** buffer convert to 32 bits float
+ *  parameters:
+ *  	buff: big-endian 8 bytes buffer
+ *  return: 32 bits float value
+*/
+static inline float buff2float(const char *buff)
+{
+    int n;
+    n = buff2int(buff);
+    return *((float *)&n);
+}
+
+/** double (64 bits) convert to buffer (big-endian)
+ *  parameters:
+ *  	n: 64 bits double value
+ *  	buff: the buffer, at least 8 bytes space, no tail \0
+ *  return: none
+*/
+static inline void double2buff(double d, char *buff)
+{
+    long2buff(*((int64_t *)&d), buff);
+}
+
+/** buffer convert to 64 bits double
+ *  parameters:
+ *  	buff: big-endian 8 bytes buffer
+ *  return: 64 bits double value
+*/
+static inline double buff2double(const char *buff)
+{
+    int64_t n;
+    n = buff2long(buff);
+    return *((double *)&n);
+}
+
 /** trim leading spaces ( \t\r\n)
  *  parameters:
  *  	pStr: the string to trim
