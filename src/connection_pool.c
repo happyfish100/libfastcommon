@@ -282,6 +282,7 @@ ConnectionInfo *conn_pool_get_connection(ConnectionPool *cp,
 				"total_count: %d, free_count: %d", 
 				__LINE__, conn->ip_addr, conn->port, 
 				ci->sock, cm->total_count, cm->free_count);
+            *err_no = 0;
 			return ci;
 		}
 	}
