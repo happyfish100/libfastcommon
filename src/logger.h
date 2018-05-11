@@ -338,6 +338,15 @@ int log_rotate(LogContext *pContext);
 */
 int log_delete_old_files(void *args);
 
+/** get log level caption
+ *  parameters:
+ *           pContext: the log context
+ *  return: log level caption
+*/
+const char *log_get_level_caption_ex(LogContext *pContext);
+
+#define log_get_level_caption() log_get_level_caption_ex(&g_log_context)
+
 void logEmergEx(LogContext *pContext, const char *format, ...);
 void logCritEx(LogContext *pContext, const char *format, ...);
 void logAlertEx(LogContext *pContext, const char *format, ...);
