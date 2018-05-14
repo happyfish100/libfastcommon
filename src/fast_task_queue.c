@@ -209,7 +209,7 @@ int free_queue_init_ex(const int max_connections, const int init_connections,
 		alloc_once = MAX_DATA_SIZE / g_free_queue.block_size;
         if (g_free_queue.alloc_task_once > alloc_once)
         {
-            g_free_queue.alloc_task_once = alloc_once;
+            g_free_queue.alloc_task_once = alloc_once > 0 ? alloc_once : 1;
         }
     }
     else
