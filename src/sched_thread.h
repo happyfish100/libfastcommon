@@ -112,6 +112,7 @@ extern volatile time_t g_current_time;  //the current time
  *  parameters:
  *  	     pScheduleArray: the schedule tasks
  * return: error no, 0 for success, != 0 fail
+ * Note: you should call this function after sched_start
 */
 int sched_add_entries(const ScheduleArray *pScheduleArray);
 
