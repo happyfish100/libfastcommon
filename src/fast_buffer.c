@@ -40,7 +40,7 @@ void fast_buffer_destroy(FastBuffer *buffer)
     }
 }
 
-static int fast_buffer_check(FastBuffer *buffer, const int inc_len)
+int fast_buffer_check(FastBuffer *buffer, const int inc_len)
 {
     int alloc_size;
     char *buff;

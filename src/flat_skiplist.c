@@ -35,7 +35,7 @@ int flat_skiplist_init_ex(FlatSkiplist *sl, const int level_count,
         return EINVAL;
     }
 
-    if (level_count > 20) {
+    if (level_count > 30) {
         logError("file: "__FILE__", line: %d, "
                 "level count: %d is too large",
                 __LINE__, level_count);

@@ -4,9 +4,9 @@
 #include <stdint.h>
 
 typedef struct fast_buffer {
-    char *data;
-    int alloc_size;
-    int length;
+	char *data;
+	int alloc_size;
+	int length;
 } FastBuffer;
 
 #ifdef __cplusplus
@@ -39,6 +39,8 @@ static inline void fast_buffer_reset(FastBuffer *buffer)
 }
 
 void fast_buffer_destroy(FastBuffer *buffer);
+
+int fast_buffer_check(FastBuffer *buffer, const int inc_len);
 
 int fast_buffer_append(FastBuffer *buffer, const char *format, ...);
 

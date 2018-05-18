@@ -74,39 +74,39 @@ typedef struct ioevent_puller {
 
 #if IOEVENT_USE_EPOLL
   #define IOEVENT_GET_EVENTS(ioevent, index) \
-      ioevent->events[index].events
+      (ioevent)->events[index].events
 #elif IOEVENT_USE_KQUEUE
   #define IOEVENT_GET_EVENTS(ioevent, index)  kqueue_ev_convert( \
-      ioevent->events[index].filter, ioevent->events[index].flags)
+      (ioevent)->events[index].filter, (ioevent)->events[index].flags)
 #elif IOEVENT_USE_PORT
   #define IOEVENT_GET_EVENTS(ioevent, index) \
-      ioevent->events[index].portev_events
+      (ioevent)->events[index].portev_events
 #else
 #error port me
 #endif
 
 #if IOEVENT_USE_EPOLL
   #define IOEVENT_GET_DATA(ioevent, index)  \
-      ioevent->events[index].data.ptr
+      (ioevent)->events[index].data.ptr
 #elif IOEVENT_USE_KQUEUE
   #define IOEVENT_GET_DATA(ioevent, index)  \
-      ioevent->events[index].udata
+      (ioevent)->events[index].udata
 #elif IOEVENT_USE_PORT
   #define IOEVENT_GET_DATA(ioevent, index)  \
-      ioevent->events[index].portev_user
+      (ioevent)->events[index].portev_user
 #else
 #error port me
 #endif
 
 #if IOEVENT_USE_EPOLL
   #define IOEVENT_CLEAR_DATA(ioevent, index)  \
-      ioevent->events[index].data.ptr = NULL
+      (ioevent)->events[index].data.ptr = NULL
 #elif IOEVENT_USE_KQUEUE
   #define IOEVENT_CLEAR_DATA(ioevent, index)  \
-      ioevent->events[index].udata = NULL
+      (ioevent)->events[index].udata = NULL
 #elif IOEVENT_USE_PORT
   #define IOEVENT_CLEAR_DATA(ioevent, index)  \
-      ioevent->events[index].portev_user = NULL
+      (ioevent)->events[index].portev_user = NULL
 #else
 #error port me
 #endif
