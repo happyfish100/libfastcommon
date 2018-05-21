@@ -65,7 +65,6 @@ typedef struct ioevent_puller {
 #elif IOEVENT_USE_KQUEUE
     struct kevent *events;
     struct timespec timeout;
-    int care_events;
 #elif IOEVENT_USE_PORT
     port_event_t *events;
     timespec_t timeout;

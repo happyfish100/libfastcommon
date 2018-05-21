@@ -47,7 +47,6 @@ int ioevent_init(IOEventPoller *ioevent, const int size,
   ioevent->poll_fd = kqueue();
   bytes = sizeof(struct kevent) * size;
   ioevent->events = (struct kevent *)malloc(bytes);
-  ioevent->care_events = 0;
 #elif IOEVENT_USE_PORT
   ioevent->poll_fd = port_create();
   bytes = sizeof(port_event_t) * size;
@@ -93,7 +92,6 @@ int ioevent_attach(IOEventPoller *ioevent, const int fd, const int e,
   if (e & IOEVENT_WRITE) {
     EV_SET(&ev[n++], fd, EVFILT_WRITE, EV_ADD | ioevent->extra_events, 0, 0, data);
   }
-  ioevent->care_events = e;
   return kevent(ioevent->poll_fd, ev, n, NULL, 0, NULL);
 #elif IOEVENT_USE_PORT
   return port_associate(ioevent->poll_fd, PORT_SOURCE_FD, fd, e, data);
@@ -112,21 +110,21 @@ int ioevent_modify(IOEventPoller *ioevent, const int fd, const int e,
 #elif IOEVENT_USE_KQUEUE
   struct kevent ev[2];
   int n = 0;
+
   if (e & IOEVENT_READ) {
     EV_SET(&ev[n++], fd, EVFILT_READ, EV_ADD | ioevent->extra_events, 0, 0, data);
   }
-  else if ((ioevent->care_events & IOEVENT_READ)) {
+  else {
     EV_SET(&ev[n++], fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
   }
 
   if (e & IOEVENT_WRITE) {
     EV_SET(&ev[n++], fd, EVFILT_WRITE, EV_ADD | ioevent->extra_events, 0, 0, data);
   }
-  else if ((ioevent->care_events & IOEVENT_WRITE)) {
+  else {
     EV_SET(&ev[n++], fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
   }
 
-  ioevent->care_events = e;
   if (n > 0) {
       return kevent(ioevent->poll_fd, ev, n, NULL, 0, NULL);
   }
@@ -143,22 +141,16 @@ int ioevent_detach(IOEventPoller *ioevent, const int fd)
 #if IOEVENT_USE_EPOLL
   return epoll_ctl(ioevent->poll_fd, EPOLL_CTL_DEL, fd, NULL);
 #elif IOEVENT_USE_KQUEUE
-  struct kevent ev[2];
-  int n = 0;
-  if ((ioevent->care_events & IOEVENT_READ)) {
-    EV_SET(&ev[n++], fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-  }
-  if ((ioevent->care_events & IOEVENT_WRITE)) {
-    EV_SET(&ev[n++], fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
-  }
+  struct kevent ev[1];
+  int r, w;
 
-  ioevent->care_events = 0;
-  if (n > 0) {
-      return kevent(ioevent->poll_fd, ev, n, NULL, 0, NULL);
-  }
-  else {
-      return 0;
-  }
+  EV_SET(&ev[0], fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+  r = kevent(ioevent->poll_fd, ev, 1, NULL, 0, NULL);
+
+  EV_SET(&ev[0], fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
+  w = kevent(ioevent->poll_fd, ev, 1, NULL, 0, NULL);
+
+  return (r == 0 || w == 0) ? 0 : r;
 #elif IOEVENT_USE_PORT
   return port_dissociate(ioevent->poll_fd, PORT_SOURCE_FD, fd);
 #endif

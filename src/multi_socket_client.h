@@ -18,15 +18,27 @@
 #include <sys/socket.h>
 #include "common_define.h"
 #include "connection_pool.h"
-#include "fast_timer.h"
+#include "fast_buffer.h"
 #include "ioevent.h"
 
+typedef enum {
+    fast_multi_sock_stage_send = 'S',
+    fast_multi_sock_stage_recv = 'R'
+} FastMultiSockStage;
+
+struct fast_multi_sock_client;
+struct fast_multi_sock_entry;
+
 //return the body length
-typedef int (*fast_multi_sock_client_get_body_length_func)(const FastBuffer *buffer);
+typedef int (*fast_multi_sock_client_get_body_length_func)(const FastBuffer *recv_buffer);
+typedef int (*fast_multi_sock_client_io_func)(struct fast_multi_sock_client *client,
+         struct fast_multi_sock_entry *entry);
 
 typedef struct fast_multi_sock_entry {
     ConnectionInfo *conn;
-    FastBuffer buffer;  //recv buffer
+    FastBuffer *send_buffer;  //send buffer for internal use
+    fast_multi_sock_client_io_func io_callback;  //for internal use
+    FastBuffer recv_buffer;   //recv buffer
     int remain;         //remain bytes
     int error_no;       //0 for success
     bool done;
@@ -56,7 +68,7 @@ extern "C" {
       @param entry_count the count of socket entries
       @param header_length the header length of a package
       @param get_body_length_func the get body length function
-      @param init_buffer_size the initial size of response buffer 
+      @param init_recv_buffer_size the initial size of response buffer 
       @param timeout the timeout in seconds
       @return error no, 0 for success, != 0 fail
       */
@@ -64,7 +76,7 @@ extern "C" {
             FastMultiSockEntry *entries, const int entry_count,
             const int header_length,
             fast_multi_sock_client_get_body_length_func get_body_length_func,
-            const int init_buffer_size, const int timeout);
+            const int init_recv_buffer_size, const int timeout);
 
     /**
       destroy function
@@ -76,11 +88,11 @@ extern "C" {
     /**
       request function
       @param client the client context
-      @param buffer the buffer to send
+      @param send_buffer the buffer to send
       @return error no, 0 for success, != 0 fail
       */
     int fast_multi_sock_client_request(FastMultiSockClient *client,
-            FastBuffer *buffer);
+            FastBuffer *send_buffer);
 
 #ifdef __cplusplus
 }
