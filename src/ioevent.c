@@ -41,20 +41,31 @@ int ioevent_init(IOEventPoller *ioevent, const int size,
 
 #if IOEVENT_USE_EPOLL
   ioevent->poll_fd = epoll_create(ioevent->size);
+  if (ioevent->poll_fd < 0) {
+    return errno != 0 ? errno : ENOMEM;
+  }
   bytes = sizeof(struct epoll_event) * size;
   ioevent->events = (struct epoll_event *)malloc(bytes);
 #elif IOEVENT_USE_KQUEUE
   ioevent->poll_fd = kqueue();
+  if (ioevent->poll_fd < 0) {
+    return errno != 0 ? errno : ENOMEM;
+  }
   bytes = sizeof(struct kevent) * size;
   ioevent->events = (struct kevent *)malloc(bytes);
 #elif IOEVENT_USE_PORT
   ioevent->poll_fd = port_create();
+  if (ioevent->poll_fd < 0) {
+    return errno != 0 ? errno : ENOMEM;
+  }
   bytes = sizeof(port_event_t) * size;
   ioevent->events = (port_event_t *)malloc(bytes);
 #endif
 
   if (ioevent->events == NULL) {
-    return errno != 0 ? errno : ENOMEM;
+    close(ioevent->poll_fd);
+    ioevent->poll_fd = -1;
+    return ENOMEM;
   }
   ioevent_set_timeout(ioevent, timeout_ms);
 
@@ -92,6 +103,9 @@ int ioevent_attach(IOEventPoller *ioevent, const int fd, const int e,
   if (e & IOEVENT_WRITE) {
     EV_SET(&ev[n++], fd, EVFILT_WRITE, EV_ADD | ioevent->extra_events, 0, 0, data);
   }
+  if (n == 0) {
+      return ENOENT;
+  }
   return kevent(ioevent->poll_fd, ev, n, NULL, 0, NULL);
 #elif IOEVENT_USE_PORT
   return port_associate(ioevent->poll_fd, PORT_SOURCE_FD, fd, e, data);
@@ -109,6 +123,7 @@ int ioevent_modify(IOEventPoller *ioevent, const int fd, const int e,
   return epoll_ctl(ioevent->poll_fd, EPOLL_CTL_MOD, fd, &ev);
 #elif IOEVENT_USE_KQUEUE
   struct kevent ev[2];
+  int result;
   int n = 0;
 
   if (e & IOEVENT_READ) {
@@ -125,12 +140,14 @@ int ioevent_modify(IOEventPoller *ioevent, const int fd, const int e,
     EV_SET(&ev[n++], fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
   }
 
-  if (n > 0) {
-      return kevent(ioevent->poll_fd, ev, n, NULL, 0, NULL);
+  result = kevent(ioevent->poll_fd, ev, n, NULL, 0, NULL);
+  if (result == -1) {
+      result = ioevent_detach(ioevent, fd);
+      if (e & (IOEVENT_READ | IOEVENT_WRITE)) {
+          result = ioevent_attach(ioevent, fd, e, data);
+      }
   }
-  else {
-      return 0;
-  }
+  return result;
 #elif IOEVENT_USE_PORT
   return port_associate(ioevent->poll_fd, PORT_SOURCE_FD, fd, e, data);
 #endif

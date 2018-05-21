@@ -142,9 +142,10 @@ static int fast_multi_sock_client_do_send(FastMultiSockClient *client,
         if (entry->remain == 0) {
             entry->remain = client->header_length;   //to recv pkg header
             entry->io_callback = fast_multi_sock_client_do_recv;
-            if ((result=ioevent_modify(&client->ioevent,
-                    entry->conn->sock, IOEVENT_READ, entry)) != 0)
+            if (ioevent_modify(&client->ioevent, entry->conn->sock,
+                        IOEVENT_READ, entry) != 0)
             {
+                result = errno != 0 ? errno : EACCES;
                 logError("file: "__FILE__", line: %d, "
                         "ioevent_modify fail, errno: %d, error info: %s",
                         __LINE__, result, STRERROR(result));
@@ -161,9 +162,7 @@ static int fast_multi_sock_client_send_data(FastMultiSockClient *client,
 {
     int i;
     int result;
-    int remain_timeout;
 
-    remain_timeout = 0;
     for (i=0; i<client->entry_count; i++) {
         client->entries[i].remain = send_buffer->length;
         client->entries[i].done = false;
@@ -181,37 +180,11 @@ static int fast_multi_sock_client_send_data(FastMultiSockClient *client,
             continue;
         }
 
-        /*
-        remain_timeout = client->deadline_time - get_current_time();
-        if (remain_timeout <= 0) {
-            client->entries[i].error_no = ETIMEDOUT;
-            client->entries[i].done = true;
-            logError("file: "__FILE__", line: %d, "
-                    "tcpsenddata to %s:%d timedout",
-                    __LINE__, client->entries[i].conn->ip_addr,
-                    client->entries[i].conn->port);
-            continue;
-        }
-
-        client->entries[i].error_no = tcpsenddata(client->entries[i].conn->sock,
-                buffer->data, buffer->length, client->timeout);
-        if (client->entries[i].error_no != 0) {
-            client->entries[i].done = true;
-            result = client->entries[i].error_no;
-            logError("file: "__FILE__", line: %d, "
-                    "tcpsenddata to %s:%d fail, "
-                    "errno: %d, error info: %s",
-                    __LINE__, client->entries[i].conn->ip_addr,
-                    client->entries[i].conn->port,
-                    result, STRERROR(result));
-            continue;
-        }
-        */
-
-        client->entries[i].error_no = ioevent_attach(&client->ioevent,
-                client->entries[i].conn->sock, IOEVENT_WRITE,
-                client->entries + i);
-        if (client->entries[i].error_no != 0) {
+        if (ioevent_attach(&client->ioevent,
+                    client->entries[i].conn->sock, IOEVENT_WRITE,
+                    client->entries + i) != 0)
+        {
+            client->entries[i].error_no = errno != 0 ? errno : EACCES;
             client->entries[i].done = true;
             result = client->entries[i].error_no;
             logError("file: "__FILE__", line: %d, "
@@ -223,7 +196,7 @@ static int fast_multi_sock_client_send_data(FastMultiSockClient *client,
         client->pulling_count++;
     }
 
-    return client->pulling_count > 0 ? 0 : (remain_timeout > 0 ? ENOENT : ETIMEDOUT);
+    return client->pulling_count > 0 ? 0 : ENOENT;
 }
 
 static inline void fast_multi_sock_client_finish(FastMultiSockClient *client,
