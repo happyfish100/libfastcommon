@@ -5,12 +5,12 @@
 #include <time.h>
 #include <inttypes.h>
 #include <sys/time.h>
-#include "logger.h"
-#include "shared_func.h"
-#include "sched_thread.h"
-#include "ini_file_reader.h"
-#include "fast_task_queue.h"
-#include "fast_blocked_queue.h"
+#include "fastcommon/logger.h"
+#include "fastcommon/shared_func.h"
+#include "fastcommon/sched_thread.h"
+#include "fastcommon/ini_file_reader.h"
+#include "fastcommon/fast_task_queue.h"
+#include "fastcommon/fast_blocked_queue.h"
 
 static bool g_continue_flag = true;
 static int64_t produce_count = 0;

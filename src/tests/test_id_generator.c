@@ -7,12 +7,12 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/stat.h>
-#include "logger.h"
-#include "shared_func.h"
-#include "sched_thread.h"
-#include "ini_file_reader.h"
-#include "sockopt.h"
-#include "id_generator.h"
+#include "fastcommon/logger.h"
+#include "fastcommon/shared_func.h"
+#include "fastcommon/sched_thread.h"
+#include "fastcommon/ini_file_reader.h"
+#include "fastcommon/sockopt.h"
+#include "fastcommon/id_generator.h"
 
 int main(int argc, char *argv[])
 {

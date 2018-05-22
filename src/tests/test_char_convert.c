@@ -7,9 +7,9 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/stat.h>
-#include "logger.h"
-#include "char_convert_loader.h"
-#include "char_converter.h"
+#include "fastcommon/logger.h"
+#include "fastcommon/char_convert_loader.h"
+#include "fastcommon/char_converter.h"
 
 int main(int argc, char *argv[])
 {

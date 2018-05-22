@@ -5,11 +5,11 @@
 #include <time.h>
 #include <inttypes.h>
 #include <sys/time.h>
-#include "logger.h"
-#include "shared_func.h"
-#include "sched_thread.h"
-#include "ini_file_reader.h"
-#include "fast_allocator.h"
+#include "fastcommon/logger.h"
+#include "fastcommon/shared_func.h"
+#include "fastcommon/sched_thread.h"
+#include "fastcommon/ini_file_reader.h"
+#include "fastcommon/fast_allocator.h"
 
 #define OUTER_LOOP_COUNT 128
 #define INNER_LOOP_COUNT 1024 * 64

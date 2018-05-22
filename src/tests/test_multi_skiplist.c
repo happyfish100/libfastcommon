@@ -6,9 +6,9 @@
 #include <assert.h>
 #include <inttypes.h>
 #include <sys/time.h>
-#include "multi_skiplist.h"
-#include "logger.h"
-#include "shared_func.h"
+#include "fastcommon/multi_skiplist.h"
+#include "fastcommon/logger.h"
+#include "fastcommon/shared_func.h"
 
 #define COUNT 1000000
 #define LEVEL_COUNT 16

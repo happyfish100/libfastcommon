@@ -7,14 +7,14 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/stat.h>
-#include "logger.h"
-#include "shared_func.h"
-#include "sched_thread.h"
-#include "ini_file_reader.h"
-#include "fast_mblock.h"
-#include "sockopt.h"
-#include "system_info.h"
-#include "local_ip_func.h"
+#include "fastcommon/logger.h"
+#include "fastcommon/shared_func.h"
+#include "fastcommon/sched_thread.h"
+#include "fastcommon/ini_file_reader.h"
+#include "fastcommon/fast_mblock.h"
+#include "fastcommon/sockopt.h"
+#include "fastcommon/system_info.h"
+#include "fastcommon/local_ip_func.h"
 
 struct my_struct {
     struct fast_mblock_man *mblock;

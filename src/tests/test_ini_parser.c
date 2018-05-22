@@ -7,9 +7,9 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/stat.h>
-#include "logger.h"
-#include "shared_func.h"
-#include "ini_file_reader.h"
+#include "fastcommon/logger.h"
+#include "fastcommon/shared_func.h"
+#include "fastcommon/ini_file_reader.h"
 
 static int iniAnnotationFuncExpressCalc(char *param, char **pOutValue, int max_values)
 {

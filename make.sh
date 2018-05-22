@@ -36,6 +36,8 @@ for col in $output; do
 done
 
 /bin/rm -f a.out $tmp_src_filename
+
+TARGET_PREFIX=$DESTDIR/usr
 if [ "$int_bytes" -eq 8 ]; then
  OS_BITS=64
  LIB_VERSION=lib64
@@ -72,6 +74,8 @@ elif [ "$uname" = "FreeBSD" ] || [ "$uname" = "Darwin" ]; then
   IOEVENT_USE=IOEVENT_USE_KQUEUE
   if [ "$uname" = "Darwin" ]; then
     CFLAGS="$CFLAGS -DDARWIN"
+    TARGET_PREFIX=$TARGET_PREFIX/local
+    LIB_VERSION=lib
   fi
 
   if [ -f /usr/include/sys/vmmeter.h ]; then
@@ -147,9 +151,10 @@ sed_replace()
 
 cd src
 cp Makefile.in Makefile
-sed_replace "s/\\\$(CFLAGS)/$CFLAGS/g" Makefile
-sed_replace "s/\\\$(LIBS)/$LIBS/g" Makefile
-sed_replace "s/\\\$(LIB_VERSION)/$LIB_VERSION/g" Makefile
+sed_replace "s#\\\$(CFLAGS)#$CFLAGS#g" Makefile
+sed_replace "s#\\\$(LIBS)#$LIBS#g" Makefile
+sed_replace "s#\\\$(TARGET_PREFIX)#$TARGET_PREFIX#g" Makefile
+sed_replace "s#\\\$(LIB_VERSION)#$LIB_VERSION#g" Makefile
 make $1 $2 $3
 
 if [ "$1" = "clean" ]; then

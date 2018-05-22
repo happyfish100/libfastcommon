@@ -7,7 +7,7 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/stat.h>
-#include "logger.h"
+#include "fastcommon/logger.h"
 
 int main(int argc, char *argv[])
 {
