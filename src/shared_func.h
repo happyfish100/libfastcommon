@@ -201,7 +201,9 @@ int64_t buff2long(const char *buff);
 */
 static inline void float2buff(float f, char *buff)
 {
-    int2buff(*((int *)&f), buff);
+    int *p;
+    p = (int *)&f;
+    int2buff(*p, buff);
 }
 
 /** buffer convert to 32 bits float
@@ -212,8 +214,11 @@ static inline void float2buff(float f, char *buff)
 static inline float buff2float(const char *buff)
 {
     int n;
+    float *p;
+
     n = buff2int(buff);
-    return *((float *)&n);
+    p = (float *)&n;
+    return *p;
 }
 
 /** double (64 bits) convert to buffer (big-endian)
@@ -224,7 +229,9 @@ static inline float buff2float(const char *buff)
 */
 static inline void double2buff(double d, char *buff)
 {
-    long2buff(*((int64_t *)&d), buff);
+    int64_t *p;
+    p = (int64_t *)&d;
+    long2buff(*p, buff);
 }
 
 /** buffer convert to 64 bits double
@@ -235,8 +242,11 @@ static inline void double2buff(double d, char *buff)
 static inline double buff2double(const char *buff)
 {
     int64_t n;
+    double *p;
+
     n = buff2long(buff);
-    return *((double *)&n);
+    p = (double *)&n;
+    return *p;
 }
 
 /** trim leading spaces ( \t\r\n)
