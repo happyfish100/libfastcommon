@@ -40,6 +40,7 @@ typedef struct multi_skiplist
     struct fast_mblock_man *mblocks;  //node allocators
     MultiSkiplistNode *top;   //the top node
     MultiSkiplistNode *tail;  //the tail node for terminate
+    MultiSkiplistNode **tmp_previous;  //thread safe for insert
 } MultiSkiplist;
 
 typedef struct multi_skiplist_iterator {
@@ -76,8 +77,13 @@ static inline void multi_skiplist_iterator(MultiSkiplist *sl,
         MultiSkiplistIterator *iterator)
 {
     iterator->tail = sl->tail;
-    iterator->current.node = sl->top;
-    iterator->current.data = NULL;
+    iterator->current.node = sl->top->links[0];
+    if (iterator->current.node != sl->tail) {
+        iterator->current.data = iterator->current.node->head;
+    }
+    else {
+        iterator->current.data = NULL;
+    }
 }
 
 static inline void *multi_skiplist_next(MultiSkiplistIterator *iterator)
@@ -98,6 +104,33 @@ static inline void *multi_skiplist_next(MultiSkiplistIterator *iterator)
     data = iterator->current.data->data;
     iterator->current.data = iterator->current.data->next;
     return data;
+}
+
+static inline bool multi_skiplist_empty(MultiSkiplist *sl)
+{
+    return sl->top->links[0] == sl->tail;
+}
+
+typedef const char * (*multi_skiplist_tostring_func)(void *data, char *buff, const int size);
+
+static inline void multi_skiplist_print(MultiSkiplist *sl, multi_skiplist_tostring_func tostring_func)
+{
+    int i;
+    MultiSkiplistNode *current;
+    char buff[1024];
+
+    printf("###################\n");
+    for (i=sl->top_level_index; i>=0; i--) {
+        printf("level %d: ", i);
+        current = sl->top->links[i];
+        while (current != sl->tail) {
+            printf("%s ", tostring_func(current->head->data, buff, sizeof(buff)));
+            current = current->links[i];
+        }
+        printf("\n");
+    }
+    printf("###################\n");
+    printf("\n");
 }
 
 #ifdef __cplusplus

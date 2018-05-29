@@ -1,11 +1,12 @@
 
-Version 1.38  2018-05-21
+Version 1.38  2018-05-29
   * connection_pool.c: set err_no to 0 when success
   * shared_func.h: add functions float2buff / buff2float, double2buff / buff2double
   * logger.h: add function log_get_level_caption
   * add files: common_blocked_queue.[hc]
   * add files: multi_socket_client.[hc]
   * ioevent.[hc]: remove care_events in FreeBSD or MacOS
+  * add skiplist_set.[hc] and skiplist bug fixed
 
 Version 1.37  2018-02-24
   * ini_file_reader.c function annotations LOCAL_IP_GET support index, such as:

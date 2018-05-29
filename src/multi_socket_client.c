@@ -96,14 +96,11 @@ static int fast_multi_sock_client_do_send(FastMultiSockClient *client,
     int bytes;
     int result;
 
-    logInfo("file: "__FILE__", line: %d, "
-            "send remain: %d", __LINE__, entry->remain);
     result = 0;
     while (entry->remain > 0) {
         bytes = write(entry->conn->sock, entry->send_buffer->data +
                 (entry->send_buffer->length - entry->remain), entry->remain);
 
-        logInfo("sock: %d, write bytes: %d, remain: %d", entry->conn->sock, bytes, entry->remain);
         if (bytes < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 break;
@@ -217,8 +214,6 @@ static int fast_multi_sock_client_do_recv(FastMultiSockClient *client,
     int bytes;
     int result;
 
-    logInfo("file: "__FILE__", line: %d, "
-            "recv remain: %d", __LINE__, entry->remain);
     result = 0;
     while (entry->remain > 0) {
         bytes = read(entry->conn->sock, entry->recv_buffer.data +
@@ -322,9 +317,11 @@ static int fast_multi_sock_client_deal_io(FastMultiSockClient *client)
         }
     }
 
+/*
     logInfo("file: "__FILE__", line: %d, pulling_count: %d, "
             "success_count: %d\n", __LINE__,
             client->pulling_count, client->success_count);
+*/
     if (client->pulling_count > 0) {
         int i;
         for (i=0; i<client->entry_count; i++) {

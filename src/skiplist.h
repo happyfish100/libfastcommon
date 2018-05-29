@@ -17,24 +17,28 @@
 #include "skiplist_common.h"
 #include "flat_skiplist.h"
 #include "multi_skiplist.h"
+#include "skiplist_set.h"
 
 #define SKIPLIST_TYPE_FLAT    0
 #define SKIPLIST_TYPE_MULTI   1
+#define SKIPLIST_TYPE_SET     2
 
 typedef struct skiplist
 {
     int type;
     union {
-        FlatSkiplist flat;
+        FlatSkiplist  flat;
         MultiSkiplist multi;
+        SkiplistSet   set;
     } u;
 } Skiplist;
 
 typedef struct skiplist_iterator {
     int type;
     union {
-        FlatSkiplistIterator flat;
+        FlatSkiplistIterator  flat;
         MultiSkiplistIterator multi;
+        SkiplistSetIterator   set;
     } u;
 } SkiplistIterator;
 
@@ -51,95 +55,166 @@ static inline int skiplist_init_ex(Skiplist *sl, const int level_count,
         const int min_alloc_elements_once, const int type)
 {
     sl->type = type;
-    if (type == SKIPLIST_TYPE_FLAT) {
-        return flat_skiplist_init_ex(&sl->u.flat, level_count,
-                compare_func, free_func, min_alloc_elements_once);
-    }
-    else {
-        return multi_skiplist_init_ex(&sl->u.multi, level_count,
-                compare_func, free_func, min_alloc_elements_once);
+    switch (type) {
+        case SKIPLIST_TYPE_FLAT:
+            return flat_skiplist_init_ex(&sl->u.flat, level_count,
+                    compare_func, free_func, min_alloc_elements_once);
+        case SKIPLIST_TYPE_MULTI:
+            return multi_skiplist_init_ex(&sl->u.multi, level_count,
+                    compare_func, free_func, min_alloc_elements_once);
+        case SKIPLIST_TYPE_SET:
+            return skiplist_set_init_ex(&sl->u.set, level_count,
+                    compare_func, free_func, min_alloc_elements_once);
+        default:
+            return EINVAL;
     }
 }
 
 static inline void skiplist_destroy(Skiplist *sl)
 {
-    if (sl->type == SKIPLIST_TYPE_FLAT) {
-        flat_skiplist_destroy(&sl->u.flat);
-    }
-    else {
-        multi_skiplist_destroy(&sl->u.multi);
+    switch (sl->type) {
+        case SKIPLIST_TYPE_FLAT:
+            flat_skiplist_destroy(&sl->u.flat);
+            break;
+        case SKIPLIST_TYPE_MULTI:
+            multi_skiplist_destroy(&sl->u.multi);
+            break;
+        case SKIPLIST_TYPE_SET:
+            skiplist_set_destroy(&sl->u.set);
+            break;
+        default:
+            break;
     }
 }
 
 static inline int skiplist_insert(Skiplist *sl, void *data)
 {
-    if (sl->type == SKIPLIST_TYPE_FLAT) {
-        return flat_skiplist_insert(&sl->u.flat, data);
-    }
-    else {
-        return multi_skiplist_insert(&sl->u.multi, data);
+    switch (sl->type) {
+        case SKIPLIST_TYPE_FLAT:
+            return flat_skiplist_insert(&sl->u.flat, data);
+        case SKIPLIST_TYPE_MULTI:
+            return multi_skiplist_insert(&sl->u.multi, data);
+        case SKIPLIST_TYPE_SET:
+            return skiplist_set_insert(&sl->u.set, data);
+        default:
+            return EINVAL;
     }
 }
 
 static inline int skiplist_delete(Skiplist *sl, void *data)
 {
-    if (sl->type == SKIPLIST_TYPE_FLAT) {
-        return flat_skiplist_delete(&sl->u.flat, data);
-    }
-    else {
-        return multi_skiplist_delete(&sl->u.multi, data);
+    switch (sl->type) {
+        case SKIPLIST_TYPE_FLAT:
+            return flat_skiplist_delete(&sl->u.flat, data);
+        case SKIPLIST_TYPE_MULTI:
+            return multi_skiplist_delete(&sl->u.multi, data);
+        case SKIPLIST_TYPE_SET:
+            return skiplist_set_delete(&sl->u.set, data);
+        default:
+            return EINVAL;
     }
 }
 
 static inline int skiplist_delete_all(Skiplist *sl, void *data, int *delete_count)
 {
-    if (sl->type == SKIPLIST_TYPE_FLAT) {
-        return flat_skiplist_delete_all(&sl->u.flat, data, delete_count);
-    }
-    else {
-        return multi_skiplist_delete_all(&sl->u.multi, data, delete_count);
+    int result;
+    switch (sl->type) {
+        case SKIPLIST_TYPE_FLAT:
+            return flat_skiplist_delete_all(&sl->u.flat, data, delete_count);
+        case SKIPLIST_TYPE_MULTI:
+            return multi_skiplist_delete_all(&sl->u.multi, data, delete_count);
+        case SKIPLIST_TYPE_SET:
+            result = skiplist_set_delete(&sl->u.set, data);
+            *delete_count = (result == 0) ? 1 : 0;
+            return result;
+        default:
+            return EINVAL;
     }
 }
 
 static inline void *skiplist_find(Skiplist *sl, void *data)
 {
-    if (sl->type == SKIPLIST_TYPE_FLAT) {
-        return flat_skiplist_find(&sl->u.flat, data);
-    }
-    else {
-        return multi_skiplist_find(&sl->u.multi, data);
+    switch (sl->type) {
+        case SKIPLIST_TYPE_FLAT:
+            return flat_skiplist_find(&sl->u.flat, data);
+        case SKIPLIST_TYPE_MULTI:
+            return multi_skiplist_find(&sl->u.multi, data);
+        case SKIPLIST_TYPE_SET:
+            return skiplist_set_find(&sl->u.set, data);
+        default:
+            return NULL;
     }
 }
 
 static inline int skiplist_find_all(Skiplist *sl, void *data, SkiplistIterator *iterator)
 {
     iterator->type = sl->type;
-    if (sl->type == SKIPLIST_TYPE_FLAT) {
-        return flat_skiplist_find_all(&sl->u.flat, data, &iterator->u.flat);
-    }
-    else {
-        return multi_skiplist_find_all(&sl->u.multi, data, &iterator->u.multi);
+    switch (sl->type) {
+        case SKIPLIST_TYPE_FLAT:
+            return flat_skiplist_find_all(&sl->u.flat, data, &iterator->u.flat);
+        case SKIPLIST_TYPE_MULTI:
+            return multi_skiplist_find_all(&sl->u.multi, data, &iterator->u.multi);
+        case SKIPLIST_TYPE_SET:
+            return EOPNOTSUPP;
+        default:
+            return EINVAL;
     }
 }
 
 static inline void skiplist_iterator(Skiplist *sl, SkiplistIterator *iterator)
 {
     iterator->type = sl->type;
-    if (sl->type == SKIPLIST_TYPE_FLAT) {
-        return flat_skiplist_iterator(&sl->u.flat, &iterator->u.flat);
-    }
-    else {
-        return multi_skiplist_iterator(&sl->u.multi, &iterator->u.multi);
+    switch (sl->type) {
+        case SKIPLIST_TYPE_FLAT:
+            return flat_skiplist_iterator(&sl->u.flat, &iterator->u.flat);
+        case SKIPLIST_TYPE_MULTI:
+            return multi_skiplist_iterator(&sl->u.multi, &iterator->u.multi);
+        case SKIPLIST_TYPE_SET:
+            return skiplist_set_iterator(&sl->u.set, &iterator->u.set);
+        default:
+            return EINVAL;
     }
 }
 
 static inline void *skiplist_next(SkiplistIterator *iterator)
 {
-    if (iterator->type == SKIPLIST_TYPE_FLAT) {
-        return flat_skiplist_next(&iterator->u.flat);
+    switch (iterator->type) {
+        case SKIPLIST_TYPE_FLAT:
+            return flat_skiplist_next(&iterator->u.flat);
+        case SKIPLIST_TYPE_MULTI:
+            return multi_skiplist_next(&iterator->u.multi);
+        case SKIPLIST_TYPE_SET:
+            return skiplist_set_next(&iterator->u.set);
+        default:
+            return NULL;
     }
-    else {
-        return multi_skiplist_next(&iterator->u.multi);
+}
+
+static inline bool skiplist_empty(Skiplist *sl)
+{
+    switch (sl->type) {
+        case SKIPLIST_TYPE_FLAT:
+            return flat_skiplist_empty(&sl->u.flat);
+        case SKIPLIST_TYPE_MULTI:
+            return multi_skiplist_empty(&sl->u.multi);
+        case SKIPLIST_TYPE_SET:
+            return skiplist_set_empty(&sl->u.set);
+        default:
+            return false;
+    }
+}
+
+static inline const char* skiplist_get_type_caption(Skiplist *sl)
+{
+    switch (sl->type) {
+        case SKIPLIST_TYPE_FLAT:
+            return "flat";
+        case SKIPLIST_TYPE_MULTI:
+            return "multi";
+        case SKIPLIST_TYPE_SET:
+            return "set";
+        default:
+            return "unknown";
     }
 }
 

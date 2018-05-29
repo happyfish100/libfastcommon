@@ -118,6 +118,14 @@ static int compare_record(const void *p1, const void *p2)
     return ((Record *)p1)->key - ((Record *)p2)->key;
 }
 
+/*
+static const char * skiplist_tostring(void *data, char *buff, const int size)
+{
+    snprintf(buff, size, "%d(%04x)", ((Record *)data)->key, (int)(((long)data) & 0xFFFFL));
+    return buff;
+}
+*/
+
 static int test_stable_sort()
 {
 #define RECORDS 32
@@ -127,13 +135,19 @@ static int test_stable_sort()
     int index2;
     int delete_count;
     int total_delete_count;
+    int occur_count;
+    int max_occur_count;
+    int previous_key;
+    int max_occur_key;
     Skiplist sl;
     SkiplistIterator iterator;
     Record records[RECORDS];
+    Record tmp_records[RECORDS];
     Record *record;
     Record target;
     void *value;
 
+    printf("test_stable_sort ...\n");
     instance_count = 0;
     result = skiplist_init_ex(&sl, 12, compare_record,
             free_test_func, 128, skiplist_type);
@@ -146,16 +160,42 @@ static int test_stable_sort()
         records[i].key = i + 1;
     }
 
-    for (i=0; i<RECORDS/4; i++) {
-        index1 = (RECORDS - 1) * (int64_t)rand() / (int64_t)RAND_MAX;
-        index2 = RECORDS - 1 - index1;
-        if (index1 != index2) {
-            records[index1].key = records[index2].key;
+    if (skiplist_type != SKIPLIST_TYPE_SET) {
+        for (i=0; i<RECORDS/4; i++) {
+            index1 = (RECORDS - 1) * (int64_t)rand() / (int64_t)RAND_MAX;
+            index2 = RECORDS - 1 - index1;
+            if (index1 != index2) {
+                records[index1].key = records[index2].key;
+            }
         }
     }
 
+    memcpy(tmp_records, records, sizeof(tmp_records));
+    qsort(tmp_records, RECORDS, sizeof(Record), compare_record);
+    max_occur_count = 0;
+    max_occur_key = 0;
+    i = 0;
+    while (i < RECORDS) {
+        occur_count = 1;
+        previous_key = tmp_records[i].key;
+        i++;
+        while (i < RECORDS && tmp_records[i].key == previous_key) {
+            i++;
+            occur_count++;
+        }
+        if (occur_count > max_occur_count) {
+            max_occur_key = previous_key;
+            max_occur_count = occur_count;
+        }
+    }
+    printf("max_occur_key: %d, max_occur_count: %d\n\n", max_occur_key, max_occur_count);
+
+
     for (i=0; i<RECORDS; i++) {
         if ((result=skiplist_insert(&sl, records + i)) != 0) {
+            fprintf(stderr, "skiplist_insert insert fail, "
+                    "errno: %d, error info: %s\n",
+                    result, STRERROR(result));
             return result;
         }
         instance_count++;
@@ -176,31 +216,60 @@ static int test_stable_sort()
     }
     assert(i==RECORDS);
 
-    target.key = 10;
+    target.key = max_occur_key;
     target.line = 0;
-    if (skiplist_find_all(&sl, &target, &iterator) == 0) {
-        printf("found key: %d\n", target.key);
+    if (skiplist_type == SKIPLIST_TYPE_SET) {
+        record = (Record *)skiplist_find(&sl, &target);
+        assert(record != NULL && record->key == target.key);
     }
-    i = 0;
-    while ((value=skiplist_next(&iterator)) != NULL) {
-        i++;
-        record = (Record *)value;
-        printf("%d => #%d\n", record->key, record->line);
+    else {
+        if (skiplist_find_all(&sl, &target, &iterator) == 0) {
+            printf("found key: %d\n", target.key);
+        }
+        i = 0;
+        while ((value=skiplist_next(&iterator)) != NULL) {
+            i++;
+            record = (Record *)value;
+            printf("%d => #%d\n", record->key, record->line);
+        }
+        printf("found record count: %d\n", i);
     }
-    printf("found record count: %d\n", i);
+
+    /*
+    if (skiplist_type == SKIPLIST_TYPE_FLAT) {
+        flat_skiplist_print(&sl.u.flat, skiplist_tostring);
+    }
+    else if (skiplist_type == SKIPLIST_TYPE_MULTI) {
+        multi_skiplist_print(&sl.u.multi, skiplist_tostring);
+    }
+    */
 
     total_delete_count = 0;
     for (i=0; i<RECORDS; i++) {
-        if ((result=skiplist_delete_all(&sl, records + i,
-                        &delete_count)) == 0)
-        {
-            total_delete_count += delete_count;
-        }
-        assert((result == 0 && delete_count > 0) ||
-                (result != 0 && delete_count == 0));
+        do {
+            delete_count = 0;
+            if ((result=skiplist_delete(&sl, records + i)) == 0)
+            {
+                delete_count = 1;
+                total_delete_count += delete_count;
+            }
+            assert((result == 0 && delete_count > 0) ||
+                    (result != 0 && delete_count == 0));
+
+        } while (result == 0);
+
     }
     assert(total_delete_count == RECORDS);
     assert(instance_count == 0);
+
+    /*
+    if (skiplist_type == SKIPLIST_TYPE_FLAT) {
+        flat_skiplist_print(&sl.u.flat, skiplist_tostring);
+    }
+    else if (skiplist_type == SKIPLIST_TYPE_MULTI) {
+        multi_skiplist_print(&sl.u.multi, skiplist_tostring);
+    }
+    */
 
     i = 0;
     skiplist_iterator(&sl, &iterator);
@@ -230,9 +299,10 @@ int main(int argc, char *argv[])
         if (strcasecmp(argv[1], "multi") == 0 || strcmp(argv[1], "1") == 0) {
             skiplist_type = SKIPLIST_TYPE_MULTI;
         }
+        else if (strcasecmp(argv[1], "set") == 0 || strcmp(argv[1], "2") == 0) {
+            skiplist_type = SKIPLIST_TYPE_SET;
+        }
     }
-    printf("skiplist type: %s\n",
-            skiplist_type == SKIPLIST_TYPE_FLAT ? "flat" : "multi");
 
     numbers = (int *)malloc(sizeof(int) * COUNT);
     srand(time(NULL));
@@ -257,6 +327,7 @@ int main(int argc, char *argv[])
     if (result != 0) {
         return result;
     }
+    printf("skiplist type: %s\n", skiplist_get_type_caption(&sl));
 
     test_insert();
     printf("\n");

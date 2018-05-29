@@ -6,7 +6,7 @@
 * Please visit the FastDFS Home Page http://www.csource.org/ for more detail.
 **/
 
-//flat_skiplist.c
+//skiplist_set.c
 
 #include <ctype.h>
 #include <stdlib.h>
@@ -15,9 +15,9 @@
 #include <errno.h>
 #include <assert.h>
 #include "logger.h"
-#include "flat_skiplist.h"
+#include "skiplist_set.h"
 
-int flat_skiplist_init_ex(FlatSkiplist *sl, const int level_count,
+int skiplist_set_init_ex(SkiplistSet *sl, const int level_count,
         skiplist_compare_func compare_func, skiplist_free_func free_func,
         const int min_alloc_elements_once)
 {
@@ -42,8 +42,8 @@ int flat_skiplist_init_ex(FlatSkiplist *sl, const int level_count,
         return E2BIG;
     }
 
-    bytes = sizeof(FlatSkiplistNode *) * level_count;
-    sl->tmp_previous = (FlatSkiplistNode **)malloc(bytes);
+    bytes = sizeof(SkiplistSetNode *) * level_count;
+    sl->tmp_previous = (SkiplistSetNode **)malloc(bytes);
     if (sl->tmp_previous == NULL) {
         logError("file: "__FILE__", line: %d, "
                 "malloc %d bytes fail, errno: %d, error info: %s",
@@ -70,7 +70,7 @@ int flat_skiplist_init_ex(FlatSkiplist *sl, const int level_count,
     }
 
     for (i=level_count-1; i>=0; i--) {
-        element_size = sizeof(FlatSkiplistNode) + sizeof(FlatSkiplistNode *) * (i + 1);
+        element_size = sizeof(SkiplistSetNode) + sizeof(SkiplistSetNode *) * (i + 1);
         if ((result=fast_mblock_init_ex(sl->mblocks + i,
             element_size, alloc_elements_once, NULL, false)) != 0)
         {
@@ -83,19 +83,18 @@ int flat_skiplist_init_ex(FlatSkiplist *sl, const int level_count,
 
     sl->top_level_index = level_count - 1;
     top_mblock = sl->mblocks + sl->top_level_index;
-    sl->top = (FlatSkiplistNode *)fast_mblock_alloc_object(top_mblock);
+    sl->top = (SkiplistSetNode *)fast_mblock_alloc_object(top_mblock);
     if (sl->top == NULL) {
         return ENOMEM;
     }
     memset(sl->top, 0, top_mblock->info.element_size);
 
-    sl->tail = (FlatSkiplistNode *)fast_mblock_alloc_object(sl->mblocks + 0);
+    sl->tail = (SkiplistSetNode *)fast_mblock_alloc_object(sl->mblocks + 0);
     if (sl->tail == NULL) {
         return ENOMEM;
     }
     memset(sl->tail, 0, sl->mblocks[0].info.element_size);
 
-    sl->tail->prev = sl->top;
     for (i=0; i<level_count; i++) {
         sl->top->links[i] = sl->tail;
     }
@@ -108,11 +107,11 @@ int flat_skiplist_init_ex(FlatSkiplist *sl, const int level_count,
     return 0;
 }
 
-void flat_skiplist_destroy(FlatSkiplist *sl)
+void skiplist_set_destroy(SkiplistSet *sl)
 {
     int i;
-    FlatSkiplistNode *node;
-    FlatSkiplistNode *deleted;
+    SkiplistSetNode *node;
+    SkiplistSetNode *deleted;
 
     if (sl->mblocks == NULL) {
         return;
@@ -135,7 +134,7 @@ void flat_skiplist_destroy(FlatSkiplist *sl)
     sl->mblocks = NULL;
 }
 
-static inline int flat_skiplist_get_level_index(FlatSkiplist *sl)
+static inline int skiplist_set_get_level_index(SkiplistSet *sl)
 {
     int i;
 
@@ -148,33 +147,40 @@ static inline int flat_skiplist_get_level_index(FlatSkiplist *sl)
     return i;
 }
 
-int flat_skiplist_insert(FlatSkiplist *sl, void *data)
+int skiplist_set_insert(SkiplistSet *sl, void *data)
 {
     int i;
     int level_index;
-    FlatSkiplistNode *node;
-    FlatSkiplistNode *previous;
+    int cmp;
+    SkiplistSetNode *node;
+    SkiplistSetNode *previous;
 
-    level_index = flat_skiplist_get_level_index(sl);
-    node = (FlatSkiplistNode *)fast_mblock_alloc_object(sl->mblocks + level_index);
-    if (node == NULL) {
-        return ENOMEM;
-    }
-    node->data = data;
-
+    level_index = skiplist_set_get_level_index(sl);
     previous = sl->top;
     for (i=sl->top_level_index; i>level_index; i--) {
-        while (previous->links[i] != sl->tail && sl->compare_func(data,
-                    previous->links[i]->data) < 0)
-        {
+        while (previous->links[i] != sl->tail) {
+            cmp = sl->compare_func(data, previous->links[i]->data);
+            if (cmp < 0) {
+                break;
+            }
+            else if (cmp == 0) {
+                return EEXIST;
+            }
+
             previous = previous->links[i];
         }
     }
 
     while (i >= 0) {
-        while (previous->links[i] != sl->tail && sl->compare_func(data,
-                    previous->links[i]->data) < 0)
-        {
+        while (previous->links[i] != sl->tail) {
+            cmp = sl->compare_func(data, previous->links[i]->data);
+            if (cmp < 0) {
+                break;
+            }
+            else if (cmp == 0) {
+                return EEXIST;
+            }
+
             previous = previous->links[i];
         }
 
@@ -182,9 +188,11 @@ int flat_skiplist_insert(FlatSkiplist *sl, void *data)
         i--;
     }
 
-    //set previous links of level 0
-    node->prev = previous;
-    previous->links[0]->prev = node;
+    node = (SkiplistSetNode *)fast_mblock_alloc_object(sl->mblocks + level_index);
+    if (node == NULL) {
+        return ENOMEM;
+    }
+    node->data = data;
 
     //thread safe for one write with many read model
     for (i=0; i<=level_index; i++) {
@@ -195,18 +203,18 @@ int flat_skiplist_insert(FlatSkiplist *sl, void *data)
     return 0;
 }
 
-static FlatSkiplistNode *flat_skiplist_get_previous(FlatSkiplist *sl, void *data,
+static SkiplistSetNode *skiplist_set_get_previous(SkiplistSet *sl, void *data,
         int *level_index)
 {
     int i;
     int cmp;
-    FlatSkiplistNode *previous;
+    SkiplistSetNode *previous;
 
     previous = sl->top;
     for (i=sl->top_level_index; i>=0; i--) {
         while (previous->links[i] != sl->tail) {
             cmp = sl->compare_func(data, previous->links[i]->data);
-            if (cmp > 0) {
+            if (cmp < 0) {
                 break;
             }
             else if (cmp == 0) {
@@ -221,29 +229,29 @@ static FlatSkiplistNode *flat_skiplist_get_previous(FlatSkiplist *sl, void *data
     return NULL;
 }
 
-int flat_skiplist_delete(FlatSkiplist *sl, void *data)
+int skiplist_set_delete(SkiplistSet *sl, void *data)
 {
     int i;
     int level_index;
-    FlatSkiplistNode *previous;
-    FlatSkiplistNode *deleted;
+    SkiplistSetNode *previous;
+    SkiplistSetNode *deleted;
 
-    previous = flat_skiplist_get_previous(sl, data, &level_index);
+    previous = skiplist_set_get_previous(sl, data, &level_index);
     if (previous == NULL) {
         return ENOENT;
     }
 
     deleted = previous->links[level_index];
     for (i=level_index; i>=0; i--) {
-        while (previous->links[i] != sl->tail && previous->links[i] != deleted) {
+        while (previous->links[i] != sl->tail && 
+                previous->links[i] != deleted)
+        {
             previous = previous->links[i];
         }
 
         assert(previous->links[i] == deleted);
         previous->links[i] = previous->links[i]->links[i];
     }
-
-    deleted->links[0]->prev = previous;
 
     if (sl->free_func != NULL) {
         sl->free_func(deleted->data);
@@ -252,49 +260,11 @@ int flat_skiplist_delete(FlatSkiplist *sl, void *data)
     return 0;
 }
 
-int flat_skiplist_delete_all(FlatSkiplist *sl, void *data, int *delete_count)
-{
-    *delete_count = 0;
-    while (flat_skiplist_delete(sl, data) == 0) {
-        (*delete_count)++;
-    }
-
-    return *delete_count > 0 ? 0 : ENOENT;
-}
-
-void *flat_skiplist_find(FlatSkiplist *sl, void *data)
+void *skiplist_set_find(SkiplistSet *sl, void *data)
 {
     int level_index;
-    FlatSkiplistNode *previous;
+    SkiplistSetNode *previous;
 
-    previous = flat_skiplist_get_previous(sl, data, &level_index);
+    previous = skiplist_set_get_previous(sl, data, &level_index);
     return (previous != NULL) ? previous->links[level_index]->data : NULL;
-}
-
-int flat_skiplist_find_all(FlatSkiplist *sl, void *data, FlatSkiplistIterator *iterator)
-{
-    int level_index;
-    FlatSkiplistNode *previous;
-    FlatSkiplistNode *last;
-
-    previous = flat_skiplist_get_previous(sl, data, &level_index);
-    if (previous == NULL) {
-        iterator->top = sl->top;
-        iterator->current = sl->top;
-        return ENOENT;
-    }
-
-    previous = previous->links[level_index];
-    last = previous->links[0];
-    while (last != sl->tail && sl->compare_func(data, last->data) == 0) {
-        last = last->links[0];
-    }
-
-    do {
-        previous = previous->prev;
-    } while (previous != sl->top && sl->compare_func(data, previous->data) == 0);
-
-    iterator->top = previous;
-    iterator->current = last->prev;
-    return 0;
 }

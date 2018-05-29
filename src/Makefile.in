@@ -14,7 +14,7 @@ FAST_SHARED_OBJS = hash.lo chain.lo shared_func.lo ini_file_reader.lo \
                    fast_buffer.lo multi_skiplist.lo flat_skiplist.lo \
                    system_info.lo fast_blocked_queue.lo id_generator.lo \
 				   char_converter.lo char_convert_loader.lo common_blocked_queue.lo \
-                   multi_socket_client.lo
+                   multi_socket_client.lo skiplist_set.lo
 
 FAST_STATIC_OBJS = hash.o chain.o shared_func.o ini_file_reader.o \
                    logger.o sockopt.o base64.o sched_thread.o \
@@ -25,7 +25,7 @@ FAST_STATIC_OBJS = hash.o chain.o shared_func.o ini_file_reader.o \
                    fast_buffer.o multi_skiplist.o flat_skiplist.o  \
                    system_info.o fast_blocked_queue.o id_generator.o \
 				   char_converter.o char_convert_loader.o common_blocked_queue.o \
-                   multi_socket_client.o
+                   multi_socket_client.o skiplist_set.o
 
 HEADER_FILES = common_define.h hash.h chain.h logger.h base64.h \
                shared_func.h pthread_func.h ini_file_reader.h _os_define.h \
@@ -37,7 +37,7 @@ HEADER_FILES = common_define.h hash.h chain.h logger.h base64.h \
                skiplist_common.h system_info.h fast_blocked_queue.h \
                php7_ext_wrapper.h id_generator.h char_converter.h \
 			   char_convert_loader.h common_blocked_queue.h  \
-               multi_socket_client.h
+               multi_socket_client.h skiplist_set.h
 
 ALL_OBJS = $(FAST_STATIC_OBJS) $(FAST_SHARED_OBJS)
 
