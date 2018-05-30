@@ -281,7 +281,7 @@ int skiplist_set_find_all(SkiplistSet *sl, void *data, SkiplistSetIterator *iter
         return ENOENT;
     }
 
-    iterator->current =  previous->links[level_index];
+    iterator->current = previous->links[level_index];
     iterator->tail = iterator->current->links[0];
     return 0;
 }

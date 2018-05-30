@@ -420,7 +420,7 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
 
 	pTrunkStart = pNew + sizeof(struct fast_mblock_malloc);
 	pLast = pNew + (mblock->info.trunk_size - block_size);
-	for (p=pTrunkStart; p<pLast; p += block_size)
+	for (p=pTrunkStart; p<=pLast; p += block_size)
 	{
 		pNode = (struct fast_mblock_node *)p;
 
@@ -436,16 +436,6 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
 		pNode->next = (struct fast_mblock_node *)(p + block_size);
 	}
 
-    if (mblock->alloc_init_func != NULL)
-    {
-        if ((result=mblock->alloc_init_func(((struct fast_mblock_node *)
-                            pLast)->data)) != 0)
-        {
-            free(pNew);
-            return result;
-        }
-    }
-    ((struct fast_mblock_node *)pLast)->offset = (int)(pLast - pNew);
     ((struct fast_mblock_node *)pLast)->next = NULL;
 	mblock->free_chain_head = (struct fast_mblock_node *)pTrunkStart;
 
