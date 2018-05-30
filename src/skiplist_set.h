@@ -6,7 +6,8 @@
 * Please visit the FastDFS Home Page http://www.csource.org/ for more detail.
 **/
 
-//skiplist_set.h, support stable sort  :)
+//a set implemented by skiplist, the entry can occur only once
+
 #ifndef _SKIPLIST_SET_H
 #define _SKIPLIST_SET_H
 
@@ -57,6 +58,7 @@ void skiplist_set_destroy(SkiplistSet *sl);
 int skiplist_set_insert(SkiplistSet *sl, void *data);
 int skiplist_set_delete(SkiplistSet *sl, void *data);
 void *skiplist_set_find(SkiplistSet *sl, void *data);
+int skiplist_set_find_all(SkiplistSet *sl, void *data, SkiplistSetIterator *iterator);
 
 static inline void skiplist_set_iterator(SkiplistSet *sl, SkiplistSetIterator *iterator)
 {
@@ -87,4 +89,3 @@ static inline bool skiplist_set_empty(SkiplistSet *sl)
 #endif
 
 #endif
-

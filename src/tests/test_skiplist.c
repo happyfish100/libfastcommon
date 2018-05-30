@@ -218,22 +218,16 @@ static int test_stable_sort()
 
     target.key = max_occur_key;
     target.line = 0;
-    if (skiplist_type == SKIPLIST_TYPE_SET) {
-        record = (Record *)skiplist_find(&sl, &target);
-        assert(record != NULL && record->key == target.key);
+    if (skiplist_find_all(&sl, &target, &iterator) == 0) {
+        printf("found key: %d\n", target.key);
     }
-    else {
-        if (skiplist_find_all(&sl, &target, &iterator) == 0) {
-            printf("found key: %d\n", target.key);
-        }
-        i = 0;
-        while ((value=skiplist_next(&iterator)) != NULL) {
-            i++;
-            record = (Record *)value;
-            printf("%d => #%d\n", record->key, record->line);
-        }
-        printf("found record count: %d\n", i);
+    i = 0;
+    while ((value=skiplist_next(&iterator)) != NULL) {
+        i++;
+        record = (Record *)value;
+        printf("%d => #%d\n", record->key, record->line);
     }
+    printf("found record count: %d\n", i);
 
     /*
     if (skiplist_type == SKIPLIST_TYPE_FLAT) {
@@ -246,17 +240,11 @@ static int test_stable_sort()
 
     total_delete_count = 0;
     for (i=0; i<RECORDS; i++) {
-        do {
-            delete_count = 0;
-            if ((result=skiplist_delete(&sl, records + i)) == 0)
-            {
-                delete_count = 1;
-                total_delete_count += delete_count;
-            }
-            assert((result == 0 && delete_count > 0) ||
-                    (result != 0 && delete_count == 0));
-
-        } while (result == 0);
+        if ((result=skiplist_delete_all(&sl, records + i, &delete_count)) == 0) {
+            total_delete_count += delete_count;
+        }
+        assert((result == 0 && delete_count > 0) ||
+                (result != 0 && delete_count == 0));
 
     }
     assert(total_delete_count == RECORDS);
@@ -332,7 +320,7 @@ int main(int argc, char *argv[])
     test_insert();
     printf("\n");
 
-    fast_mblock_manager_stat_print(false);
+    fast_mblock_manager_stat_print_ex(false, FAST_MBLOCK_ORDER_BY_ELEMENT_SIZE);
 
     test_delete();
     printf("\n");

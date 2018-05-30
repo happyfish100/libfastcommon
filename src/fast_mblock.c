@@ -181,7 +181,7 @@ int fast_mblock_manager_stat(struct fast_mblock_info *stats,
 }
 
 //desc order
-static int fast_mblock_info_cmp(const void *p1, const void *p2)
+static int fast_mblock_info_cmp_by_alloc_bytes(const void *p1, const void *p2)
 {
 	struct fast_mblock_info *pStat1;
 	struct fast_mblock_info *pStat2;
@@ -192,7 +192,18 @@ static int fast_mblock_info_cmp(const void *p1, const void *p2)
 		pStat1->trunk_size * pStat1->trunk_total_count;
 }
 
-int fast_mblock_manager_stat_print(const bool hide_empty)
+//desc order
+static int fast_mblock_info_cmp_by_element_size(const void *p1, const void *p2)
+{
+	struct fast_mblock_info *pStat1;
+	struct fast_mblock_info *pStat2;
+
+	pStat1 = (struct fast_mblock_info *)p1;
+	pStat2 = (struct fast_mblock_info *)p2;
+	return pStat2->element_size - pStat1->element_size;
+}
+
+int fast_mblock_manager_stat_print_ex(const bool hide_empty, const int order_by)
 {
     int result;
     int count;
@@ -225,7 +236,16 @@ int fast_mblock_manager_stat_print(const bool hide_empty)
         char alloc_mem_str[32];
         char used_mem_str[32];
 
-	qsort(stats, count, sizeof(struct fast_mblock_info), fast_mblock_info_cmp);
+        if (order_by == FAST_MBLOCK_ORDER_BY_ALLOC_BYTES)
+        {
+            qsort(stats, count, sizeof(struct fast_mblock_info),
+                    fast_mblock_info_cmp_by_alloc_bytes);
+        }
+        else
+        {
+            qsort(stats, count, sizeof(struct fast_mblock_info),
+                    fast_mblock_info_cmp_by_element_size);
+        }
 
         alloc_mem = 0;
         used_mem = 0;

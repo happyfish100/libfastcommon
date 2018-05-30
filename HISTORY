@@ -1,5 +1,5 @@
 
-Version 1.38  2018-05-29
+Version 1.38  2018-05-30
   * connection_pool.c: set err_no to 0 when success
   * shared_func.h: add functions float2buff / buff2float, double2buff / buff2double
   * logger.h: add function log_get_level_caption

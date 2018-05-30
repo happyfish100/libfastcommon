@@ -20,6 +20,9 @@
 
 #define FAST_MBLOCK_NAME_SIZE 32
 
+#define FAST_MBLOCK_ORDER_BY_ALLOC_BYTES    1
+#define FAST_MBLOCK_ORDER_BY_ELEMENT_SIZE   2
+
 /* free node chain */ 
 struct fast_mblock_node
 {
@@ -282,9 +285,13 @@ int fast_mblock_manager_stat(struct fast_mblock_info *stats,
 print mblock manager stat
 parameters:
     hide_empty: if hide empty
+    order_by: order by which field
 return error no, 0 for success, != 0 fail
 */
-int fast_mblock_manager_stat_print(const bool hide_empty);
+int fast_mblock_manager_stat_print_ex(const bool hide_empty, const int order_by);
+
+#define fast_mblock_manager_stat_print(hide_empty) \
+        fast_mblock_manager_stat_print_ex(hide_empty, FAST_MBLOCK_ORDER_BY_ALLOC_BYTES)
 
 typedef void (*fast_mblock_free_trunks_func)(struct fast_mblock_man *mblock,
         struct fast_mblock_malloc *freelist);

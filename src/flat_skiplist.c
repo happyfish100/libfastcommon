@@ -76,7 +76,7 @@ int flat_skiplist_init_ex(FlatSkiplist *sl, const int level_count,
         {
             return result;
         }
-        if (alloc_elements_once < 1024 * 1024) {
+        if (i % 2 == 0 && alloc_elements_once < 64 * 1024) {
             alloc_elements_once *= 2;
         }
     }

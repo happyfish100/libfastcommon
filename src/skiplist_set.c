@@ -76,7 +76,7 @@ int skiplist_set_init_ex(SkiplistSet *sl, const int level_count,
         {
             return result;
         }
-        if (alloc_elements_once < 1024 * 1024) {
+        if (i % 2 == 0 && alloc_elements_once < 64 * 1024) {
             alloc_elements_once *= 2;
         }
     }
@@ -267,4 +267,21 @@ void *skiplist_set_find(SkiplistSet *sl, void *data)
 
     previous = skiplist_set_get_previous(sl, data, &level_index);
     return (previous != NULL) ? previous->links[level_index]->data : NULL;
+}
+
+int skiplist_set_find_all(SkiplistSet *sl, void *data, SkiplistSetIterator *iterator)
+{
+    int level_index;
+    SkiplistSetNode *previous;
+
+    previous = skiplist_set_get_previous(sl, data, &level_index);
+    if (previous == NULL) {
+        iterator->tail = sl->tail;
+        iterator->current = sl->tail;
+        return ENOENT;
+    }
+
+    iterator->current =  previous->links[level_index];
+    iterator->tail = iterator->current->links[0];
+    return 0;
 }

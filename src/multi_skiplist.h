@@ -6,7 +6,8 @@
 * Please visit the FastDFS Home Page http://www.csource.org/ for more detail.
 **/
 
-//multi_skiplist.h, support stable sort  :)
+//multi_skiplist.h, support duplicated entries, and support stable sort  :)
+
 #ifndef _MULTI_SKIPLIST_H
 #define _MULTI_SKIPLIST_H
 
@@ -138,4 +139,3 @@ static inline void multi_skiplist_print(MultiSkiplist *sl, multi_skiplist_tostri
 #endif
 
 #endif
-

@@ -6,7 +6,9 @@
 * Please visit the FastDFS Home Page http://www.csource.org/ for more detail.
 **/
 
-//flat_skiplist.h, support stable sort  :)
+//flat_skiplist.h, support duplicated entries, and support stable sort  :)
+//you should use multi_skiplist with too many duplicated entries
+
 #ifndef _FLAT_SKIPLIST_H
 #define _FLAT_SKIPLIST_H
 

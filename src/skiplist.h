@@ -7,6 +7,7 @@
 **/
 
 //skiplist.h, support stable sort  :)
+
 #ifndef _SKIPLIST_H
 #define _SKIPLIST_H
 
@@ -19,9 +20,9 @@
 #include "multi_skiplist.h"
 #include "skiplist_set.h"
 
-#define SKIPLIST_TYPE_FLAT    0
-#define SKIPLIST_TYPE_MULTI   1
-#define SKIPLIST_TYPE_SET     2
+#define SKIPLIST_TYPE_FLAT    0   //best for small duplicated entries
+#define SKIPLIST_TYPE_MULTI   1   //best for large duplicated entries
+#define SKIPLIST_TYPE_SET     2   //NO duplicated entries
 
 typedef struct skiplist
 {
@@ -155,7 +156,7 @@ static inline int skiplist_find_all(Skiplist *sl, void *data, SkiplistIterator *
         case SKIPLIST_TYPE_MULTI:
             return multi_skiplist_find_all(&sl->u.multi, data, &iterator->u.multi);
         case SKIPLIST_TYPE_SET:
-            return EOPNOTSUPP;
+            return skiplist_set_find_all(&sl->u.set, data, &iterator->u.set);
         default:
             return EINVAL;
     }
