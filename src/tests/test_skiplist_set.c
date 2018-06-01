@@ -30,6 +30,29 @@ static int compare_func(const void *p1, const void *p2)
     return *((int *)p1) - *((int *)p2);
 }
 
+void set_rand_numbers(const int multiple)
+{
+    int i;
+    int tmp;
+    int index1;
+    int index2;
+
+    for (i=0; i<COUNT; i++) {
+        numbers[i] = multiple * i + 1;
+    }
+
+    for (i=0; i<COUNT; i++) {
+        index1 = LAST_INDEX * (int64_t)rand() / (int64_t)RAND_MAX;
+        index2 = LAST_INDEX * (int64_t)rand() / (int64_t)RAND_MAX;
+        if (index1 == index2) {
+            continue;
+        }
+        tmp = numbers[index1];
+        numbers[index1] = numbers[index2];
+        numbers[index2] = tmp;
+    }
+}
+
 static int test_insert()
 {
     int i;
@@ -37,6 +60,8 @@ static int test_insert()
     int64_t start_time;
     int64_t end_time;
     void *value;
+
+    set_rand_numbers(1);
 
     instance_count = 0;
     start_time = get_current_time_ms();
@@ -108,31 +133,54 @@ static void test_delete()
     assert(i==0);
 }
 
+static void test_find_range()
+{
+    int n_start;
+    int n_end;
+    int result;
+    int i;
+    int *value;
+    SkiplistSetIterator iterator;
+
+    set_rand_numbers(2);
+
+    for (i=0; i<COUNT; i++) {
+        if ((result=skiplist_set_insert(&sl, numbers + i)) != 0) {
+            return;
+        }
+        instance_count++;
+    }
+
+    n_start = 10;
+    n_end = 1;
+    result = skiplist_set_find_range(&sl, &n_start, &n_end, &iterator);
+    assert(result == EINVAL);
+
+    n_start = -1;
+    n_end = 0;
+    result = skiplist_set_find_range(&sl, &n_start, &n_end, &iterator);
+    assert(result == ENOENT);
+
+    n_start = 0;
+    n_end = 10;
+    result = skiplist_set_find_range(&sl, &n_start, &n_end, &iterator);
+    assert(result == 0);
+
+    i = 0;
+    while ((value=(int *)skiplist_set_next(&iterator)) != NULL) {
+        printf("value: %d\n", *value);
+        i++;
+    }
+    printf("count: %d\n\n", i);
+}
+
 int main(int argc, char *argv[])
 {
-    int i;
-    int tmp;
-    int index1;
-    int index2;
     int result;
 
     log_init();
     numbers = (int *)malloc(sizeof(int) * COUNT);
     srand(time(NULL));
-    for (i=0; i<COUNT; i++) {
-        numbers[i] = i + 1;
-    }
-
-    for (i=0; i<COUNT; i++) {
-        index1 = LAST_INDEX * (int64_t)rand() / (int64_t)RAND_MAX;
-        index2 = LAST_INDEX * (int64_t)rand() / (int64_t)RAND_MAX;
-        if (index1 == index2) {
-            continue;
-        }
-        tmp = numbers[index1];
-        numbers[index1] = numbers[index2];
-        numbers[index2] = tmp;
-    }
 
     fast_mblock_manager_init();
     result = skiplist_set_init_ex(&sl, LEVEL_COUNT, compare_func,
@@ -145,6 +193,11 @@ int main(int argc, char *argv[])
     printf("\n");
 
     fast_mblock_manager_stat_print(false);
+
+    test_delete();
+    printf("\n");
+
+    test_find_range();
 
     test_delete();
     printf("\n");

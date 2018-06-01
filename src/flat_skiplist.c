@@ -221,6 +221,81 @@ static FlatSkiplistNode *flat_skiplist_get_previous(FlatSkiplist *sl, void *data
     return NULL;
 }
 
+static FlatSkiplistNode *flat_skiplist_get_first_larger_or_equal(
+        FlatSkiplist *sl, void *data)
+{
+    int i;
+    int cmp;
+    FlatSkiplistNode *previous;
+    FlatSkiplistNode *current;
+
+    previous = sl->top;
+    for (i=sl->top_level_index; i>=0; i--) {
+        while (previous->links[i] != sl->tail) {
+            cmp = sl->compare_func(data, previous->links[i]->data);
+            if (cmp > 0) {
+                break;
+            }
+            else if (cmp == 0) {
+                current = previous->links[i]->links[0];
+                while ((current != sl->tail) && (sl->compare_func(
+                            data, current->data) == 0))
+                {
+                    current = current->links[0];
+                }
+                return current->prev;
+            }
+
+            previous = previous->links[i];
+        }
+    }
+
+    return previous;
+
+    /*
+    if (previous == sl->top) {
+        return sl->top;
+    }
+    else {
+        return previous->prev;
+    }
+    return previous->links[0];
+    */
+}
+
+static FlatSkiplistNode *flat_skiplist_get_first_larger(
+        FlatSkiplist *sl, void *data)
+{
+    int i;
+    int cmp;
+    FlatSkiplistNode *previous;
+
+    previous = sl->top;
+    for (i=sl->top_level_index; i>=0; i--) {
+        while (previous->links[i] != sl->tail) {
+            cmp = sl->compare_func(data, previous->links[i]->data);
+            if (cmp > 0) {
+                break;
+            }
+            else if (cmp == 0) {
+                previous = previous->links[i]->prev;
+                while ((previous != sl->top) && (sl->compare_func(
+                                data, previous->data) == 0))
+                {
+                    previous = previous->prev;
+                }
+
+                return previous;
+            }
+
+            previous = previous->links[i];
+        }
+    }
+
+    return previous;
+    //return previous->links[0];
+}
+
 int flat_skiplist_delete(FlatSkiplist *sl, void *data)
 {
     int i;
@@ -297,4 +372,23 @@ int flat_skiplist_find_all(FlatSkiplist *sl, void *data, FlatSkiplistIterator *i
     iterator->top = previous;
     iterator->current = last->prev;
     return 0;
+}
+
+int flat_skiplist_find_range(FlatSkiplist *sl, void *start_data, void *end_data,
+        FlatSkiplistIterator *iterator)
+{
+    if (sl->compare_func(start_data, end_data) > 0) {
+        iterator->current = sl->top;
+        iterator->top = sl->top;
+        return EINVAL;
+    }
+
+    iterator->current = flat_skiplist_get_first_larger_or_equal(sl, start_data);
+    if (iterator->current == sl->top) {
+        iterator->top = sl->top;
+        return ENOENT;
+    }
+
+    iterator->top = flat_skiplist_get_first_larger(sl, end_data);
+    return iterator->current != iterator->top ? 0 : ENOENT;
 }

@@ -32,6 +32,29 @@ static int compare_func(const void *p1, const void *p2)
     return *((int *)p1) - *((int *)p2);
 }
 
+void set_rand_numbers(const int multiple)
+{
+    int i;
+    int tmp;
+    int index1;
+    int index2;
+
+    for (i=0; i<COUNT; i++) {
+        numbers[i] = multiple * i + 1;
+    }
+
+    for (i=0; i<COUNT; i++) {
+        index1 = LAST_INDEX * (int64_t)rand() / (int64_t)RAND_MAX;
+        index2 = LAST_INDEX * (int64_t)rand() / (int64_t)RAND_MAX;
+        if (index1 == index2) {
+            continue;
+        }
+        tmp = numbers[index1];
+        numbers[index1] = numbers[index2];
+        numbers[index2] = tmp;
+    }
+}
+
 static int test_insert()
 {
     int i;
@@ -39,6 +62,8 @@ static int test_insert()
     int64_t start_time;
     int64_t end_time;
     void *value;
+
+    set_rand_numbers(1);
 
     instance_count = 0;
     start_time = get_current_time_ms();
@@ -145,7 +170,10 @@ static int test_stable_sort()
     Record tmp_records[RECORDS];
     Record *record;
     Record target;
+    Record start;
+    Record end;
     void *value;
+    int div;
 
     printf("test_stable_sort ...\n");
     instance_count = 0;
@@ -155,9 +183,15 @@ static int test_stable_sort()
         return result;
     }
 
+    if (skiplist_type == SKIPLIST_TYPE_SET) {
+        div = 1;
+    }
+    else {
+        div = 3;
+    }
     for (i=0; i<RECORDS; i++) {
         records[i].line = i + 1;
-        records[i].key = i + 1;
+        records[i].key = i / div + 1;
     }
 
     if (skiplist_type != SKIPLIST_TYPE_SET) {
@@ -229,6 +263,29 @@ static int test_stable_sort()
     }
     printf("found record count: %d\n", i);
 
+    start.key = 10;
+    end.key = 1;
+    result = skiplist_find_range(&sl, &start, &end, &iterator);
+    assert(result == EINVAL);
+
+    start.key = -1;
+    end.key = 0;
+    result = skiplist_find_range(&sl, &start, &end, &iterator);
+    assert(result == ENOENT);
+
+    start.key = max_occur_key;
+    end.key = 32;
+    result = skiplist_find_range(&sl, &start, &end, &iterator);
+    assert(result == 0);
+
+    i = 0;
+    while ((value=skiplist_next(&iterator)) != NULL) {
+        record = (Record *)value;
+        printf("%d => #%d\n", record->key, record->line);
+        i++;
+    }
+    printf("count: %d\n\n", i);
+
     /*
     if (skiplist_type == SKIPLIST_TYPE_FLAT) {
         flat_skiplist_print(&sl.u.flat, skiplist_tostring);
@@ -272,12 +329,49 @@ static int test_stable_sort()
     return 0;
 }
 
+static void test_find_range()
+{
+    int n_start;
+    int n_end;
+    int result;
+    int i;
+    int *value;
+    SkiplistIterator iterator;
+
+    set_rand_numbers(2);
+
+    for (i=0; i<COUNT; i++) {
+        if ((result=skiplist_insert(&sl, numbers + i)) != 0) {
+            return;
+        }
+        instance_count++;
+    }
+
+    n_start = 10;
+    n_end = 1;
+    result = skiplist_find_range(&sl, &n_start, &n_end, &iterator);
+    assert(result == EINVAL);
+
+    n_start = -1;
+    n_end = 0;
+    result = skiplist_find_range(&sl, &n_start, &n_end, &iterator);
+    assert(result == ENOENT);
+
+    n_start = 0;
+    n_end = 10;
+    result = skiplist_find_range(&sl, &n_start, &n_end, &iterator);
+    assert(result == 0);
+
+    i = 0;
+    while ((value=(int *)skiplist_next(&iterator)) != NULL) {
+        printf("value: %d\n", *value);
+        i++;
+    }
+    printf("count: %d\n\n", i);
+}
+
 int main(int argc, char *argv[])
 {
-    int i;
-    int tmp;
-    int index1;
-    int index2;
     int result;
 
 
@@ -294,20 +388,6 @@ int main(int argc, char *argv[])
 
     numbers = (int *)malloc(sizeof(int) * COUNT);
     srand(time(NULL));
-    for (i=0; i<COUNT; i++) {
-        numbers[i] = i + 1;
-    }
-
-    for (i=0; i<COUNT; i++) {
-        index1 = LAST_INDEX * (int64_t)rand() / (int64_t)RAND_MAX;
-        index2 = LAST_INDEX * (int64_t)rand() / (int64_t)RAND_MAX;
-        if (index1 == index2) {
-            continue;
-        }
-        tmp = numbers[index1];
-        numbers[index1] = numbers[index2];
-        numbers[index2] = tmp;
-    }
 
     fast_mblock_manager_init();
     result = skiplist_init_ex(&sl, LEVEL_COUNT, compare_func,
@@ -326,7 +406,7 @@ int main(int argc, char *argv[])
     printf("\n");
     assert(instance_count == 0);
 
-    test_insert();
+    test_find_range();
     printf("\n");
 
     skiplist_destroy(&sl);

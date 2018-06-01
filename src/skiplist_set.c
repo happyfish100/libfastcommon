@@ -203,8 +203,8 @@ int skiplist_set_insert(SkiplistSet *sl, void *data)
     return 0;
 }
 
-static SkiplistSetNode *skiplist_set_get_previous(SkiplistSet *sl, void *data,
-        int *level_index)
+static SkiplistSetNode *skiplist_set_get_equal_previous(SkiplistSet *sl,
+        void *data, int *level_index)
 {
     int i;
     int cmp;
@@ -229,6 +229,56 @@ static SkiplistSetNode *skiplist_set_get_previous(SkiplistSet *sl, void *data,
     return NULL;
 }
 
+static SkiplistSetNode *skiplist_set_get_first_larger_or_equal(
+        SkiplistSet *sl, void *data)
+{
+    int i;
+    int cmp;
+    SkiplistSetNode *previous;
+
+    previous = sl->top;
+    for (i=sl->top_level_index; i>=0; i--) {
+        while (previous->links[i] != sl->tail) {
+            cmp = sl->compare_func(data, previous->links[i]->data);
+            if (cmp < 0) {
+                break;
+            }
+            else if (cmp == 0) {
+                return previous->links[i];
+            }
+
+            previous = previous->links[i];
+        }
+    }
+
+    return previous->links[0];
+}
+
+static SkiplistSetNode *skiplist_set_get_first_larger(
+        SkiplistSet *sl, void *data)
+{
+    int i;
+    int cmp;
+    SkiplistSetNode *previous;
+
+    previous = sl->top;
+    for (i=sl->top_level_index; i>=0; i--) {
+        while (previous->links[i] != sl->tail) {
+            cmp = sl->compare_func(data, previous->links[i]->data);
+            if (cmp < 0) {
+                break;
+            }
+            else if (cmp == 0) {
+                return previous->links[i]->links[0];
+            }
+
+            previous = previous->links[i];
+        }
+    }
+
+    return previous->links[0];
+}
+
 int skiplist_set_delete(SkiplistSet *sl, void *data)
 {
     int i;
@@ -236,7 +286,7 @@ int skiplist_set_delete(SkiplistSet *sl, void *data)
     SkiplistSetNode *previous;
     SkiplistSetNode *deleted;
 
-    previous = skiplist_set_get_previous(sl, data, &level_index);
+    previous = skiplist_set_get_equal_previous(sl, data, &level_index);
     if (previous == NULL) {
         return ENOENT;
     }
@@ -265,7 +315,7 @@ void *skiplist_set_find(SkiplistSet *sl, void *data)
     int level_index;
     SkiplistSetNode *previous;
 
-    previous = skiplist_set_get_previous(sl, data, &level_index);
+    previous = skiplist_set_get_equal_previous(sl, data, &level_index);
     return (previous != NULL) ? previous->links[level_index]->data : NULL;
 }
 
@@ -274,7 +324,7 @@ int skiplist_set_find_all(SkiplistSet *sl, void *data, SkiplistSetIterator *iter
     int level_index;
     SkiplistSetNode *previous;
 
-    previous = skiplist_set_get_previous(sl, data, &level_index);
+    previous = skiplist_set_get_equal_previous(sl, data, &level_index);
     if (previous == NULL) {
         iterator->tail = sl->tail;
         iterator->current = sl->tail;
@@ -284,4 +334,23 @@ int skiplist_set_find_all(SkiplistSet *sl, void *data, SkiplistSetIterator *iter
     iterator->current = previous->links[level_index];
     iterator->tail = iterator->current->links[0];
     return 0;
+}
+
+int skiplist_set_find_range(SkiplistSet *sl, void *start_data, void *end_data,
+        SkiplistSetIterator *iterator)
+{
+    if (sl->compare_func(start_data, end_data) > 0) {
+        iterator->current = sl->tail;
+        iterator->tail = sl->tail;
+        return EINVAL;
+    }
+
+    iterator->current = skiplist_set_get_first_larger_or_equal(sl, start_data);
+    if (iterator->current == sl->tail) {
+        iterator->tail = sl->tail;
+        return ENOENT;
+    }
+
+    iterator->tail = skiplist_set_get_first_larger(sl, end_data);
+    return iterator->current != iterator->tail ? 0 : ENOENT;
 }

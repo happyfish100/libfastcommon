@@ -59,11 +59,13 @@ int skiplist_set_insert(SkiplistSet *sl, void *data);
 int skiplist_set_delete(SkiplistSet *sl, void *data);
 void *skiplist_set_find(SkiplistSet *sl, void *data);
 int skiplist_set_find_all(SkiplistSet *sl, void *data, SkiplistSetIterator *iterator);
+int skiplist_set_find_range(SkiplistSet *sl, void *start_data, void *end_data,
+        SkiplistSetIterator *iterator);
 
 static inline void skiplist_set_iterator(SkiplistSet *sl, SkiplistSetIterator *iterator)
 {
-    iterator->tail = sl->tail;
     iterator->current = sl->top->links[0];
+    iterator->tail = sl->tail;
 }
 
 static inline void *skiplist_set_next(SkiplistSetIterator *iterator)

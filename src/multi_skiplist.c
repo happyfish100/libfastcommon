@@ -178,6 +178,56 @@ static MultiSkiplistNode *multi_skiplist_get_previous(MultiSkiplist *sl, void *d
     return NULL;
 }
 
+static MultiSkiplistNode *multi_skiplist_get_first_larger_or_equal(
+        MultiSkiplist *sl, void *data)
+{
+    int i;
+    int cmp;
+    MultiSkiplistNode *previous;
+
+    previous = sl->top;
+    for (i=sl->top_level_index; i>=0; i--) {
+        while (previous->links[i] != sl->tail) {
+            cmp = sl->compare_func(data, previous->links[i]->head->data);
+            if (cmp < 0) {
+                break;
+            }
+            else if (cmp == 0) {
+                return previous->links[i];
+            }
+
+            previous = previous->links[i];
+        }
+    }
+
+    return previous->links[0];
+}
+
+static MultiSkiplistNode *multi_skiplist_get_first_larger(
+        MultiSkiplist *sl, void *data)
+{
+    int i;
+    int cmp;
+    MultiSkiplistNode *previous;
+
+    previous = sl->top;
+    for (i=sl->top_level_index; i>=0; i--) {
+        while (previous->links[i] != sl->tail) {
+            cmp = sl->compare_func(data, previous->links[i]->head->data);
+            if (cmp < 0) {
+                break;
+            }
+            else if (cmp == 0) {
+                return previous->links[i]->links[0];
+            }
+
+            previous = previous->links[i];
+        }
+    }
+
+    return previous->links[0];
+}
+
 static inline void multi_skiplist_free_data_node(MultiSkiplist *sl,
         MultiSkiplistData *dataNode)
 {
@@ -352,5 +402,32 @@ int multi_skiplist_find_all(MultiSkiplist *sl, void *data,
         iterator->tail = iterator->current.node->links[0];
         iterator->current.data = iterator->current.node->head;
         return 0;
+    }
+}
+
+int multi_skiplist_find_range(MultiSkiplist *sl, void *start_data, void *end_data,
+        MultiSkiplistIterator *iterator)
+{
+    if (sl->compare_func(start_data, end_data) > 0) {
+        iterator->current.node = sl->tail;
+        iterator->current.data = NULL;
+        iterator->tail = sl->tail;
+        return EINVAL;
+    }
+
+    iterator->current.node = multi_skiplist_get_first_larger_or_equal(sl, start_data);
+    if (iterator->current.node == sl->tail) {
+        iterator->current.data = NULL;
+        iterator->tail = sl->tail;
+        return ENOENT;
+    }
+
+    iterator->tail = multi_skiplist_get_first_larger(sl, end_data);
+    if (iterator->current.node != iterator->tail) {
+        iterator->current.data = iterator->current.node->head;
+        return 0;
+    } else {
+        iterator->current.data = NULL;
+        return ENOENT;
     }
 }

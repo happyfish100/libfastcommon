@@ -162,6 +162,25 @@ static inline int skiplist_find_all(Skiplist *sl, void *data, SkiplistIterator *
     }
 }
 
+int skiplist_find_range(Skiplist *sl, void *start_data, void *end_data,
+        SkiplistIterator *iterator)
+{
+    iterator->type = sl->type;
+    switch (sl->type) {
+        case SKIPLIST_TYPE_FLAT:
+            return flat_skiplist_find_range(&sl->u.flat,
+                    start_data, end_data, &iterator->u.flat);
+        case SKIPLIST_TYPE_MULTI:
+            return multi_skiplist_find_range(&sl->u.multi,
+                    start_data, end_data, &iterator->u.multi);
+        case SKIPLIST_TYPE_SET:
+            return skiplist_set_find_range(&sl->u.set,
+                    start_data, end_data, &iterator->u.set);
+        default:
+            return EINVAL;
+    }
+}
+
 static inline void skiplist_iterator(Skiplist *sl, SkiplistIterator *iterator)
 {
     iterator->type = sl->type;
