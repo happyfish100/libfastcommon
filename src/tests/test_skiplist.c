@@ -274,7 +274,7 @@ static int test_stable_sort()
     assert(result == ENOENT);
 
     start.key = max_occur_key;
-    end.key = 32;
+    end.key = 100;
     result = skiplist_find_range(&sl, &start, &end, &iterator);
     assert(result == 0);
 

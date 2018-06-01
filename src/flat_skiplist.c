@@ -251,16 +251,6 @@ static FlatSkiplistNode *flat_skiplist_get_first_larger_or_equal(
     }
 
     return previous;
-
-    /*
-    if (previous == sl->top) {
-        return sl->top;
-    }
-    else {
-        return previous->prev;
-    }
-    return previous->links[0];
-    */
 }
 
 static FlatSkiplistNode *flat_skiplist_get_first_larger(
@@ -293,7 +283,6 @@ static FlatSkiplistNode *flat_skiplist_get_first_larger(
     }
 
     return previous;
-    //return previous->links[0];
 }
 
 int flat_skiplist_delete(FlatSkiplist *sl, void *data)
