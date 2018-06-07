@@ -1370,7 +1370,7 @@ static unsigned int crc_table[256] = {
 #define CRC32_BODY(init_value) \
 	unsigned char *pKey; \
 	unsigned char *pEnd; \
-	int crc; \
+	int64_t crc; \
  \
 	crc = init_value; \
 	pEnd = (unsigned char *)key + key_len; \
@@ -1383,14 +1383,13 @@ int CRC32(const void *key, const int key_len)
 {
 	CRC32_BODY(CRC32_XINIT)
 
-	return crc ^ CRC32_XOROT;
+	return (int)(crc ^ CRC32_XOROT);
 }
 
-int CRC32_ex(const void *key, const int key_len, \
-	const int init_value)
+int64_t CRC32_ex(const void *key, const int key_len, \
+	const int64_t init_value)
 {
 	CRC32_BODY(init_value)
 
 	return crc;
 }
-
