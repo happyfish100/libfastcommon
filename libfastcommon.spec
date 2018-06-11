@@ -30,7 +30,7 @@ Summary: Development header file
 Requires: %{name}%{?_isa} = %{version}-%{release}
 
 %description devel
-This pakcage provides the header files of libfastcommon
+This package provides the header files of libfastcommon
 commit version: %{CommitVersion}
 
 

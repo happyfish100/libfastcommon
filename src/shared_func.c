@@ -2560,3 +2560,76 @@ key_t fc_ftok(const char *path, const int proj_id)
     hash_code = simple_hash(path, strlen(path));
     return (((proj_id & 0xFF) << 24) | (hash_code & 0xFFFFFF));
 }
+
+static void add_thousands_separator(char *str, const int len)
+{
+    int new_len;
+    int addings;
+    int sub;
+    int chars;
+    int add_count;
+    char *src;
+    char *dest;
+    char *first;
+
+    if (len <= 3)
+    {
+        return;
+    }
+
+    if (*str == '-')
+    {
+        first = str + 1;
+        sub = 2;
+    }
+    else
+    {
+        first = str;
+        sub = 1;
+    }
+
+    addings = (len - sub) / 3;
+    new_len = len + addings;
+
+    src = str + (len - 1);
+    dest = str + new_len;
+    *dest-- = '\0';
+    chars = 0;
+    add_count = 0;
+    while (src >= first)
+    {
+        *dest-- = *src--;
+        if (++chars % 3 == 0)
+        {
+            if (add_count == addings)
+            {
+                break;
+            }
+
+            *dest-- = ',';
+            add_count++;
+        }
+    }
+}
+
+const char *int2str(const int n, char *buff, const bool thousands_separator)
+{
+    int len;
+    len = sprintf(buff, "%d", n);
+    if (thousands_separator)
+    {
+        add_thousands_separator(buff, len);
+    }
+    return buff;
+}
+
+const char *long2str(const int64_t n, char *buff, const bool thousands_separator)
+{
+    int len;
+    len = sprintf(buff, "%"PRId64, n);
+    if (thousands_separator)
+    {
+        add_thousands_separator(buff, len);
+    }
+    return buff;
+}

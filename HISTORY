@@ -1,5 +1,5 @@
 
-Version 1.38  2018-06-07
+Version 1.38  2018-06-11
   * connection_pool.c: set err_no to 0 when success
   * shared_func.h: add functions float2buff / buff2float, double2buff / buff2double
   * logger.h: add function log_get_level_caption
@@ -8,6 +8,7 @@ Version 1.38  2018-06-07
   * ioevent.[hc]: remove care_events in FreeBSD or MacOS
   * add skiplist_set.[hc] and skiplist bug fixed
   * correct CRC32
+  * shared_func.h: add functions int2str and long2str
 
 Version 1.37  2018-02-24
   * ini_file_reader.c function annotations LOCAL_IP_GET support index, such as:

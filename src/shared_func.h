@@ -728,6 +728,34 @@ ssize_t fc_safe_read(int fd, char *buf, const size_t count);
 */
 key_t fc_ftok(const char *path, const int proj_id);
 
+/** convert int to string
+ *  parameters:
+ *  	n: the 32 bits integer
+ *      buff: output buffer
+ *      thousands_separator: if add thousands separator
+ *  return: string buffer
+*/
+const char *int2str(const int n, char *buff, const bool thousands_separator);
+
+static inline const char *int_to_comma_str(const int n, char *buff)
+{
+    return int2str(n, buff, true);
+}
+
+/** convert long to string
+ *  parameters:
+ *  	n: the 64 bits integer
+ *      buff: output buffer
+ *      thousands_separator: if add thousands separator
+ *  return: string buffer
+*/
+const char *long2str(const int64_t n, char *buff, const bool thousands_separator);
+
+static inline const char *long_to_comma_str(const int64_t n, char *buff)
+{
+    return long2str(n, buff, true);
+}
+
 #ifdef __cplusplus
 }
 #endif
