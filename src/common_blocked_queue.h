@@ -45,7 +45,13 @@ int common_blocked_queue_init_ex(struct common_blocked_queue *queue,
 
 void common_blocked_queue_destroy(struct common_blocked_queue *queue);
 
-static inline void common_blocked_queue_terminate(struct common_blocked_queue *queue, const int count)
+static inline void common_blocked_queue_terminate(struct common_blocked_queue *queue)
+{
+    pthread_cond_signal(&(queue->cond));
+}
+
+static inline void common_blocked_queue_terminate_all(
+        struct common_blocked_queue *queue, const int count)
 {
     int i;
     for (i=0; i<count; i++)

@@ -38,8 +38,19 @@ static inline void blocked_queue_terminate(struct fast_blocked_queue *pQueue)
      pthread_cond_signal(&(pQueue->cond));
 }
 
+static inline void blocked_queue_terminate_all(struct fast_blocked_queue *pQueue,
+        const int count)
+{
+    int i;
+    for (i=0; i<count; i++)
+    {
+        pthread_cond_signal(&(pQueue->cond));
+    }
+}
+
 int blocked_queue_push(struct fast_blocked_queue *pQueue,
 		struct fast_task_info *pTask);
+
 struct fast_task_info *blocked_queue_pop(struct fast_blocked_queue *pQueue);
 
 #ifdef __cplusplus
