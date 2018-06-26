@@ -10,6 +10,7 @@
 #define _SCHED_THREAD_H_
 
 #include <time.h>
+#include <stdint.h>
 #include <pthread.h>
 #include "common_define.h"
 #include "fast_timer.h"
@@ -19,7 +20,7 @@ typedef int (*TaskFunc) (void *args);
 
 typedef struct tagScheduleEntry
 {
-	int id;  //the task id
+	uint32_t id;  //the task id
 
 	/* the time base to execute task, such as 00:00, interval is 3600,
            means execute the task every hour as 1:00, 2:00, 3:00 etc. */
@@ -108,6 +109,11 @@ extern volatile time_t g_current_time;  //the current time
 
 #define get_current_time() (g_schedule_flag ? g_current_time: time(NULL))
 
+/** generate next id
+ * return: next id
+*/
+uint32_t sched_generate_next_id();
+
 /** add schedule entries
  *  parameters:
  *  	     pScheduleArray: the schedule tasks
@@ -165,9 +171,14 @@ int sched_start_ex(ScheduleArray *pScheduleArray, pthread_t *ptid,
 int sched_start(ScheduleArray *pScheduleArray, pthread_t *ptid, \
 		const int stack_size, bool * volatile pcontinue_flag);
 
+
+/** print all schedule entries for debug
+ * return: none
+*/
+void sched_print_all_entries();
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif
-
