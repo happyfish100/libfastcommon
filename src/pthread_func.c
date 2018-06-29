@@ -112,13 +112,13 @@ int init_pthread_attr(pthread_attr_t *pattr, const int stack_size)
 
 	if (new_stack_size > 0)
 	{
-		if ((result=pthread_attr_setstacksize(pattr, \
+		if ((result=pthread_attr_setstacksize(pattr,
 				new_stack_size)) != 0)
 		{
-			logError("file: "__FILE__", line: %d, " \
-				"call pthread_attr_setstacksize fail, " \
-				"errno: %d, error info: %s", \
-				__LINE__, result, STRERROR(result));
+			logError("file: "__FILE__", line: %d, "
+				"call pthread_attr_setstacksize to %d fail, "
+				"errno: %d, error info: %s", __LINE__,
+                (int)new_stack_size, result, STRERROR(result));
 			return result;
 		}
 	}
