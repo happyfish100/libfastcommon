@@ -188,6 +188,18 @@ typedef void* (*MallocFunc)(size_t size);
 #define strcasecmp	_stricmp
 #endif
 
+#ifndef likely
+
+#if defined(__GNUC__) &&  __GNUC__ >= 3
+#define likely(cond)   __builtin_expect ((cond), 1)
+#define unlikely(cond) __builtin_expect ((cond), 0)
+#else
+#define likely(cond)   (cond)
+#define unlikely(cond) (cond)
+#endif
+
+#endif
+
 #ifdef __cplusplus
 }
 #endif
