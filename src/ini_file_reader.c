@@ -279,7 +279,7 @@ static int iniAnnotationReplaceVars(IniContext *pContext, char *param,
     }
 
     set = iniGetVars(pContext);
-    if (set == NULL) {
+    if (set == NULL || set->vars == NULL) {
         logWarning("file: "__FILE__", line: %d, "
                 "NO set directives before, set value to %s",
                 __LINE__, param);
@@ -2453,6 +2453,7 @@ void iniFreeContext(IniContext *pContext)
         hash_destroy(set->vars);
         free(set->vars);
         set->vars = NULL;
+        set->offset = 0;
     }
     iniFreeDynamicContent(pContext);
 }
