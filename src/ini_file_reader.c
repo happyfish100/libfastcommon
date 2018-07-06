@@ -226,7 +226,7 @@ static int iniAnnotationFuncShellExec(IniContext *context, char *param,
         logWarning("file: "__FILE__", line: %d, "
                 "empty reply when exec: %s", __LINE__, param);
     }
-    pOutValue[count++] = trim_right(output);
+    pOutValue[count++] = fc_trim(output);
     return count;
 }
 
@@ -317,7 +317,6 @@ static int iniAnnotationReplaceVars(IniContext *pContext, char *param,
             trim(name);
             name_len = strlen(name);
             if (name_len > 0) {
-                logInfo("name: %s(%d)", name, name_len);
                 value = (char *)hash_find(set->vars, name, name_len);
             } else {
                 value = NULL;
@@ -972,7 +971,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
         if (isAnnotation)
         {
             AnnotationMap *pAnnoMapBase;
-            AnnotationMap *pAnnoMap;
+            AnnotationMap *pAnnoMap = NULL;
             bool found;
 
             isAnnotation = 0;
@@ -1078,6 +1077,11 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
                         break;
                     }
                 }
+            }
+
+            if (pAnnoMap != NULL && pAnnoMap->func_free != NULL)
+            {
+                pAnnoMap->func_free(pItemValues, nItemCnt);
             }
             continue;
         }
