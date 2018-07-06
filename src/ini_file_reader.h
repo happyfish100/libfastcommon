@@ -18,6 +18,8 @@
 
 #define FAST_INI_ITEM_NAME_LEN		64
 #define FAST_INI_ITEM_VALUE_LEN		256
+#define FAST_INI_ITEM_NAME_SIZE		(FAST_INI_ITEM_NAME_LEN + 1)
+#define FAST_INI_ITEM_VALUE_SIZE    (FAST_INI_ITEM_VALUE_LEN + 1)
 
 #define FAST_INI_ANNOTATION_WITHOUT_BUILTIN 0
 #define FAST_INI_ANNOTATION_DISABLE         1
@@ -27,33 +29,26 @@
 #define FAST_INI_FLAGS_NONE            0
 #define FAST_INI_FLAGS_SHELL_EXECUTE   1
 
-typedef struct {
-    char *func_name;
-    int (*func_init) ();
-    void (*func_destroy) ();
-    int (*func_get) (char *key, char **pOutValue, int max_values);
-} AnnotationMap;
-
-typedef struct
+typedef struct ini_item
 {
-	char name[FAST_INI_ITEM_NAME_LEN + 1];
-	char value[FAST_INI_ITEM_VALUE_LEN + 1];
+	char name[FAST_INI_ITEM_NAME_SIZE];
+	char value[FAST_INI_ITEM_VALUE_SIZE];
 } IniItem;
 
-typedef struct
+typedef struct ini_section
 {
 	IniItem *items;
 	int count;  //item count
 	int alloc_count;
 } IniSection;
 
-typedef struct
+typedef struct ini_section_info
 {
-    char section_name[FAST_INI_ITEM_NAME_LEN + 1];
+    char section_name[FAST_INI_ITEM_NAME_SIZE];
     IniSection *pSection;
 } IniSectionInfo;
 
-typedef struct
+typedef struct ini_context
 {
 	IniSection global;
 	HashArray sections;  //key is session name, and value is IniSection
@@ -62,6 +57,14 @@ typedef struct
     char annotation_type;
     char flags;
 } IniContext;
+
+typedef struct ini_annotation_map {
+    char *func_name;
+    int (*func_init) ();
+    void (*func_destroy) ();
+    int (*func_get) (IniContext *context, char *param, char **pOutValue, int max_values);
+    void (*func_free) (char **values, const int count);
+} AnnotationMap;
 
 #ifdef __cplusplus
 extern "C" {
