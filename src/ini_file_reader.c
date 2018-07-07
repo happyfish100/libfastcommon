@@ -252,8 +252,7 @@ static int iniCopyBuffer(char *dest, const int size, char *src, int len)
     return len;
 }
 
-static int iniAnnotationReplaceVars(IniContext *pContext, char *param,
-        char **pOutValue, int max_values)
+static char *doReplaceVars(IniContext *pContext, char *param, const int max_size)
 {
 #define VARIABLE_TAG_MIN_LENGTH  4   //%{v}
 
@@ -270,12 +269,12 @@ static int iniAnnotationReplaceVars(IniContext *pContext, char *param,
     int name_len;
     int len;
 
-    output = (char *)malloc(FAST_INI_ITEM_VALUE_SIZE);
+    output = (char *)malloc(max_size);
     if (output == NULL) {
         logError("file: "__FILE__", line: %d, "
                 "malloc %d bytes fail",
                 __LINE__, FAST_INI_ITEM_VALUE_SIZE);
-        return 0;
+        return NULL;
     }
 
     set = iniGetVars(pContext);
@@ -284,8 +283,7 @@ static int iniAnnotationReplaceVars(IniContext *pContext, char *param,
                 "NO set directives before, set value to %s",
                 __LINE__, param);
         snprintf(output, FAST_INI_ITEM_VALUE_SIZE, "%s", param);
-        pOutValue[0] = output;
-        return 1;
+        return output;
     }
 
     pEnd = param + strlen(param);
@@ -322,13 +320,17 @@ static int iniAnnotationReplaceVars(IniContext *pContext, char *param,
                 value = NULL;
             }
             if (value != NULL) {
-                pDest += iniCopyBuffer(pDest, FAST_INI_ITEM_VALUE_SIZE -
-                        (pDest - output), value, strlen(value));
+                len = strlen(value);
             }
             else {
                 logWarning("file: "__FILE__", line: %d, "
-                        "name: %s NOT found", __LINE__, name);
+                        "name: %s NOT found, keep the origin",
+                        __LINE__, name);
+                value = start - 2;
+                len = p - value;
             }
+            pDest += iniCopyBuffer(pDest, FAST_INI_ITEM_VALUE_SIZE -
+                    (pDest - output), value, len);
         }
         else {
             if (pDest - output < FAST_INI_ITEM_VALUE_LEN) {
@@ -346,8 +348,21 @@ static int iniAnnotationReplaceVars(IniContext *pContext, char *param,
     len = pEnd - p;
     pDest += iniCopyBuffer(pDest, FAST_INI_ITEM_VALUE_SIZE - (pDest - output), p, len);
     *pDest = '\0';
-    pOutValue[0] = output;
-    return 1;
+    return output;
+}
+
+static int iniAnnotationReplaceVars(IniContext *pContext, char *param,
+        char **pOutValue, int max_values)
+{
+    char *output;
+    output = doReplaceVars(pContext, param, FAST_INI_ITEM_VALUE_SIZE);
+    if (output == NULL) {
+        return 0;
+    }
+    else {
+        pOutValue[0] = output;
+        return 1;
+    }
 }
 
 static void iniAnnotationFuncFree(char **values, const int count)
@@ -1750,80 +1765,107 @@ static int iniDoProccessSet(char *pSet, char **ppSetEnd,
         IniContext *pContext)
 {
     char *pStart;
-    char buff[FAST_INI_ITEM_NAME_LEN + FAST_INI_ITEM_VALUE_LEN];
+    char buff[FAST_INI_ITEM_NAME_LEN + FAST_INI_ITEM_VALUE_LEN + 1];
     char output[256];
     int result;
     int len;
+    bool is_exec;
     char *parts[2];
     char *key;
     char *value;
     int value_len;
+    char *new_value;
     SetDirectiveVars *set;
 
     pStart = pSet + _PREPROCESS_TAG_LEN_SET;
     *ppSetEnd = strchr(pStart, '\n');
-    if (*ppSetEnd == NULL)
-    {
+    if (*ppSetEnd == NULL) {
         return EINVAL;
     }
 
     len = *ppSetEnd - pStart;
-    if (len <= 1 || len >= (int)sizeof(buff))
-    {
+    if (len <= 1 || len >= (int)sizeof(buff)) {
         return EINVAL;
     }
 
     memcpy(buff, pStart, len);
     *(buff + len) = '\0';
-
-    if (splitEx(buff, '=', parts, 2) != 2)
-    {
+    if (splitEx(buff, '=', parts, 2) != 2) {
         logWarning("file: "__FILE__", line: %d, "
                 "invalid set format: %s%s",
                 __LINE__, _PREPROCESS_TAG_STR_SET, buff);
         return EFAULT;
     }
 
-    if ((set=iniAllocVars(pContext, true)) == NULL)
-    {
+    if ((set=iniAllocVars(pContext, true)) == NULL) {
         return ENOMEM;
     }
 
     key = fc_trim(parts[0]);
     value = fc_trim(parts[1]);
     value_len = strlen(value);
-    if (value_len > 3 && (*value == '$' && *(value + 1) == '(')
-            &&  *(value + value_len - 1) == ')')
-    {
+    is_exec = (value_len > 3 && (*value == '$' && *(value + 1) == '(')
+            &&  *(value + value_len - 1) == ')');
+
+    pStart = strstr(value, "%{");
+    if (pStart != NULL && strchr(pStart + 2, '}') != NULL) {
+        new_value = doReplaceVars(pContext, value, _LINE_BUFFER_SIZE);
+        if (new_value != NULL) {
+            value_len = strlen(new_value);
+        }
+        else {
+            new_value = value;  //rollback
+        }
+    }
+    else {
+        new_value = value;
+    }
+
+    if (is_exec) {
         char *cmd;
-        cmd = value + 2;
-        *(value + value_len - 1) = '\0'; //remove ')'
-        if ((pContext->flags & FAST_INI_FLAGS_SHELL_EXECUTE) != 0)
-        {
-            if ((result=getExecResult(cmd, output, sizeof(output))) != 0)
-            {
+        cmd = new_value + 2;
+        *(new_value + value_len - 1) = '\0'; //remove ')'
+        logDebug("file: "__FILE__", line: %d, cmd: %s", __LINE__, cmd);
+
+        if ((pContext->flags & FAST_INI_FLAGS_SHELL_EXECUTE) != 0) {
+            if ((result=getExecResult(cmd, output, sizeof(output))) != 0) {
                 logWarning("file: "__FILE__", line: %d, "
                         "exec %s fail, errno: %d, error info: %s",
                         __LINE__, cmd, result, STRERROR(result));
                 return result;
             }
-            if (*output == '\0')
-            {
+            if (*output == '\0') {
                 logWarning("file: "__FILE__", line: %d, "
                         "empty reply when exec: %s", __LINE__, cmd);
             }
-            value = fc_trim(output);
-            value_len = strlen(value);
+
+            fc_trim(output);
+            value_len = strlen(output);
+            if (new_value != value) {
+                free(new_value);
+            }
+            new_value = strdup(output);
+            if (new_value == NULL) {
+                logWarning("file: "__FILE__", line: %d, "
+                        "malloc %d bytes fail", __LINE__, value_len + 1);
+                new_value = value;
+                value_len = 0;
+            }
         }
-        else
-        {
+        else {
             logWarning("file: "__FILE__", line: %d, "
                     "shell execute disabled, cmd: %s", __LINE__, cmd);
+            *new_value = '\0';
+            value_len = 0;
         }
     }
 
-    return hash_insert_ex(set->vars, key, strlen(key),
-            value, value_len + 1, false);
+    result = hash_insert_ex(set->vars, key, strlen(key),
+            new_value, value_len + 1, false);
+    if (new_value != value) {
+        free(new_value);
+    }
+    return result >= 0 ? 0 : -1 * result;
 }
 
 static int iniProccessSet(char *content, char *pEnd,

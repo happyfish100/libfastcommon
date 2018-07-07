@@ -1,6 +1,7 @@
 
-Version 1.39  2018-07-06
-  * add @function REPLACE_VARS
+Version 1.39  2018-07-07
+  * add #@function REPLACE_VARS
+  * #@set value can embed %{VARIABLE}
 
 Version 1.38  2018-06-26
   * connection_pool.c: set err_no to 0 when success
