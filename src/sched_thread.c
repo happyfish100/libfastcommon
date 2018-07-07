@@ -152,7 +152,62 @@ static void sched_make_chain(ScheduleContext *pContext)
 	pContext->tail->next = NULL;
 }
 
-static int sched_check_waiting(ScheduleContext *pContext)
+void sched_print_all_entries()
+{
+    print_all_entries = true;
+}
+
+static int sched_cmp_by_id(const void *p1, const void *p2)
+{
+	return (int64_t)((ScheduleEntry *)p1)->id -
+        (int64_t)((ScheduleEntry *)p2)->id;
+}
+
+static int print_all_sched_entries(ScheduleArray *pScheduleArray)
+{
+    ScheduleArray sortedByIdArray;
+	ScheduleEntry *pEntry;
+	ScheduleEntry *pEnd;
+    char timebase[32];
+    int result;
+
+    logInfo("schedule entry count: %d", pScheduleArray->count);
+	if (pScheduleArray->count == 0)
+	{
+		return 0;
+	}
+
+    if ((result=sched_dup_array(pScheduleArray, &sortedByIdArray)) != 0)
+    {
+        return result;
+    }
+
+    qsort(sortedByIdArray.entries, sortedByIdArray.count,
+            sizeof(ScheduleEntry), sched_cmp_by_id);
+	pEnd = sortedByIdArray.entries + sortedByIdArray.count;
+	for (pEntry=sortedByIdArray.entries; pEntry<pEnd; pEntry++)
+	{
+        if (pEntry->time_base.hour == TIME_NONE)
+        {
+            strcpy(timebase, "<startup>");
+        }
+        else
+        {
+            sprintf(timebase, "%02d:%02d:%02d", pEntry->time_base.hour,
+                pEntry->time_base.minute, pEntry->time_base.second);
+        }
+        logInfo("id: %u, time_base: %s, interval: %d, "
+                "new_thread: %s, task_func: %p, args: %p",
+                pEntry->id, timebase, pEntry->interval,
+                pEntry->new_thread ? "true" : "false",
+                pEntry->task_func, pEntry->func_args);
+    }
+
+    free(sortedByIdArray.entries);
+    return 0;
+}
+
+static int do_check_waiting(ScheduleContext *pContext)
 {
 	ScheduleArray *pScheduleArray;
 	ScheduleEntry *newEntries;
@@ -281,6 +336,19 @@ static int sched_check_waiting(ScheduleContext *pContext)
 	return 0;
 }
 
+static inline int sched_check_waiting_more(ScheduleContext *pContext)
+{
+	int result;
+
+    result = do_check_waiting(pContext);
+    if (print_all_entries)
+    {
+        print_all_sched_entries(&pContext->scheduleArray);
+        print_all_entries = false;
+    }
+    return result;
+}
+
 static void *sched_call_func(void *args)
 {
 	ScheduleEntry *pEntry;
@@ -303,61 +371,6 @@ static void *sched_call_func(void *args)
             "thread exit, task id: %d", __LINE__, task_id);
     pthread_detach(pthread_self());
 	return NULL;
-}
-
-void sched_print_all_entries()
-{
-    print_all_entries = true;
-}
-
-static int sched_cmp_by_id(const void *p1, const void *p2)
-{
-	return (int64_t)((ScheduleEntry *)p1)->id -
-        (int64_t)((ScheduleEntry *)p2)->id;
-}
-
-static int print_all_sched_entries(ScheduleArray *pScheduleArray)
-{
-    ScheduleArray sortedByIdArray;
-	ScheduleEntry *pEntry;
-	ScheduleEntry *pEnd;
-    char timebase[32];
-    int result;
-
-    logInfo("schedule entry count: %d", pScheduleArray->count);
-	if (pScheduleArray->count == 0)
-	{
-		return 0;
-	}
-
-    if ((result=sched_dup_array(pScheduleArray, &sortedByIdArray)) != 0)
-    {
-        return result;
-    }
-
-    qsort(sortedByIdArray.entries, sortedByIdArray.count,
-            sizeof(ScheduleEntry), sched_cmp_by_id);
-	pEnd = sortedByIdArray.entries + sortedByIdArray.count;
-	for (pEntry=sortedByIdArray.entries; pEntry<pEnd; pEntry++)
-	{
-        if (pEntry->time_base.hour == TIME_NONE)
-        {
-            strcpy(timebase, "<startup>");
-        }
-        else
-        {
-            sprintf(timebase, "%02d:%02d:%02d", pEntry->time_base.hour,
-                pEntry->time_base.minute, pEntry->time_base.second);
-        }
-        logInfo("id: %u, time_base: %s, interval: %d, "
-                "new_thread: %s, task_func: %p, args: %p",
-                pEntry->id, timebase, pEntry->interval,
-                pEntry->new_thread ? "true" : "false",
-                pEntry->task_func, pEntry->func_args);
-    }
-
-    free(sortedByIdArray.entries);
-    return 0;
 }
 
 static void *sched_thread_entrance(void *args)
@@ -385,12 +398,7 @@ static void *sched_thread_entrance(void *args)
 		g_current_time = time(NULL);
         sched_deal_delay_tasks(pContext);
 
-		sched_check_waiting(pContext);
-        if (print_all_entries)
-        {
-            print_all_sched_entries(&pContext->scheduleArray);
-            print_all_entries = false;
-        }
+		sched_check_waiting_more(pContext);
 		if (pContext->scheduleArray.count == 0)  //no schedule entry
 		{
 			sleep(1);
@@ -404,7 +412,7 @@ static void *sched_thread_entrance(void *args)
             g_current_time = time(NULL);
 
             sched_deal_delay_tasks(pContext);
-            if (sched_check_waiting(pContext) == 0)
+            if (sched_check_waiting_more(pContext) == 0)
             {
                 break;
             }
