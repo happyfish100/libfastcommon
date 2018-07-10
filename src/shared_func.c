@@ -2633,3 +2633,33 @@ const char *long2str(const int64_t n, char *buff, const bool thousands_separator
     }
     return buff;
 }
+
+bool starts_with(const char *str, const char *needle)
+{
+    int str_len;
+    int needle_len;
+
+    str_len = strlen(str);
+    needle_len = strlen(needle);
+    if (needle_len > str_len) {
+        return false;
+    }
+
+    return memcmp(str, needle, needle_len) == 0;
+}
+
+bool ends_with(const char *str, const char *needle)
+{
+    int str_len;
+    int needle_len;
+    int start_offset;
+
+    str_len = strlen(str);
+    needle_len = strlen(needle);
+    start_offset = str_len - needle_len;
+    if (start_offset < 0) {
+        return false;
+    }
+
+    return memcmp(str + start_offset, needle, needle_len) == 0;
+}

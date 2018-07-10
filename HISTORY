@@ -1,7 +1,8 @@
 
-Version 1.39  2018-07-07
+Version 1.39  2018-07-10
   * add #@function REPLACE_VARS
   * #@set value can embed %{VARIABLE}
+  * shared_func.h: add function starts_with and ends_with
 
 Version 1.38  2018-06-26
   * connection_pool.c: set err_no to 0 when success

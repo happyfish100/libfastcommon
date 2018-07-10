@@ -756,6 +756,22 @@ static inline const char *long_to_comma_str(const int64_t n, char *buff)
     return long2str(n, buff, true);
 }
 
+/** if the string starts with the needle string
+ *  parameters:
+ *  	str: the string to detect
+ *      needle: the needle string
+ *  return: true for starts with the needle string, otherwise false
+*/
+bool starts_with(const char *str, const char *needle);
+
+/** if the string ends with the needle string
+ *  parameters:
+ *  	str: the string to detect
+ *      needle: the needle string
+ *  return: true for ends with the needle string, otherwise false
+*/
+bool ends_with(const char *str, const char *needle);
+
 #ifdef __cplusplus
 }
 #endif
