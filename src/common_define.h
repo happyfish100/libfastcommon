@@ -200,6 +200,12 @@ typedef void* (*MallocFunc)(size_t size);
 
 #endif
 
+#ifdef __GNUC__
+  #define __gcc_attribute__ __attribute__
+#else
+  #define __gcc_attribute__(x)
+#endif
+
 #ifdef __cplusplus
 }
 #endif
