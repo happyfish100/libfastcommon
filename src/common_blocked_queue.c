@@ -103,7 +103,8 @@ int common_blocked_queue_push(struct common_blocked_queue *queue, void *data)
 	return 0;
 }
 
-void *common_blocked_queue_pop(struct common_blocked_queue *queue)
+void *common_blocked_queue_pop_ex(struct common_blocked_queue *queue,
+        const bool blocked)
 {
     struct common_blocked_node *node;
 	void *data;
@@ -118,28 +119,36 @@ void *common_blocked_queue_pop(struct common_blocked_queue *queue)
 		return NULL;
 	}
 
-	node = queue->head;
-	if (node == NULL)
-	{
-        pthread_cond_wait(&(queue->cond), &(queue->lock));
+    do {
         node = queue->head;
-    }
+        if (node == NULL)
+        {
+            if (!blocked)
+            {
+                data = NULL;
+                break;
+            }
 
-	if (node != NULL)
-    {
-		queue->head = node->next;
-		if (queue->head == NULL)
-		{
-			queue->tail = NULL;
-		}
+            pthread_cond_wait(&(queue->cond), &(queue->lock));
+            node = queue->head;
+        }
 
-        data = node->data;
-        fast_mblock_free_object(&queue->mblock, node);
-	}
-    else
-    {
-        data = NULL;
-    }
+        if (node != NULL)
+        {
+            queue->head = node->next;
+            if (queue->head == NULL)
+            {
+                queue->tail = NULL;
+            }
+
+            data = node->data;
+            fast_mblock_free_object(&queue->mblock, node);
+        }
+        else
+        {
+            data = NULL;
+        }
+    } while (0);
 
 	if ((result=pthread_mutex_unlock(&(queue->lock))) != 0)
 	{
@@ -151,3 +160,4 @@ void *common_blocked_queue_pop(struct common_blocked_queue *queue)
 
 	return data;
 }
+

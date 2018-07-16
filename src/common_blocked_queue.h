@@ -62,7 +62,18 @@ static inline void common_blocked_queue_terminate_all(
 
 int common_blocked_queue_push(struct common_blocked_queue *queue, void *data);
 
-void *common_blocked_queue_pop(struct common_blocked_queue *queue);
+void *common_blocked_queue_pop_ex(struct common_blocked_queue *queue,
+        const bool blocked);
+
+static inline void *common_blocked_queue_pop(struct common_blocked_queue *queue)
+{
+    return common_blocked_queue_pop_ex(queue, true);
+}
+
+static inline void *common_blocked_queue_try_pop(struct common_blocked_queue *queue)
+{
+    return common_blocked_queue_pop_ex(queue, false);
+}
 
 #ifdef __cplusplus
 }
