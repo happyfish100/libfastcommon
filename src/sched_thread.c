@@ -44,6 +44,8 @@ static int sched_init_entries(ScheduleArray *pScheduleArray)
 	time_t time_base;
 	struct tm tm_current;
 	struct tm tm_base;
+    int remain;
+    int interval;
 
 	if (pScheduleArray->count < 0)
 	{
@@ -105,10 +107,21 @@ static int sched_init_entries(ScheduleArray *pScheduleArray)
                 tm_base.tm_sec = 0;
             }
 			time_base = mktime(&tm_base);
+            remain = g_current_time - time_base;
+            if (remain > 0)
+            {
+                interval = pEntry->interval - remain % pEntry->interval;
+            }
+            else if (remain < 0)
+            {
+                interval = (-1 * remain) % pEntry->interval;
+            }
+            else
+            {
+                interval = 0;
+            }
 
-			pEntry->next_call_time = g_current_time + \
-				pEntry->interval - (g_current_time - \
-					time_base) % pEntry->interval;
+			pEntry->next_call_time = g_current_time + interval;
 		}
 
 		/*

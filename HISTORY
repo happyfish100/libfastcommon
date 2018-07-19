@@ -1,9 +1,10 @@
 
-Version 1.39  2018-07-16
+Version 1.39  2018-07-19
   * add #@function REPLACE_VARS
   * #@set value can embed %{VARIABLE}
   * shared_func.h: add function starts_with and ends_with
   * common_blocked_queue.h: add function common_blocked_queue_try_pop
+  * sched_thread.c: fix first schedule time
 
 Version 1.38  2018-06-26
   * connection_pool.c: set err_no to 0 when success
