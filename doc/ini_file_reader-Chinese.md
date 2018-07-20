@@ -16,25 +16,31 @@ libfastcommon是在github开源的⼀个C函数库。它提供了ini⽂件解析
 
 ### 2、⼀个配置项可以出现多次
 ```
-  通过iniGetValuesEx或者iniGetValues获取。例如：
+  通过iniGetValues或者iniGetValuesEx获取。例如：
     tracker_server = ip1
     tracker_server = ip2
 ```
 
 ### 3、 #include指令包含其他配置⽂件
 ```
-    可以包含本地⽂件，也可以包含URL（目前仅⽀持HTTP）
+    可以包含本地⽂件，也可以包含URL（目前仅⽀持HTTP）。例如：
+    #include http.conf
 ```
 
 ### 4、 #@function指令⽀持标注
 
 ```
   配置项的取值为扩展（外部）动态库的返回值
-V1.39⽀持三个内置标注：
-  I. LOCAL_IP_GET [inner|private] 获取本机IP地址
-  II. SHELL_EXEC <command> 获取命令⾏输出
-  III. REPLACE_VARS  替换%{VARIABLE}格式的变量
+  V1.39⽀持三个内置标注：
+    I. LOCAL_IP_GET [inner | private | outer | public] 获取本机IP地址
+      inner或private表示获取内网IP，outer或public表示获取外网IP
+      [index]表示获取指定序号的本机IP，0表示获取第一个IP，-1表示获取最后一个IP，
+      例如：[0]、inner[-1], outer[1]等等
+    II. SHELL_EXEC <command> 获取命令⾏输出
+    III. REPLACE_VARS  替换%{VARIABLE}格式的变量
+```
 
+```
 配置⽰例：
 #@function SHELL_EXEC
   host = hostname
@@ -74,9 +80,9 @@ VARIABLE包括：
 注： LOCAL_IP⽀持CIDR格式的IP地址，例如： 172.16.12.0/22
 例如：
 #@if %{LOCAL_IP} in [10.0.11.89,10.0.11.99,172.16.12.0/22]
-min_subprocess_number = 4
+  min_subprocess_number = 4
 #@else
-min_subprocess_number = 20
+  min_subprocess_number = 20
 #@endif
 ```
 
