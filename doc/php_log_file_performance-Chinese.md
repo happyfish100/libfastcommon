@@ -1,9 +1,11 @@
 # ⽇志⽂件优化PHP扩展函数
 
 ```
-出于提升性能目的，基于libfastcommon封装的php扩展，提供了函数fastcommon_error_log来替代PHP原⽣的error_log，使⽤fastcommon_file_put_contents替换PHP原⽣的file_put_contents。
+出于提升性能目的，基于libfastcommon封装的php扩展，提供了函数fastcommon_error_log
+来替代PHP原⽣的error_log，使⽤fastcommon_file_put_contents替换PHP原⽣的file_put_contents。
 
-原理很简单，就是⽇志⽂件打开后将其⽂件描述符（或⽂件句柄）持久化，避免每次调⽤error_log或file_put_contents时都执⾏open和close等⽂件操作。
+原理很简单，就是⽇志⽂件打开后将其⽂件描述符（或⽂件句柄）持久化，避免每次调⽤error_log
+或file_put_contents时都执⾏open和close等⽂件操作。
 
 在短字符串的场景下，通过实测fastcommon_file_put_contents⽐file_put_contents性能提升2倍以上。
 fastcommon_error_log⽐error_log性能提升50%以上。
