@@ -265,6 +265,25 @@ static inline IniItem *iniGetGlobalItems(IniContext *pContext, int *nCount)
 IniItem *iniGetSectionItems(const char *szSectionName, IniContext *pContext,
         int *nCount);
 
+/** get item string value
+ *  parameters:
+ *           szSectionName: the section name, NULL or empty string for
+ *                          global section
+ *           szItemName: the item name
+ *           pContext:   the ini context
+ *           nMinLength: the min value length
+ *  return: item value, return NULL when the item not exist
+*/
+char *iniGetRequiredStrValueEx(const char *szSectionName, const char *szItemName,
+		IniContext *pContext, const int nMinLength);
+
+static inline char *iniGetRequiredStrValue(const char *szSectionName,
+        const char *szItemName, IniContext *pContext)
+{
+    const int nMinLength = 1;
+    return iniGetRequiredStrValueEx(szSectionName, szItemName, pContext, nMinLength);
+}
+
 #ifdef __cplusplus
 }
 #endif

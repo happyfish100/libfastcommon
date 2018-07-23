@@ -2839,4 +2839,39 @@ IniItem *iniGetSectionItems(const char *szSectionName, IniContext *pContext,
     return pSection->items;
 }
 
+char *iniGetRequiredStrValueEx(const char *szSectionName, const char *szItemName,
+		IniContext *pContext, const int nMinLength)
+{
+    char *value;
+    value = iniGetStrValue(szSectionName, szItemName, pContext);
+    if (value == NULL)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "item: %s not exist", __LINE__, szItemName);
+        return NULL;
+    }
+
+    if (nMinLength > 0)
+    {
+        if (nMinLength == 1 && *value == '\0')
+        {
+            logError("file: "__FILE__", line: %d, "
+                    "item: %s, value is empty", __LINE__, szItemName);
+            return NULL;
+        }
+        else
+        {
+            int len;
+            len = strlen(value);
+            if (len < nMinLength)
+            {
+                logError("file: "__FILE__", line: %d, "
+                        "item: %s, value length: %d < min length: %d",
+                        __LINE__, szItemName, len, nMinLength);
+                return NULL;
+            }
+        }
+    }
+    return value;
+}
 

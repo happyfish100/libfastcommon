@@ -47,8 +47,8 @@ STATIC_LIBS = libfastcommon.a
 ALL_LIBS = $(SHARED_LIBS) $(STATIC_LIBS)
 
 all: $(ALL_OBJS) $(ALL_PRGS) $(ALL_LIBS)
-libfastcommon.so:
-	$(COMPILE) -o $@ $< -shared $(FAST_SHARED_OBJS) $(LIB_PATH)
+libfastcommon.so: $(FAST_SHARED_OBJS)
+	$(COMPILE) -o $@ -shared $(FAST_SHARED_OBJS) $(LIB_PATH)
 libfastcommon.a: $(FAST_STATIC_OBJS)
 	ar rcs $@ $(FAST_STATIC_OBJS)
 .o:
