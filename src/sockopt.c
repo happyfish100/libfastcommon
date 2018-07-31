@@ -70,6 +70,13 @@
 #endif
 #endif
 
+static bool try_again_when_interrupt = true;
+
+void tcp_set_try_again_when_interrupt(const bool value)
+{
+    try_again_when_interrupt = value;
+}
+
 int tcpgets(int sock, char* s, const int size, const int timeout)
 {
 	int result;
@@ -163,7 +170,7 @@ int tcprecvdata_ex(int sock, void *data, const int size, \
 
 		if (res < 0)
 		{
-            if (errno == EINTR)
+            if (errno == EINTR && try_again_when_interrupt)
             {
                 continue;
             }
@@ -179,7 +186,7 @@ int tcprecvdata_ex(int sock, void *data, const int size, \
 		read_bytes = recv(sock, p, left_bytes, 0);
 		if (read_bytes < 0)
 		{
-            if (errno == EINTR)
+            if (errno == EINTR && try_again_when_interrupt)
             {
                 continue;
             }
@@ -250,7 +257,7 @@ int tcpsenddata(int sock, void* data, const int size, const int timeout)
 
 		if (result < 0)
 		{
-            if (errno == EINTR)
+            if (errno == EINTR && try_again_when_interrupt)
             {
                 continue;
             }
@@ -264,7 +271,7 @@ int tcpsenddata(int sock, void* data, const int size, const int timeout)
 		write_bytes = send(sock, p, left_bytes, 0);
 		if (write_bytes < 0)
 		{
-            if (errno == EINTR)
+            if (errno == EINTR && try_again_when_interrupt)
             {
                 continue;
             }
@@ -357,7 +364,7 @@ int tcprecvdata_nb_ms(int sock, void *data, const int size, \
 
 		if (res < 0)
 		{
-            if (errno == EINTR)
+            if (errno == EINTR && try_again_when_interrupt)
             {
                 continue;
             }
@@ -440,7 +447,7 @@ int tcpsenddata_nb(int sock, void* data, const int size, const int timeout)
 
 		if (result < 0)
 		{
-            if (errno == EINTR)
+            if (errno == EINTR && try_again_when_interrupt)
             {
                 continue;
             }
@@ -1287,7 +1294,7 @@ int tcpsendfile_ex(int sock, const char *filename, const int64_t file_offset, \
 		if (send_bytes <= 0)
 		{
 			result = errno != 0 ? errno : EIO;
-            if (result == EINTR)
+            if (result == EINTR && try_again_when_interrupt)
             {
                 continue;
             }
@@ -1309,7 +1316,7 @@ int tcpsendfile_ex(int sock, const char *filename, const int64_t file_offset, \
         len = remain_bytes;
         if (sendfile(fd, sock, offset, &len, NULL, 0) != 0) {
 			result = errno != 0 ? errno : EIO;
-            if (result != EINTR)
+            if (!(result == EINTR && try_again_when_interrupt))
             {
                 break;
             }
@@ -1326,7 +1333,7 @@ int tcpsendfile_ex(int sock, const char *filename, const int64_t file_offset, \
         if (sendfile(fd, sock, offset, remain_bytes, NULL, &sbytes, 0) != 0)
         {
             result = errno != 0 ? errno : EIO;
-            if (result != EINTR)
+            if (!(result == EINTR && try_again_when_interrupt))
             {
                 break;
             }

@@ -392,6 +392,13 @@ static inline bool is_ipv6_addr(const char *ip)
     return (*ip == ':' || strchr(ip, ':') != NULL); //ipv6
 }
 
+void tcp_set_try_again_when_interrupt(const bool value);
+
+static inline void tcp_dont_try_again_when_interrupt()
+{
+    tcp_set_try_again_when_interrupt(false);
+}
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,5 +1,5 @@
 
-Version 1.39  2018-07-26
+Version 1.39  2018-07-31
   * add #@function REPLACE_VARS
   * #@set value can embed %{VARIABLE}
   * shared_func.h: add function starts_with and ends_with
@@ -7,6 +7,7 @@ Version 1.39  2018-07-26
   * sched_thread.c: fix first schedule time
   * ini_file_reader add function iniGetRequiredStrValueEx
   * add file fc_list.h
+  * sockopt.c: add global variable try_again_when_interrupt
 
 Version 1.38  2018-06-26
   * connection_pool.c: set err_no to 0 when success
