@@ -24,8 +24,6 @@ struct mpool_chain {
 
 static struct mpool_chain g_mpool = {NULL, NULL};
 
-#define ALIGNED_TASK_INFO_SIZE  MEM_ALIGN(sizeof(struct fast_task_info))
-
 int task_queue_init(struct fast_task_queue *pQueue)
 {
 	int result;

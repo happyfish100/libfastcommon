@@ -12,6 +12,7 @@
 #define _COMMON_DEFINE_H_
 
 #include <pthread.h>
+#include <string.h>
 #include <errno.h>
 
 #ifdef WIN32
@@ -205,6 +206,20 @@ typedef void* (*MallocFunc)(size_t size);
 #else
   #define __gcc_attribute__(x)
 #endif
+
+static inline int fc_compare_string(const string_t *s1, const string_t *s2)
+{
+    int result;
+    if (s1->len == s2->len) {
+        return memcmp(s1->str, s2->str, s1->len);
+    } else if (s1->len < s2->len) {
+        result = memcmp(s1->str, s2->str, s1->len);
+        return result == 0 ? -1 : result;
+    } else {
+        result = memcmp(s1->str, s2->str, s2->len);
+        return result == 0 ? 1 : result;
+    }
+}
 
 #ifdef __cplusplus
 }

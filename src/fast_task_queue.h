@@ -19,6 +19,8 @@
 #include "ioevent.h"
 #include "fast_timer.h"
 
+#define ALIGNED_TASK_INFO_SIZE  MEM_ALIGN(sizeof(struct fast_task_info))
+
 struct nio_thread_data;
 struct fast_task_info;
 
