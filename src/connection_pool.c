@@ -376,3 +376,73 @@ int conn_pool_get_connection_count(ConnectionPool *cp)
 	return count;
 }
 
+int conn_pool_parse_server_info(const char *pServerStr,
+        ConnectionInfo *pServerInfo, const int default_port)
+{
+    char *parts[2];
+    char server_info[256];
+    int len;
+    int count;
+
+    len = strlen(pServerStr);
+    if (len == 0) {
+        logError("file: "__FILE__", line: %d, "
+            "pServerStr \"%s\" is empty!",
+            __LINE__, pServerStr);
+        return EINVAL;
+    }
+    if (len >= sizeof(server_info)) {
+        logError("file: "__FILE__", line: %d, "
+            "pServerStr \"%s\" is too long!",
+            __LINE__, pServerStr);
+        return ENAMETOOLONG;
+    }
+
+    memcpy(server_info, pServerStr, len);
+    *(server_info + len) = '\0';
+
+    count = splitEx(server_info, ':', parts, 2);
+    if (count == 1) {
+        pServerInfo->port = default_port;
+    }
+    else {
+        char *endptr = NULL;
+        pServerInfo->port = (int)strtol(parts[1], &endptr, 10);
+        if ((endptr != NULL && *endptr != '\0') || pServerInfo->port <= 0) {
+            logError("file: "__FILE__", line: %d, "
+                "pServerStr: %s, invalid port: %s!",
+                __LINE__, pServerStr, parts[1]);
+            return EINVAL;
+        }
+    }
+
+    if (getIpaddrByName(parts[0], pServerInfo->ip_addr,
+        sizeof(pServerInfo->ip_addr)) == INADDR_NONE)
+    {
+        logError("file: "__FILE__", line: %d, "
+            "pServerStr: %s, invalid hostname: %s!",
+            __LINE__, pServerStr, parts[0]);
+        return EINVAL;
+    }
+
+    pServerInfo->socket_domain = AF_INET;
+    pServerInfo->sock = -1;
+    return 0;
+}
+
+int conn_pool_load_server_info(IniContext *pIniContext, const char *filename,
+        const char *item_name, ConnectionInfo *pServerInfo,
+        const int default_port)
+{
+    char *pServerStr;
+
+	pServerStr = iniGetStrValue(NULL, item_name, pIniContext);
+    if (pServerStr == NULL) {
+        logError("file: "__FILE__", line: %d, "
+                "config file: %s, item \"%s\" not exist!",
+                __LINE__, filename, item_name);
+        return ENOENT;
+    }
+
+    return conn_pool_parse_server_info(pServerStr, pServerInfo, default_port);
+}

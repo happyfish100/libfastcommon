@@ -18,6 +18,7 @@
 #include "common_define.h"
 #include "pthread_func.h"
 #include "hash.h"
+#include "ini_file_reader.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -146,6 +147,31 @@ int conn_pool_connect_server(ConnectionInfo *pConnection, \
 *   return current connection count
 */
 int conn_pool_get_connection_count(ConnectionPool *cp);
+
+/**
+*   load server info from config file
+*   parameters:
+*      pIniContext: the ini context
+*      filename: the config filename
+*      item_name: the item name in config file, format item_name=server:port
+*      pServerInfo: store server info
+*      default_port: the default port
+*   return 0 for success, != 0 for error
+*/
+int conn_pool_load_server_info(IniContext *pIniContext, const char *filename,
+        const char *item_name, ConnectionInfo *pServerInfo,
+        const int default_port);
+
+/**
+*   parse server info from string
+*   parameters:
+*      pServerStr: server and port string as server:port
+*      pServerInfo: store server info
+*      default_port: the default port
+*   return 0 for success, != 0 for error
+*/
+int conn_pool_parse_server_info(const char *pServerStr,
+        ConnectionInfo *pServerInfo, const int default_port);
 
 #ifdef __cplusplus
 }

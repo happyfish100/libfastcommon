@@ -1,4 +1,7 @@
 
+Version 1.40  2018-08-14
+  * add function conn_pool_parse_server_info and conn_pool_load_server_info
+
 Version 1.39  2018-07-31
   * add #@function REPLACE_VARS
   * #@set value can embed %{VARIABLE}
