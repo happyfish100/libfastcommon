@@ -11,7 +11,8 @@
 #include "fastcommon/shared_func.h"
 #include "fastcommon/ini_file_reader.h"
 
-static int iniAnnotationFuncExpressCalc(char *param, char **pOutValue, int max_values)
+static int iniAnnotationFuncExpressCalc(IniContext *context, char *param,
+        char **pOutValue, int max_values)
 {
     int count;
     int result;
@@ -41,7 +42,7 @@ int main(int argc, char *argv[])
 	int result;
     IniContext context;
     const char *szFilename = "test.ini";
-    AnnotationMap annotations[1];
+    AnnotationEntry annotations[1];
 
     if (argc > 1) {
         szFilename = argv[1];
@@ -53,6 +54,7 @@ int main(int argc, char *argv[])
     annotations[0].func_init = NULL;
     annotations[0].func_destroy = NULL;
     annotations[0].func_get = iniAnnotationFuncExpressCalc;
+    annotations[0].func_free = NULL;
 
     //printf("sizeof(IniContext): %d\n", (int)sizeof(IniContext));
     result = iniLoadFromFileEx(szFilename, &context,

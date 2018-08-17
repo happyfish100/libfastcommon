@@ -58,13 +58,13 @@ typedef struct ini_context
     char flags;
 } IniContext;
 
-typedef struct ini_annotation_map {
+typedef struct ini_annotation_entry {
     char *func_name;
     int (*func_init) ();
     void (*func_destroy) ();
     int (*func_get) (IniContext *context, char *param, char **pOutValue, int max_values);
     void (*func_free) (char **values, const int count);
-} AnnotationMap;
+} AnnotationEntry;
 
 #ifdef __cplusplus
 extern "C" {
@@ -76,7 +76,7 @@ extern "C" {
      strcasecmp(pValue, "on") == 0 ||   \
      strcmp(pValue, "1") == 0)
 
-int iniSetAnnotationCallBack(AnnotationMap *map, int count);
+int iniSetAnnotationCallBack(AnnotationEntry *map, int count);
 void iniDestroyAnnotationCallBack();
 
 /** load ini items from file
@@ -98,7 +98,7 @@ int iniLoadFromFile(const char *szFilename, IniContext *pContext);
  *  return: error no, 0 for success, != 0 fail
 */
 int iniLoadFromFileEx(const char *szFilename, IniContext *pContext,
-    const char annotation_type, AnnotationMap *annotations, const int count,
+    const char annotation_type, AnnotationEntry *annotations, const int count,
     const char flags);
 
 /** load ini items from string buffer
@@ -120,7 +120,7 @@ int iniLoadFromBuffer(char *content, IniContext *pContext);
  *  return: error no, 0 for success, != 0 fail
 */
 int iniLoadFromBufferEx(char *content, IniContext *pContext,
-    const char annotation_type, AnnotationMap *annotations, const int count,
+    const char annotation_type, AnnotationEntry *annotations, const int count,
     const char flags);
 
 /** free ini context

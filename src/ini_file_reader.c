@@ -55,7 +55,7 @@
 #define _MAX_DYNAMIC_CONTENTS     8
 #define _BUILTIN_ANNOTATION_COUNT 3
 
-static AnnotationMap *g_annotation_map = NULL;
+static AnnotationEntry *g_annotations = NULL;
 static int g_annotation_count = 0;
 
 typedef struct {
@@ -72,7 +72,7 @@ typedef struct {
 typedef struct {
     int count;
     int alloc_count;
-    AnnotationMap *annotations;
+    AnnotationEntry *annotations;
 } DynamicAnnotations;
 
 typedef struct {
@@ -96,7 +96,7 @@ static int iniLoadItemsFromBuffer(char *content, \
 		IniContext *pContext);
 static DynamicAnnotations *iniAllocAnnotations(IniContext *pContext,
         const int annotation_count);
-static AnnotationMap *iniGetAnnotations(IniContext *pContext);
+static AnnotationEntry *iniGetAnnotations(IniContext *pContext);
 static SetDirectiveVars *iniGetVars(IniContext *pContext);
 
 #define STR_TRIM(pStr) \
@@ -105,13 +105,13 @@ static SetDirectiveVars *iniGetVars(IniContext *pContext);
         trim_left(pStr);  \
     } while (0)
 
-static void iniDoSetAnnotations(AnnotationMap *src, const int src_count,
-        AnnotationMap *dest, int *dest_count)
+static void iniDoSetAnnotations(AnnotationEntry *src, const int src_count,
+        AnnotationEntry *dest, int *dest_count)
 {
-    AnnotationMap *pSrc;
-    AnnotationMap *pSrcEnd;
-    AnnotationMap *pDest;
-    AnnotationMap *pDestEnd;
+    AnnotationEntry *pSrc;
+    AnnotationEntry *pSrcEnd;
+    AnnotationEntry *pDest;
+    AnnotationEntry *pDestEnd;
 
     pSrcEnd = src + src_count;
     pDestEnd = dest + *dest_count;
@@ -375,10 +375,10 @@ static void iniAnnotationFuncFree(char **values, const int count)
 }
 
 static void iniSetBuiltinAnnotations(IniContext *pContext,
-        AnnotationMap *dest, int *dest_count)
+        AnnotationEntry *dest, int *dest_count)
 {
-    AnnotationMap builtins[_BUILTIN_ANNOTATION_COUNT];
-    AnnotationMap *pAnnotation;
+    AnnotationEntry builtins[_BUILTIN_ANNOTATION_COUNT];
+    AnnotationEntry *pAnnotation;
 
     pAnnotation = builtins;
     pAnnotation->func_name = "LOCAL_IP_GET";
@@ -409,7 +409,7 @@ static void iniSetBuiltinAnnotations(IniContext *pContext,
 }
 
 static int iniSetAnnotations(IniContext *pContext, const char annotation_type,
-        AnnotationMap *annotations, const int count)
+        AnnotationEntry *annotations, const int count)
 {
     DynamicAnnotations *pDynamicAnnotations;
 
@@ -443,32 +443,32 @@ static int iniSetAnnotations(IniContext *pContext, const char annotation_type,
     return 0;
 }
 
-int iniSetAnnotationCallBack(AnnotationMap *map, int count)
+int iniSetAnnotationCallBack(AnnotationEntry *map, int count)
 {
     int bytes;
-    AnnotationMap *pDest;
+    AnnotationEntry *pDest;
 
     if (count <= 0)
     {
-		logWarning("file: "__FILE__", line: %d, " \
-			"iniSetAnnotationCallBack fail count(%d) is incorrectly.", \
+		logWarning("file: "__FILE__", line: %d, "
+			"iniSetAnnotationCallBack fail, count(%d) is invalid.",
 			__LINE__, count);
         return EINVAL;
     }
 
-    bytes = sizeof(AnnotationMap) * (g_annotation_count + count + 1);
-    g_annotation_map = (AnnotationMap *)realloc(g_annotation_map, bytes);
-    if (g_annotation_map == NULL)
+    bytes = sizeof(AnnotationEntry) * (g_annotation_count + count + 1);
+    g_annotations = (AnnotationEntry *)realloc(g_annotations, bytes);
+    if (g_annotations == NULL)
     {
-		logError("file: "__FILE__", line: %d, " \
-			"realloc %d fail, errno: %d, error info: %s", \
+		logError("file: "__FILE__", line: %d, "
+			"realloc %d fail, errno: %d, error info: %s",
 			__LINE__, bytes, errno, STRERROR(errno));
         return ENOMEM;
     }
 
-    iniDoSetAnnotations(map, count, g_annotation_map, &g_annotation_count);
+    iniDoSetAnnotations(map, count, g_annotations, &g_annotation_count);
 
-    pDest = g_annotation_map + g_annotation_count;
+    pDest = g_annotations + g_annotation_count;
     pDest->func_name = NULL;
     pDest->func_init = NULL;
     pDest->func_destroy = NULL;
@@ -479,14 +479,14 @@ int iniSetAnnotationCallBack(AnnotationMap *map, int count)
 
 void iniDestroyAnnotationCallBack()
 {
-    AnnotationMap *pAnnoMap;
+    AnnotationEntry *pAnnoMap;
 
-    if (g_annotation_map == NULL)
+    if (g_annotations == NULL)
     {
         return;
     }
 
-    pAnnoMap = g_annotation_map;
+    pAnnoMap = g_annotations;
     while (pAnnoMap->func_name)
     {
         if (pAnnoMap->func_destroy != NULL)
@@ -496,8 +496,8 @@ void iniDestroyAnnotationCallBack()
         pAnnoMap++;
     }
 
-    free(g_annotation_map);
-    g_annotation_map = NULL;
+    free(g_annotations);
+    g_annotations = NULL;
     g_annotation_count = 0;
 
 }
@@ -508,7 +508,7 @@ static int iniCompareByItemName(const void *p1, const void *p2)
 }
 
 static int iniInitContext(IniContext *pContext, const char annotation_type,
-        AnnotationMap *annotations, const int count,
+        AnnotationEntry *annotations, const int count,
         const char flags)
 {
 	int result;
@@ -559,7 +559,7 @@ int iniLoadFromFile(const char *szFilename, IniContext *pContext)
 }
 
 int iniLoadFromFileEx(const char *szFilename, IniContext *pContext,
-    const char annotation_type, AnnotationMap *annotations, const int count,
+    const char annotation_type, AnnotationEntry *annotations, const int count,
     const char flags)
 {
 	int result;
@@ -706,7 +706,7 @@ static int iniDoLoadFromFile(const char *szFilename, \
 }
 
 int iniLoadFromBufferEx(char *content, IniContext *pContext,
-    const char annotation_type, AnnotationMap *annotations, const int count,
+    const char annotation_type, AnnotationEntry *annotations, const int count,
     const char flags)
 {
 	int result;
@@ -985,14 +985,14 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 
         if (isAnnotation)
         {
-            AnnotationMap *pAnnoMapBase;
-            AnnotationMap *pAnnoMap = NULL;
+            AnnotationEntry *pAnnoMapBase;
+            AnnotationEntry *pAnnoMap = NULL;
             bool found;
 
             isAnnotation = 0;
             if ((pAnnoMapBase=iniGetAnnotations(pContext)) == NULL)
             {
-                pAnnoMapBase = g_annotation_map;
+                pAnnoMapBase = g_annotations;
             }
             if (pAnnoMapBase == NULL)
             {
@@ -1034,9 +1034,9 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
                 {
                     break;
                 }
-                if (g_annotation_map != NULL && pAnnoMapBase != g_annotation_map)
+                if (g_annotations != NULL && pAnnoMapBase != g_annotations)
                 {
-                    pAnnoMapBase = g_annotation_map;
+                    pAnnoMapBase = g_annotations;
                 }
                 else
                 {
@@ -1203,7 +1203,7 @@ static DynamicAnnotations *iniAllocDynamicAnnotation(IniContext *pContext)
     return &pair->dynamicAnnotations;
 }
 
-static AnnotationMap *iniGetAnnotations(IniContext *pContext)
+static AnnotationEntry *iniGetAnnotations(IniContext *pContext)
 {
     static CDCPair *pair;
 
@@ -1374,7 +1374,7 @@ static int iniCheckAllocAnnotations(DynamicAnnotations *pDynamicAnnotations,
 {
     int alloc_count;
     int bytes;
-    AnnotationMap *annotations;
+    AnnotationEntry *annotations;
 
     if (pDynamicAnnotations->count + annotation_count <
             pDynamicAnnotations->alloc_count)
@@ -1394,8 +1394,8 @@ static int iniCheckAllocAnnotations(DynamicAnnotations *pDynamicAnnotations,
     {
         alloc_count *= 2;
     }
-    bytes = sizeof(AnnotationMap) * alloc_count;
-    annotations = (AnnotationMap *)malloc(bytes);
+    bytes = sizeof(AnnotationEntry) * alloc_count;
+    annotations = (AnnotationEntry *)malloc(bytes);
     if (annotations == NULL)
     {
         logError("file: "__FILE__", line: %d, "
@@ -1406,7 +1406,7 @@ static int iniCheckAllocAnnotations(DynamicAnnotations *pDynamicAnnotations,
     if (pDynamicAnnotations->count > 0)
     {
         memcpy(annotations, pDynamicAnnotations->annotations,
-                sizeof(AnnotationMap) * pDynamicAnnotations->count);
+                sizeof(AnnotationEntry) * pDynamicAnnotations->count);
         free(pDynamicAnnotations->annotations);
     }
     pDynamicAnnotations->annotations = annotations;
