@@ -923,6 +923,9 @@ static int iniAddAnnotation(char *params)
             result = ((init_annotation_func3)init_func)(&annotation,
                     cols[2], cols[3], cols[4]);
             break;
+        default:
+            result = 0;
+            break;
     }
 
     if (result != 0)
