@@ -61,7 +61,7 @@ else
   CFLAGS="$CFLAGS -g -O3"
 fi
 
-LIBS='-lm'
+LIBS='-lm -ldl'
 uname=`uname`
 
 HAVE_VMMETER_H=0
