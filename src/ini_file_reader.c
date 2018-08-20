@@ -14,6 +14,7 @@
 #include <string.h>
 #include <errno.h>
 #include <limits.h>
+#include <dlfcn.h>
 #include "shared_func.h"
 #include "logger.h"
 #include "http_func.h"
@@ -126,9 +127,13 @@ static void iniDoSetAnnotations(AnnotationEntry *src, const int src_count,
         }
 
         pDest->func_name = pSrc->func_name;
+        pDest->arg = pSrc->arg;
         pDest->func_init = pSrc->func_init;
         pDest->func_destroy = pSrc->func_destroy;
         pDest->func_get = pSrc->func_get;
+        pDest->func_free = pSrc->func_free;
+        pDest->dlhandle = pSrc->dlhandle;
+        pDest->inited = false;
         if (pDest == pDestEnd)  //insert
         {
             ++(*dest_count);
@@ -137,16 +142,43 @@ static void iniDoSetAnnotations(AnnotationEntry *src, const int src_count,
     }
 }
 
-static int iniAnnotationFuncLocalIpGet(IniContext *context, char *param,
-        char **pOutValue, int max_values)
+
+static AnnotationEntry *iniFindAnnotation(AnnotationEntry *annotatios,
+        const char *func_name)
+{
+    AnnotationEntry *pAnnoEntry;
+
+    if (annotatios == NULL)
+    {
+        return NULL;
+    }
+
+    pAnnoEntry = annotatios;
+    while (pAnnoEntry->func_name != NULL)
+    {
+        if (strcmp(func_name, pAnnoEntry->func_name) == 0)
+        {
+            return pAnnoEntry;
+        }
+        pAnnoEntry++;
+    }
+
+    return NULL;
+}
+
+static int iniAnnotationFuncLocalIpGet(IniContext *context,
+        struct ini_annotation_entry *annotation,
+        const IniItem *item, char **pOutValue, int max_values)
 {
     bool need_private_ip;
     int count;
     int index;
+    char param[FAST_INI_ITEM_VALUE_SIZE];
     const char *next_ip;
     char *square_start;
     char name_part[16];
 
+    strcpy(param, item->value);
     memset(name_part, 0, sizeof(name_part));
     square_start = strchr(param, '[');
     if (square_start != NULL && param[strlen(param) - 1] == ']') {
@@ -197,8 +229,9 @@ static int iniAnnotationFuncLocalIpGet(IniContext *context, char *param,
     return count;
 }
 
-static int iniAnnotationFuncShellExec(IniContext *context, char *param,
-        char **pOutValue, int max_values)
+static int iniAnnotationFuncShellExec(IniContext *context,
+        struct ini_annotation_entry *annotation,
+        const IniItem *item, char **pOutValue, int max_values)
 {
     int count;
     int result;
@@ -213,24 +246,24 @@ static int iniAnnotationFuncShellExec(IniContext *context, char *param,
         return count;
     }
 
-    if ((result=getExecResult(param, output, FAST_INI_ITEM_VALUE_SIZE)) != 0)
+    if ((result=getExecResult(item->value, output, FAST_INI_ITEM_VALUE_SIZE)) != 0)
     {
         logWarning("file: "__FILE__", line: %d, "
                 "exec %s fail, errno: %d, error info: %s",
-                __LINE__, param, result, STRERROR(result));
+                __LINE__, item->value, result, STRERROR(result));
         free(output);
         return count;
     }
     if (*output == '\0')
     {
         logWarning("file: "__FILE__", line: %d, "
-                "empty reply when exec: %s", __LINE__, param);
+                "empty reply when exec: %s", __LINE__, item->value);
     }
     pOutValue[count++] = fc_trim(output);
     return count;
 }
 
-static int iniCopyBuffer(char *dest, const int size, char *src, int len)
+static int iniCopyBuffer(char *dest, const int size, const char *src, int len)
 {
     if (len == 0) {
         return 0;
@@ -252,18 +285,19 @@ static int iniCopyBuffer(char *dest, const int size, char *src, int len)
     return len;
 }
 
-static char *doReplaceVars(IniContext *pContext, char *param, const int max_size)
+static char *doReplaceVars(IniContext *pContext, const char *param,
+        const int max_size)
 {
 #define VARIABLE_TAG_MIN_LENGTH  4   //%{v}
 
     SetDirectiveVars *set;
-    char *p;
-    char *e;
+    const char *p;
+    const char *e;
     char name[64];
-    char *start;
-    char *value;
-    char *pLoopEnd;
-    char *pEnd;
+    const char *start;
+    const char *value;
+    const char *pLoopEnd;
+    const char *pEnd;
     char *pDest;
     char *output;
     int name_len;
@@ -351,11 +385,12 @@ static char *doReplaceVars(IniContext *pContext, char *param, const int max_size
     return output;
 }
 
-static int iniAnnotationReplaceVars(IniContext *pContext, char *param,
-        char **pOutValue, int max_values)
+static int iniAnnotationReplaceVars(IniContext *pContext,
+        struct ini_annotation_entry *annotation,
+        const IniItem *item, char **pOutValue, int max_values)
 {
     char *output;
-    output = doReplaceVars(pContext, param, FAST_INI_ITEM_VALUE_SIZE);
+    output = doReplaceVars(pContext, item->value, FAST_INI_ITEM_VALUE_SIZE);
     if (output == NULL) {
         return 0;
     }
@@ -365,7 +400,8 @@ static int iniAnnotationReplaceVars(IniContext *pContext, char *param,
     }
 }
 
-static void iniAnnotationFuncFree(char **values, const int count)
+void iniAnnotationFreeValues(struct ini_annotation_entry *annotation,
+        char **values, const int count)
 {
     int i;
     for (i=0; i<count; i++) {
@@ -380,28 +416,22 @@ static void iniSetBuiltinAnnotations(IniContext *pContext,
     AnnotationEntry builtins[_BUILTIN_ANNOTATION_COUNT];
     AnnotationEntry *pAnnotation;
 
+    memset(builtins, 0, sizeof(builtins));
     pAnnotation = builtins;
     pAnnotation->func_name = "LOCAL_IP_GET";
-    pAnnotation->func_init = NULL;
-    pAnnotation->func_destroy = NULL;
     pAnnotation->func_get = iniAnnotationFuncLocalIpGet;
-    pAnnotation->func_free = NULL;
     pAnnotation++;
 
     pAnnotation->func_name = "REPLACE_VARS";
-    pAnnotation->func_init = NULL;
-    pAnnotation->func_destroy = NULL;
     pAnnotation->func_get = iniAnnotationReplaceVars;
-    pAnnotation->func_free = iniAnnotationFuncFree;
+    pAnnotation->func_free = iniAnnotationFreeValues;
     pAnnotation++;
 
     if ((pContext->flags & FAST_INI_FLAGS_SHELL_EXECUTE) != 0)
     {
         pAnnotation->func_name = "SHELL_EXEC";
-        pAnnotation->func_init = NULL;
-        pAnnotation->func_destroy = NULL;
         pAnnotation->func_get = iniAnnotationFuncShellExec;
-        pAnnotation->func_free = iniAnnotationFuncFree;
+        pAnnotation->func_free = iniAnnotationFreeValues;
         pAnnotation++;
     }
 
@@ -443,10 +473,9 @@ static int iniSetAnnotations(IniContext *pContext, const char annotation_type,
     return 0;
 }
 
-int iniSetAnnotationCallBack(AnnotationEntry *map, int count)
+int iniSetAnnotationCallBack(AnnotationEntry *annotations, int count)
 {
     int bytes;
-    AnnotationEntry *pDest;
 
     if (count <= 0)
     {
@@ -466,34 +495,33 @@ int iniSetAnnotationCallBack(AnnotationEntry *map, int count)
         return ENOMEM;
     }
 
-    iniDoSetAnnotations(map, count, g_annotations, &g_annotation_count);
-
-    pDest = g_annotations + g_annotation_count;
-    pDest->func_name = NULL;
-    pDest->func_init = NULL;
-    pDest->func_destroy = NULL;
-    pDest->func_get = NULL;
-
+    memset(g_annotations + g_annotation_count, 0,
+            sizeof(AnnotationEntry) * (count + 1));
+    iniDoSetAnnotations(annotations, count, g_annotations, &g_annotation_count);
     return 0;
 }
 
 void iniDestroyAnnotationCallBack()
 {
-    AnnotationEntry *pAnnoMap;
+    AnnotationEntry *pAnnoEntry;
 
     if (g_annotations == NULL)
     {
         return;
     }
 
-    pAnnoMap = g_annotations;
-    while (pAnnoMap->func_name)
+    pAnnoEntry = g_annotations;
+    while (pAnnoEntry->func_name)
     {
-        if (pAnnoMap->func_destroy != NULL)
+        if (pAnnoEntry->func_destroy != NULL)
         {
-            pAnnoMap->func_destroy();
+            pAnnoEntry->func_destroy(pAnnoEntry);
         }
-        pAnnoMap++;
+        if (pAnnoEntry->dlhandle != NULL)
+        {
+            dlclose(pAnnoEntry->dlhandle);
+        }
+        pAnnoEntry++;
     }
 
     free(g_annotations);
@@ -558,6 +586,43 @@ int iniLoadFromFile(const char *szFilename, IniContext *pContext)
             NULL, 0, FAST_INI_FLAGS_NONE);
 }
 
+static void iniDestroyAnnotations(const int old_annotation_count)
+{
+    AnnotationEntry *pAnnoEntry;
+
+    if (g_annotations == NULL)
+    {
+        return;
+    }
+
+    logDebug("iniDestroyAnnotations, old_annotation_count: %d, "
+            "g_annotation_count: %d",
+            old_annotation_count, g_annotation_count);
+    if (old_annotation_count == 0)
+    {
+        iniDestroyAnnotationCallBack();
+        return;
+    }
+
+    pAnnoEntry = g_annotations + old_annotation_count;
+    while (pAnnoEntry->func_name)
+    {
+        if (pAnnoEntry->func_destroy != NULL)
+        {
+            pAnnoEntry->func_destroy(pAnnoEntry);
+        }
+        if (pAnnoEntry->dlhandle != NULL)
+        {
+            dlclose(pAnnoEntry->dlhandle);
+        }
+        pAnnoEntry++;
+    }
+
+    memset(g_annotations + old_annotation_count, 0,
+            sizeof(AnnotationEntry) * (g_annotation_count - old_annotation_count));
+    g_annotation_count = old_annotation_count;
+}
+
 int iniLoadFromFileEx(const char *szFilename, IniContext *pContext,
     const char annotation_type, AnnotationEntry *annotations, const int count,
     const char flags)
@@ -566,6 +631,7 @@ int iniLoadFromFileEx(const char *szFilename, IniContext *pContext,
 	int len;
 	char *pLast;
 	char full_filename[MAX_PATH_SIZE];
+    int old_annotation_count;
 
 	if ((result=iniInitContext(pContext, annotation_type,
                     annotations, count, flags)) != 0)
@@ -646,7 +712,13 @@ int iniLoadFromFileEx(const char *szFilename, IniContext *pContext,
 		}
 	}
 
+    old_annotation_count = g_annotation_count;
 	result = iniDoLoadFromFile(full_filename, pContext);
+    if (g_annotation_count > old_annotation_count)
+    {
+        iniDestroyAnnotations(old_annotation_count);
+    }
+
 	if (result == 0)
 	{
 		iniSortItems(pContext);
@@ -710,6 +782,7 @@ int iniLoadFromBufferEx(char *content, IniContext *pContext,
     const char flags)
 {
 	int result;
+    int old_annotation_count;
 
 	if ((result=iniInitContext(pContext, annotation_type,
                     annotations, count, flags)) != 0)
@@ -717,7 +790,13 @@ int iniLoadFromBufferEx(char *content, IniContext *pContext,
 		return result;
 	}
 
+    old_annotation_count = g_annotation_count;
 	result = iniLoadItemsFromBuffer(content, pContext);
+    if (g_annotation_count > old_annotation_count)
+    {
+        iniDestroyAnnotations(old_annotation_count);
+    }
+
 	if (result == 0)
 	{
 		iniSortItems(pContext);
@@ -735,6 +814,128 @@ int iniLoadFromBuffer(char *content, IniContext *pContext)
     return iniLoadFromBufferEx(content, pContext,
             FAST_INI_ANNOTATION_WITH_BUILTIN,
             NULL, 0, FAST_INI_FLAGS_NONE);
+}
+
+
+typedef int (*init_annotation_func0)(AnnotationEntry *annotation);
+typedef int (*init_annotation_func1)(AnnotationEntry *annotation,
+        const char *arg1);
+typedef int (*init_annotation_func2)(AnnotationEntry *annotation,
+        const char *arg1, const char *arg2);
+typedef int (*init_annotation_func3)(AnnotationEntry *annotation,
+        const char *arg1, const char *arg2, const char *arg3);
+
+static int iniAddAnnotation(char *params)
+{
+#define MAX_PARAMS   5
+    char *cols[MAX_PARAMS];
+    char *func_name;
+    char *library;
+    AnnotationEntry annotation;
+    void *dlhandle;
+    void *init_func;
+    char symbol[64];
+    int argc;
+    int count;
+    int result;
+
+    trim(params);
+    count = splitEx(params, ' ', cols, MAX_PARAMS);
+    if (count < 2)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "invalid format, correct format: "
+                "#@add_annotation FUNC_NAME library ...", __LINE__);
+        return EINVAL;
+    }
+
+    func_name = fc_trim(cols[0]);
+    library = fc_trim(cols[1]);
+    if (func_name == '\0')
+    {
+        logError("file: "__FILE__", line: %d, "
+                "empty func name, correct format: "
+                "#@add_annotation FUNC_NAME library ...", __LINE__);
+        return EINVAL;
+    }
+    if (library == '\0')
+    {
+        logError("file: "__FILE__", line: %d, "
+                "empty library, correct format: "
+                "#@add_annotation FUNC_NAME library ...", __LINE__);
+        return EINVAL;
+    }
+
+    if (iniFindAnnotation(g_annotations, func_name) != NULL)
+    {
+        logWarning("file: "__FILE__", line: %d, "
+                "function %s already exist", __LINE__, func_name);
+        return EEXIST;
+    }
+
+    if (strcmp(library, "-") == 0)
+    {
+        library = NULL;
+    }
+    else if (!fileExists(library))
+    {
+        logError("file: "__FILE__", line: %d, "
+                "library %s not exist", __LINE__, library);
+        return ENOENT;
+    }
+
+    dlhandle = dlopen(library, RTLD_LAZY);
+    if (dlhandle == NULL)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "dlopen %s fail, error info: %s",
+                __LINE__, library != NULL ? library : "",
+                dlerror());
+        return EFAULT;
+    }
+
+    snprintf(symbol, sizeof(symbol), "%s_init_annotation", func_name);
+    init_func = dlsym(dlhandle, symbol);
+    if (init_func == NULL)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "dlsym function %s fail, error info: %s",
+                __LINE__, symbol, dlerror());
+        dlclose(dlhandle);
+        return ENOENT;
+    }
+
+    memset(&annotation, 0, sizeof(annotation));
+    argc = count - 2;
+    switch (argc)
+    {
+        case 0:
+            result = ((init_annotation_func0)init_func)(&annotation);
+            break;
+        case 1:
+            result = ((init_annotation_func1)init_func)(&annotation, cols[2]);
+            break;
+        case 2:
+            result = ((init_annotation_func2)init_func)(&annotation,
+                    cols[2], cols[3]);
+            break;
+        case 3:
+            result = ((init_annotation_func3)init_func)(&annotation,
+                    cols[2], cols[3], cols[4]);
+            break;
+    }
+
+    if (result != 0)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "call function %s fail, ret: %d",
+                __LINE__, symbol, result);
+        dlclose(dlhandle);
+        return EFAULT;
+    }
+
+    annotation.dlhandle = dlhandle;
+    return iniSetAnnotationCallBack(&annotation, 1);
 }
 
 static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
@@ -844,11 +1045,15 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 			free(pIncludeFilename);
 			continue;
 		}
-        else if ((*pLine == '#' && \
-            strncasecmp(pLine+1, "@function", 9) == 0 && \
-            (*(pLine+10) == ' ' || *(pLine+10) == '\t')))
+        else if (*pLine == '#')
         {
-            if (pContext->annotation_type != FAST_INI_ANNOTATION_DISABLE)
+            if (pContext->annotation_type == FAST_INI_ANNOTATION_DISABLE)
+            {
+                continue;
+            }
+
+            if (strncasecmp(pLine+1, "@function", 9) == 0 &&
+                    (*(pLine+10) == ' ' || *(pLine+10) == '\t'))
             {
                 nNameLen = strlen(pLine + 11);
                 if (nNameLen > FAST_INI_ITEM_NAME_LEN)
@@ -870,6 +1075,16 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
                             __LINE__);
                 }
             }
+            else if (strncasecmp(pLine+1, "@add_annotation", 15) == 0 &&
+                    (*(pLine+16) == ' ' || *(pLine+16) == '\t'))
+            {
+                result = iniAddAnnotation(pLine + 17);
+                if (!(result == 0 || result == EEXIST))
+                {
+                    break;
+                }
+            }
+
             continue;
         }
 
@@ -985,16 +1200,15 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 
         if (isAnnotation)
         {
-            AnnotationEntry *pAnnoMapBase;
-            AnnotationEntry *pAnnoMap = NULL;
-            bool found;
+            AnnotationEntry *pAnnoEntryBase;
+            AnnotationEntry *pAnnoEntry = NULL;
 
             isAnnotation = 0;
-            if ((pAnnoMapBase=iniGetAnnotations(pContext)) == NULL)
+            if ((pAnnoEntryBase=iniGetAnnotations(pContext)) == NULL)
             {
-                pAnnoMapBase = g_annotations;
+                pAnnoEntryBase = g_annotations;
             }
-            if (pAnnoMapBase == NULL)
+            if (pAnnoEntryBase == NULL)
             {
                 logWarning("file: "__FILE__", line: %d, " \
                     "not set annotationMap and (%s) will use " \
@@ -1005,38 +1219,29 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
                 continue;
             }
 
-            found = false;
             nItemCnt = -1;
             for (i=0; i<2; i++)
             {
-                pAnnoMap = pAnnoMapBase;
-                while (pAnnoMap->func_name != NULL)
+                pAnnoEntry = iniFindAnnotation(pAnnoEntryBase, pFuncName);
+                if (pAnnoEntry != NULL)
                 {
-                    if (strcmp(pFuncName, pAnnoMap->func_name) == 0)
+                    if (pAnnoEntry->func_init != NULL && !pAnnoEntry->inited)
                     {
-                        if (pAnnoMap->func_init != NULL)
-                        {
-                            pAnnoMap->func_init();
-                        }
-
-                        if (pAnnoMap->func_get != NULL)
-                        {
-                            nItemCnt = pAnnoMap->func_get(pContext,
-                                    pItem->value, pItemValues, 100);
-                        }
-                        found = true;
-                        break;
+                        pAnnoEntry->inited = true;
+                        pAnnoEntry->func_init(pAnnoEntry);
                     }
-                    pAnnoMap++;
-                }
 
-                if (found)
-                {
+                    if (pAnnoEntry->func_get != NULL)
+                    {
+                        nItemCnt = pAnnoEntry->func_get(pContext,
+                                pAnnoEntry, pItem, pItemValues, 100);
+                    }
                     break;
                 }
-                if (g_annotations != NULL && pAnnoMapBase != g_annotations)
+
+                if (g_annotations != NULL && pAnnoEntryBase != g_annotations)
                 {
-                    pAnnoMapBase = g_annotations;
+                    pAnnoEntryBase = g_annotations;
                 }
                 else
                 {
@@ -1094,9 +1299,9 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
                 }
             }
 
-            if (pAnnoMap != NULL && pAnnoMap->func_free != NULL)
+            if (pAnnoEntry != NULL && pAnnoEntry->func_free != NULL)
             {
-                pAnnoMap->func_free(pItemValues, nItemCnt);
+                pAnnoEntry->func_free(pAnnoEntry, pItemValues, nItemCnt);
             }
             continue;
         }

@@ -60,10 +60,20 @@ typedef struct ini_context
 
 typedef struct ini_annotation_entry {
     char *func_name;
-    int (*func_init) ();
-    void (*func_destroy) ();
-    int (*func_get) (IniContext *context, char *param, char **pOutValue, int max_values);
-    void (*func_free) (char **values, const int count);
+    void *arg;
+    void *dlhandle;
+
+    int (*func_init) (struct ini_annotation_entry *annotation);
+    void (*func_destroy) (struct ini_annotation_entry *annotation);
+    int (*func_get) (IniContext *context,
+            struct ini_annotation_entry *annotation,
+            const IniItem *item,
+            char **pOutValue, int max_values);
+
+    void (*func_free) (struct ini_annotation_entry *annotation,
+            char **values, const int count);
+
+    bool inited;
 } AnnotationEntry;
 
 #ifdef __cplusplus
@@ -76,8 +86,11 @@ extern "C" {
      strcasecmp(pValue, "on") == 0 ||   \
      strcmp(pValue, "1") == 0)
 
-int iniSetAnnotationCallBack(AnnotationEntry *map, int count);
+int iniSetAnnotationCallBack(AnnotationEntry *annotations, int count);
 void iniDestroyAnnotationCallBack();
+
+void iniAnnotationFreeValues(struct ini_annotation_entry *annotation,
+        char **values, const int count);
 
 /** load ini items from file
  *  parameters:
