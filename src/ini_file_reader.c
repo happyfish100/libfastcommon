@@ -840,7 +840,7 @@ static int iniAddAnnotation(char *params)
     int result;
 
     trim(params);
-    count = splitEx(params, ' ', cols, MAX_PARAMS);
+    count = fc_split_string(params, " \t", cols, MAX_PARAMS);
     if (count < 2)
     {
         logError("file: "__FILE__", line: %d, "
@@ -987,6 +987,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
             isAnnotation = 0;
         }
 
+		STR_TRIM(pLine);
 		if (*pLine == '#' && \
 			strncasecmp(pLine+1, "include", 7) == 0 && \
 			(*(pLine+8) == ' ' || *(pLine+8) == '\t'))
@@ -1091,8 +1092,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
             continue;
         }
 
-		STR_TRIM(pLine);
-		if (*pLine == '#' || *pLine == '\0')
+		if (*pLine == '\0')
 		{
 			continue;
 		}

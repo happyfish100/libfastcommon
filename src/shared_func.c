@@ -747,6 +747,59 @@ int splitEx(char *src, const char seperator, char **pCols, const int nMaxCols)
 	return count;
 }
 
+bool fc_match_delim(const char *str, const char *delim)
+{
+    const char *sp;
+    const char *send;
+    const char *dp;
+    const char *dend;
+
+    send = str + strlen(str);
+    dend = delim + strlen(delim);
+    for (sp=str; sp<send; sp++)
+    {
+        for (dp=delim; dp<dend; dp++)
+        {
+            if (*sp == *dp)
+            {
+                break;
+            }
+        }
+
+        if (dp == dend)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+ 
+int fc_split_string(char *src, const char *delim, char **pCols, const int nMaxCols)
+{
+    char *token;
+    char *stringp;
+    int count = 0;
+
+    stringp = src;
+    while ((token=strsep(&stringp, delim)) != NULL)
+    {
+        if (count >= nMaxCols)
+        {
+            break;
+        }
+
+        if (fc_match_delim(token, delim))
+        {
+            continue;
+        }
+
+        pCols[count++] = token;
+    }
+
+    return count;
+}
+
 int my_strtok(char *src, const char *delim, char **pCols, const int nMaxCols)
 {
     char *p;

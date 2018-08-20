@@ -366,6 +366,25 @@ void freeSplit(char **p);
 */
 int splitEx(char *src, const char seperator, char **pCols, const int nMaxCols);
 
+
+/** split string by delimiter characters
+ *  parameters:
+ *  	src: the source string, will be modified by this function
+ *  	delim: the delimiter characters
+ *  	pCols: store split strings
+ *  	nMaxCols: max columns (max split count)
+ *  return: string array / column count
+*/
+int fc_split_string(char *src, const char *delim, char **pCols, const int nMaxCols);
+
+/** if the input string contains all delimiter characters
+ *  parameters:
+ *  	str: the input string
+ *  	delim: the delimiter characters
+ *  return: true for contains all delimiter characters, otherwise false
+*/
+bool fc_match_delim(const char *str, const char *delim);
+
 /** split string
  *  parameters:
  *  	src: the source string, will be modified by this function
