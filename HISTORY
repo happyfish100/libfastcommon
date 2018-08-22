@@ -1,9 +1,10 @@
 
-Version 1.40  2018-08-20
+Version 1.40  2018-08-22
   * add function conn_pool_parse_server_info and conn_pool_load_server_info
   * support directive: #@add_annotation, for example:
     #@add_annotation CONFIG_GET /usr/lib/libshmcache.so /etc/libshmcache.conf
   * add function fc_split_string and fc_match_delim
+  * add json_parser.[hc] for parse json array and map
 
 Version 1.39  2018-07-31
   * add #@function REPLACE_VARS
