@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
     input.len = strlen(input.str);
     json_type = detect_json_type(&input);
     if (json_type == FC_JSON_TYPE_ARRAY) {
-        string_array_t array;
+        json_array_t array;
 
         if ((result=decode_json_array(&input, &array, error_info,
                         sizeof(error_info))) != 0)
@@ -51,6 +51,27 @@ int main(int argc, char *argv[])
         free_json_string(&output);
         free_json_array(&array);
     } else if (json_type == FC_JSON_TYPE_MAP) {
+        json_map_t map;
+
+        if ((result=decode_json_map(&input, &map, error_info,
+                        sizeof(error_info))) != 0)
+        {
+            fprintf(stderr, "decode json map fail, %s\n", error_info);
+            return result;
+        }
+                
+        if ((result=encode_json_map(&map, &output,
+                            error_info, sizeof(error_info))) != 0)
+        {
+            fprintf(stderr, "encode json map fail, %s\n", error_info);
+            return result;
+        }
+
+        printf("%s\n", output.str);
+        free_json_string(&output);
+        free_json_map(&map);
+    } else {
+        fprintf(stderr, "string\n");
     }
 
 	return 0;

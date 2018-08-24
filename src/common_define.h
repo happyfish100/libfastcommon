@@ -178,6 +178,12 @@ typedef struct
     int len;
 } string_t;
 
+typedef struct
+{
+    string_t key;
+    string_t value;
+} key_value_pair_t;
+
 typedef void (*FreeDataFunc)(void *ptr);
 typedef int (*CompareFunc)(void *p1, void *p2);
 typedef void* (*MallocFunc)(size_t size);

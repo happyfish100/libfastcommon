@@ -13,28 +13,36 @@
 #define FC_JSON_TYPE_ARRAY    2
 #define FC_JSON_TYPE_MAP      3
 
-typedef struct
-{
-	string_t *elements;
-	int count;
+#define DEFINE_ARRAY_STRUCT(ELEMENT_TYPE, ARRAY_TYPE) \
+    typedef struct { \
+        ELEMENT_TYPE *elements;  \
+        int count;               \
+                                 \
+        /* for internal use */   \
+        int element_size;  \
+        int alloc;         \
+        char *buff;        \
+    } ARRAY_TYPE
 
-	int alloc;   //for internal use
-    char *buff;  //for internal use
-} string_array_t;
+DEFINE_ARRAY_STRUCT(void, common_array_t);
+DEFINE_ARRAY_STRUCT(string_t, json_array_t);
+DEFINE_ARRAY_STRUCT(key_value_pair_t, json_map_t);
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-    int detect_json_type(const string_t *input);
+    void free_common_array(common_array_t *array);
 
-    int decode_json_array(const string_t *input, string_array_t *array,
-            char *error_info, const int error_size);
+    static inline void free_json_array(json_array_t *array)
+    {
+        free_common_array((common_array_t *)array);
+    }
 
-    int encode_json_array(string_array_t *array, string_t *output,
-            char *error_info, const int error_size);
-
-    void free_json_array(string_array_t *array);
+    static inline void free_json_map(json_map_t *array)
+    {
+        free_common_array((common_array_t *)array);
+    }
 
     static inline void free_json_string(string_t *buffer)
     {
@@ -44,6 +52,20 @@ extern "C" {
             buffer->len = 0;
         }
     }
+
+    int detect_json_type(const string_t *input);
+
+    int decode_json_array(const string_t *input, json_array_t *array,
+            char *error_info, const int error_size);
+
+    int encode_json_array(json_array_t *array, string_t *output,
+            char *error_info, const int error_size);
+
+    int decode_json_map(const string_t *input, json_map_t *map,
+            char *error_info, const int error_size);
+
+    int encode_json_map(json_map_t *map, string_t *output,
+            char *error_info, const int error_size);
 
 #ifdef __cplusplus
 }
