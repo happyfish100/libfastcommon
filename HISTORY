@@ -1,5 +1,5 @@
 
-Version 1.40  2018-08-22
+Version 1.40  2018-08-24
   * add function conn_pool_parse_server_info and conn_pool_load_server_info
   * support directive: #@add_annotation, for example:
     #@add_annotation CONFIG_GET /usr/lib/libshmcache.so /etc/libshmcache.conf

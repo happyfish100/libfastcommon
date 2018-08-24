@@ -3,6 +3,8 @@
 #include "shared_func.h"
 #include "json_parser.h"
 
+#define EXPECT_STR_LEN   80
+
 #define JSON_SPACE(ch) \
     (ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n')
 
@@ -28,13 +30,29 @@ int detect_json_type(const string_t *input)
 }
 
 typedef struct {
-    const char *p;
+    const char *str;  //input string
+    const char *p;    //current
     const char *end;
     string_t element;
     char *error_info;
     int error_size;
 } ParseContext;
 
+static void set_parse_error(const char *str, const char *current,
+        const int expect_len, const char *front,
+        char *error_info, const int error_size)
+{
+    const char *show_str;
+    int show_len;
+
+    show_len = current - str;
+    if (show_len > expect_len) {
+        show_len = expect_len;
+    }
+    show_str = current - show_len;
+    snprintf(error_info, error_size, "%s, input: %.*s",
+            front, show_len, show_str);
+}
 
 static int json_escape_string(const string_t *input, string_t *output,
         char *error_info, const int error_size)
@@ -97,6 +115,7 @@ static int json_escape_string(const string_t *input, string_t *output,
 static int next_json_element(ParseContext *context)
 {
     char *dest;
+    char buff[128];
     char quote_ch;
 
     dest = context->element.str;
@@ -106,8 +125,9 @@ static int next_json_element(ParseContext *context)
         while (context->p < context->end && *context->p != quote_ch) {
             if (*context->p == '\\') {
                 if (++context->p == context->end) {
-                    snprintf(context->error_info, context->error_size,
-                            "expect a character after \\");
+                    set_parse_error(context->str, context->p,
+                            EXPECT_STR_LEN, "expect a character after \\",
+                            context->error_info, context->error_size);
                     return EINVAL;
                 }
                 switch (*context->p) {
@@ -136,9 +156,10 @@ static int next_json_element(ParseContext *context)
                         *dest++ = '\'';
                         break;
                     default:
-                        snprintf(context->error_info, context->error_size,
-                                "invalid escaped character: %c(0x%x)",
+                        sprintf(buff, "invalid escaped character: %c(0x%x)",
                                 *context->p, (unsigned char)*context->p);
+                        set_parse_error(context->str, context->p + 1, EXPECT_STR_LEN,
+                                buff, context->error_info, context->error_size);
                         return EINVAL;
                 }
                 context->p++;
@@ -148,8 +169,9 @@ static int next_json_element(ParseContext *context)
         }
 
         if (context->p == context->end) {
-            snprintf(context->error_info, context->error_size,
-                    "expect closed character: %c", quote_ch);
+            sprintf(buff, "expect closed character: %c", quote_ch);
+            set_parse_error(context->str, context->p, EXPECT_STR_LEN,
+                    buff, context->error_info, context->error_size);
             return EINVAL;
         }
         context->p++; //skip quote char
@@ -217,12 +239,12 @@ static int prepare_json_parse(const string_t *input, common_array_t *array,
 
     if (input->str[0] != lquote) {
         snprintf(error_info, error_size,
-                "json array must start with %c", lquote);
+                "json array must start with \"%c\"", lquote);
         return EINVAL;
     }
     if (input->str[input->len - 1] != rquote) {
         snprintf(error_info, error_size,
-                "json array must end with %c", rquote);
+                "json array must end with \"%c\"", rquote);
         return EINVAL;
     }
 
@@ -238,6 +260,7 @@ static int prepare_json_parse(const string_t *input, common_array_t *array,
     context->error_size = error_size;
     context->element.str = array->buff;
     context->element.len = 0;
+    context->str = input->str;
     context->p = input->str + 1;
     context->end = input->str + input->len - 1;
     return 0;
@@ -256,8 +279,6 @@ int decode_json_array(const string_t *input, json_array_t *array,
         return result;
     }
 
-    fprintf(stderr, "line: %d\n", __LINE__);
-
     result = 0;
     while (context.p < context.end) {
         while (context.p < context.end && JSON_SPACE(*context.p)) {
@@ -268,17 +289,11 @@ int decode_json_array(const string_t *input, json_array_t *array,
             break;
         }
 
-        fprintf(stderr, "start: %s\n", context.p);
-
         if (*context.p == ',') {
-            context.p++;
-            while (context.p < context.end && JSON_SPACE(*context.p)) {
-                context.p++;
-            }
-            if (context.p < context.end) { //ignore last comma
-                snprintf(error_info, error_size, "unexpect comma \",\"");
-                result = EINVAL;
-            }
+            set_parse_error(input->str, context.p + 1,
+                    EXPECT_STR_LEN, "unexpect comma \",\"",
+                    error_info, error_size);
+            result = EINVAL;
             break;
         }
 
@@ -293,12 +308,13 @@ int decode_json_array(const string_t *input, json_array_t *array,
             if (*context.p == ',') {
                 context.p++;   //skip comma
             } else {
-                snprintf(error_info, error_size, "expect comma \",\"");
+                set_parse_error(input->str, context.p,
+                        EXPECT_STR_LEN, "expect comma \",\"",
+                        error_info, error_size);
                 result = EINVAL;
                 break;
             }
         }
-        fprintf(stderr, "end: %s\n", context.p);
 
         if ((result=check_alloc_json_array(array, error_info, error_size)) != 0) {
             array->count = 0;
@@ -407,8 +423,6 @@ int decode_json_map(const string_t *input, json_map_t *map,
         return result;
     }
 
-    fprintf(stderr, "line: %d\n", __LINE__);
-
     result = 0;
     while (context.p < context.end) {
         while (context.p < context.end && JSON_SPACE(*context.p)) {
@@ -419,17 +433,11 @@ int decode_json_map(const string_t *input, json_map_t *map,
             break;
         }
 
-        fprintf(stderr, "start: %s\n", context.p);
-
         if (*context.p == ',') {
-            context.p++;
-            while (context.p < context.end && JSON_SPACE(*context.p)) {
-                context.p++;
-            }
-            if (context.p < context.end) { //ignore last comma
-                snprintf(error_info, error_size, "unexpect comma \",\"");
-                result = EINVAL;
-            }
+            set_parse_error(input->str, context.p + 1,
+                    EXPECT_STR_LEN, "unexpect comma \",\"",
+                    error_info, error_size);
+            result = EINVAL;
             break;
         }
 
@@ -440,12 +448,13 @@ int decode_json_map(const string_t *input, json_map_t *map,
             context.p++;
         }
         if (!(context.p < context.end && *context.p == ':')) {
-            snprintf(error_info, error_size, "expect colon \":\"");
+            set_parse_error(input->str, context.p,
+                    EXPECT_STR_LEN, "expect colon \":\"",
+                    error_info, error_size);
             result = EINVAL;
             break;
         }
         context.p++;   //skip colon
-        fprintf(stderr, "end1: %s\n", context.p);
 
         kv_pair.key = context.element;
         context.element.str += context.element.len + 1;
@@ -459,17 +468,17 @@ int decode_json_map(const string_t *input, json_map_t *map,
         while (context.p < context.end && JSON_SPACE(*context.p)) {
             context.p++;
         }
-        fprintf(stderr, "end2: %s\n", context.p);
         if (context.p < context.end) {
             if (*context.p == ',') {
                 context.p++;  //skip comma
             } else {
-                snprintf(error_info, error_size, "expect comma \",\"");
+                set_parse_error(input->str, context.p,
+                        EXPECT_STR_LEN, "expect comma \",\"",
+                        error_info, error_size);
                 result = EINVAL;
                 break;
             }
         }
-        fprintf(stderr, "end3: %s\n", context.p);
 
         kv_pair.value = context.element;
         context.element.str += context.element.len + 1;
