@@ -55,7 +55,21 @@ libfastcommon是在github开源的⼀个C函数库。它提供了ini⽂件解析
   check_alive_command = /usr/local/lib/libdfscheckalive.so %{encoder_port} 2 30
 ```
 
-### 5、⽀持简单的流程控制，控制标签包括：
+### 5、 #@add_annotation 扩展#@function标签
+
+```
+格式：
+#@add_annotation <function标签> <动态库文件名> [参数1, 参数2, ...]
+参数个数0到3个。
+
+使用libshmcache扩展标签CONFIG_GET示例：
+#@add_annotation CONFIG_GET /usr/lib/libshmcache.so /etc/libshmcache.conf
+
+#@function CONFIG_GET
+app.version = app1.key1
+```
+
+### 6、⽀持简单的流程控制，控制标签包括：
 
 ####  I. 条件判断
 
