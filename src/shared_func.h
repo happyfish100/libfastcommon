@@ -791,6 +791,14 @@ bool starts_with(const char *str, const char *needle);
 */
 bool ends_with(const char *str, const char *needle);
 
+/** strdup
+ *  parameters:
+ *  	str: the string to duplicate
+ *      len: the length of string
+ *  return: the duplicated string, NULL for fail
+*/
+char *fc_strdup(const char *str, const int len);
+
 #ifdef __cplusplus
 }
 #endif

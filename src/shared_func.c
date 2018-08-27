@@ -2716,3 +2716,22 @@ bool ends_with(const char *str, const char *needle)
 
     return memcmp(str + start_offset, needle, needle_len) == 0;
 }
+
+char *fc_strdup(const char *str, const int len)
+{
+    char *output;
+
+    output = (char *)malloc(len + 1);
+    if (output == NULL) {
+        logError("file: "__FILE__", line: %d, "
+                "malloc %d bytes fail",
+                __LINE__, len + 1);
+        return NULL;
+    }
+
+    if (len > 0) {
+        memcpy(output, str, len);
+    }
+    *(output + len) = '\0';
+    return output;
+}
