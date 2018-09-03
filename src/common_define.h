@@ -213,7 +213,9 @@ typedef void* (*MallocFunc)(size_t size);
   #define __gcc_attribute__(x)
 #endif
 
-static inline int fc_compare_string(const string_t *s1, const string_t *s2)
+#define fc_compare_string(s1, s2) fc_string_compare(s1, s2)
+
+static inline int fc_string_compare(const string_t *s1, const string_t *s2)
 {
     int result;
     if (s1->len == s2->len) {
@@ -225,6 +227,11 @@ static inline int fc_compare_string(const string_t *s1, const string_t *s2)
         result = memcmp(s1->str, s2->str, s2->len);
         return result == 0 ? 1 : result;
     }
+}
+
+static inline bool fc_string_equal(const string_t *s1, const string_t *s2)
+{
+    return (s1->len == s2->len) && (memcmp(s1->str, s2->str, s1->len) == 0);
 }
 
 #ifdef __cplusplus
