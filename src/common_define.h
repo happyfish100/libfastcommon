@@ -118,6 +118,10 @@ extern int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int kind);
 
 #define IS_UPPER_HEX(ch) ((ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F'))
 #define IS_HEX_CHAR(ch)  (IS_UPPER_HEX(ch) || (ch >= 'a' && ch <= 'f'))
+#define FC_IS_DIGITAL(ch)  (ch >= '0' && ch <= '9')
+#define FC_IS_LETTER(ch)  ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z'))
+#define FC_IS_UPPER_LETTER(ch)  (ch >= 'A' && ch <= 'Z')
+#define FC_IS_LOWER_LETTER(ch)  (ch >= 'a' && ch <= 'z')
 
 #define STRERROR(no) (strerror(no) != NULL ? strerror(no) : "Unkown error")
 
