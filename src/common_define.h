@@ -217,6 +217,15 @@ typedef void* (*MallocFunc)(size_t size);
   #define __gcc_attribute__(x)
 #endif
 
+//for printf format %.*s
+#define FC_PRINTF_STAR_STRING_PARAMS(s)  (s).len, (s).str
+
+#define FC_SET_STRING(dest, src)  \
+    do {  \
+        (dest).str = src;         \
+        (dest).len = strlen(src); \
+    } while (0)
+
 #define fc_compare_string(s1, s2) fc_string_compare(s1, s2)
 
 static inline int fc_string_compare(const string_t *s1, const string_t *s2)
