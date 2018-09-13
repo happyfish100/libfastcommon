@@ -282,6 +282,31 @@ static inline char *fc_trim(char *pStr)
 	return pStr;
 }
 
+/** trim leading spaces ( \t\r\n)
+ *  parameters:
+ *  	s: the string to trim
+ *  return: none
+*/
+void string_ltrim(string_t *s);
+
+/** trim tail spaces ( \t\r\n)
+ *  parameters:
+ *  	s: the string to trim
+ *  return: none
+*/
+void string_rtrim(string_t *s);
+
+#define FC_STRING_TRIM(s)  \
+    do {  \
+        string_ltrim(s);  \
+        string_rtrim(s);  \
+    } while (0)
+
+static inline void string_trim(string_t *s)
+{
+    FC_STRING_TRIM(s);
+}
+
 /** copy string to BufferInfo
  *  parameters:
  *  	pBuff: the dest buffer

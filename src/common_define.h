@@ -226,6 +226,15 @@ typedef void* (*MallocFunc)(size_t size);
         (dest).len = strlen(src); \
     } while (0)
 
+#define FC_SET_STRING_NULL(dest)  \
+    do {  \
+        (dest).str = NULL;   \
+        (dest).len = 0;      \
+    } while (0)
+
+#define FC_IS_NULL_STRING(s)  ((s)->str == NULL)
+#define FC_IS_EMPTY_STRING(s)  ((s)->len == 0)
+
 #define fc_compare_string(s1, s2) fc_string_compare(s1, s2)
 
 static inline int fc_string_compare(const string_t *s1, const string_t *s2)
@@ -246,6 +255,15 @@ static inline bool fc_string_equal(const string_t *s1, const string_t *s2)
 {
     return (s1->len == s2->len) && (memcmp(s1->str, s2->str, s1->len) == 0);
 }
+
+static inline bool fc_string_equal2(const string_t *s1,
+        const char *str2, const int len2)
+{
+    return (s1->len == len2) && (memcmp(s1->str, str2, s1->len) == 0);
+}
+
+#define fc_string_equals(s1, s2) fc_string_equal(s1, s2)
+#define fc_string_equals2(s1, str2, len2) fc_string_equal2(s1, str2, len2)
 
 #ifdef __cplusplus
 }

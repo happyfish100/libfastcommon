@@ -82,6 +82,18 @@ return the alloced ptr, return NULL if fail
 */
 void *fast_mpool_alloc(struct fast_mpool_man *mpool, const int size);
 
+
+/**
+alloc and copy string from the mpool
+parameters:
+	mpool: the mpool pointer
+	dest: the dest string (return the alloced memory in dest->str)
+	src: the source string
+return error no, 0 for success, != 0 fail
+*/
+int fast_mpool_strdup(struct fast_mpool_man *mpool, string_t *dest,
+        const string_t *src);
+
 /**
 get stats
 parameters:

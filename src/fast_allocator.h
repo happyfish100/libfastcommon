@@ -76,7 +76,7 @@ return error no, 0 for success, != 0 fail
 */
 int fast_allocator_init(struct fast_allocator_context *acontext,
         const int64_t alloc_bytes_limit, const double expect_usage_ratio,
-	const int reclaim_interval, const bool need_lock);
+        const int reclaim_interval, const bool need_lock);
 
 /**
 allocator init
@@ -93,7 +93,7 @@ return error no, 0 for success, != 0 fail
 int fast_allocator_init_ex(struct fast_allocator_context *acontext,
         struct fast_region_info *regions, const int region_count,
         const int64_t alloc_bytes_limit, const double expect_usage_ratio,
-	const int reclaim_interval, const bool need_lock);
+        const int reclaim_interval, const bool need_lock);
 
 /**
 allocator destroy

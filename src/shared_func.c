@@ -616,6 +616,52 @@ char *trim(char *pStr)
 	return pStr;
 }
 
+void string_ltrim(string_t *s)
+{
+	char *p;
+	char *end;
+
+	end = s->str + s->len;
+	for (p=s->str; p<end; p++)
+	{
+		if (!(' ' == *p|| '\n' == *p || '\r' == *p || '\t' == *p))
+		{
+			break;
+		}
+	}
+
+	if (p != s->str)
+    {
+        s->str = p;
+        s->len = end - p;
+    }
+}
+
+void string_rtrim(string_t *s)
+{
+	char *p;
+	char *end;
+
+	if (s->len == 0)
+	{
+		return;
+	}
+
+	end = s->str + s->len - 1;
+	for (p = end; p >= s->str; p--)
+	{
+		if (!(' ' == *p || '\n' == *p || '\r' == *p || '\t' == *p))
+		{
+			break;
+		}
+	}
+
+	if (p != end)
+	{
+        s->len = (p + 1) - s->str;
+	}
+}
+
 char *formatDateYYYYMMDDHHMISS(const time_t t, char *szDateBuff, const int nSize)
 {
 	time_t timer = t;
