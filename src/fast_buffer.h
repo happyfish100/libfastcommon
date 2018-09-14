@@ -2,6 +2,7 @@
 #define __FAST_BUFFER_H__
 
 #include <stdint.h>
+#include "common_define.h"
 
 typedef struct fast_buffer {
 	char *data;
@@ -53,6 +54,11 @@ int fast_buffer_append_int64(FastBuffer *buffer, const int64_t n);
 static inline int fast_buffer_append_string(FastBuffer *buffer, const char *str)
 {
     return fast_buffer_append_buff(buffer, str, strlen(str));
+}
+
+static inline int fast_buffer_append_string2(FastBuffer *buffer, const string_t *add)
+{
+    return fast_buffer_append_buff(buffer, add->str, add->len);
 }
 
 static inline int fast_buffer_append_buffer(FastBuffer *buffer, FastBuffer *src)

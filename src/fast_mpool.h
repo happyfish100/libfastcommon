@@ -89,10 +89,41 @@ parameters:
 	mpool: the mpool pointer
 	dest: the dest string (return the alloced memory in dest->str)
 	src: the source string
+    len: the length of the source string
 return error no, 0 for success, != 0 fail
 */
-int fast_mpool_strdup(struct fast_mpool_man *mpool, string_t *dest,
-        const string_t *src);
+int fast_mpool_strdup_ex(struct fast_mpool_man *mpool, string_t *dest,
+        const char *src, const int len);
+
+/**
+alloc and copy string from the mpool
+parameters:
+	mpool: the mpool pointer
+	dest: the dest string (return the alloced memory in dest->str)
+	src: the source string
+return error no, 0 for success, != 0 fail
+*/
+static inline int fast_mpool_strdup(struct fast_mpool_man *mpool,
+        string_t *dest, const char *src)
+{
+    int len;
+    len = (src != NULL) ? strlen(src) : 0;
+    return fast_mpool_strdup_ex(mpool, dest, src, len);
+}
+
+/**
+alloc and copy string from the mpool
+parameters:
+	mpool: the mpool pointer
+	dest: the dest string (return the alloced memory in dest->str)
+	src: the source string
+return error no, 0 for success, != 0 fail
+*/
+static inline int fast_mpool_strdup2(struct fast_mpool_man *mpool,
+        string_t *dest, const string_t *src)
+{
+    return fast_mpool_strdup_ex(mpool, dest, src->str, src->len);
+}
 
 /**
 get stats
