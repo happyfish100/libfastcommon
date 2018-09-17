@@ -217,6 +217,12 @@ typedef void* (*MallocFunc)(size_t size);
   #define __gcc_attribute__(x)
 #endif
 
+#define FC_IS_CHINESE_UTF8_CHAR(p, end) \
+    ((p + 2 < end) &&  \
+     ((((unsigned char)*p) & 0xF0) == 0xE0) &&       \
+     ((((unsigned char)*(p + 1)) & 0xC0) == 0x80) && \
+     ((((unsigned char)*(p + 2)) & 0xC0) == 0x80))
+
 //for printf format %.*s
 #define FC_PRINTF_STAR_STRING_PARAMS(s)  (s).len, (s).str
 
