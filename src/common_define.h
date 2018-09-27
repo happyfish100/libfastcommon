@@ -81,15 +81,15 @@ extern int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int kind);
 #define USE_SENDFILE
 #endif
 
-#define MAX_PATH_SIZE				256
+#define MAX_PATH_SIZE                  256
 #define LOG_FILE_DIR				"logs"
 #define CONF_FILE_DIR				"conf"
 #define DEFAULT_CONNECT_TIMEOUT			30
 #define DEFAULT_NETWORK_TIMEOUT			30
-#define DEFAULT_MAX_CONNECTONS			256
-#define DEFAULT_WORK_THREADS			4
-#define SYNC_LOG_BUFF_DEF_INTERVAL              10
-#define TIME_NONE                               -1
+#define DEFAULT_MAX_CONNECTONS        1024
+#define DEFAULT_WORK_THREADS             4
+#define SYNC_LOG_BUFF_DEF_INTERVAL      10
+#define TIME_NONE                       -1
 
 #define IP_ADDRESS_SIZE	16
 #define INFINITE_FILE_SIZE (256 * 1024LL * 1024 * 1024 * 1024 * 1024LL)
@@ -230,6 +230,12 @@ typedef void* (*MallocFunc)(size_t size);
     do {  \
         (dest).str = src;         \
         (dest).len = strlen(src); \
+    } while (0)
+
+#define FC_SET_STRING_EX(dest, src, len)  \
+    do {  \
+        (dest).str = src;  \
+        (dest).len = len;  \
     } while (0)
 
 #define FC_SET_STRING_NULL(dest)  \

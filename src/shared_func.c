@@ -2781,3 +2781,33 @@ char *fc_strdup(const char *str, const int len)
     *(output + len) = '\0';
     return output;
 }
+
+const char *fc_memmem(const string_t *str, const string_t *needle)
+{
+    const char *ps;
+    const char *last;
+    const char *pn;
+    const char *nend;
+    int loop;
+    int i;
+
+    loop = str->len - needle->len;
+    if (loop < 0) {
+        return NULL;
+    }
+
+    last = str->str + loop;
+    nend = needle->str + needle->len;
+    for (ps=str->str; ps<=last; ps++) {
+        for (pn=needle->str,i=0; pn<nend; pn++,i++) {
+            if (*pn != *(ps + i)) {
+                break;
+            }
+        }
+        if (pn == nend) {
+            return ps;
+        }
+    }
+
+    return NULL;
+}

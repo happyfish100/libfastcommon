@@ -824,6 +824,14 @@ bool ends_with(const char *str, const char *needle);
 */
 char *fc_strdup(const char *str, const int len);
 
+/** memmem
+ *  parameters:
+ *  	str: the string to match
+ *      needle: the needle string
+ *  return: the matched string, NULL for fail
+*/
+const char *fc_memmem(const string_t *str, const string_t *needle);
+
 #ifdef __cplusplus
 }
 #endif
