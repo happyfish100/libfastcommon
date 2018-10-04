@@ -184,9 +184,21 @@ typedef struct
 
 typedef struct
 {
+    string_t *strings;
+    int count;
+} string_array_t;
+
+typedef struct
+{
     string_t key;
     string_t value;
 } key_value_pair_t;
+
+typedef struct
+{
+    key_value_pair_t *kv_pairs;
+    int count;
+} key_value_array_t;
 
 typedef void (*FreeDataFunc)(void *ptr);
 typedef int (*CompareFunc)(void *p1, void *p2);
