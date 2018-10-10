@@ -21,6 +21,7 @@
 #include "sockopt.h"
 #include "logger.h"
 #include "shared_func.h"
+#include "http_func.h"
 
 int get_url_content_ex(const char *url, const int url_len,
         const int connect_timeout, const int network_timeout,

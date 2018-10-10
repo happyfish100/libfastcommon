@@ -244,10 +244,10 @@ typedef void* (*MallocFunc)(size_t size);
         (dest).len = strlen(src); \
     } while (0)
 
-#define FC_SET_STRING_EX(dest, src, len)  \
+#define FC_SET_STRING_EX(dest, s, l)  \
     do {  \
-        (dest).str = src;  \
-        (dest).len = len;  \
+        (dest).str = s;   \
+        (dest).len = l;   \
     } while (0)
 
 #define FC_SET_STRING_NULL(dest)  \
