@@ -832,6 +832,14 @@ char *fc_strdup(const char *str, const int len);
 */
 const char *fc_memmem(const string_t *str, const string_t *needle);
 
+/** format HTTP Date as: Sat, 11 Mar 2017 21:49:51 GMT
+ *  parameters:
+ *  	t: the time to format
+ *      buffer: the buffer
+ *  return: formatted GMT date string
+*/
+char *format_http_date(time_t t, BufferInfo *buffer);
+
 #ifdef __cplusplus
 }
 #endif

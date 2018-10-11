@@ -2811,3 +2811,13 @@ const char *fc_memmem(const string_t *str, const string_t *needle)
 
     return NULL;
 }
+
+char *format_http_date(time_t t, BufferInfo *buffer)
+{
+    struct tm tm_info;
+
+    gmtime_r(&t, &tm_info);
+    buffer->length = strftime(buffer->buff, buffer->alloc_size,
+            "%a, %d %b %Y %H:%M:%S GMT", &tm_info);
+    return buffer->buff;
+}
