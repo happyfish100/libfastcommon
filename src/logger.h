@@ -115,6 +115,19 @@ extern LogContext g_log_context;
 */
 int log_init();
 
+/** init function using global log context
+ *  do nothing when already inited
+ *  return: 0 for success, != 0 fail
+*/
+static int log_try_init()
+{
+    if (g_log_context.log_buff != NULL)
+    {
+        return 0;
+    }
+    return log_init();
+}
+
 /** init function using global log context, take over stderr and stdout
  *  return: 0 for success, != 0 fail
 */
