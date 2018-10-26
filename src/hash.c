@@ -568,6 +568,24 @@ void *hash_find(HashArray *pHash, const void *key, const int key_len)
 	}
 }
 
+int hash_find2(HashArray *pHash, const string_t *key, string_t *value)
+{
+    HashData *hdata;
+    if ((hdata=hash_find1_ex(pHash, key)) == NULL)
+    {
+        return ENOENT;
+    }
+
+    value->str = hdata->value;
+    value->len = hdata->value_len;
+    return 0;
+}
+
+HashData *hash_find1_ex(HashArray *pHash, const string_t *key)
+{
+    return hash_find_ex(pHash, key->str, key->len);
+}
+
 int hash_get(HashArray *pHash, const void *key, const int key_len,
 	void *value, int *value_len)
 {

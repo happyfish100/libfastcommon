@@ -1,5 +1,5 @@
 
-Version 1.40  2018-10-11
+Version 1.40  2018-10-26
   * add function conn_pool_parse_server_info and conn_pool_load_server_info
   * support directive: #@add_annotation, for example:
     #@add_annotation CONFIG_GET /usr/lib/libshmcache.so /etc/libshmcache.conf
@@ -8,6 +8,7 @@ Version 1.40  2018-10-11
   * add function fc_strdup
   * add function fc_memmem
   * add function format_http_date
+  * add function hash_find1 and hash_find2
 
 Version 1.39  2018-07-31
   * add #@function REPLACE_VARS

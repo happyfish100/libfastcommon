@@ -198,6 +198,36 @@ void *hash_find(HashArray *pHash, const void *key, const int key_len);
 */
 HashData *hash_find_ex(HashArray *pHash, const void *key, const int key_len);
 
+/**
+ * hash find key
+ * parameters:
+ *         pHash: the hash table
+ *         key: the key to find
+ * return user data, return NULL when the key not exist
+*/
+static inline void *hash_find1(HashArray *pHash, const string_t *key)
+{
+    return hash_find(pHash, key->str, key->len);
+}
+
+/**
+ * hash get the value of the key
+ * parameters:
+ *         pHash: the hash table
+ *         key: the key to find
+ *         value: store the value
+ * return 0 for success, != 0 fail (errno)
+*/
+int hash_find2(HashArray *pHash, const string_t *key, string_t *value);
+
+/**
+ * hash find key
+ * parameters:
+ *         pHash: the hash table
+ *         key: the key to find
+ * return hash data, return NULL when the key not exist
+*/
+HashData *hash_find1_ex(HashArray *pHash, const string_t *key);
 
 /**
  * hash get the value of the key
