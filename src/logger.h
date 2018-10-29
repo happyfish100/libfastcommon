@@ -119,7 +119,7 @@ int log_init();
  *  do nothing when already inited
  *  return: 0 for success, != 0 fail
 */
-static int log_try_init()
+static inline int log_try_init()
 {
     if (g_log_context.log_buff != NULL)
     {

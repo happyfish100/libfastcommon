@@ -2821,3 +2821,27 @@ char *format_http_date(time_t t, BufferInfo *buffer)
             "%a, %d %b %Y %H:%M:%S GMT", &tm_info);
     return buffer->buff;
 }
+
+char *resolve_path(const char *from, const char *filename,
+        char *full_filename, const int size)
+{
+    const char *last;
+    int len;
+
+    if (*filename == '/') {
+        snprintf(full_filename, size, "%s", filename);
+        return full_filename;
+    }
+
+    last = strrchr(from, '/');
+    if (last != NULL) {
+        len = last - from;
+        snprintf(full_filename, size, "%.*s/%s", len, from, filename);
+    } else {
+		logWarning("file: "__FILE__", line: %d, "
+                "no \"/\" in the from filename: %s",
+                __LINE__, from);
+        snprintf(full_filename, size, "%s", filename);
+    }
+    return full_filename;
+}

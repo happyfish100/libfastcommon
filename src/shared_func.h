@@ -840,6 +840,17 @@ const char *fc_memmem(const string_t *str, const string_t *needle);
 */
 char *format_http_date(time_t t, BufferInfo *buffer);
 
+/** return full path for the filename (the second parameter)
+ *  parameters:
+ *  	from: the input full path filename to get base path
+ *      filename: the filename to resolve path
+ *      full_filename: store the resolved full path filename
+ *      size: the max size of full_filename
+ *  return: the resolved full path filename
+*/
+char *resolve_path(const char *from, const char *filename,
+        char *full_filename, const int size);
+
 #ifdef __cplusplus
 }
 #endif

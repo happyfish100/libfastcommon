@@ -5,7 +5,9 @@
 #include <unistd.h>
 #include <inttypes.h>
 #include <errno.h>
+#include <sys/stat.h>
 #include "logger.h"
+#include "shared_func.h"
 #include "fast_buffer.h"
 
 int fast_buffer_init_ex(FastBuffer *buffer, const int init_capacity)
@@ -155,3 +157,46 @@ int fast_buffer_append_int64(FastBuffer *buffer, const int64_t n)
     return 0;
 }
 
+int fast_buffer_append_file(FastBuffer *buffer, const char *filename)
+{
+    struct stat st;
+    int result;
+    int64_t file_size;
+
+    if (stat(filename, &st) != 0) {
+        result = errno != 0 ? errno : ENOENT;
+        if (result == ENOENT) {
+            logError("file: "__FILE__", line: %d, "
+                    "file %s not exist!", __LINE__,
+                    filename);
+        } else {
+            logError("file: "__FILE__", line: %d, "
+                    "stat file %s fail, "
+                    "result: %d, error info: %s", __LINE__,
+                    filename, result, strerror(result));
+        }
+
+        return result;
+    }
+
+    if (!S_ISREG(st.st_mode)) {
+        logError("file: "__FILE__", line: %d, "
+                "file %s is NOT a regular file!",
+                __LINE__, filename);
+        return EINVAL;
+    }
+
+    file_size = st.st_size + 1;
+    if ((result=fast_buffer_check(buffer, file_size)) != 0) {
+        return result;
+    }
+
+    if ((result=getFileContentEx(filename, buffer->data + buffer->length,
+                    0, &file_size)) != 0)
+    {
+        return result;
+    }
+
+    buffer->length += file_size;
+    return 0;
+}

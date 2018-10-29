@@ -51,6 +51,8 @@ int fast_buffer_append_int(FastBuffer *buffer, const int n);
 
 int fast_buffer_append_int64(FastBuffer *buffer, const int64_t n);
 
+int fast_buffer_append_file(FastBuffer *buffer, const char *filename);
+
 static inline int fast_buffer_append_string(FastBuffer *buffer, const char *str)
 {
     return fast_buffer_append_buff(buffer, str, strlen(str));
