@@ -1,5 +1,5 @@
 
-Version 1.40  2018-10-29
+Version 1.40  2018-11-09
   * add function conn_pool_parse_server_info and conn_pool_load_server_info
   * support directive: #@add_annotation, for example:
     #@add_annotation CONFIG_GET /usr/lib/libshmcache.so /etc/libshmcache.conf
@@ -10,6 +10,8 @@ Version 1.40  2018-10-29
   * add function format_http_date
   * add function hash_find1 and hash_find2
   * add function resolve_path and fast_buffer_append_file
+  * add function id_generator_next_extra_ptr, with NULL pointer to set
+    extra data to sn % (1 << extra_bits)
 
 Version 1.39  2018-07-31
   * add #@function REPLACE_VARS

@@ -182,12 +182,13 @@ void id_generator_destroy(struct idg_context *context)
 	}
 }
 
-int id_generator_next_extra(struct idg_context *context, const int extra,
-        int64_t *id)
+int id_generator_next_extra_ptr(struct idg_context *context,
+        const int *extra, int64_t *id)
 {
 	int result;
 	int len;
 	int bytes;
+    int new_extra;
 	int64_t sn;
 	char buff[32];
 	char *endptr;
@@ -250,9 +251,18 @@ int id_generator_next_extra(struct idg_context *context, const int extra,
 
 	file_unlock(context->fd);
 
+    if (extra == NULL)
+    {
+        new_extra = sn % (1 << context->extra_bits);
+    }
+    else
+    {
+        new_extra = *extra;
+    }
+
 	*id = (((int64_t)time(NULL)) << context->mes_bits_sum) |
-        context->masked_mid | ((extra << context->sn_bits) & context->extra_mask) |
+        context->masked_mid |
+        ((new_extra << context->sn_bits) & context->extra_mask) |
         (sn & context->sn_mask);
 	return result;
 }
-

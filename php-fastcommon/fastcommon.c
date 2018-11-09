@@ -23,11 +23,14 @@
 #define MINOR_VERSION  0
 #define PATCH_VERSION  8
 
+#define IDG_FLAGS_EXTRA_DATA_BY_MOD   1
+
 #define PHP_IDG_RESOURCE_NAME "fastcommon_idg"
 #define DEFAULT_SN_FILENAME  "/tmp/fastcommon_id_generator.sn"
 
 typedef struct {
     struct idg_context idg_context;
+    int flags;
 } PHPIDGContext;
 
 static int le_consumer;
@@ -144,7 +147,7 @@ PHP_MINIT_FUNCTION(fastcommon)
 {
     static char buff[16];
 
-    log_init();
+    log_try_init();
     le_consumer = zend_register_list_destructors_ex(id_generator_dtor, NULL,
             PHP_IDG_RESOURCE_NAME, module_number);
 
@@ -157,6 +160,9 @@ PHP_MINIT_FUNCTION(fastcommon)
             LOG_TIME_PRECISION_USECOND, buff + 4);
     FASTCOMMON_REGISTER_CHAR_STR_CONSTANT("FASTCOMMON_LOG_TIME_PRECISION_NONE",
             LOG_TIME_PRECISION_NONE, buff + 6);
+
+    REGISTER_LONG_CONSTANT("FASTCOMMON_IDG_FLAGS_EXTRA_DATA_BY_MOD",
+            IDG_FLAGS_EXTRA_DATA_BY_MOD, CONST_CS | CONST_PERSISTENT);
 
     return SUCCESS;
 }
@@ -479,7 +485,8 @@ ZEND_FUNCTION(fastcommon_is_private_ip)
 
 /*
 resource fastcommon_id_generator_init([string filename = "/tmp/fastcommon_id_generator.sn",
-	int machine_id = 0, int mid_bits = 16, int extra_bits = 0, int sn_bits = 16, int mode = 0644])
+	int machine_id = 0, int mid_bits = 16, int extra_bits = 0, int sn_bits = 16,
+    int mode = 0644, int flags = 0])
 return resource handle for success, false for fail
 */
 ZEND_FUNCTION(fastcommon_id_generator_init)
@@ -491,11 +498,12 @@ ZEND_FUNCTION(fastcommon_id_generator_init)
     long extra_bits;
     long sn_bits;
     long mode;
+    long flags;
     char *filename;
     PHPIDGContext *php_idg_context;
 
 	argc = ZEND_NUM_ARGS();
-	if (argc > 6) {
+	if (argc > 7) {
 		logError("file: "__FILE__", line: %d, "
 			"fastcommon_id_generator_init parameters count: %d is invalid",
 			__LINE__, argc);
@@ -509,9 +517,10 @@ ZEND_FUNCTION(fastcommon_id_generator_init)
     extra_bits = 0;
     sn_bits = 16;
     mode = ID_GENERATOR_DEFAULT_FILE_MODE;
-	if (zend_parse_parameters(argc TSRMLS_CC, "|slllll", &filename,
+    flags = 0;
+	if (zend_parse_parameters(argc TSRMLS_CC, "|sllllll", &filename,
                 &filename_len, &machine_id, &mid_bits, &extra_bits,
-                &sn_bits, &mode) == FAILURE)
+                &sn_bits, &mode, &flags) == FAILURE)
 	{
 		logError("file: "__FILE__", line: %d, "
 			"zend_parse_parameters fail!", __LINE__);
@@ -532,6 +541,7 @@ ZEND_FUNCTION(fastcommon_id_generator_init)
 		RETURN_BOOL(false);
 	}
 
+    php_idg_context->flags = flags;
     last_idg_context = php_idg_context;
     ZEND_REGISTER_RESOURCE(return_value, php_idg_context, le_consumer);
 }
@@ -545,10 +555,11 @@ ZEND_FUNCTION(fastcommon_id_generator_next)
 {
     int argc;
     long extra;
+    int extra_val;
+    int *extra_ptr;
     int64_t id;
     zval *zhandle;
     PHPIDGContext *php_idg_context;
-    struct idg_context *context;
 
 	argc = ZEND_NUM_ARGS();
 	if (argc > 2) {
@@ -570,7 +581,6 @@ ZEND_FUNCTION(fastcommon_id_generator_next)
     {
         ZEND_FETCH_RESOURCE(php_idg_context, PHPIDGContext *, &zhandle, -1,
                 PHP_IDG_RESOURCE_NAME, le_consumer);
-        context = &php_idg_context->idg_context;
     }
     else
     {
@@ -580,12 +590,22 @@ ZEND_FUNCTION(fastcommon_id_generator_next)
             RETURN_BOOL(false);
         }
 
-        context = &last_idg_context->idg_context;
+        php_idg_context = last_idg_context;
     }
 
-	if (id_generator_next_extra(context, extra, &id) != 0) {
-		RETURN_BOOL(false);
-	}
+    logInfo("flags: %d", php_idg_context->flags);
+    if ((php_idg_context->flags & IDG_FLAGS_EXTRA_DATA_BY_MOD)) {
+        extra_ptr = NULL;
+    } else {
+        extra_val = extra;
+        extra_ptr = &extra_val;
+    }
+
+    if (id_generator_next_extra_ptr(&php_idg_context->idg_context,
+                extra_ptr, &id) != 0)
+    {
+            RETURN_BOOL(false);
+    }
 
 #if OS_BITS == 64
 	RETURN_LONG(id);

@@ -49,4 +49,3 @@ int main(int argc, char *argv[])
 	id_generator_destroy(&context);
 	return 0;
 }
-

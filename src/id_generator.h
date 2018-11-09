@@ -122,15 +122,42 @@ static inline int id_generator_init(struct idg_context *context, const char *fil
 void id_generator_destroy(struct idg_context *context);
 
 /**
-* generate next id ex
+* generate next id with extra pointer
+* parameter:
+*   context: the id generator context
+*   extra: the extra data pointer, NULL for set extra data to sn % (1 << extra_bits)
+*   id: store the id
+* return error no, 0 for success, none zero for fail
+*/
+int id_generator_next_extra_ptr(struct idg_context *context,
+        const int *extra, int64_t *id);
+
+/**
+* generate next id with extra data
 * parameter:
 *   context: the id generator context
 *   extra: the extra data
 *   id: store the id
 * return error no, 0 for success, none zero for fail
 */
-int id_generator_next_extra(struct idg_context *context, const int extra,
-        int64_t *id);
+static inline int id_generator_next_extra(struct idg_context *context,
+        const int extra, int64_t *id)
+{
+    return id_generator_next_extra_ptr(context, &extra, id);
+}
+
+/**
+* generate next id, set extra data to sn % (1 << extra_bits)
+* parameter:
+*   context: the id generator context
+*   id: store the id
+* return error no, 0 for success, none zero for fail
+*/
+static inline int id_generator_next_extra_by_mod(struct idg_context *context,
+        int64_t *id)
+{
+    return id_generator_next_extra_ptr(context, NULL, id);
+}
 
 /**
 * generate next id
@@ -141,7 +168,8 @@ int id_generator_next_extra(struct idg_context *context, const int extra,
 */
 static inline int id_generator_next(struct idg_context *context, int64_t *id)
 {
-    return id_generator_next_extra(context, 0, id);
+    const int extra = 0;
+    return id_generator_next_extra_ptr(context, &extra, id);
 }
 
 /**
