@@ -593,7 +593,6 @@ ZEND_FUNCTION(fastcommon_id_generator_next)
         php_idg_context = last_idg_context;
     }
 
-    logInfo("flags: %d", php_idg_context->flags);
     if ((php_idg_context->flags & IDG_FLAGS_EXTRA_DATA_BY_MOD)) {
         extra_ptr = NULL;
     } else {
