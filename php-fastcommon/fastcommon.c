@@ -714,7 +714,7 @@ ZEND_FUNCTION(fastcommon_id_generator_destroy)
 {
     int argc;
     zval *zhandle;
-    PHPIDGContext *php_idg_context;
+    //PHPIDGContext *php_idg_context;
 
 	argc = ZEND_NUM_ARGS();
 	if (argc > 1) {
@@ -733,8 +733,10 @@ ZEND_FUNCTION(fastcommon_id_generator_destroy)
 	}
 
     if (zhandle != NULL && !ZVAL_IS_NULL(zhandle)) {
+        /*
         ZEND_FETCH_RESOURCE(php_idg_context, PHPIDGContext *, &zhandle, -1,
                 PHP_IDG_RESOURCE_NAME, le_consumer);
+                */
     } else {
         if (last_idg_context == NULL) {
             logError("file: "__FILE__", line: %d, "
