@@ -32,7 +32,8 @@ typedef int zend_size_t;
 
 #define ZEND_TYPE_OF(z)  (z)->type
 #define ZEND_IS_BOOL(z) (ZEND_TYPE_OF(z) == IS_BOOL)
-#define ZEND_IS_TRUE(z) ((z)->value.lval != 0)
+#define ZEND_IS_TRUE(z) (ZEND_IS_BOOL(z) && (z)->value.lval != 0)
+#define ZEND_IS_FALSE(z) (ZEND_IS_BOOL(z) && (z)->value.lval == 0)
 #define Z_CE_P(z)  ((zend_class_entry *)(z))
 #define ZEND_ZVAL_STRINGL   ZVAL_STRINGL
 //#define zend_get_object_wrapper(obj) zend_object_store_get_object(obj)
@@ -125,6 +126,7 @@ typedef size_t zend_size_t;
 #define ZEND_TYPE_OF(z)  Z_TYPE_P(z)
 #define ZEND_IS_BOOL(z) (Z_TYPE_P(z) == IS_TRUE || Z_TYPE_P(z) == IS_FALSE)
 #define ZEND_IS_TRUE(z) (Z_TYPE_P(z) == IS_TRUE)
+#define ZEND_IS_FALSE(z) (Z_TYPE_P(z) == IS_FALSE)
 #define Z_STRVAL_PP(s)   Z_STRVAL_P(*s)
 #define Z_STRLEN_PP(s)   Z_STRLEN_P(*s)
 #define ZEND_ZVAL_STRINGL(z, s, l, dup)  ZVAL_STRINGL(z, s, l)
