@@ -1457,10 +1457,11 @@ int set_rlimit(int resource, const rlim_t value)
                 break;
         }
 
-		logError("file: "__FILE__", line: %d, " \
-			"call setrlimit fail, resource=%d (%s), value=%"PRId64", " \
-			"errno: %d, error info: %s", \
-			__LINE__, resource, label, (int64_t)value, \
+		logError("file: "__FILE__", line: %d, "
+			"call setrlimit fail, resource=%d (%s), "
+            "old value=%"PRId64", new value=%"PRId64", "
+			"errno: %d, error info: %s", __LINE__, resource, label,
+            (int64_t)limit.rlim_cur, (int64_t)value,
 			errno, STRERROR(errno));
 		return errno != 0 ? errno : EPERM;
 	}
