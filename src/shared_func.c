@@ -1712,11 +1712,11 @@ static int parse_cidr_ips(const char *ip_addr, in_addr_t **allow_ip_addrs,
 		return EINVAL;
 	}
 
-	if (network_bits < 16 || network_bits >= 32)
+	if (network_bits < 10 || network_bits >= 32)
 	{
 		logError("file: "__FILE__", line: %d, " \
 			"ip address: %s, invalid network bits: %d, " \
-			"it should >= 16 and < 32", \
+			"it should >= 10 and < 32", \
 			__LINE__, ip_addr, network_bits);
 		return EINVAL;
 	}
