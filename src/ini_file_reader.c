@@ -851,14 +851,14 @@ static int iniAddAnnotation(char *params)
 
     func_name = fc_trim(cols[0]);
     library = fc_trim(cols[1]);
-    if (func_name == '\0')
+    if (*func_name == '\0')
     {
         logError("file: "__FILE__", line: %d, "
                 "empty func name, correct format: "
                 "#@add_annotation FUNC_NAME library ...", __LINE__);
         return EINVAL;
     }
-    if (library == '\0')
+    if (*library == '\0')
     {
         logError("file: "__FILE__", line: %d, "
                 "empty library, correct format: "
