@@ -22,9 +22,9 @@
 #include "ioevent.h"
 
 typedef enum {
-    fast_multi_sock_stage_send = 'S',
-    fast_multi_sock_stage_recv = 'R'
-} FastMultiSockStage;
+    fast_multi_sock_stage_recv_header = 'H',
+    fast_multi_sock_stage_recv_body = 'B'
+} FastMultiSockRecvStage;
 
 struct fast_multi_sock_client;
 struct fast_multi_sock_entry;
@@ -43,6 +43,7 @@ typedef struct fast_multi_sock_entry {
     FastBuffer recv_buffer;   //recv buffer
     int error_no;             //0 for success, != 0 fail
     int remain;               //remain bytes, for internal use
+    FastMultiSockRecvStage recv_stage;
     bool done;                //for internal use
 } FastMultiSockEntry;
 

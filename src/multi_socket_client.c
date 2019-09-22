@@ -138,6 +138,7 @@ static int fast_multi_sock_client_do_send(FastMultiSockClient *client,
         entry->remain -= bytes;
         if (entry->remain == 0) {
             entry->remain = client->header_length;   //to recv pkg header
+            entry->recv_stage = fast_multi_sock_stage_recv_header;
             entry->io_callback = fast_multi_sock_client_do_recv;
             if (ioevent_modify(&client->ioevent, entry->conn->sock,
                         IOEVENT_READ, entry) != 0)
@@ -254,8 +255,10 @@ static int fast_multi_sock_client_do_recv(FastMultiSockClient *client,
 
         entry->recv_buffer.length += bytes;
         entry->remain -= bytes;
-        if (entry->remain == 0 && entry->recv_buffer.length == client->header_length) {
+        if (entry->remain == 0 && entry->recv_stage == fast_multi_sock_stage_recv_header) {
             int body_length;
+
+            entry->recv_stage = fast_multi_sock_stage_recv_body;
             body_length = client->get_body_length_func(&entry->recv_buffer);
             if (body_length < 0) {
                 logError("file: "__FILE__", line: %d, "
@@ -265,6 +268,10 @@ static int fast_multi_sock_client_do_recv(FastMultiSockClient *client,
                 result = EINVAL;
                 break;
             }
+            else if (body_length == 0) {
+                break;
+            }
+
             if ((result=fast_buffer_check(&entry->recv_buffer, body_length)) != 0) {
                 break;
             }

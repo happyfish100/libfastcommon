@@ -3,6 +3,7 @@
 Version 1.41  2019-09-22
   * change CIDR network_bits range from [16, 32) to [10, 32)
   * ini_file_reader.c: fix empty string compare
+  * multi_socket_client.c: code refine
 
 Version 1.40  2018-11-09
   * add function conn_pool_parse_server_info and conn_pool_load_server_info
