@@ -295,7 +295,7 @@ static int fast_multi_sock_client_deal_io(FastMultiSockClient *client)
 
     while (client->pulling_count > 0) {
         remain_timeout = client->deadline_time - get_current_time();
-        if (remain_timeout <= 0) {  //timeout
+        if (remain_timeout < 0) {  //timeout
             break;
         }
 
