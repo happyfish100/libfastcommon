@@ -462,35 +462,35 @@ int tcpsenddata_nb(int sock, void* data, const int size, const int timeout)
 	return 0;
 }
 
-int setsockaddrbyip(const char *ip, const short port, struct sockaddr_in *addr,
-        struct sockaddr_in6 *addr6, void **output, int *size)
+int setsockaddrbyip(const char *ip, const short port, sockaddr_convert_t *convert)
 {
-    int domain;
+    int af;
     void *dest;
 
     if (is_ipv6_addr(ip))
     {
-        *output = addr6;
-        *size = sizeof(*addr6);
-        dest = &addr6->sin6_addr;
+        convert->len = sizeof(convert->sa.addr6);
+        dest = &convert->sa.addr6.sin6_addr;
 
-        domain = AF_INET6;
-        addr6->sin6_family = PF_INET6;
-        addr6->sin6_port = htons(port);
+        af = AF_INET6;
+        convert->sa.addr6.sin6_family = PF_INET6;
+        convert->sa.addr6.sin6_port = htons(port);
     }
     else  //ipv4
     {
-        *output = addr;
-        *size = sizeof(*addr);
-        dest = &addr->sin_addr;
+        convert->len = sizeof(convert->sa.addr4);
+        dest = &convert->sa.addr4.sin_addr;
 
-        domain = AF_INET;
-        addr->sin_family = PF_INET;
-        addr->sin_port = htons(port);
+        af = AF_INET;
+        convert->sa.addr4.sin_family = PF_INET;
+        convert->sa.addr4.sin_port = htons(port);
     }
 
-    if (inet_pton(domain, ip, dest) == 0)
+    if (inet_pton(af, ip, dest) == 0)
     {
+		logError("file: "__FILE__", line: %d, "
+			"invalid %s ip address: %s", __LINE__,
+            (af == AF_INET ? "IPv4" : "IPv6"), ip);
         return EINVAL;
     }
     return 0;
@@ -499,18 +499,14 @@ int setsockaddrbyip(const char *ip, const short port, struct sockaddr_in *addr,
 int connectserverbyip(int sock, const char *server_ip, const short server_port)
 {
     int result;
-	struct sockaddr_in addr;
-	struct sockaddr_in6 addr6;
-    void *dest;
-    int size;
+    sockaddr_convert_t convert;
 
-    if ((result=setsockaddrbyip(server_ip, server_port, &addr, &addr6,
-                    &dest, &size)) != 0)
+    if ((result=setsockaddrbyip(server_ip, server_port, &convert)) != 0)
     {
         return result;
     }
 
-	if (connect(sock, (const struct sockaddr*)dest, size) < 0)
+	if (connect(sock, &convert.sa.addr, convert.len) < 0)
 	{
 		return errno != 0 ? errno : EINTR;
 	}
@@ -535,13 +531,9 @@ int connectserverbyip_nb_ex(int sock, const char *server_ip, \
 	struct pollfd pollfds;
 #endif
 
-	struct sockaddr_in addr;
-	struct sockaddr_in6 addr6;
-    void *dest;
-    int size;
+    sockaddr_convert_t convert;
 
-    if ((result=setsockaddrbyip(server_ip, server_port, &addr, &addr6,
-                    &dest, &size)) != 0)
+    if ((result=setsockaddrbyip(server_ip, server_port, &convert)) != 0)
     {
         return result;
     }
@@ -576,7 +568,7 @@ int connectserverbyip_nb_ex(int sock, const char *server_ip, \
 
 	do
 	{
-		if (connect(sock, (const struct sockaddr*)dest, size) < 0)
+		if (connect(sock, &convert.sa.addr, convert.len) < 0)
 		{
 			result = errno != 0 ? errno : EINPROGRESS;
 			if (result != EINPROGRESS)
@@ -634,16 +626,99 @@ int connectserverbyip_nb_ex(int sock, const char *server_ip, \
 	return result;
 }
 
+int socketClientEx2(int af, const char *server_ip,
+		const short server_port, const int timeout,
+		const int flags, const char *bind_ipaddr, int *err_no)
+{
+    int sock;
+    bool auto_detect;
+
+    if (af == AF_UNSPEC)
+    {
+        af = is_ipv6_addr(server_ip) ?  AF_INET6 : AF_INET;
+    }
+
+    sock = socket(af, SOCK_STREAM, 0);
+    if (sock < 0)
+    {
+        *err_no = errno != 0 ? errno : EMFILE;
+        logError("file: "__FILE__", line: %d, " \
+                "socket create failed, errno: %d, error info: %s", \
+                __LINE__, errno, STRERROR(errno));
+        return -1;
+    }
+
+    if (flags != 0)
+    {
+        *err_no = fd_add_flags(sock, flags);
+        if (*err_no != 0)
+        {
+            close(sock);
+            return -2;
+        }
+    }
+
+    if (bind_ipaddr != NULL && *bind_ipaddr != '\0')
+    {
+        *err_no = socketBind2(af, sock, bind_ipaddr, 0);
+        if (*err_no != 0)
+        {
+            close(sock);
+            return -3;
+        }
+    }
+
+    auto_detect = ((flags & O_NONBLOCK) == 0);
+    *err_no = connectserverbyip_nb_ex(sock, server_ip,
+            server_port, timeout, auto_detect);
+    if (*err_no != 0)
+    {
+        close(sock);
+        return -4;
+    }
+
+    return sock;
+}
+
+const char * fc_inet_ntop(const struct sockaddr *addr,
+        char *buff, const int bufferSize)
+{
+    void *sin_addr;
+    const char *output;
+
+    if (addr->sa_family == AF_INET) {
+        sin_addr = &((struct sockaddr_in *)addr)->sin_addr;
+    } else if (addr->sa_family == AF_INET6) {
+        sin_addr = &((struct sockaddr_in6 *)addr)->sin6_addr;
+    } else {
+        *buff = '\0';
+        logWarning("file: "__FILE__", line: %d, "
+                "unkown family: %d", __LINE__, addr->sa_family);
+        return NULL;
+    }
+
+    if ((output=inet_ntop(addr->sa_family, sin_addr, buff, bufferSize)) == NULL)
+    {
+        *buff = '\0';
+        logWarning("file: "__FILE__", line: %d, "
+                "call inet_ntop fail, "
+                "errno: %d, error info: %s",
+                __LINE__, errno, STRERROR(errno));
+    }
+
+    return output;
+}
+
 in_addr_t getIpaddr(getnamefunc getname, int sock, \
 		char *buff, const int bufferSize)
 {
-	struct sockaddr_in addr;
+	struct sockaddr addr;
 	socklen_t addrlen;
 
 	memset(&addr, 0, sizeof(addr));
 	addrlen = sizeof(addr);
 	
-	if (getname(sock, (struct sockaddr *)&addr, &addrlen) != 0)
+	if (getname(sock, &addr, &addrlen) != 0)
 	{
 		*buff = '\0';
 		return INADDR_NONE;
@@ -651,31 +726,29 @@ in_addr_t getIpaddr(getnamefunc getname, int sock, \
 	
 	if (addrlen > 0)
 	{
-		if (inet_ntop(AF_INET, &addr.sin_addr, buff, bufferSize) == NULL)
-		{
-			*buff = '\0';
-		}
+        fc_inet_ntop(&addr, buff, bufferSize);
 	}
 	else
 	{
 		*buff = '\0';
 	}
 	
-	return addr.sin_addr.s_addr;
+	return ((struct sockaddr_in *)&addr)->sin_addr.s_addr;  //DO NOT support IPv6
 }
 
 char *getHostnameByIp(const char *szIpAddr, char *buff, const int bufferSize)
 {
-	struct in_addr ip_addr;
 	struct hostent *ent;
+    sockaddr_convert_t convert;
 
-	if (inet_pton(AF_INET, szIpAddr, &ip_addr) != 1)
-	{
+    if (setsockaddrbyip(szIpAddr, 0, &convert) != 0)
+    {
 		*buff = '\0';
 		return buff;
-	}
+    }
 
-	ent = gethostbyaddr((char *)&ip_addr, sizeof(ip_addr), AF_INET);
+	ent = gethostbyaddr(&convert.sa.addr, convert.len,
+            convert.sa.addr.sa_family);
 	if (ent == NULL || ent->h_name == NULL)
 	{
 		*buff = '\0';
@@ -839,32 +912,40 @@ int nbaccept(int sock, const int timeout, int *err_no)
 	return result;
 }
 
-int socketBind(int sock, const char *bind_ipaddr, const int port)
+int socketBind2(int af, int sock, const char *bind_ipaddr, const int port)
 {
-	struct sockaddr_in bindaddr;
+    sockaddr_convert_t convert;
+    int result;
 
-	bindaddr.sin_family = AF_INET;
-	bindaddr.sin_port = htons(port);
+    convert.sa.addr.sa_family = af;
 	if (bind_ipaddr == NULL || *bind_ipaddr == '\0')
 	{
-		bindaddr.sin_addr.s_addr = INADDR_ANY;
+        if (af == AF_INET)
+        {
+            convert.len = sizeof(convert.sa.addr4);
+            convert.sa.addr4.sin_port = htons(port);
+		    convert.sa.addr4.sin_addr.s_addr = INADDR_ANY;
+        }
+        else
+        {
+            convert.len = sizeof(convert.sa.addr6);
+            convert.sa.addr6.sin6_port = htons(port);
+		    convert.sa.addr6.sin6_addr = in6addr_any;
+        }
 	}
 	else
-	{
-		if (inet_pton(AF_INET, bind_ipaddr, &bindaddr.sin_addr) == 0)
-		{
-			logError("file: "__FILE__", line: %d, " \
-				"invalid ip addr %s", \
-				__LINE__, bind_ipaddr);
-			return EINVAL;
-		}
-	}
+    {
+        if ((result=setsockaddrbyip(bind_ipaddr, port, &convert)) != 0)
+        {
+            return result;
+        }
+    }
 
-	if (bind(sock, (struct sockaddr*)&bindaddr, sizeof(bindaddr)) < 0)
+	if (bind(sock, &convert.sa.addr, convert.len) < 0)
 	{
-		logError("file: "__FILE__", line: %d, " \
-			"bind port %d failed, " \
-			"errno: %d, error info: %s.", \
+		logError("file: "__FILE__", line: %d, "
+			"bind port %d failed, "
+			"errno: %d, error info: %s.",
 			__LINE__, port, errno, STRERROR(errno));
 		return errno != 0 ? errno : ENOMEM;
 	}
@@ -872,12 +953,22 @@ int socketBind(int sock, const char *bind_ipaddr, const int port)
 	return 0;
 }
 
-int socketServer(const char *bind_ipaddr, const int port, int *err_no)
+int socketBind(int sock, const char *bind_ipaddr, const int port)
+{
+    return socketBind2(AF_INET, sock, bind_ipaddr, port);
+}
+
+int socketBindIPv6(int sock, const char *bind_ipaddr, const int port)
+{
+    return socketBind2(AF_INET6, sock, bind_ipaddr, port);
+}
+
+int socketServer2(int af, const char *bind_ipaddr, const int port, int *err_no)
 {
 	int sock;
 	int result;
 	
-	sock = socket(AF_INET, SOCK_STREAM, 0);
+	sock = socket(af, SOCK_STREAM, 0);
 	if (sock < 0)
 	{
 		*err_no = errno != 0 ? errno : EMFILE;
@@ -900,7 +991,7 @@ int socketServer(const char *bind_ipaddr, const int port, int *err_no)
 		return -2;
 	}
 
-	if ((*err_no=socketBind(sock, bind_ipaddr, port)) != 0)
+	if ((*err_no=socketBind2(af, sock, bind_ipaddr, port)) != 0)
 	{
 		close(sock);
 		return -3;
@@ -919,6 +1010,16 @@ int socketServer(const char *bind_ipaddr, const int port, int *err_no)
 
 	*err_no = 0;
 	return sock;
+}
+
+int socketServer(const char *bind_ipaddr, const int port, int *err_no)
+{
+    return socketServer2(AF_INET, bind_ipaddr, port, err_no);
+}
+
+int socketServerIPv6(const char *bind_ipaddr, const int port, int *err_no)
+{
+    return socketServer2(AF_INET6, bind_ipaddr, port, err_no);
 }
 
 int tcprecvfile(int sock, const char *filename, const int64_t file_bytes, \

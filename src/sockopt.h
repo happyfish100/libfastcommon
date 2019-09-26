@@ -32,6 +32,15 @@ typedef struct ip_addr_s {
     int socket_domain;
 } ip_addr_t;
 
+typedef struct sockaddr_convert_s {
+    socklen_t len;
+    union {
+        struct sockaddr addr;
+        struct sockaddr_in addr4;
+        struct sockaddr_in6 addr6;
+    } sa;
+} sockaddr_convert_t;
+
 #ifdef SO_NOSIGPIPE
 #define SET_SOCKOPT_NOSIGPIPE(sock) \
     do { \
@@ -238,7 +247,7 @@ in_addr_t getIpaddr(getnamefunc getname, int sock, \
 */
 char *getHostnameByIp(const char *szIpAddr, char *buff, const int bufferSize);
 
-/** get by ip address by it's hostname
+/** get by IPv4 address by it's hostname
  *  parameters:
  *          name: the hostname 
  *          buff: buffer to store the ip address
@@ -256,7 +265,7 @@ in_addr_t getIpaddrByName(const char *name, char *buff, const int bufferSize);
 */
 int getIpaddrsByName(const char *name, ip_addr_t *ip_addr_arr, const int ip_addr_arr_size);
 
-/** bind wrapper 
+/** bind wrapper for IPv4
  *  parameters:
  *          sock: the socket
  *          bind_ipaddr: the ip address to bind
@@ -265,7 +274,26 @@ int getIpaddrsByName(const char *name, ip_addr_t *ip_addr_arr, const int ip_addr
 */
 int socketBind(int sock, const char *bind_ipaddr, const int port);
 
-/** start a socket server (socket, bind and listen)
+/** bind wrapper for IPv6
+ *  parameters:
+ *          sock: the socket
+ *          bind_ipaddr: the ip address to bind
+ *          port: the port to bind
+ *  return: error no, 0 success, != 0 fail
+*/
+int socketBindIPv6(int sock, const char *bind_ipaddr, const int port);
+
+/** bind wrapper for IPv4 or IPv6
+ *  parameters:
+ *          af: family, AF_INET or AF_INET6
+ *          sock: the socket
+ *          bind_ipaddr: the ip address to bind
+ *          port: the port to bind
+ *  return: error no, 0 success, != 0 fail
+*/
+int socketBind2(int af, int sock, const char *bind_ipaddr, const int port);
+
+/** start a socket server for IPv4 (socket, bind and listen)
  *  parameters:
  *          sock: the socket
  *          bind_ipaddr: the ip address to bind
@@ -274,6 +302,130 @@ int socketBind(int sock, const char *bind_ipaddr, const int port);
  *  return: >= 0 server socket, < 0 fail
 */
 int socketServer(const char *bind_ipaddr, const int port, int *err_no);
+
+/** start a socket server for IPv6 (socket, bind and listen)
+ *  parameters:
+ *          sock: the socket
+ *          bind_ipaddr: the ip address to bind
+ *          port: the port to bind
+ *          err_no: store the error no
+ *  return: >= 0 server socket, < 0 fail
+*/
+int socketServerIPv6(const char *bind_ipaddr, const int port, int *err_no);
+
+/** start a socket server for IPv4 or IPv6 (socket, bind and listen)
+ *  parameters:
+ *          af: family, AF_INET or AF_INET6
+ *          sock: the socket
+ *          bind_ipaddr: the ip address to bind
+ *          port: the port to bind
+ *          err_no: store the error no
+ *  return: >= 0 server socket, < 0 fail
+*/
+int socketServer2(int af, const char *bind_ipaddr, const int port, int *err_no);
+
+/** connect to server
+ *  parameters:
+ *          af: family, AF_UNSPEC (auto dectect), AF_INET or AF_INET6
+ *          server_ip: ip address of the server
+ *          server_port: port of the server
+ *          timeout: connect timeout in seconds
+ *          flags: socket flags such as O_NONBLOCK for non-block socket
+ *          bind_ipaddr: the ip address to bind, NULL or empty for bind ANY
+ *          err_no: store the error no
+ *  return: >= 0 server socket, < 0 fail
+*/
+int socketClientEx2(int af, const char *server_ip,
+		const short server_port, const int timeout,
+		const int flags, const char *bind_ipaddr, int *err_no);
+
+/** connect to server
+ *  parameters:
+ *          server_ip: ip address of the server
+ *          server_port: port of the server
+ *          timeout: connect timeout in seconds
+ *          flags: socket flags such as O_NONBLOCK for non-block socket
+ *          bind_ipaddr: the ip address to bind, NULL or empty for bind ANY
+ *          err_no: store the error no
+ *  return: >= 0 server socket, < 0 fail
+*/
+static inline int socketClientExAuto(const char *server_ip,
+		const short server_port, const int timeout,
+		const int flags, const char *bind_ipaddr, int *err_no)
+{
+    return socketClientEx2(AF_UNSPEC, server_ip, server_port,
+            timeout, flags, bind_ipaddr, err_no);
+}
+
+/** connect to server
+ *  parameters:
+ *          server_ip: ip address of the server
+ *          server_port: port of the server
+ *          timeout: connect timeout in seconds
+ *          flags: socket flags such as O_NONBLOCK for non-block socket
+ *          bind_ipaddr: the ip address to bind, NULL or empty for bind ANY
+ *          err_no: store the error no
+ *  return: >= 0 server socket, < 0 fail
+*/
+static inline int socketClientAuto(const char *server_ip,
+		const short server_port, const int timeout,
+		const int flags, int *err_no)
+{
+    return socketClientEx2(AF_UNSPEC, server_ip, server_port,
+            timeout, flags, NULL, err_no);
+}
+
+/** connect to server
+ *  parameters:
+ *          af: family, AF_UNSPEC (auto dectect), AF_INET or AF_INET6
+ *          server_ip: ip address of the server
+ *          server_port: port of the server
+ *          timeout: connect timeout in seconds
+ *          flags: socket flags such as O_NONBLOCK for non-block socket
+ *          err_no: store the error no
+ *  return: >= 0 server socket, < 0 fail
+*/
+static inline int socketClient2(int af, const char *server_ip,
+		const short server_port, const int timeout,
+		const int flags, int *err_no)
+{
+    return socketClientEx2(af, server_ip, server_port,
+            timeout, flags, NULL, err_no);
+}
+
+/** connect to server with IPv4 socket
+ *  parameters:
+ *          server_ip: ip address of the server
+ *          server_port: port of the server
+ *          timeout: connect timeout in seconds
+ *          flags: socket flags such as O_NONBLOCK for non-block socket
+ *          err_no: store the error no
+ *  return: >= 0 server socket, < 0 fail
+*/
+static inline int socketClient(const char *server_ip,
+		const short server_port, const int timeout,
+		const int flags, int *err_no)
+{
+    return socketClient2(AF_INET, server_ip, server_port,
+            timeout, flags, err_no);
+}
+
+/** connect to server with IPv6 socket
+ *  parameters:
+ *          server_ip: ip address of the server
+ *          server_port: port of the server
+ *          timeout: connect timeout in seconds
+ *          flags: socket flags such as O_NONBLOCK for non-block socket
+ *          err_no: store the error no
+ *  return: >= 0 server socket, < 0 fail
+*/
+static inline int socketClientIPv6(const char *server_ip,
+		const short server_port, const int timeout,
+		const int flags, int *err_no)
+{
+    return socketClient2(AF_INET6, server_ip, server_port,
+            timeout, flags, err_no);
+}
 
 #define tcprecvdata(sock, data, size, timeout) \
 	tcprecvdata_ex(sock, data, size, timeout, NULL)
@@ -374,18 +526,14 @@ int gethostaddrs(char **if_alias_prefixes, const int prefix_count, \
 */
 int getifconfigs(FastIFConfig *if_configs, const int max_count, int *count);
 
-/** set socket address by ip
+/** set socket address by ip and port
  *  parameters:
  *          ip: the ip address
  *          port: the port
- *          addr: ipv4 addr
- *          addr6: ipv6 addr
- *          output: return addr pointer
- *          size: return the size of addr
+ *          convert: the convert struct for IPv4 and IPv6 compatibility
  *  return: error no, 0 success, != 0 fail
 */
-int setsockaddrbyip(const char *ip, const short port, struct sockaddr_in *addr,
-        struct sockaddr_in6 *addr6, void **output, int *size);
+int setsockaddrbyip(const char *ip, const short port, sockaddr_convert_t *convert);
 
 static inline bool is_ipv6_addr(const char *ip)
 {
