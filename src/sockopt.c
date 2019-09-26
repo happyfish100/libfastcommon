@@ -2021,6 +2021,7 @@ int getifconfigs(FastIFConfig *if_configs, const int max_count, int *count)
 	struct ifaddrs *ifc1;
     FastIFConfig *config;
     char *buff;
+    void *sin_addr;
     int buff_size;
     int i;
 
@@ -2072,15 +2073,16 @@ int getifconfigs(FastIFConfig *if_configs, const int max_count, int *count)
                 {
                     buff = config->ipv4;
                     buff_size = sizeof(config->ipv4);
+                    sin_addr = &((struct sockaddr_in *)s)->sin_addr;
                 }
                 else
                 {
                     buff = config->ipv6;
                     buff_size = sizeof(config->ipv6);
+                    sin_addr = &((struct sockaddr_in6 *)s)->sin6_addr;
                 }
 
-                if (inet_ntop(s->sa_family, &((struct sockaddr_in *)s)->
-                            sin_addr, buff, buff_size) == NULL)
+                if (inet_ntop(s->sa_family, sin_addr, buff, buff_size) == NULL)
                 {
                     logWarning("file: "__FILE__", line: %d, " \
                             "call inet_ntop fail, " \
