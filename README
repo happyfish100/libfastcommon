@@ -47,7 +47,7 @@ C function including:
 
   skiplist: [skiplist.h] [flat_skiplist.h] [multi_skiplist.h] flat skiplist and multi skiplist
 
-  socket: [sockopt.h] socket wrapper for connect, recv, send etc.
+  socket: [sockopt.h] socket wrapper for connect, recv, send etc. support IPv6
 
   ioevent: [ioevent.h] [ioevent_loop.h] like epoll (support Linux, FreeBSD and SunOS),
 

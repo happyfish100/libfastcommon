@@ -1,6 +1,6 @@
 
 
-Version 1.41  2019-09-27
+Version 1.41  2019-09-29
   * change CIDR network_bits range from [16, 32) to [10, 32)
   * ini_file_reader.c: fix empty string compare
   * multi_socket_client.c: code refine
