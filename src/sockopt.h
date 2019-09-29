@@ -325,6 +325,37 @@ int socketServerIPv6(const char *bind_ipaddr, const int port, int *err_no);
 */
 int socketServer2(int af, const char *bind_ipaddr, const int port, int *err_no);
 
+/** create socket (NOT connect to server yet)
+ *  parameters:
+ *          af: family, AF_UNSPEC (auto dectect), AF_INET or AF_INET6
+ *          server_ip: ip address of the server to detect family when af == AF_UNSPEC
+ *          timeout: connect timeout in seconds
+ *          flags: socket flags such as O_NONBLOCK for non-block socket
+ *          bind_ipaddr: the ip address to bind, NULL or empty for bind ANY
+ *          err_no: store the error no
+ *  return: >= 0 server socket, < 0 fail
+*/
+int socketCreateEx2(int af, const char *server_ip,
+		const int timeout, const int flags,
+        const char *bind_ipaddr, int *err_no);
+
+/** create socket (NOT connect to server yet)
+ *  parameters:
+ *          server_ip: ip address of the server to detect family
+ *          timeout: connect timeout in seconds
+ *          flags: socket flags such as O_NONBLOCK for non-block socket
+ *          bind_ipaddr: the ip address to bind, NULL or empty for bind ANY
+ *          err_no: store the error no
+ *  return: >= 0 server socket, < 0 fail
+*/
+static inline int socketCreateExAuto(const char *server_ip,
+		const int timeout, const int flags,
+        const char *bind_ipaddr, int *err_no)
+{
+    return socketCreateEx2(AF_UNSPEC, server_ip, timeout, flags,
+            bind_ipaddr, err_no);
+}
+
 /** connect to server
  *  parameters:
  *          af: family, AF_UNSPEC (auto dectect), AF_INET or AF_INET6

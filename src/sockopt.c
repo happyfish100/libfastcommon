@@ -626,12 +626,11 @@ int connectserverbyip_nb_ex(int sock, const char *server_ip, \
 	return result;
 }
 
-int socketClientEx2(int af, const char *server_ip,
-		const short server_port, const int timeout,
-		const int flags, const char *bind_ipaddr, int *err_no)
+int socketCreateEx2(int af, const char *server_ip,
+		const int timeout, const int flags,
+        const char *bind_ipaddr, int *err_no)
 {
     int sock;
-    bool auto_detect;
 
     if (af == AF_UNSPEC)
     {
@@ -642,8 +641,8 @@ int socketClientEx2(int af, const char *server_ip,
     if (sock < 0)
     {
         *err_no = errno != 0 ? errno : EMFILE;
-        logError("file: "__FILE__", line: %d, " \
-                "socket create failed, errno: %d, error info: %s", \
+        logError("file: "__FILE__", line: %d, "
+                "socket create failed, errno: %d, error info: %s",
                 __LINE__, errno, STRERROR(errno));
         return -1;
     }
@@ -669,11 +668,34 @@ int socketClientEx2(int af, const char *server_ip,
         }
     }
 
+    *err_no = 0;
+    return sock;
+}
+
+int socketClientEx2(int af, const char *server_ip,
+		const short server_port, const int timeout,
+		const int flags, const char *bind_ipaddr, int *err_no)
+{
+    int sock;
+    bool auto_detect;
+
+    sock = socketCreateEx2(af, server_ip,
+		timeout, flags, bind_ipaddr, err_no);
+    if (sock < 0)
+    {
+        return sock;
+    }
+
     auto_detect = ((flags & O_NONBLOCK) == 0);
     *err_no = connectserverbyip_nb_ex(sock, server_ip,
             server_port, timeout, auto_detect);
     if (*err_no != 0)
     {
+        logError("file: "__FILE__", line: %d, "
+                "connect to %s:%d fail, "
+                "errno: %d, error info: %s",
+                __LINE__, server_ip, server_port,
+                *err_no, STRERROR(*err_no));
         close(sock);
         return -4;
     }
