@@ -114,6 +114,7 @@ int conn_pool_connect_server(ConnectionInfo *pConnection, \
 		return errno != 0 ? errno : EPERM;
 	}
 
+    SET_SOCKOPT_NOSIGPIPE(pConnection->sock);
 	if ((result=tcpsetnonblockopt(pConnection->sock)) != 0)
 	{
 		close(pConnection->sock);

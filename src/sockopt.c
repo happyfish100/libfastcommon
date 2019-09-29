@@ -648,6 +648,7 @@ int socketClientEx2(int af, const char *server_ip,
         return -1;
     }
 
+    SET_SOCKOPT_NOSIGPIPE(sock);
     if (flags != 0)
     {
         *err_no = fd_add_flags(sock, flags);
@@ -915,11 +916,13 @@ int nbaccept(int sock, const int timeout, int *err_no)
 int socketBind2(int af, int sock, const char *bind_ipaddr, const int port)
 {
     sockaddr_convert_t convert;
+    char bind_ip_prompt[256];
     int result;
 
     convert.sa.addr.sa_family = af;
 	if (bind_ipaddr == NULL || *bind_ipaddr == '\0')
 	{
+        *bind_ip_prompt = '\0';
         if (af == AF_INET)
         {
             convert.len = sizeof(convert.sa.addr4);
@@ -939,14 +942,16 @@ int socketBind2(int af, int sock, const char *bind_ipaddr, const int port)
         {
             return result;
         }
+        sprintf(bind_ip_prompt, "bind ip %s, ", bind_ipaddr);
     }
 
 	if (bind(sock, &convert.sa.addr, convert.len) < 0)
 	{
 		logError("file: "__FILE__", line: %d, "
-			"bind port %d failed, "
+			"%sbind port %d failed, "
 			"errno: %d, error info: %s.",
-			__LINE__, port, errno, STRERROR(errno));
+			__LINE__, bind_ip_prompt, port,
+            errno, STRERROR(errno));
 		return errno != 0 ? errno : ENOMEM;
 	}
 
