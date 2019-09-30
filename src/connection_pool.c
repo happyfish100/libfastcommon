@@ -85,8 +85,8 @@ void conn_pool_disconnect_server(ConnectionInfo *pConnection)
 	}
 }
 
-int conn_pool_connect_server(ConnectionInfo *pConnection, \
-		const int connect_timeout)
+int conn_pool_connect_server_ex(ConnectionInfo *pConnection,
+		const int connect_timeout, const char *bind_ipaddr)
 {
 	int result;
     int domain;
@@ -113,6 +113,11 @@ int conn_pool_connect_server(ConnectionInfo *pConnection, \
 			"error info: %s", __LINE__, errno, STRERROR(errno));
 		return errno != 0 ? errno : EPERM;
 	}
+
+    if (bind_ipaddr != NULL && *bind_ipaddr != '\0')
+    {
+        socketBind2(domain, pConnection->sock, bind_ipaddr, 0);
+    }
 
     SET_SOCKOPT_NOSIGPIPE(pConnection->sock);
 	if ((result=tcpsetnonblockopt(pConnection->sock)) != 0)

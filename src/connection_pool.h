@@ -24,6 +24,10 @@
 extern "C" {
 #endif
 
+#define FC_CONNECTION_SERVER_EQUAL(conn, target_ip, target_port) \
+    (strcmp((conn).ip_addr, target_ip) == 0 && \
+     (conn).port == target_port)
+
 typedef struct
 {
 	int sock;
@@ -134,11 +138,28 @@ void conn_pool_disconnect_server(ConnectionInfo *pConnection);
 *   parameters:
 *      pConnection: the connection
 *      connect_timeout: the connect timeout in seconds
+*      bind_ipaddr: the ip address to bind, NULL or empty for any
 *   NOTE: pConnection->sock will be closed when it >= 0 before connect
 *   return 0 for success, != 0 for error
 */
-int conn_pool_connect_server(ConnectionInfo *pConnection, \
-		const int connect_timeout);
+int conn_pool_connect_server_ex(ConnectionInfo *pConnection,
+		const int connect_timeout, const char *bind_ipaddr);
+
+/**
+*   connect to the server
+*   parameters:
+*      pConnection: the connection
+*      connect_timeout: the connect timeout in seconds
+*   NOTE: pConnection->sock will be closed when it >= 0 before connect
+*   return 0 for success, != 0 for error
+*/
+static inline int conn_pool_connect_server(ConnectionInfo *pConnection,
+		const int connect_timeout)
+{
+    const char *bind_ipaddr = NULL;
+    return conn_pool_connect_server_ex(pConnection,
+            connect_timeout, bind_ipaddr);
+}
 
 /**
 *   get connection count of the pool
