@@ -86,7 +86,8 @@ void conn_pool_disconnect_server(ConnectionInfo *pConnection)
 }
 
 int conn_pool_connect_server_ex(ConnectionInfo *pConnection,
-		const int connect_timeout, const char *bind_ipaddr)
+		const int connect_timeout, const char *bind_ipaddr,
+        const bool log_connect_error)
 {
 	int result;
     int domain;
@@ -108,15 +109,18 @@ int conn_pool_connect_server_ex(ConnectionInfo *pConnection,
 	pConnection->sock = socket(domain, SOCK_STREAM, 0);
 	if(pConnection->sock < 0)
 	{
-		logError("file: "__FILE__", line: %d, " \
-			"socket create failed, errno: %d, " \
+		logError("file: "__FILE__", line: %d, "
+			"socket create fail, errno: %d, "
 			"error info: %s", __LINE__, errno, STRERROR(errno));
 		return errno != 0 ? errno : EPERM;
 	}
 
     if (bind_ipaddr != NULL && *bind_ipaddr != '\0')
     {
-        socketBind2(domain, pConnection->sock, bind_ipaddr, 0);
+        if ((result=socketBind2(domain, pConnection->sock, bind_ipaddr, 0)) != 0)
+        {
+            return result;
+        }
     }
 
     SET_SOCKOPT_NOSIGPIPE(pConnection->sock);
@@ -127,14 +131,17 @@ int conn_pool_connect_server_ex(ConnectionInfo *pConnection,
 		return result;
 	}
 
-	if ((result=connectserverbyip_nb(pConnection->sock, \
-		pConnection->ip_addr, pConnection->port, \
+	if ((result=connectserverbyip_nb(pConnection->sock,
+		pConnection->ip_addr, pConnection->port,
 		connect_timeout)) != 0)
 	{
-		logError("file: "__FILE__", line: %d, " \
-			"connect to %s:%d fail, errno: %d, " \
-			"error info: %s", __LINE__, pConnection->ip_addr, \
-			pConnection->port, result, STRERROR(result));
+        if (log_connect_error)
+        {
+            logError("file: "__FILE__", line: %d, "
+                    "connect to server %s:%d fail, errno: %d, "
+                    "error info: %s", __LINE__, pConnection->ip_addr,
+                    pConnection->port, result, STRERROR(result));
+        }
 
 		close(pConnection->sock);
 		pConnection->sock = -1;
