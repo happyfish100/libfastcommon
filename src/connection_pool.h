@@ -33,7 +33,7 @@ typedef struct
 	int sock;
 	int port;
 	char ip_addr[INET6_ADDRSTRLEN];
-    int socket_domain;  //socket domain, AF_INET, AF_INET6 or PF_UNSPEC for auto dedect
+    int socket_domain;  //socket domain, AF_INET, AF_INET6 or AF_UNSPEC for auto dedect
 } ConnectionInfo;
 
 struct tagConnectionManager;
@@ -211,6 +211,24 @@ int conn_pool_load_server_info(IniContext *pIniContext, const char *filename,
 */
 int conn_pool_parse_server_info(const char *pServerStr,
         ConnectionInfo *pServerInfo, const int default_port);
+
+/**
+*   set server info with ip address and port
+*   parameters:
+*      pServerInfo: store server info
+*      ip_addr: the ip address
+*      port: the port
+*   return none
+*/
+static inline void conn_pool_set_server_info(ConnectionInfo *pServerInfo,
+        const char *ip_addr, const int port)
+{
+    snprintf(pServerInfo->ip_addr, sizeof(pServerInfo->ip_addr),
+            "%s", ip_addr);
+    pServerInfo->port = port;
+    pServerInfo->socket_domain = AF_UNSPEC;
+    pServerInfo->sock = -1;
+}
 
 #ifdef __cplusplus
 }
