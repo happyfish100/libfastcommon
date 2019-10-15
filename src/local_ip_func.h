@@ -42,6 +42,7 @@ const char *get_first_local_private_ip();
 int insert_into_local_host_ip(const char *client_ip);
 void log_local_host_ip_addrs();
 void print_local_host_ip_addrs();
+const char *local_host_ip_addrs_to_string(char *buff, const int size);
 
 #ifdef __cplusplus
 }

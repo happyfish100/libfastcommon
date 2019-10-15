@@ -56,22 +56,28 @@ int insert_into_local_host_ip(const char *client_ip)
 	return 1;
 }
 
-void log_local_host_ip_addrs()
+const char *local_host_ip_addrs_to_string(char *buff, const int size)
 {
 	char *p;
 	char *pEnd;
-	char buff[512];
 	int len;
 
-	len = sprintf(buff, "local_host_ip_count: %d,", g_local_host_ip_count);
-	pEnd = g_local_host_ip_addrs + \
+	len = snprintf(buff, size, "local_host_ip_count: %d,",
+            g_local_host_ip_count);
+	pEnd = g_local_host_ip_addrs +
 		IP_ADDRESS_SIZE * g_local_host_ip_count;
 	for (p=g_local_host_ip_addrs; p<pEnd; p+=IP_ADDRESS_SIZE)
 	{
-		len += sprintf(buff + len, "  %s", p);
+		len += snprintf(buff + len, size - len, "  %s", p);
 	}
 
-	logInfo("%s", buff);
+    return buff;
+}
+
+void log_local_host_ip_addrs()
+{
+	char buff[512];
+	logInfo("%s", local_host_ip_addrs_to_string(buff, sizeof(buff)));
 }
 
 void load_local_host_ip_addrs()
