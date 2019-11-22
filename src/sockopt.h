@@ -19,7 +19,7 @@
 #include <sys/socket.h>
 #include "common_define.h"
 
-#define FAST_WRITE_BUFF_SIZE  256 * 1024
+#define FAST_WRITE_BUFF_SIZE  (256 * 1024)
 
 typedef struct fast_if_config {
     char name[IF_NAMESIZE];    //if name

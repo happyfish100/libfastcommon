@@ -1098,7 +1098,7 @@ int tcprecvfile(int sock, const char *filename, const int64_t file_bytes, \
 			recv_bytes = remain_bytes;
 		}
 
-		result = recv_func(sock, buff, recv_bytes, \
+		result = recv_func(sock, buff, recv_bytes,
 				timeout, &count);
 		if (result != 0)
 		{

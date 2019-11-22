@@ -1,0 +1,74 @@
+# Makefile.in
+src/Makefile
+
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dSYM
+*.dll
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.out
+src/_os_define.h
+src/tests/test_allocator
+src/tests/test_blocked_queue
+src/tests/test_char_convert
+src/tests/test_char_convert_loader
+src/tests/test_crc32
+src/tests/test_id_generator
+src/tests/test_ini_parser
+src/tests/test_json_parser
+src/tests/test_logger
+src/tests/test_mblock
+src/tests/test_multi_skiplist
+src/tests/test_sched_thread
+src/tests/test_skiplist
+src/tests/test_skiplist_set
+src/tests/test_thourands_seperator
+
+# other
+php-fastcommon/.deps
+php-fastcommon/.libs/
+
+php-fastcommon/Makefile
+php-fastcommon/Makefile.fragments
+php-fastcommon/Makefile.global
+php-fastcommon/Makefile.objects
+php-fastcommon/acinclude.m4
+php-fastcommon/aclocal.m4
+php-fastcommon/autom4te.cache/
+php-fastcommon/build/
+php-fastcommon/config.guess
+php-fastcommon/config.h
+php-fastcommon/config.h.in
+php-fastcommon/config.log
+php-fastcommon/config.nice
+php-fastcommon/config.status
+php-fastcommon/config.sub
+php-fastcommon/configure
+php-fastcommon/configure.ac
+php-fastcommon/install-sh
+php-fastcommon/libtool
+php-fastcommon/ltmain.sh
+php-fastcommon/missing
+php-fastcommon/mkinstalldirs
+php-fastcommon/run-tests.php
