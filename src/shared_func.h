@@ -851,6 +851,11 @@ char *format_http_date(time_t t, BufferInfo *buffer);
 char *resolve_path(const char *from, const char *filename,
         char *full_filename, const int size);
 
+/** get gzip command full filename
+ *  return: the gzip command full filename
+*/
+const char *get_gzip_command_filename();
+
 #ifdef __cplusplus
 }
 #endif

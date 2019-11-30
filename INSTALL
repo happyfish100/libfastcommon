@@ -9,7 +9,8 @@ Chinese language: http://www.fastken.com/
 # download libfastcommon source codes and install it,
 #   github address:  https://github.com/happyfish100/libfastcommon.git
 #   gitee address:   https://gitee.com/fastdfs100/libfastcommon.git
-# command lines as:
+# the command lines as:
+
    git clone https://github.com/happyfish100/libfastcommon.git
    cd libfastcommon; git checkout V1.0.41
    ./make.sh clean && ./make.sh && ./make.sh install

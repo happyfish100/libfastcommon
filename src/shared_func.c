@@ -2846,3 +2846,23 @@ char *resolve_path(const char *from, const char *filename,
     }
     return full_filename;
 }
+
+const char *get_gzip_command_filename()
+{
+    if (access("/usr/bin/gzip", F_OK) == 0)
+    {
+        return "/usr/bin/gzip";
+    }
+    else if (access("/bin/gzip", F_OK) == 0)
+    {
+        return "/bin/gzip";
+    }
+    else if (access("/usr/local/bin/gzip", F_OK) == 0)
+    {
+        return "/usr/local/bin/gzip";
+    }
+    else
+    {
+        return "gzip";
+    }
+}

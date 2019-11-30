@@ -689,7 +689,6 @@ int log_delete_old_files(void *args)
 static void* log_gzip_func(void *args)
 {
     LogContext *pContext;
-    char *gzip;
     char cmd[MAX_PATH_SIZE + 128];
     struct log_filename_array filename_array;
     char log_filepath[MAX_PATH_SIZE];
@@ -698,19 +697,6 @@ static void* log_gzip_func(void *args)
     int i;
 
     pContext = (LogContext *)args;
-    if (access("/bin/gzip", F_OK) == 0)
-    {
-        gzip = "/bin/gzip";
-    }
-    else if (access("/usr/bin/gzip", F_OK) == 0)
-    {
-        gzip = "/usr/bin/gzip";
-    }
-    else
-    {
-        gzip = "gzip";
-    }
-
     if (log_get_prefix_len(pContext, &prefix_len) != 0)
     {
         return NULL;
@@ -735,7 +721,8 @@ static void* log_gzip_func(void *args)
 
         snprintf(full_filename, sizeof(full_filename), "%s%s",
                 log_filepath, filename_array.filenames[i]);
-        snprintf(cmd, sizeof(cmd), "%s %s", gzip, full_filename);
+        snprintf(cmd, sizeof(cmd), "%s %s",
+                get_gzip_command_filename(), full_filename);
         if (system(cmd) == -1)
 	{
 		fprintf(stderr, "execute %s fail\n", cmd);

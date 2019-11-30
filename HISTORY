@@ -1,4 +1,6 @@
 
+Version 1.42  2019-11-30
+  * add function get_gzip_command_filename
 
 Version 1.41  2019-09-30
   * change CIDR network_bits range from [16, 32) to [10, 32)
