@@ -373,6 +373,10 @@ static int log_delete_old_file(LogContext *pContext,
                     "unlink %s fail, errno: %d, error info: %s\n", \
                     __LINE__, full_filename, errno, STRERROR(errno));
         }
+        else if (NEED_COMPRESS_LOG(pContext->compress_log_flags))
+        {
+            unlink(old_filename);
+        }
         return errno != 0 ? errno : EPERM;
     }
 
