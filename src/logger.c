@@ -92,6 +92,7 @@ int log_init_ex(LogContext *pContext)
 	pContext->log_level = LOG_INFO;
 	pContext->log_fd = STDERR_FILENO;
 	pContext->time_precision = LOG_TIME_PRECISION_SECOND;
+    pContext->compress_log_days_before = 1;
  	strcpy(pContext->rotate_time_format, "%Y%m%d_%H%M%S");
 
 	pContext->log_buff = (char *)malloc(LOG_BUFF_SIZE);
@@ -302,7 +303,14 @@ void log_set_compress_log_flags_ex(LogContext *pContext, const short flags)
 
 void log_set_compress_log_days_before_ex(LogContext *pContext, const int days_before)
 {
-    pContext->compress_log_days_before = days_before;
+    if (days_before > 0)
+    {
+        pContext->compress_log_days_before = days_before;
+    }
+    else
+    {
+        pContext->compress_log_days_before = 1;
+    }
 }
 
 void log_set_fd_flags(LogContext *pContext, const int flags)
@@ -690,7 +698,7 @@ int log_delete_old_files(void *args)
     }
 }
 
-static void* log_gzip_func(void *args)
+static void *log_gzip_func(void *args)
 {
     LogContext *pContext;
     char cmd[MAX_PATH_SIZE + 128];
