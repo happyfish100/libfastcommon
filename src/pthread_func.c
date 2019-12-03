@@ -136,11 +136,12 @@ int init_pthread_attr(pthread_attr_t *pattr, const int stack_size)
 	return 0;
 }
 
-int create_work_threads(int *count, void *(*start_func)(void *), \
-		void *arg, pthread_t *tids, const int stack_size)
+int create_work_threads(int *count, void *(*start_func)(void *),
+		void **args, pthread_t *tids, const int stack_size)
 {
 	int result;
 	pthread_attr_t thread_attr;
+    void **current_arg;
 	pthread_t *ptid;
 	pthread_t *ptid_end;
 
@@ -151,16 +152,16 @@ int create_work_threads(int *count, void *(*start_func)(void *), \
 
 	result = 0;
 	ptid_end = tids + (*count);
-	for (ptid=tids; ptid<ptid_end; ptid++)
+	for (ptid=tids,current_arg=args; ptid<ptid_end; ptid++,current_arg++)
 	{
-		if ((result=pthread_create(ptid, &thread_attr, \
-			start_func, arg)) != 0)
+		if ((result=pthread_create(ptid, &thread_attr,
+			start_func, *current_arg)) != 0)
 		{
 			*count = ptid - tids;
-			logError("file: "__FILE__", line: %d, " \
-				"create thread failed, startup threads: %d, " \
-				"errno: %d, error info: %s", \
-				__LINE__, *count, \
+			logError("file: "__FILE__", line: %d, "
+				"create threads #%d fail, "
+				"errno: %d, error info: %s",
+				__LINE__, *count,
 				result, STRERROR(result));
 			break;
 		}
