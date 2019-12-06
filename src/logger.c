@@ -705,7 +705,9 @@ static void *log_gzip_func(void *args)
     struct log_filename_array filename_array;
     char log_filepath[MAX_PATH_SIZE];
     char full_filename[MAX_PATH_SIZE + 32];
+    char output[512];
     int prefix_len;
+    int result;
     int i;
 
     pContext = (LogContext *)args;
@@ -735,10 +737,22 @@ static void *log_gzip_func(void *args)
                 log_filepath, filename_array.filenames[i]);
         snprintf(cmd, sizeof(cmd), "%s %s",
                 get_gzip_command_filename(), full_filename);
-        if (system(cmd) == -1)
-	{
-		fprintf(stderr, "execute %s fail\n", cmd);
-	}
+
+        result = getExecResult(cmd, output, sizeof(output));
+        if (result != 0)
+        {
+            fprintf(stderr, "file: "__FILE__", line: %d, "
+                    "exec command \"%s\" fail, "
+                    "errno: %d, error info: %s",
+                    __LINE__, cmd, result, STRERROR(result));
+            break;
+        }
+        if (*output != '\0')
+        {
+            fprintf(stderr, "file: "__FILE__", line: %d, "
+                    "exec command \"%s\", output: %s",
+                    __LINE__, cmd, output);
+        }
     }
 
     log_free_filename_array(&filename_array);

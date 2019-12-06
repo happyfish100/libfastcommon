@@ -1,4 +1,8 @@
 
+Version 1.43  2019-12-06
+  * replace function call system to getExecResult,
+    system is the deprecated function in iOS 11
+
 Version 1.42  2019-12-03
   * add function get_gzip_command_filename
   * function create_work_threads changed
