@@ -186,13 +186,16 @@ static inline void skiplist_iterator(Skiplist *sl, SkiplistIterator *iterator)
     iterator->type = sl->type;
     switch (sl->type) {
         case SKIPLIST_TYPE_FLAT:
-            return flat_skiplist_iterator(&sl->u.flat, &iterator->u.flat);
+            flat_skiplist_iterator(&sl->u.flat, &iterator->u.flat);
+            break;
         case SKIPLIST_TYPE_MULTI:
-            return multi_skiplist_iterator(&sl->u.multi, &iterator->u.multi);
+            multi_skiplist_iterator(&sl->u.multi, &iterator->u.multi);
+            break;
         case SKIPLIST_TYPE_SET:
-            return skiplist_set_iterator(&sl->u.set, &iterator->u.set);
+            skiplist_set_iterator(&sl->u.set, &iterator->u.set);
+            break;
         default:
-            return EINVAL;
+            break;
     }
 }
 
