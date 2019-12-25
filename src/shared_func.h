@@ -856,6 +856,19 @@ char *resolve_path(const char *from, const char *filename,
 */
 const char *get_gzip_command_filename();
 
+/** delete file
+ *  parameters:
+ *      filename: the filename to delete
+ *      caption: the caption of this filename
+ *  return: error no, 0 success, != 0 fail
+*/
+int fc_delete_file_ex(const char *filename, const char *caption);
+
+static inline int fc_delete_file(const char *filename)
+{
+    return fc_delete_file_ex(filename, "");
+}
+
 #ifdef __cplusplus
 }
 #endif

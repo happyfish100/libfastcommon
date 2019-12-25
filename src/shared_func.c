@@ -2866,3 +2866,29 @@ const char *get_gzip_command_filename()
         return "gzip";
     }
 }
+
+int fc_delete_file_ex(const char *filename, const char *caption)
+{
+    int result;
+
+    if (unlink(filename) == 0)
+    {
+        return 0;
+    }
+
+    result = errno != 0 ? errno : ENOENT;
+    if (result == ENOENT)
+    {
+        result = 0;
+    }
+    else
+    {
+        logError("file: "__FILE__", line: %d, "
+                "unlink %s file: %s fail, "
+                "errno: %d, error info: %s",
+                __LINE__, caption, filename,
+                result, STRERROR(result));
+    }
+
+    return result;
+}

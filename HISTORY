@@ -4,6 +4,7 @@ Version 1.43  2019-12-25
     system is the deprecated function in iOS 11
   * correct function skiplist_iterator in skiplist.h
   * add buffered_file_writer.[hc]
+  * add function fc_delete_file_ex
 
 Version 1.42  2019-12-03
   * add function get_gzip_command_filename
