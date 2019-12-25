@@ -204,11 +204,5 @@ int buffered_file_writer_append_buff(BufferedFileWriter *writer,
 
     memcpy(writer->current, buff, len);
     writer->current += len;
-    if (writer->current > writer->water_mark)
-    {
-        return buffered_file_writer_flush(writer);
-    }
-
     return 0;
 }
-
