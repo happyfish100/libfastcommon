@@ -35,10 +35,10 @@ int skiplist_set_init_ex(SkiplistSet *sl, const int level_count,
         return EINVAL;
     }
 
-    if (level_count > 30) {
+    if (level_count > SKIPLIST_MAX_LEVEL_COUNT) {
         logError("file: "__FILE__", line: %d, "
-                "level count: %d is too large",
-                __LINE__, level_count);
+                "level count: %d is too large exceeds %d",
+                __LINE__, level_count, SKIPLIST_MAX_LEVEL_COUNT);
         return E2BIG;
     }
 
