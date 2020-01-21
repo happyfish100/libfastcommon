@@ -13,6 +13,7 @@
 #include "fastcommon/fast_allocator.h"
 
 #define LOOP_COUNT (30 * 1000 * 1000)
+#define barrier()  __asm__ __volatile__("" ::: "memory")
 
 int main(int argc, char *argv[])
 {
@@ -35,6 +36,8 @@ int main(int argc, char *argv[])
 	start_time = get_current_time_ms();
     sum = 0;
 	for (k=1; k<=LOOP_COUNT; k++) {
+        __sync_synchronize();
+        //barrier();
         __sync_add_and_fetch(&sum, k);
 	}
 

@@ -22,15 +22,16 @@ typedef struct uniq_skiplist_node
 {
     void *data;
     int level_index;
-    struct uniq_skiplist_node *links[0];
+    volatile struct uniq_skiplist_node *links[0];
 } UniqSkiplistNode;
 
 typedef struct uniq_skiplist_factory
 {
     int max_level_count;
+    int delay_free_seconds;
     skiplist_compare_func compare_func;
     skiplist_free_func free_func;
-    struct fast_mblock_man skiplist_allocators;
+    struct fast_mblock_man skiplist_allocator;
     struct fast_mblock_man *node_allocators;
 } UniqSkiplistFactory;
 
@@ -44,8 +45,8 @@ typedef struct uniq_skiplist
 } UniqSkiplist;
 
 typedef struct uniq_skiplist_iterator {
-    UniqSkiplistNode *current;
-    UniqSkiplistNode *tail;
+    volatile UniqSkiplistNode *current;
+    volatile UniqSkiplistNode *tail;
 } UniqSkiplistIterator;
 
 #ifdef __cplusplus
@@ -60,7 +61,7 @@ extern "C" {
 int uniq_skiplist_init_ex(UniqSkiplistFactory *factory,
         const int max_level_count, skiplist_compare_func compare_func,
         skiplist_free_func free_func, const int alloc_skiplist_once,
-        const int min_alloc_elements_once);
+        const int min_alloc_elements_once, const int delay_free_seconds);
 
 void uniq_skiplist_destroy(UniqSkiplistFactory *factory);
 
