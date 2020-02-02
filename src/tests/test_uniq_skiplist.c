@@ -194,7 +194,7 @@ int main(int argc, char *argv[])
         return result;
     }
 
-    sl = uniq_skiplist_new(&factory, 2);
+    sl = uniq_skiplist_new(&factory, 8);
     if (sl == NULL) {
         return ENOMEM;
     }

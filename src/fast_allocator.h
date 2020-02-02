@@ -28,8 +28,8 @@ struct fast_allocator_info
 
 struct fast_region_info
 {
-	int start;
-	int end;
+	int start;  //exclude
+	int end;    //include
 	int step;
 	int alloc_elements_once;
 	int pad_mask;  //for internal use
@@ -59,6 +59,14 @@ struct fast_allocator_context
 	volatile int64_t alloc_bytes;    //total alloc bytes
 	bool need_lock;     //if need mutex lock for acontext
 };
+
+#define FAST_ALLOCATOR_INIT_REGION(region, _start, _end, _step, _alloc_once) \
+	do { \
+		region.start = _start; \
+		region.end = _end;     \
+		region.step = _step;   \
+		region.alloc_elements_once = _alloc_once;   \
+	} while(0)
 
 #ifdef __cplusplus
 extern "C" {

@@ -1,7 +1,8 @@
 
-Version 1.44  2020-01-19
+Version 1.44  2020-02-02
   * add test file src/tests/test_pthread_lock.c
   * add uniq_skiplist.[hc]
+  * add function split_string_ex
 
 Version 1.43  2019-12-25
   * replace function call system to getExecResult,

@@ -56,7 +56,7 @@ extern "C" {
 #define uniq_skiplist_init(factory, max_level_count, compare_func, free_func) \
     uniq_skiplist_init_ex(factory, max_level_count,  \
             compare_func, free_func, 64 * 1024, \
-            SKIPLIST_DEFAULT_MIN_ALLOC_ELEMENTS_ONCE)
+            SKIPLIST_DEFAULT_MIN_ALLOC_ELEMENTS_ONCE, 0)
 
 int uniq_skiplist_init_ex(UniqSkiplistFactory *factory,
         const int max_level_count, skiplist_compare_func compare_func,

@@ -287,31 +287,23 @@ int fast_allocator_init_ex(struct fast_allocator_context *acontext,
 	return result;
 }
 
-#define INIT_REGION(region, _start, _end, _step, _alloc_once) \
-	do { \
-		region.start = _start; \
-		region.end = _end;     \
-		region.step = _step;   \
-		region.alloc_elements_once = _alloc_once;   \
-	} while(0)
-
 int fast_allocator_init(struct fast_allocator_context *acontext,
         const int64_t alloc_bytes_limit, const double expect_usage_ratio,
 	const int reclaim_interval, const bool need_lock)
 {
 #define DEFAULT_REGION_COUNT 5
 
-        struct fast_region_info regions[DEFAULT_REGION_COUNT]; 
+    struct fast_region_info regions[DEFAULT_REGION_COUNT];
 
-	INIT_REGION(regions[0],     0,   256,    8,  4096);
-	INIT_REGION(regions[1],   256,  1024,   16,  1024);
-	INIT_REGION(regions[2],  1024,  4096,   64,   256);
-	INIT_REGION(regions[3],  4096, 16384,  256,    64);
-	INIT_REGION(regions[4], 16384, 65536, 1024,    16);
+    FAST_ALLOCATOR_INIT_REGION(regions[0],     0,   256,    8, 4096);
+    FAST_ALLOCATOR_INIT_REGION(regions[1],   256,  1024,   16, 1024);
+    FAST_ALLOCATOR_INIT_REGION(regions[2],  1024,  4096,   64,  256);
+    FAST_ALLOCATOR_INIT_REGION(regions[3],  4096, 16384,  256,   64);
+    FAST_ALLOCATOR_INIT_REGION(regions[4], 16384, 65536, 1024,   16);
 
-	return fast_allocator_init_ex(acontext, regions,
-		DEFAULT_REGION_COUNT, alloc_bytes_limit,
-		expect_usage_ratio, reclaim_interval, need_lock);
+    return fast_allocator_init_ex(acontext, regions,
+            DEFAULT_REGION_COUNT, alloc_bytes_limit,
+            expect_usage_ratio, reclaim_interval, need_lock);
 }
 
 void fast_allocator_destroy(struct fast_allocator_context *acontext)

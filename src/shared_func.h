@@ -392,6 +392,18 @@ void freeSplit(char **p);
 int splitEx(char *src, const char seperator, char **pCols, const int nMaxCols);
 
 
+/** split string
+ *  parameters:
+ *  	src: the source string
+ *  	seperator: seperator char
+ *  	dest: store split strings
+ *  	max_count: max split count
+ *      ignore_empty: if ignore empty string
+ *  return: string array count
+*/
+int split_string_ex(const string_t *src, const char seperator,
+        string_t *dest, const int max_count, const bool ignore_empty);
+
 /** split string by delimiter characters
  *  parameters:
  *  	src: the source string, will be modified by this function

@@ -793,6 +793,47 @@ int splitEx(char *src, const char seperator, char **pCols, const int nMaxCols)
 	return count;
 }
 
+int split_string_ex(const string_t *src, const char seperator,
+        string_t *dest, const int max_count, const bool ignore_empty)
+{
+	const char *p;
+	string_t *current;
+    int len;
+
+	p = src->str;
+    len = src->len;
+	current = dest;
+	while (true)
+	{
+		if ((int)(current - dest) >= max_count)
+		{
+			break;
+		}
+
+		current->str = (char *)p;
+		p = memchr(p, seperator, len);
+		if (p == NULL)
+		{
+            if (len > 0 || !ignore_empty)
+            {
+                current->len = len;
+                current++;
+            }
+			break;
+		}
+
+        current->len = (char *)p - current->str;
+        len -= current->len + 1;
+        if (current->len > 0 || !ignore_empty)
+        {
+            current++;
+        }
+		p++;
+	}
+
+	return (int)(current - dest);
+}
+
 bool fc_match_delim(const char *str, const char *delim)
 {
     const char *sp;
