@@ -142,7 +142,7 @@ static int region_init(struct fast_allocator_context *acontext,
 		element_size+=region->step,allocator++)
 	{
 		result = fast_mblock_init_ex2(&allocator->mblock, NULL, element_size,
-			region->alloc_elements_once, NULL, acontext->need_lock,
+			region->alloc_elements_once, NULL, NULL, acontext->need_lock,
 			fast_allocator_malloc_trunk_check,
 			fast_allocator_malloc_trunk_notify_func, acontext);
 		if (result != 0)

@@ -18,6 +18,8 @@
 #include "skiplist_common.h"
 #include "fast_mblock.h"
 
+typedef void (*uniq_skiplist_free_func)(void *ptr, const int delay_seconds);
+
 typedef struct uniq_skiplist_node
 {
     void *data;
@@ -30,7 +32,7 @@ typedef struct uniq_skiplist_factory
     int max_level_count;
     int delay_free_seconds;
     skiplist_compare_func compare_func;
-    skiplist_free_func free_func;
+    uniq_skiplist_free_func free_func;
     struct fast_mblock_man skiplist_allocator;
     struct fast_mblock_man *node_allocators;
 } UniqSkiplistFactory;
@@ -60,7 +62,7 @@ extern "C" {
 
 int uniq_skiplist_init_ex(UniqSkiplistFactory *factory,
         const int max_level_count, skiplist_compare_func compare_func,
-        skiplist_free_func free_func, const int alloc_skiplist_once,
+        uniq_skiplist_free_func free_func, const int alloc_skiplist_once,
         const int min_alloc_elements_once, const int delay_free_seconds);
 
 void uniq_skiplist_destroy(UniqSkiplistFactory *factory);

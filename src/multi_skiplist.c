@@ -71,9 +71,10 @@ int multi_skiplist_init_ex(MultiSkiplist *sl, const int level_count,
     }
 
     for (i=level_count-1; i>=0; i--) {
-        element_size = sizeof(MultiSkiplistNode) + sizeof(MultiSkiplistNode *) * (i + 1);
+        element_size = sizeof(MultiSkiplistNode) +
+            sizeof(MultiSkiplistNode *) * (i + 1);
         if ((result=fast_mblock_init_ex(sl->mblocks + i,
-            element_size, alloc_elements_once, NULL, false)) != 0)
+            element_size, alloc_elements_once, NULL, NULL, false)) != 0)
         {
             return result;
         }
@@ -98,7 +99,7 @@ int multi_skiplist_init_ex(MultiSkiplist *sl, const int level_count,
 
     if ((result=fast_mblock_init_ex(&sl->data_mblock,
                     sizeof(MultiSkiplistData), alloc_elements_once,
-                    NULL, false)) != 0)
+                    NULL, NULL, false)) != 0)
     {
         return result;
     }

@@ -45,7 +45,7 @@ static void init_best_element_counts()
 
 int uniq_skiplist_init_ex(UniqSkiplistFactory *factory,
         const int max_level_count, skiplist_compare_func compare_func,
-        skiplist_free_func free_func, const int alloc_skiplist_once,
+        uniq_skiplist_free_func free_func, const int alloc_skiplist_once,
         const int min_alloc_elements_once, const int delay_free_seconds)
 {
     int bytes;
@@ -94,7 +94,7 @@ int uniq_skiplist_init_ex(UniqSkiplistFactory *factory,
         element_size = sizeof(UniqSkiplistNode) +
             sizeof(UniqSkiplistNode *) * (i + 1);
         if ((result=fast_mblock_init_ex(factory->node_allocators + i,
-            element_size, alloc_elements_once, NULL, false)) != 0)
+            element_size, alloc_elements_once, NULL, NULL, false)) != 0)
         {
             return result;
         }
@@ -105,7 +105,8 @@ int uniq_skiplist_init_ex(UniqSkiplistFactory *factory,
 
     if ((result=fast_mblock_init_ex(&factory->skiplist_allocator,
                     sizeof(UniqSkiplist), alloc_skiplist_once > 0 ?
-                    alloc_skiplist_once : 16 * 1024, NULL, false)) != 0)
+                    alloc_skiplist_once : 16 * 1024,
+                    NULL, NULL, false)) != 0)
     {
         return result;
     }
@@ -236,17 +237,12 @@ void uniq_skiplist_free(UniqSkiplist *sl)
         return;
     }
 
-    fast_mblock_free_object(sl->factory->node_allocators +
-            sl->top_level_index, (void *)sl->top);
-    fast_mblock_free_object(sl->factory->node_allocators + 0,
-            (void *)sl->tail);
-
     node = sl->top->links[0];
     if (sl->factory->free_func != NULL) {
         while (node != sl->tail) {
             deleted = node;
             node = node->links[0];
-            sl->factory->free_func(deleted->data);
+            sl->factory->free_func(deleted->data, 0);
             fast_mblock_free_object(sl->factory->node_allocators +
                     deleted->level_index, (void *)deleted);
         }
@@ -258,6 +254,11 @@ void uniq_skiplist_free(UniqSkiplist *sl)
                     deleted->level_index, (void *)deleted);
         }
     }
+
+    fast_mblock_free_object(sl->factory->node_allocators +
+            sl->top_level_index, (void *)sl->top);
+    fast_mblock_free_object(sl->factory->node_allocators + 0,
+            (void *)sl->tail);
 
     sl->top = NULL;
     sl->tail = NULL;
@@ -445,7 +446,8 @@ int uniq_skiplist_delete(UniqSkiplist *sl, void *data)
     }
 
     if (sl->factory->free_func != NULL) {
-        sl->factory->free_func(deleted->data);
+        sl->factory->free_func(deleted->data,
+                sl->factory->delay_free_seconds);
     }
 
     UNIQ_SKIPLIST_FREE_MBLOCK_OBJECT(sl, level_index, deleted);

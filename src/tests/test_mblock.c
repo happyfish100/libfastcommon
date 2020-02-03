@@ -165,8 +165,10 @@ int main(int argc, char *argv[])
 
     fast_mblock_manager_init();
 
-    fast_mblock_init_ex2(&mblock1, "mblock1", 1024, 128, NULL, false, NULL, NULL, NULL);
-    fast_mblock_init_ex2(&mblock2, "mblock2", 1024, 100, NULL, false, NULL, NULL, NULL);
+    fast_mblock_init_ex2(&mblock1, "mblock1", 1024, 128, NULL, NULL,
+            false, NULL, NULL, NULL);
+    fast_mblock_init_ex2(&mblock2, "mblock2", 1024, 100, NULL, NULL,
+            false, NULL, NULL, NULL);
    
     count = 2048;
     objs = (struct my_struct *)malloc(sizeof(struct my_struct) * count);

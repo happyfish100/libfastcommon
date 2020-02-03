@@ -311,18 +311,21 @@ int fast_mblock_manager_stat_print_ex(const bool hide_empty, const int order_by)
 
 int fast_mblock_init_ex(struct fast_mblock_man *mblock,
         const int element_size, const int alloc_elements_once,
-        fast_mblock_alloc_init_func init_func, const bool need_lock)
+        fast_mblock_alloc_init_func init_func, void *init_args,
+        const bool need_lock)
 {
     return fast_mblock_init_ex2(mblock, NULL, element_size,
-            alloc_elements_once, init_func, need_lock, NULL, NULL, NULL);
+            alloc_elements_once, init_func, init_args,
+            need_lock, NULL, NULL, NULL);
 }
 
 int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
         const int element_size, const int alloc_elements_once,
-        fast_mblock_alloc_init_func init_func, const bool need_lock,
-	fast_mblock_malloc_trunk_check_func malloc_trunk_check,
-	fast_mblock_malloc_trunk_notify_func malloc_trunk_notify,
-	void *malloc_trunk_args)
+        fast_mblock_alloc_init_func init_func,
+        void *init_args, const bool need_lock,
+        fast_mblock_malloc_trunk_check_func malloc_trunk_check,
+        fast_mblock_malloc_trunk_notify_func malloc_trunk_notify,
+        void *malloc_trunk_args)
 {
 	int result;
 	int block_size;
@@ -355,6 +358,7 @@ int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
 	}
 
     mblock->alloc_init_func = init_func;
+    mblock->init_args = init_args;
     INIT_HEAD(&mblock->trunks.head);
     mblock->info.trunk_total_count = 0;
     mblock->info.trunk_used_count = 0;
@@ -423,10 +427,10 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
 	for (p=pTrunkStart; p<=pLast; p += block_size)
 	{
 		pNode = (struct fast_mblock_node *)p;
-
         if (mblock->alloc_init_func != NULL)
         {
-            if ((result=mblock->alloc_init_func(pNode->data)) != 0)
+            if ((result=mblock->alloc_init_func(pNode->data,
+                            mblock->init_args)) != 0)
             {
                 free(pNew);
                 return result;

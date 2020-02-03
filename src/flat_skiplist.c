@@ -70,9 +70,10 @@ int flat_skiplist_init_ex(FlatSkiplist *sl, const int level_count,
     }
 
     for (i=level_count-1; i>=0; i--) {
-        element_size = sizeof(FlatSkiplistNode) + sizeof(FlatSkiplistNode *) * (i + 1);
+        element_size = sizeof(FlatSkiplistNode) +
+            sizeof(FlatSkiplistNode *) * (i + 1);
         if ((result=fast_mblock_init_ex(sl->mblocks + i,
-            element_size, alloc_elements_once, NULL, false)) != 0)
+            element_size, alloc_elements_once, NULL, NULL, false)) != 0)
         {
             return result;
         }
