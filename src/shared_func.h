@@ -844,6 +844,14 @@ char *fc_strdup(const char *str, const int len);
 */
 const char *fc_memmem(const string_t *str, const string_t *needle);
 
+/** memmem
+ *  parameters:
+ *  	str: the string to match
+ *      needle: the needle string
+ *  return: the matched string, NULL for fail
+*/
+const char *fc_memrchr(const char *str, const int ch, const int len);
+
 /** format HTTP Date as: Sat, 11 Mar 2017 21:49:51 GMT
  *  parameters:
  *  	t: the time to format

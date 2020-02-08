@@ -55,6 +55,8 @@ typedef struct uniq_skiplist_iterator {
 extern "C" {
 #endif
 
+#define uniq_skiplist_count(sl) (sl)->element_count
+
 #define uniq_skiplist_init(factory, max_level_count, compare_func, free_func) \
     uniq_skiplist_init_ex(factory, max_level_count,  \
             compare_func, free_func, 64 * 1024, \

@@ -2854,6 +2854,23 @@ const char *fc_memmem(const string_t *str, const string_t *needle)
     return NULL;
 }
 
+const char *fc_memrchr(const char *str, const int ch, const int len)
+{
+    const char *p;
+
+    p = str + len - 1;
+    while (p >= str)
+    {
+        if (*p == ch)
+        {
+            return p;
+        }
+        --p;
+    }
+
+    return NULL;
+}
+
 char *format_http_date(time_t t, BufferInfo *buffer)
 {
     struct tm tm_info;

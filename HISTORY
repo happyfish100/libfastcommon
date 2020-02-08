@@ -1,9 +1,11 @@
 
-Version 1.44  2020-02-03
+Version 1.44  2020-02-08
   * add test file src/tests/test_pthread_lock.c
   * add uniq_skiplist.[hc]
   * add function split_string_ex
   * fast_mblock.[hc]: add init_args for init_func
+  * struct fast_task_info add field: nio_stage
+  * add function fc_memrchr
 
 Version 1.43  2019-12-25
   * replace function call system to getExecResult,
