@@ -579,6 +579,29 @@ static inline void tcp_dont_try_again_when_interrupt()
     tcp_set_try_again_when_interrupt(false);
 }
 
+static inline bool is_network_error(const int err_no)
+{
+    switch (err_no)
+    {
+        case EPIPE:
+        case ENETDOWN:
+        case ENETUNREACH:
+        case ENETRESET:
+        case ECONNABORTED:
+        case ECONNRESET:
+        case ENOTCONN:
+        case ESHUTDOWN:
+        case ETIMEDOUT:
+        case ECONNREFUSED:
+        case EHOSTDOWN:
+        case EHOSTUNREACH:
+        case ENOTSOCK:
+            return true;
+        default:
+            return false;
+    }
+}
+
 #ifdef __cplusplus
 }
 #endif
