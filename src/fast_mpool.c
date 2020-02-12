@@ -200,7 +200,8 @@ void fast_mpool_reset(struct fast_mpool_man *mpool)
 	}
 }
 
-void fast_mpool_stats(struct fast_mpool_man *mpool, struct fast_mpool_stats *stats)
+void fast_mpool_stats(struct fast_mpool_man *mpool,
+        struct fast_mpool_stats *stats)
 {
 	struct fast_mpool_malloc *pMallocNode;
 
@@ -213,7 +214,8 @@ void fast_mpool_stats(struct fast_mpool_man *mpool, struct fast_mpool_stats *sta
 	while (pMallocNode != NULL)
 	{
         stats->total_bytes += pMallocNode->alloc_size;
-        stats->free_bytes += (int)(pMallocNode->end_ptr - pMallocNode->free_ptr);
+        stats->free_bytes += (int)(pMallocNode->end_ptr -
+                pMallocNode->free_ptr);
         stats->total_trunk_count++;
 
 		pMallocNode = pMallocNode->malloc_next;
@@ -227,3 +229,15 @@ void fast_mpool_stats(struct fast_mpool_man *mpool, struct fast_mpool_stats *sta
 	}
 }
 
+void fast_mpool_log_stats(struct fast_mpool_man *mpool)
+{
+    struct fast_mpool_stats stats;
+
+    fast_mpool_stats(mpool, &stats);
+    logInfo("alloc_size_once: %d, discard_size: %d, "
+            "bytes: {total: %"PRId64", free: %"PRId64"}, "
+            "trunk_count: {total: %d, free: %d}",
+            mpool->alloc_size_once, mpool->discard_size,
+            stats.total_bytes, stats.free_bytes,
+            stats.total_trunk_count, stats.free_trunk_count);
+}

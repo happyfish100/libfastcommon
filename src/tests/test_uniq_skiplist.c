@@ -21,7 +21,7 @@ static UniqSkiplist *sl = NULL;
 static UniqSkiplistIterator iterator;
 static int instance_count = 0;
 
-static void free_test_func(void *ptr)
+static void free_test_func(void *ptr, const int delay_seconds)
 {
     instance_count--;
 }

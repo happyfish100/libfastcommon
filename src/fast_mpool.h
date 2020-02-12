@@ -130,8 +130,18 @@ get stats
 parameters:
 	mpool: the mpool pointer
     stats: return the stats
+return none
 */
-void fast_mpool_stats(struct fast_mpool_man *mpool, struct fast_mpool_stats *stats);
+void fast_mpool_stats(struct fast_mpool_man *mpool,
+        struct fast_mpool_stats *stats);
+
+/**
+log stats info
+parameters:
+	mpool: the mpool pointer
+return none
+*/
+void fast_mpool_log_stats(struct fast_mpool_man *mpool);
 
 #ifdef __cplusplus
 }
