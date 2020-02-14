@@ -19,6 +19,14 @@
 #include <sys/socket.h>
 #include "common_define.h"
 
+#define FC_NET_TYPE_NONE          0
+#define FC_NET_TYPE_OUTER         1   //extranet IP
+#define FC_NET_TYPE_INNER         2   //intranet IP
+
+#define FC_SUB_NET_TYPE_INNER_10  (FC_NET_TYPE_INNER |  4)
+#define FC_SUB_NET_TYPE_INNER_172 (FC_NET_TYPE_INNER |  8)
+#define FC_SUB_NET_TYPE_INNER_192 (FC_NET_TYPE_INNER | 16)
+
 #define FAST_WRITE_BUFF_SIZE  (256 * 1024)
 
 typedef struct fast_if_config {

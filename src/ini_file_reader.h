@@ -16,8 +16,8 @@
 #include "common_define.h"
 #include "hash.h"
 
-#define FAST_INI_ITEM_NAME_LEN		64
-#define FAST_INI_ITEM_VALUE_LEN		256
+#define FAST_INI_ITEM_NAME_LEN		63
+#define FAST_INI_ITEM_VALUE_LEN		255
 #define FAST_INI_ITEM_NAME_SIZE		(FAST_INI_ITEM_NAME_LEN + 1)
 #define FAST_INI_ITEM_VALUE_SIZE    (FAST_INI_ITEM_VALUE_LEN + 1)
 
@@ -28,6 +28,9 @@
 
 #define FAST_INI_FLAGS_NONE            0
 #define FAST_INI_FLAGS_SHELL_EXECUTE   1
+
+typedef bool (*IniSectionNameFilterFunc)(const char *section_name,
+        const int name_len, void *args);
 
 typedef struct ini_item
 {
@@ -244,7 +247,7 @@ static inline const char *iniGetConfigPath(IniContext *pContext)
 	return pContext->config_path;
 }
 
-/** return the items of global section
+/** return the section names
  *  parameters:
  *           pContext:   the ini context
  *           sections:   the section array
@@ -254,6 +257,60 @@ static inline const char *iniGetConfigPath(IniContext *pContext)
 */
 int iniGetSectionNames(IniContext *pContext, IniSectionInfo *sections,
         const int max_size, int *nCount);
+
+/** return the section names
+ *  parameters:
+ *           pContext:   the ini context
+ *           prefix:     the prefix of section name
+ *           sections:   the section array
+ *           max_size:   the max size of sections
+ *           nCount:     return the section count
+ *  return: errno, 0 for success, != 0 for fail
+*/
+int iniGetSectionNamesByPrefix(IniContext *pContext, const char *szPrefix,
+        IniSectionInfo *sections, const int max_size, int *nCount);
+
+/** return the section names
+ *  parameters:
+ *           pContext:    the ini context
+ *           filter_func: the section name filter function
+ *           args:        the extra data pointer
+ *           sections:    the section array
+ *           max_size:    the max size of sections
+ *           nCount:      return the section count
+ *  return: errno, 0 for success, != 0 for fail
+*/
+int iniGetSectionNamesEx(IniContext *pContext, IniSectionNameFilterFunc
+        filter_func, void *args, IniSectionInfo *sections,
+        const int max_size, int *nCount);
+
+/** get matched section count
+ *  parameters:
+ *           pContext:    the ini context
+ *           filter_func: the section name filter function
+ *           args:        the extra data pointer
+ *  return: matched section count
+*/
+int iniGetSectionCountEx(IniContext *pContext, IniSectionNameFilterFunc
+        filter_func, void *args);
+
+/** get matched section count
+ *  parameters:
+ *           pContext:    the ini context
+ *           prefix:     the prefix of section name
+ *  return: matched section count
+*/
+int iniGetSectionCountByPrefix(IniContext *pContext, const char *szPrefix);
+
+/** get section count
+ *  parameters:
+ *           pContext:    the ini context
+ *  return: section count
+*/
+static inline int iniGetSectionCount(IniContext *pContext)
+{
+    return pContext->sections.item_count;
+}
 
 /** return the items of global section
  *  parameters:

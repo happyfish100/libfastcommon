@@ -2968,16 +2968,18 @@ void iniPrintItems(IniContext *pContext)
 	hash_walk(&pContext->sections, iniPrintHashData, NULL);
 }
 
-struct section_walk_arg {
+struct section_name_walk_arg {
     IniSectionInfo *sections;
+    IniSectionNameFilterFunc filter_func;
+    void *args;
     int count;
     int size;
 };
 
-static int iniSectionWalkCallback(const int index, const HashData *data,
-        void *args)
+static int iniSectionNameWalkCallback(const int index,
+        const HashData *data, void *args)
 {
-    struct section_walk_arg *walk_arg;
+    struct section_name_walk_arg *walk_arg;
 	IniSection *pSection;
     char *section_name;
 	int section_len;
@@ -2988,7 +2990,13 @@ static int iniSectionWalkCallback(const int index, const HashData *data,
 		return 0;
 	}
 
-    walk_arg = (struct section_walk_arg *)args;
+    walk_arg = (struct section_name_walk_arg *)args;
+    if (walk_arg->filter_func != NULL && !walk_arg->
+            filter_func(data->key, data->key_len, walk_arg->args))
+    {
+		return 0;
+    }
+
     if (walk_arg->count >= walk_arg->size)
     {
         return ENOSPC;
@@ -3009,18 +3017,99 @@ static int iniSectionWalkCallback(const int index, const HashData *data,
     return 0;
 }
 
-int iniGetSectionNames(IniContext *pContext, IniSectionInfo *sections,
+int iniGetSectionNamesEx(IniContext *pContext, IniSectionNameFilterFunc
+        filter_func, void *args, IniSectionInfo *sections,
         const int max_size, int *nCount)
 {
-    struct section_walk_arg walk_arg;
+    struct section_name_walk_arg walk_arg;
     int result;
 
     walk_arg.sections = sections;
-    walk_arg.count = 0;
+    walk_arg.filter_func = filter_func;
+    walk_arg.args = args;
     walk_arg.size = max_size;
-	result = hash_walk(&pContext->sections, iniSectionWalkCallback, &walk_arg);
+    walk_arg.count = 0;
+	result = hash_walk(&pContext->sections, iniSectionNameWalkCallback,
+            &walk_arg);
     *nCount = walk_arg.count;
     return result;
+}
+
+int iniGetSectionNames(IniContext *pContext, IniSectionInfo *sections,
+        const int max_size, int *nCount)
+{
+    return iniGetSectionNamesEx(pContext, NULL, NULL,
+            sections, max_size, nCount);
+}
+
+static bool iniSectionNameFilterByPrefix(const char *section_name,
+        const int name_len, void *args)
+{
+    string_t *prefix;
+
+    prefix = (string_t *)args;
+    if (name_len < prefix->len) {
+        return false;
+    }
+    return memcmp(section_name, prefix->str, prefix->len) == 0;
+}
+
+int iniGetSectionNamesByPrefix(IniContext *pContext, const char *szPrefix,
+        IniSectionInfo *sections, const int max_size, int *nCount)
+{
+    string_t prefix;
+
+    FC_SET_STRING(prefix, (char *)szPrefix);
+    return iniGetSectionNamesEx(pContext, iniSectionNameFilterByPrefix,
+            &prefix, sections, max_size, nCount);
+}
+
+struct section_count_walk_arg {
+    IniSectionNameFilterFunc filter_func;
+    void *args;
+    int count;
+};
+
+static int iniSectionCountWalkCallback(const int index,
+        const HashData *data, void *args)
+{
+    struct section_count_walk_arg *walk_arg;
+	IniSection *pSection;
+
+	pSection = (IniSection *)data->value;
+	if (pSection == NULL)
+	{
+		return 0;
+	}
+
+    walk_arg = (struct section_count_walk_arg *)args;
+    if (walk_arg->filter_func == NULL || walk_arg->
+            filter_func(data->key, data->key_len, walk_arg->args))
+    {
+        walk_arg->count++;
+    }
+
+    return 0;
+}
+
+int iniGetSectionCountEx(IniContext *pContext, IniSectionNameFilterFunc
+        filter_func, void *args)
+{
+    struct section_count_walk_arg walk_arg;
+
+    walk_arg.filter_func = filter_func;
+    walk_arg.args = args;
+    walk_arg.count = 0;
+    hash_walk(&pContext->sections, iniSectionCountWalkCallback, &walk_arg);
+    return walk_arg.count;
+}
+
+int iniGetSectionCountByPrefix(IniContext *pContext, const char *szPrefix)
+{
+    string_t prefix;
+
+    FC_SET_STRING(prefix, (char *)szPrefix);
+    return iniGetSectionCountEx(pContext, iniSectionNameFilterByPrefix, &prefix);
 }
 
 IniItem *iniGetSectionItems(const char *szSectionName, IniContext *pContext,
