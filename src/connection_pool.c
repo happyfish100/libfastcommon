@@ -400,13 +400,13 @@ int conn_pool_parse_server_info(const char *pServerStr,
     len = strlen(pServerStr);
     if (len == 0) {
         logError("file: "__FILE__", line: %d, "
-            "pServerStr \"%s\" is empty!",
+            "host \"%s\" is empty!",
             __LINE__, pServerStr);
         return EINVAL;
     }
     if (len >= sizeof(server_info)) {
         logError("file: "__FILE__", line: %d, "
-            "pServerStr \"%s\" is too long!",
+            "host \"%s\" is too long!",
             __LINE__, pServerStr);
         return ENAMETOOLONG;
     }
@@ -423,7 +423,7 @@ int conn_pool_parse_server_info(const char *pServerStr,
         pServerInfo->port = (int)strtol(parts[1], &endptr, 10);
         if ((endptr != NULL && *endptr != '\0') || pServerInfo->port <= 0) {
             logError("file: "__FILE__", line: %d, "
-                "pServerStr: %s, invalid port: %s!",
+                "host: %s, invalid port: %s!",
                 __LINE__, pServerStr, parts[1]);
             return EINVAL;
         }
@@ -433,7 +433,7 @@ int conn_pool_parse_server_info(const char *pServerStr,
         sizeof(pServerInfo->ip_addr)) == INADDR_NONE)
     {
         logError("file: "__FILE__", line: %d, "
-            "pServerStr: %s, invalid hostname: %s!",
+            "host: %s, invalid hostname: %s!",
             __LINE__, pServerStr, parts[0]);
         return EINVAL;
     }

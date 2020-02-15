@@ -587,6 +587,8 @@ static inline void tcp_dont_try_again_when_interrupt()
     tcp_set_try_again_when_interrupt(false);
 }
 
+int fc_get_net_type(const char *ip);
+
 static inline bool is_network_error(const int err_no)
 {
     switch (err_no)
@@ -607,6 +609,27 @@ static inline bool is_network_error(const int err_no)
             return true;
         default:
             return false;
+    }
+}
+
+static inline const char *get_net_type_caption(const int net_type)
+{
+    switch (net_type)
+    {
+        case FC_NET_TYPE_NONE:
+            return "none";
+        case FC_NET_TYPE_OUTER:
+            return "outer";
+        case FC_NET_TYPE_INNER:
+            return "inner";
+        case FC_SUB_NET_TYPE_INNER_10:
+            return "inner-10";
+        case FC_SUB_NET_TYPE_INNER_172:
+            return "inner-172";
+        case FC_SUB_NET_TYPE_INNER_192:
+            return "inner-192";
+        default:
+            return "UNKOWN";
     }
 }
 

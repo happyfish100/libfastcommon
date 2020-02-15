@@ -2242,3 +2242,32 @@ int getifconfigs(FastIFConfig *if_configs, const int max_count, int *count)
 }
 #endif
 
+int fc_get_net_type(const char *ip)
+{
+    if (ip == NULL || (int)strlen(ip) < 8)
+    {
+        return FC_NET_TYPE_NONE;
+    }
+
+    if (memcmp(ip, "10.", 3) == 0)
+    {
+        return FC_SUB_NET_TYPE_INNER_10;
+    }
+
+    if (memcmp(ip, "192.168.", 8) == 0)
+    {
+        return FC_SUB_NET_TYPE_INNER_192;
+    }
+
+    if (memcmp(ip, "172.", 4) == 0)
+    {
+        int b;
+        b = atoi(ip + 4);
+        if (b >= 16 && b < 32)
+        {
+            return FC_SUB_NET_TYPE_INNER_172;
+        }
+    }
+
+    return FC_NET_TYPE_OUTER;
+}

@@ -28,6 +28,10 @@ extern "C" {
     (strcmp((conn).ip_addr, target_ip) == 0 && \
      (conn).port == target_port)
 
+#define FC_CONNECTION_SERVER_EQUAL1(conn1, conn2)     \
+    (strcmp((conn1).ip_addr, (conn2).ip_addr) == 0 && \
+     (conn1).port == (conn2).port)
+
 typedef struct
 {
 	int sock;

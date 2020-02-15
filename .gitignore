@@ -47,6 +47,7 @@ src/tests/test_thourands_seperator
 src/tests/test_pthread_lock
 src/tests/test_split_string
 src/tests/test_uniq_skiplist
+src/tests/test_server_id_func
 
 # other
 *.swp

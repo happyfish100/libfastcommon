@@ -1,5 +1,5 @@
 
-Version 1.44  2020-02-14
+Version 1.44  2020-02-15
   * add test file src/tests/test_pthread_lock.c
   * add uniq_skiplist.[hc]
   * add function split_string_ex

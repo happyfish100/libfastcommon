@@ -51,10 +51,7 @@ typedef struct
 typedef struct
 {
 	int id;  //server id
-    struct {
-        int count;
-        FCGroupAddresses group_addrs[FC_MAX_GROUP_COUNT];
-    } group_array;
+    FCGroupAddresses group_addrs[FC_MAX_GROUP_COUNT];
 } FCServerInfo;
 
 typedef struct
@@ -80,6 +77,7 @@ typedef struct
 typedef struct
 {
     int default_port;
+    bool share_between_groups;  //if an address shared between different groups
     FCServerGroupArray group_array;
     struct {
         FCServerInfoArray by_id;    //sorted by server id
@@ -102,27 +100,35 @@ static inline FCServerInfo *fc_server_get_by_ip_port(FCServerContext *ctx,
 }
 
 int fc_server_load_from_file_ex(FCServerContext *ctx,
-        const char *config_filename, const int default_port);
+        const char *config_filename, const int default_port,
+        const bool share_between_groups);
 
 static inline int fc_server_load_from_file(FCServerContext *ctx,
         const char *config_filename)
 {
     const int default_port = 0;
-    return fc_server_load_from_file_ex(ctx, config_filename, default_port);
+    const bool share_between_groups = false;
+    return fc_server_load_from_file_ex(ctx, config_filename,
+            default_port, share_between_groups);
 }
 
 int fc_server_load_from_buffer_ex(FCServerContext *ctx, char *content,
-        const char *caption, const int default_port);
+        const char *caption, const int default_port,
+        const bool share_between_groups);
 
 static inline int fc_server_load_from_buffer(FCServerContext *ctx,
         char *content)
 {
     const char *caption = "from-buffer";
     const int default_port = 0;
-    return fc_server_load_from_buffer_ex(ctx, content, caption, default_port);
+    const bool share_between_groups = false;
+    return fc_server_load_from_buffer_ex(ctx, content, caption,
+            default_port, share_between_groups);
 }
 
 void fc_server_destroy(FCServerContext *ctx);
+
+void fc_server_to_log(FCServerContext *ctx);
 
 #ifdef __cplusplus
 }
