@@ -17,7 +17,8 @@ int main(int argc, char *argv[])
     const char *config_filename = "servers.conf";
     FCServerContext ctx;
     const int default_port = 1111;
-    const bool share_between_groups = false;
+    const int min_hosts_each_group = 1;
+    const bool share_between_groups = true;
 
     if (argc > 1) {
         config_filename = argv[1];
@@ -26,7 +27,8 @@ int main(int argc, char *argv[])
 	log_init();
 
     if ((result=fc_server_load_from_file_ex(&ctx, config_filename,
-                    default_port, share_between_groups)) != 0)
+                    default_port, min_hosts_each_group,
+                    share_between_groups)) != 0)
     {
         return result;
     }

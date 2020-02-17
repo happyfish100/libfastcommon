@@ -20,6 +20,12 @@ typedef struct
     ConnectionInfo conn;
 } FCAddressInfo;
 
+typedef struct {
+    int alloc;
+    int count;
+    FCAddressInfo *addrs;
+} FCAddressArray;
+
 typedef struct
 {
     string_t group_name;
@@ -42,10 +48,7 @@ typedef struct
 typedef struct
 {
     FCServerGroupInfo *server_group;
-    struct {
-        int count;
-        FCAddressInfo addrs[FC_MAX_SERVER_IP_COUNT];
-    } address_array;
+    FCAddressArray address_array;
 } FCGroupAddresses;
 
 typedef struct
@@ -77,6 +80,7 @@ typedef struct
 typedef struct
 {
     int default_port;
+    int min_hosts_each_group;
     bool share_between_groups;  //if an address shared between different groups
     FCServerGroupArray group_array;
     struct {
@@ -99,31 +103,56 @@ static inline FCServerInfo *fc_server_get_by_ip_port(FCServerContext *ctx,
     return fc_server_get_by_ip_port_ex(ctx, &saddr, port);
 }
 
+FCServerGroupInfo *fc_server_get_group_by_name(FCServerContext *ctx,
+        const string_t *group_name);
+
+static inline int fc_server_get_group_index_ex(FCServerContext *ctx,
+        const string_t *group_name)
+{
+    FCServerGroupInfo *group;
+    group = fc_server_get_group_by_name(ctx, group_name);
+    if (group != NULL) {
+        return group - ctx->group_array.groups;
+    } else {
+        return -1;
+    }
+}
+
+static inline int fc_server_get_group_index(FCServerContext *ctx,
+        const char *group_name)
+{
+    string_t gname;
+    FC_SET_STRING(gname, (char *)group_name);
+    return fc_server_get_group_index_ex(ctx, &gname);
+}
+
 int fc_server_load_from_file_ex(FCServerContext *ctx,
         const char *config_filename, const int default_port,
-        const bool share_between_groups);
+        const int min_hosts_each_group, const bool share_between_groups);
 
 static inline int fc_server_load_from_file(FCServerContext *ctx,
         const char *config_filename)
 {
     const int default_port = 0;
+    const int min_hosts_each_group = 1;
     const bool share_between_groups = false;
     return fc_server_load_from_file_ex(ctx, config_filename,
-            default_port, share_between_groups);
+            default_port, min_hosts_each_group, share_between_groups);
 }
 
 int fc_server_load_from_buffer_ex(FCServerContext *ctx, char *content,
         const char *caption, const int default_port,
-        const bool share_between_groups);
+        const int min_hosts_each_group, const bool share_between_groups);
 
 static inline int fc_server_load_from_buffer(FCServerContext *ctx,
         char *content)
 {
     const char *caption = "from-buffer";
     const int default_port = 0;
+    const int min_hosts_each_group = 1;
     const bool share_between_groups = false;
     return fc_server_load_from_buffer_ex(ctx, content, caption,
-            default_port, share_between_groups);
+            default_port, min_hosts_each_group, share_between_groups);
 }
 
 void fc_server_destroy(FCServerContext *ctx);

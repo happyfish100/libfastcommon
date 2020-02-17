@@ -19,6 +19,9 @@
 #define SERVER_ITEM_HOST_STR        "host"
 #define SERVER_ITEM_HOST_LEN        (sizeof(SERVER_ITEM_HOST_STR) - 1)
 
+#define SERVER_ITEM_HOST_AFFIX_STR  "-host"
+#define SERVER_ITEM_HOST_AFFIX_LEN  (sizeof(SERVER_ITEM_HOST_AFFIX_STR) - 1)
+
 #define SERVER_ITEM_PORT_AFFIX_STR  "-port"
 #define SERVER_ITEM_PORT_AFFIX_LEN  (sizeof(SERVER_ITEM_PORT_AFFIX_STR) - 1)
 
@@ -111,32 +114,72 @@ static int fc_server_calc_ip_port_count(FCServerContext *ctx)
     return count;
 }
 
+typedef struct {
+    FCAddressInfo *addresses[FC_MAX_GROUP_COUNT * FC_MAX_SERVER_IP_COUNT];
+    int count;
+} AddressPtrArray;
+
+static void fc_server_add_to_uniq_addresses(
+        AddressPtrArray *addrptr_array, FCAddressInfo *addr)
+{
+    FCAddressInfo **pp;
+    FCAddressInfo **end;
+
+    end = addrptr_array->addresses + addrptr_array->count;
+    for (pp=addrptr_array->addresses; pp<end; pp++) {
+        if (FC_CONNECTION_SERVER_EQUAL1(addr->conn, (*pp)->conn)) {
+            return;
+        }
+    }
+
+    *pp = addr;
+    addrptr_array->count++;
+}
+
+static void fc_server_get_uniq_addresses(FCServerContext *ctx,
+        FCServerInfo *server, AddressPtrArray *addrptr_array)
+{
+    FCGroupAddresses *gaddr;
+    FCGroupAddresses *gend;
+    int i;
+
+    addrptr_array->count = 0;
+    gend = server->group_addrs + ctx->group_array.count;
+    for (gaddr=server->group_addrs; gaddr<gend; gaddr++) {
+        for (i=0; i<gaddr->address_array.count; i++) {
+            fc_server_add_to_uniq_addresses(addrptr_array,
+                    gaddr->address_array.addrs + i);
+        }
+    }
+}
+
 static int fc_server_init_ip_port_array(FCServerContext *ctx)
 {
 	int result;
-	int alloc_bytes;
-    int i;
+    int count;
+	int bytes;
     FCServerMapArray *map_array;
     FCServerMap *map;
 	FCServerInfo *server;
 	FCServerInfo *send;
-    FCGroupAddresses *gaddr;
-    FCGroupAddresses *gend;
+    AddressPtrArray addrptr_array;
+    FCAddressInfo **ppaddr;
+    FCAddressInfo **ppend;
 
     map_array = &ctx->sorted_server_arrays.by_ip_port;
 
-    map_array->count = fc_server_calc_ip_port_count(ctx);
-    alloc_bytes = sizeof(FCServerMap) * map_array->count;
-    map_array->maps = (FCServerMap *)malloc(alloc_bytes);
+    count = fc_server_calc_ip_port_count(ctx);
+    bytes = sizeof(FCServerMap) * count;
+    map_array->maps = (FCServerMap *)malloc(bytes);
     if (map_array->maps == NULL) {
         result = errno != 0 ? errno : ENOMEM;
         logError("file: "__FILE__", line: %d, "
                 "malloc %d bytes fail, "
                 "errno: %d, error info: %s", __LINE__,
-                alloc_bytes, result, STRERROR(result));
+                bytes, result, STRERROR(result));
         return result;
     }
-    memset(map_array->maps, 0, alloc_bytes);
+    memset(map_array->maps, 0, bytes);
 
     send = ctx->sorted_server_arrays.by_id.servers +
         ctx->sorted_server_arrays.by_id.count;
@@ -144,18 +187,17 @@ static int fc_server_init_ip_port_array(FCServerContext *ctx)
     for (server=ctx->sorted_server_arrays.by_id.servers;
             server<send; server++)
     {
-        gend = server->group_addrs + ctx->group_array.count;
-        for (gaddr=server->group_addrs; gaddr<gend; gaddr++) {
-            for (i=0; i<gaddr->address_array.count; i++) {
-                map->server = server;
-                FC_SET_STRING(map->ip_addr, gaddr->address_array.
-                        addrs[i].conn.ip_addr);
-                map->port = gaddr->address_array.addrs[i].conn.port;
-                map++;
-            }
+        fc_server_get_uniq_addresses(ctx, server, &addrptr_array);
+        ppend = addrptr_array.addresses + addrptr_array.count;
+        for (ppaddr=addrptr_array.addresses; ppaddr<ppend; ppaddr++) {
+            map->server = server;
+            FC_SET_STRING(map->ip_addr, (*ppaddr)->conn.ip_addr);
+            map->port = (*ppaddr)->conn.port;
+            map++;
         }
     }
 
+    map_array->count = map - map_array->maps;
     qsort(map_array->maps, map_array->count, sizeof(FCServerMap),
             fc_server_cmp_ip_and_port);
     return 0;
@@ -192,6 +234,8 @@ static int fc_server_check_ip_port(FCServerContext *ctx,
     FCServerMap *previous;
     FCServerMap *current;
     FCServerMap *end;
+    int id1;
+    int id2;
 
     previous = ctx->sorted_server_arrays.by_ip_port.maps + 0;
     end = ctx->sorted_server_arrays.by_ip_port.maps +
@@ -200,12 +244,18 @@ static int fc_server_check_ip_port(FCServerContext *ctx,
             current<end; current++)
     {
         if (fc_server_cmp_ip_and_port(current, previous) == 0) {
+            if (previous->server->id < current->server->id) {
+                id1 = previous->server->id;
+                id2 = current->server->id;
+            } else {
+                id1 = current->server->id;
+                id2 = previous->server->id;
+            }
             logError("file: "__FILE__", line: %d, "
                     "config file: %s, duplicate ip:port %s:%d, "
-                    "the server ids are %d and %d", __LINE__,
-                    config_filename, previous->ip_addr.str, previous->port,
-                    previous->server->id, current->server->id);
-
+                    "the server ids: %d, %d", __LINE__,
+                    config_filename, previous->ip_addr.str,
+                    previous->port, id1, id2);
             return EEXIST;
         }
 
@@ -432,7 +482,7 @@ static int fc_server_check_alloc_servers(FCServerInfoArray *array)
         return 0;
     }
 
-    new_alloc = array->alloc > 0 ? 2 * array->alloc : 2;
+    new_alloc = array->alloc > 0 ? 2 * array->alloc : 8;
     bytes = sizeof(FCServerInfo) * new_alloc;
     new_servers = (FCServerInfo *)malloc(bytes);
     if (new_servers == NULL) {
@@ -440,6 +490,7 @@ static int fc_server_check_alloc_servers(FCServerInfoArray *array)
                 "malloc %d bytes fail", __LINE__, bytes);
         return ENOMEM;
     }
+    memset(new_servers, 0, bytes); 
 
     if (array->servers != NULL) {
         memcpy(new_servers, array->servers,
@@ -448,6 +499,36 @@ static int fc_server_check_alloc_servers(FCServerInfoArray *array)
     }
 
     array->servers = new_servers;
+    array->alloc = new_alloc;
+    return 0;
+}
+
+static int fc_server_check_alloc_group_addresses(FCAddressArray *array)
+{
+    int new_alloc;
+    int bytes;
+    FCAddressInfo *new_addrs;
+
+    if (array->count < array->alloc) {
+        return 0;
+    }
+
+    new_alloc = array->alloc > 0 ? 2 * array->alloc : 1;
+    bytes = sizeof(FCAddressInfo) * new_alloc;
+    new_addrs = (FCAddressInfo *)malloc(bytes);
+    if (new_addrs == NULL) {
+        logError("file: "__FILE__", line: %d, "
+                "malloc %d bytes fail", __LINE__, bytes);
+        return ENOMEM;
+    }
+    memset(new_addrs, 0, bytes);
+
+    if (array->addrs != NULL) {
+        memcpy(new_addrs, array->addrs, sizeof(FCAddressInfo) * array->count);
+        free(array->addrs);
+    }
+
+    array->addrs = new_addrs;
     array->alloc = new_alloc;
     return 0;
 }
@@ -463,7 +544,7 @@ static inline void fc_server_clear_server_port(FCServerGroupArray *array)
     }
 }
 
-static FCServerGroupInfo *fc_server_get_group_by_name(FCServerContext *ctx,
+FCServerGroupInfo *fc_server_get_group_by_name(FCServerContext *ctx,
         const string_t *group_name)
 {
     FCServerGroupInfo *group;
@@ -518,6 +599,10 @@ static int check_server_addresses_duplicate(FCServerContext *ctx,
     char port_caption[32];
     char port_prompt[16];
 
+    if (count <= 1) {
+        return 0;
+    }
+
     end = addresses + count;
     for (addr1=addresses; addr1<end; addr1++) {
         for (addr2=addr1+1; addr2<end; addr2++) {
@@ -561,6 +646,30 @@ static int check_server_group_addresses_duplicate(FCServerContext *ctx,
     return 0;
 }
 
+static int check_server_group_min_hosts(FCServerContext *ctx,
+        FCServerInfo *server, const char *config_filename,
+        const char *section_name)
+{
+    FCGroupAddresses *gaddr;
+    FCGroupAddresses *end;
+
+    end = server->group_addrs + ctx->group_array.count;
+    for (gaddr=server->group_addrs; gaddr<end; gaddr++) {
+        if (gaddr->address_array.count < ctx->min_hosts_each_group) {
+            logError("file: "__FILE__", line: %d, "
+                    "config filename: %s, section: %s, group: %.*s, "
+                    "host count: %d < %d!", __LINE__, config_filename,
+                    section_name, gaddr->server_group->group_name.len,
+                    gaddr->server_group->group_name.str,
+                    gaddr->address_array.count,
+                    ctx->min_hosts_each_group);
+            return ENOENT;
+        }
+    }
+
+    return 0;
+}
+
 static bool fc_server_group_match(const FCServerGroupInfo *group,
         const FCAddressInfo *addr)
 {
@@ -593,6 +702,81 @@ static bool fc_server_group_match(const FCServerGroupInfo *group,
     return true;
 }
 
+static int fc_server_set_address(FCServerContext *ctx,
+        FCAddressInfo *addr, const char *config_filename,
+        const char *section_name, const char *item_name,
+        const char *host, const int default_port)
+{
+    int result;
+
+    if ((result=conn_pool_parse_server_info(host, &addr->conn,
+                    default_port)) != 0)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "config filename: %s, section: %s, "
+                "item: %s, invalid host: %s", __LINE__,
+                config_filename, section_name, item_name, host);
+        return result;
+    }
+
+    addr->net_type = fc_get_net_type(addr->conn.ip_addr);
+    return 0;
+}
+
+static int fc_server_load_group_server(FCServerContext *ctx,
+        FCServerInfo *server, const char *config_filename,
+        const char *section_name, const string_t *group_name,
+        IniItem *host_item)
+{
+    FCServerGroupInfo *group;
+    FCGroupAddresses *group_addr;
+    FCAddressInfo *addr;
+    int result;
+    int group_index;
+
+    if ((group=fc_server_get_group_by_name(ctx, group_name)) == NULL) {
+        logError("file: "__FILE__", line: %d, "
+                "config filename: %s, section: %s, group: %.*s "
+                "in item: %s not found!", __LINE__, config_filename,
+                section_name, group_name->len, group_name->str,
+                host_item->name);
+        return ENOENT;
+    }
+
+    group_index = group - ctx->group_array.groups;
+    group_addr = server->group_addrs + group_index;
+    if (group_addr->address_array.count >= FC_MAX_SERVER_IP_COUNT) {
+        logError("file: "__FILE__", line: %d, "
+                "config filename: %s, section: %s, "
+                "too many %s items exceeds %d", __LINE__,
+                config_filename, section_name,
+                host_item->name, FC_MAX_SERVER_IP_COUNT);
+        return ENOSPC;
+    }
+    if ((result=fc_server_check_alloc_group_addresses(
+                    &group_addr->address_array)) != 0) {
+        return result;
+    }
+
+    addr = group_addr->address_array.addrs + group_addr->address_array.count;
+    if ((result=fc_server_set_address(ctx, addr, config_filename,
+                    section_name, host_item->name, host_item->value,
+                    FC_SERVER_GROUP_PORT(group))) != 0)
+    {
+        return result;
+    }
+
+    group_addr->address_array.count++;
+    if ((result=check_server_addresses_duplicate(ctx, config_filename,
+                    section_name, group_addr->address_array.addrs,
+                    group_addr->address_array.count)) != 0)
+    {
+        return result;
+    }
+
+    return 0;
+}
+
 static int fc_server_set_host(FCServerContext *ctx, FCServerInfo *server,
         const char *config_filename, const char *section_name,
         FCAddressInfo *addr)
@@ -601,6 +785,7 @@ static int fc_server_set_host(FCServerContext *ctx, FCServerInfo *server,
     FCServerGroupInfo *end;
     FCGroupAddresses *group_addr;
     FCAddressInfo *current;
+    int result;
     int count;
     int group_index;
 
@@ -610,7 +795,20 @@ static int fc_server_set_host(FCServerContext *ctx, FCServerInfo *server,
         if (fc_server_group_match(group, addr)) {
             group_index = group - ctx->group_array.groups;
             group_addr = server->group_addrs + group_index;
+            if (group_addr->address_array.count >= FC_MAX_SERVER_IP_COUNT) {
+                logError("file: "__FILE__", line: %d, "
+                        "config filename: %s, section: %s, "
+                        "too many %s items for group %.*s exceeds %d",
+                        __LINE__, config_filename, section_name,
+                        SERVER_ITEM_HOST_STR, group->group_name.len,
+                        group->group_name.str, FC_MAX_SERVER_IP_COUNT);
+                return ENOSPC;
+            }
 
+            if ((result=fc_server_check_alloc_group_addresses(
+                            &group_addr->address_array)) != 0) {
+                return result;
+            }
             current = group_addr->address_array.addrs + group_addr->
                 address_array.count++;
             *current = *addr;
@@ -665,17 +863,12 @@ static int fc_server_set_hosts(FCServerContext *ctx, FCServerInfo *server,
     addr = addresses;
     hend = hosts + host_count;
     for (host=hosts; host<hend; host++) {
-        if ((result=conn_pool_parse_server_info(*host,
-                        &addr->conn, 0)) != 0)
+        if ((result=fc_server_set_address(ctx, addr, config_filename,
+                        section_name, SERVER_ITEM_HOST_STR, *host, 0)) != 0)
         {
-            logError("file: "__FILE__", line: %d, "
-                    "config filename: %s, section: %s, "
-                    "invalid host: %s", __LINE__,
-                    config_filename, section_name, *host);
             return result;
         }
 
-        addr->net_type = fc_get_net_type(addr->conn.ip_addr);
         if (addr->conn.port == 0) {
             no_port_count++;
         }
@@ -722,6 +915,7 @@ static int fc_server_load_hosts(FCServerContext *ctx, FCServerInfo *server,
     char *hosts[FC_MAX_SERVER_IP_COUNT];
     int item_count;
     int host_count;
+    int group_host_count;
     int name_len;
     int result;
     string_t group_name;
@@ -736,7 +930,7 @@ static int fc_server_load_hosts(FCServerContext *ctx, FCServerInfo *server,
 
     fc_server_clear_server_port(&ctx->group_array);
 
-    host_count = 0;
+    host_count = group_host_count = 0;
     end = items + item_count;
     for (it=items; it<end; it++) {
         name_len = strlen(it->name);
@@ -751,6 +945,19 @@ static int fc_server_load_hosts(FCServerContext *ctx, FCServerInfo *server,
             {
                 return result;
             }
+        } else if (name_len > SERVER_ITEM_HOST_AFFIX_LEN &&
+                memcmp(it->name + name_len - SERVER_ITEM_HOST_AFFIX_LEN,
+                    SERVER_ITEM_HOST_AFFIX_STR, SERVER_ITEM_HOST_AFFIX_LEN) == 0)
+        {
+            group_name.str = it->name;
+            group_name.len = name_len - SERVER_ITEM_HOST_AFFIX_LEN;
+            if ((result=fc_server_load_group_server(ctx, server,
+                            config_filename, section_name,
+                            &group_name, it)) != 0)
+            {
+                return result;
+            }
+            group_host_count++;
         } else if (name_len == SERVER_ITEM_HOST_LEN && memcmp(it->name,
                     SERVER_ITEM_HOST_STR, SERVER_ITEM_HOST_LEN) == 0)
         {
@@ -772,20 +979,29 @@ static int fc_server_load_hosts(FCServerContext *ctx, FCServerInfo *server,
         }
     }
 
-    if (host_count == 0) {
+    if (host_count == 0 && group_host_count == 0) {
         logError("file: "__FILE__", line: %d, "
-                "config filename: %s, section: %s, no item: %s!",
+                "config filename: %s, section: %s, no item: %s or *%s!",
                 __LINE__, config_filename, section_name,
-                SERVER_ITEM_HOST_STR);
+                SERVER_ITEM_HOST_STR, SERVER_ITEM_HOST_AFFIX_STR);
         return ENOENT;
     }
 
-    if ((result=fc_server_set_hosts(ctx, server, config_filename,
-                    section_name, hosts, host_count)) != 0)
-    {
-        return result;
+    if (host_count > 0) {
+        if ((result=fc_server_set_hosts(ctx, server, config_filename,
+                        section_name, hosts, host_count)) != 0)
+        {
+            return result;
+        }
     }
 
+    if (ctx->min_hosts_each_group > 0) {
+        if ((result=check_server_group_min_hosts(ctx, server,
+                        config_filename, section_name)) != 0)
+        {
+            return result;
+        }
+    }
     return 0;
 }
 
@@ -934,22 +1150,28 @@ int fc_server_load_data(FCServerContext *ctx, IniContext *ini_context,
 	return fc_server_check_ip_port(ctx, config_filename);
 }
 
-#define FC_SERVER_INIT_CONTEXT(ctx, port, shared) \
+#define FC_SERVER_INIT_CONTEXT(ctx, port, min_hosts, shared) \
     do {  \
         memset(ctx, 0, sizeof(FCServerContext));  \
         ctx->default_port = port;  \
+        ctx->min_hosts_each_group = min_hosts; \
         ctx->share_between_groups = shared; \
     } while (0)
 
 int fc_server_load_from_file_ex(FCServerContext *ctx,
         const char *config_filename, const int default_port,
-        const bool share_between_groups)
+        const int min_hosts_each_group, const bool share_between_groups)
 {
     IniContext ini_context;
     int result;
 
-    FC_SERVER_INIT_CONTEXT(ctx, default_port, share_between_groups);
-    if ((result=iniLoadFromFile(config_filename, &ini_context)) != 0) {
+    FC_SERVER_INIT_CONTEXT(ctx, default_port, min_hosts_each_group,
+            share_between_groups);
+
+    if ((result=iniLoadFromFileEx(config_filename, &ini_context,
+            FAST_INI_ANNOTATION_WITH_BUILTIN, NULL, 0,
+            FAST_INI_FLAGS_DISABLE_SAME_SECTION_MERGE)) != 0)
+    {
         return result;
     }
 
@@ -960,13 +1182,17 @@ int fc_server_load_from_file_ex(FCServerContext *ctx,
 
 int fc_server_load_from_buffer_ex(FCServerContext *ctx, char *content,
         const char *caption, const int default_port,
-        const bool share_between_groups)
+        const int min_hosts_each_group, const bool share_between_groups)
 {
     IniContext ini_context;
     int result;
 
-    FC_SERVER_INIT_CONTEXT(ctx, default_port, share_between_groups);
-    if ((result=iniLoadFromBuffer(content, &ini_context)) != 0) {
+    FC_SERVER_INIT_CONTEXT(ctx, default_port, min_hosts_each_group,
+            share_between_groups);
+    if ((result=iniLoadFromBufferEx(content, &ini_context,
+            FAST_INI_ANNOTATION_WITH_BUILTIN, NULL, 0,
+            FAST_INI_FLAGS_DISABLE_SAME_SECTION_MERGE)) != 0)
+    {
         return result;
     }
 
@@ -1004,6 +1230,18 @@ static void fc_server_log_groups(FCServerContext *ctx)
     }
 }
 
+static void fc_server_log_group_servers(FCGroupAddresses *gaddr)
+{
+    FCAddressInfo *addr;
+    FCAddressInfo *end;
+
+    end = gaddr->address_array.addrs + gaddr->address_array.count;
+    for (addr=gaddr->address_array.addrs; addr<end; addr++) {
+        logInfo("    %d. %s:%d", (int)(addr - gaddr->address_array.addrs + 1),
+                addr->conn.ip_addr, addr->conn.port);
+    }
+}
+
 static void fc_server_log_one_server(FCServerContext *ctx, FCServerInfo *server)
 {
     FCGroupAddresses *gaddr;
@@ -1013,10 +1251,12 @@ static void fc_server_log_one_server(FCServerContext *ctx, FCServerInfo *server)
 
     end = server->group_addrs + ctx->group_array.count;
     for (gaddr=server->group_addrs; gaddr<end; gaddr++) {
-        logInfo("[group-%.*s]", FC_PRINTF_STAR_STRING_PARAMS(
-                    gaddr->server_group->group_name));
-        //TODO log server ip and port
+        logInfo("[group-%.*s] ip count: %d", FC_PRINTF_STAR_STRING_PARAMS(
+                    gaddr->server_group->group_name),
+                gaddr->address_array.count);
+        fc_server_log_group_servers(gaddr);
     }
+    logInfo("");
 }
 
 static void fc_server_log_servers(FCServerContext *ctx)
@@ -1024,9 +1264,15 @@ static void fc_server_log_servers(FCServerContext *ctx)
     FCServerInfo *server;
     FCServerInfo *end;
 
+    logInfo("server count: %d, unique ip and port count: %d",
+            ctx->sorted_server_arrays.by_id.count,
+            ctx->sorted_server_arrays.by_ip_port.count);
+
     end = ctx->sorted_server_arrays.by_id.servers +
         ctx->sorted_server_arrays.by_id.count;
-    for (server=ctx->sorted_server_arrays.by_id.servers; server<end; server++) {
+    for (server=ctx->sorted_server_arrays.by_id.servers;
+            server<end; server++)
+    {
         fc_server_log_one_server(ctx, server);
     }
 }

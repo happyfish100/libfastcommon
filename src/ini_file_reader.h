@@ -26,8 +26,9 @@
 #define FAST_INI_ANNOTATION_WITH_BUILTIN    2
 #define FAST_INI_ANNOTATION_NONE  FAST_INI_ANNOTATION_DISABLE
 
-#define FAST_INI_FLAGS_NONE            0
-#define FAST_INI_FLAGS_SHELL_EXECUTE   1
+#define FAST_INI_FLAGS_NONE                         0
+#define FAST_INI_FLAGS_SHELL_EXECUTE                1
+#define FAST_INI_FLAGS_DISABLE_SAME_SECTION_MERGE   2
 
 typedef bool (*IniSectionNameFilterFunc)(const char *section_name,
         const int name_len, void *args);

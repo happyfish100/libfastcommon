@@ -1152,6 +1152,14 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 					result = 0;
 				}
 			}
+            else if ((pContext->flags & FAST_INI_FLAGS_DISABLE_SAME_SECTION_MERGE) != 0)
+            {
+                result = EEXIST;
+                logError("file: "__FILE__", line: %d, "
+                        "section [%s] already exist",
+                        __LINE__, section_name);
+                break;
+            }
 
 			pContext->current_section = pSection;
             pItem = pSection->items + pSection->count;
