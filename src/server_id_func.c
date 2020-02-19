@@ -25,20 +25,8 @@
 #define SERVER_ITEM_PORT_AFFIX_STR  "-port"
 #define SERVER_ITEM_PORT_AFFIX_LEN  (sizeof(SERVER_ITEM_PORT_AFFIX_STR) - 1)
 
-#define NET_TYPE_OUTER_STR          "outer"
-#define NET_TYPE_INNER_STR          "inner"
-
-#define SUB_NET_TYPE_INNER_10_STR1  "inner-10"
-#define SUB_NET_TYPE_INNER_172_STR1 "inner-172"
-#define SUB_NET_TYPE_INNER_192_STR1 "inner-192"
-
-#define SUB_NET_TYPE_INNER_10_STR2  "inner_10"
-#define SUB_NET_TYPE_INNER_172_STR2 "inner_172"
-#define SUB_NET_TYPE_INNER_192_STR2 "inner_192"
-
-#define SUB_NET_TYPE_INNER_10_STR3  "inner10"
-#define SUB_NET_TYPE_INNER_172_STR3 "inner172"
-#define SUB_NET_TYPE_INNER_192_STR3 "inner192"
+#define IP_PORT_MAP_COUNT(ctx)  ctx->sorted_server_arrays.by_ip_port.count
+#define IP_PORT_MAPS(ctx)       ctx->sorted_server_arrays.by_ip_port.maps
 
 #define FC_SERVER_GROUP_PORT(group) \
     (group->server_port > 0 ? group->server_port : group->port)
@@ -79,81 +67,99 @@ static int fc_server_cmp_ip_and_port(const void *p1, const void *p2)
     return m1->port - m2->port;
 }
 
-FCServerInfo *fc_server_get_by_id(FCServerContext *ctx,
+static int fc_server_cmp_address_ptr(const void *p1, const void *p2)
+{
+    FCAddressInfo **addr1;
+    FCAddressInfo **addr2;
+    int result;
+
+    addr1 = (FCAddressInfo **)p1;
+    addr2 = (FCAddressInfo **)p2;
+    if ((result=strcmp((*addr1)->conn.ip_addr, (*addr2)->conn.ip_addr)) != 0) {
+        return result;
+    }
+    return (*addr1)->conn.port - (*addr2)->conn.port;
+}
+
+FCServerInfo *fc_server_get_by_id(FCServerConfig *ctx,
         const int server_id)
 {
 	FCServerInfo target;
 
 	target.id = server_id;
-	return (FCServerInfo *)bsearch(&target,
-            ctx->sorted_server_arrays.by_id.servers,
-            ctx->sorted_server_arrays.by_id.count,
-            sizeof(FCServerInfo), fc_server_cmp_server_id);
+	return (FCServerInfo *)bsearch(&target, FC_SID_SERVERS(*ctx),
+            FC_SID_SERVER_COUNT(*ctx), sizeof(FCServerInfo),
+            fc_server_cmp_server_id);
 }
 
-static int fc_server_calc_ip_port_count(FCServerContext *ctx)
+static int fc_server_calc_ip_port_count(FCServerConfig *ctx)
 {
 	FCServerInfo *server;
 	FCServerInfo *send;
-    FCGroupAddresses *gaddr;
-    FCGroupAddresses *gend;
     int count;
 
     count = 0;
-    send = ctx->sorted_server_arrays.by_id.servers +
-        ctx->sorted_server_arrays.by_id.count;
-    for (server=ctx->sorted_server_arrays.by_id.servers;
-            server<send; server++)
-    {
-        gend = server->group_addrs + ctx->group_array.count;
-        for (gaddr=server->group_addrs; gaddr<gend; gaddr++) {
-            count += gaddr->address_array.count;
-        }
+    send = FC_SID_SERVERS(*ctx) + FC_SID_SERVER_COUNT(*ctx);
+    for (server=FC_SID_SERVERS(*ctx); server<send; server++) {
+        count += server->uniq_addresses.count;
     }
 
     return count;
 }
 
-typedef struct {
-    FCAddressInfo *addresses[FC_MAX_GROUP_COUNT * FC_MAX_SERVER_IP_COUNT];
-    int count;
-} AddressPtrArray;
-
-static void fc_server_add_to_uniq_addresses(
-        AddressPtrArray *addrptr_array, FCAddressInfo *addr)
+static int fc_server_check_alloc_group_addresses(FCAddressArray *array)
 {
-    FCAddressInfo **pp;
-    FCAddressInfo **end;
+    int new_alloc;
+    int bytes;
+    FCAddressInfo *new_addrs;
 
-    end = addrptr_array->addresses + addrptr_array->count;
-    for (pp=addrptr_array->addresses; pp<end; pp++) {
-        if (FC_CONNECTION_SERVER_EQUAL1(addr->conn, (*pp)->conn)) {
-            return;
+    if (array->count < array->alloc) {
+        return 0;
+    }
+
+    new_alloc = array->alloc > 0 ? 2 * array->alloc : 2;
+    bytes = sizeof(FCAddressInfo) * new_alloc;
+    new_addrs = (FCAddressInfo *)malloc(bytes);
+    if (new_addrs == NULL) {
+        logError("file: "__FILE__", line: %d, "
+                "malloc %d bytes fail", __LINE__, bytes);
+        return ENOMEM;
+    }
+    memset(new_addrs, 0, bytes);
+
+    if (array->addrs != NULL) {
+        memcpy(new_addrs, array->addrs, sizeof(FCAddressInfo) * array->count);
+        free(array->addrs);
+    }
+
+    array->addrs = new_addrs;
+    array->alloc = new_alloc;
+    return 0;
+}
+
+static FCAddressInfo *fc_server_add_to_uniq_addresses(
+        FCAddressArray *addr_array, FCAddressInfo *addr)
+{
+    FCAddressInfo *p;
+    FCAddressInfo *end;
+
+    end = addr_array->addrs + addr_array->count;
+    for (p=addr_array->addrs; p<end; p++) {
+        if (FC_CONNECTION_SERVER_EQUAL1(addr->conn, p->conn)) {
+            return p;
         }
     }
 
-    *pp = addr;
-    addrptr_array->count++;
-}
-
-static void fc_server_get_uniq_addresses(FCServerContext *ctx,
-        FCServerInfo *server, AddressPtrArray *addrptr_array)
-{
-    FCGroupAddresses *gaddr;
-    FCGroupAddresses *gend;
-    int i;
-
-    addrptr_array->count = 0;
-    gend = server->group_addrs + ctx->group_array.count;
-    for (gaddr=server->group_addrs; gaddr<gend; gaddr++) {
-        for (i=0; i<gaddr->address_array.count; i++) {
-            fc_server_add_to_uniq_addresses(addrptr_array,
-                    gaddr->address_array.addrs + i);
-        }
+    if (fc_server_check_alloc_group_addresses(addr_array) != 0) {
+        return NULL;
     }
+    p = addr_array->addrs + addr_array->count;
+    *p = *addr;
+    addr_array->count++;
+    return p;
 }
 
-static int fc_server_init_ip_port_array(FCServerContext *ctx)
+static int fc_server_init_ip_port_array(FCServerConfig *ctx)
 {
 	int result;
     int count;
@@ -162,9 +168,8 @@ static int fc_server_init_ip_port_array(FCServerContext *ctx)
     FCServerMap *map;
 	FCServerInfo *server;
 	FCServerInfo *send;
-    AddressPtrArray addrptr_array;
-    FCAddressInfo **ppaddr;
-    FCAddressInfo **ppend;
+    FCAddressInfo *paddr;
+    FCAddressInfo *pend;
 
     map_array = &ctx->sorted_server_arrays.by_ip_port;
 
@@ -181,18 +186,14 @@ static int fc_server_init_ip_port_array(FCServerContext *ctx)
     }
     memset(map_array->maps, 0, bytes);
 
-    send = ctx->sorted_server_arrays.by_id.servers +
-        ctx->sorted_server_arrays.by_id.count;
+    send = FC_SID_SERVERS(*ctx) + FC_SID_SERVER_COUNT(*ctx);
     map = map_array->maps;
-    for (server=ctx->sorted_server_arrays.by_id.servers;
-            server<send; server++)
-    {
-        fc_server_get_uniq_addresses(ctx, server, &addrptr_array);
-        ppend = addrptr_array.addresses + addrptr_array.count;
-        for (ppaddr=addrptr_array.addresses; ppaddr<ppend; ppaddr++) {
+    for (server=FC_SID_SERVERS(*ctx); server<send; server++) {
+        pend = server->uniq_addresses.addrs + server->uniq_addresses.count;
+        for (paddr=server->uniq_addresses.addrs; paddr<pend; paddr++) {
             map->server = server;
-            FC_SET_STRING(map->ip_addr, (*ppaddr)->conn.ip_addr);
-            map->port = (*ppaddr)->conn.port;
+            FC_SET_STRING(map->ip_addr, paddr->conn.ip_addr);
+            map->port = paddr->conn.port;
             map++;
         }
     }
@@ -203,19 +204,16 @@ static int fc_server_init_ip_port_array(FCServerContext *ctx)
     return 0;
 }
 
-static int fc_server_check_id_duplicated(FCServerContext *ctx,
+static int fc_server_check_id_duplicated(FCServerConfig *ctx,
         const char *config_filename)
 {
     FCServerInfo *previous;
 	FCServerInfo *current;
 	FCServerInfo *send;
 
-    previous = ctx->sorted_server_arrays.by_id.servers + 0;
-    send = ctx->sorted_server_arrays.by_id.servers +
-        ctx->sorted_server_arrays.by_id.count;
-    for (current=ctx->sorted_server_arrays.by_id.servers + 1;
-            current<send; current++)
-    {
+    previous = FC_SID_SERVERS(*ctx) + 0;
+    send = FC_SID_SERVERS(*ctx) + FC_SID_SERVER_COUNT(*ctx);
+    for (current=FC_SID_SERVERS(*ctx) + 1; current<send; current++) {
         if (current->id == previous->id) {
             logError("file: "__FILE__", line: %d, "
                     "config file: %s, duplicate server id: %d",
@@ -228,7 +226,7 @@ static int fc_server_check_id_duplicated(FCServerContext *ctx,
     return 0;
 }
 
-static int fc_server_check_ip_port(FCServerContext *ctx,
+static int fc_server_check_ip_port(FCServerConfig *ctx,
         const char *config_filename)
 {
     FCServerMap *previous;
@@ -237,12 +235,9 @@ static int fc_server_check_ip_port(FCServerContext *ctx,
     int id1;
     int id2;
 
-    previous = ctx->sorted_server_arrays.by_ip_port.maps + 0;
-    end = ctx->sorted_server_arrays.by_ip_port.maps +
-        ctx->sorted_server_arrays.by_ip_port.count;
-    for (current=ctx->sorted_server_arrays.by_ip_port.maps+1;
-            current<end; current++)
-    {
+    previous = IP_PORT_MAPS(ctx) + 0;
+    end = IP_PORT_MAPS(ctx) + IP_PORT_MAP_COUNT(ctx);
+    for (current=IP_PORT_MAPS(ctx)+1; current<end; current++) {
         if (fc_server_cmp_ip_and_port(current, previous) == 0) {
             if (previous->server->id < current->server->id) {
                 id1 = previous->server->id;
@@ -265,7 +260,7 @@ static int fc_server_check_ip_port(FCServerContext *ctx,
     return 0;
 }
 
-FCServerInfo *fc_server_get_by_ip_port_ex(FCServerContext *ctx,
+FCServerInfo *fc_server_get_by_ip_port_ex(FCServerConfig *ctx,
         const string_t *ip_addr, const int port)
 {
     FCServerMap target;
@@ -273,10 +268,9 @@ FCServerInfo *fc_server_get_by_ip_port_ex(FCServerContext *ctx,
 
     target.ip_addr = *ip_addr;
     target.port = port;
-    found = (FCServerMap *)bsearch(&target,
-            ctx->sorted_server_arrays.by_ip_port.maps,
-            ctx->sorted_server_arrays.by_ip_port.count,
-            sizeof(FCServerMap), fc_server_cmp_ip_and_port);
+    found = (FCServerMap *)bsearch(&target, IP_PORT_MAPS(ctx),
+            IP_PORT_MAP_COUNT(ctx), sizeof(FCServerMap),
+            fc_server_cmp_ip_and_port);
     if (found != NULL) {
         return found->server;
     }
@@ -298,43 +292,6 @@ static inline void fc_server_set_group_ptr_name(FCServerGroupInfo *ginfo,
     ginfo->group_name.len = strlen(ginfo->group_name.str);
 }
 
-static int fc_server_set_net_type(const char *config_filename,
-        FCServerGroupInfo *ginfo, const char *net_type)
-{
-    if (net_type == NULL || *net_type == '\0') {
-        ginfo->filter.net_type = FC_NET_TYPE_NONE;
-        return 0;
-    }
-
-    if (strcasecmp(net_type, NET_TYPE_OUTER_STR) == 0) {
-        ginfo->filter.net_type = FC_NET_TYPE_OUTER;
-    } else if (strcasecmp(net_type, NET_TYPE_INNER_STR) == 0) {
-        ginfo->filter.net_type = FC_NET_TYPE_INNER;
-    } else if (strcasecmp(net_type, SUB_NET_TYPE_INNER_10_STR1) == 0 ||
-            strcasecmp(net_type, SUB_NET_TYPE_INNER_10_STR2) == 0 ||
-            strcasecmp(net_type, SUB_NET_TYPE_INNER_10_STR3) == 0)
-    {
-        ginfo->filter.net_type = FC_SUB_NET_TYPE_INNER_10;
-    } else if (strcasecmp(net_type, SUB_NET_TYPE_INNER_172_STR1) == 0 ||
-            strcasecmp(net_type, SUB_NET_TYPE_INNER_172_STR2) == 0 ||
-            strcasecmp(net_type, SUB_NET_TYPE_INNER_172_STR3) == 0)
-    {
-        ginfo->filter.net_type = FC_SUB_NET_TYPE_INNER_172;
-    } else if (strcasecmp(net_type, SUB_NET_TYPE_INNER_192_STR1) == 0 ||
-            strcasecmp(net_type, SUB_NET_TYPE_INNER_192_STR2) == 0 ||
-            strcasecmp(net_type, SUB_NET_TYPE_INNER_192_STR3) == 0)
-    {
-        ginfo->filter.net_type = FC_SUB_NET_TYPE_INNER_192;
-    } else {
-        logError("file: "__FILE__", line: %d, "
-                "config filename: %s, section: %s, invalid net_type: %s",
-                __LINE__, config_filename, ginfo->group_name.str, net_type);
-        return EINVAL;
-    }
-
-    return 0;
-}
-
 static inline void fc_server_set_ip_prefix(FCServerGroupInfo *ginfo,
         const char *ip_prefix)
 {
@@ -345,7 +302,7 @@ static inline void fc_server_set_ip_prefix(FCServerGroupInfo *ginfo,
     }
 }
 
-static int fc_server_load_one_group(FCServerContext *ctx,
+static int fc_server_load_one_group(FCServerConfig *ctx,
         const char *config_filename, IniContext *ini_context,
         const int group_count, const char *section_name)
 {
@@ -354,7 +311,6 @@ static int fc_server_load_one_group(FCServerContext *ctx,
     char *port_str;
     char *net_type;
     char *ip_prefix;
-    int result;
 
     strcpy(new_name, section_name);
     group = ctx->group_array.groups + ctx->group_array.count;
@@ -391,10 +347,12 @@ static int fc_server_load_one_group(FCServerContext *ctx,
     }
 
     net_type = iniGetStrValue(section_name, "net_type", ini_context);
-    if ((result=fc_server_set_net_type(config_filename,
-                    group, net_type)) != 0)
-    {
-        return result;
+    group->filter.net_type = fc_get_net_type_by_name(net_type);
+    if (group->filter.net_type == FC_NET_TYPE_NONE) {
+        logError("file: "__FILE__", line: %d, "
+                "config filename: %s, section: %s, invalid net_type: %s",
+                __LINE__, config_filename, group->group_name.str, net_type);
+        return EINVAL;
     }
 
     ip_prefix = iniGetStrValue(section_name, "ip_prefix", ini_context);
@@ -404,7 +362,7 @@ static int fc_server_load_one_group(FCServerContext *ctx,
     return 0;
 }
 
-static int check_group_ports_duplicate(FCServerContext *ctx,
+static int check_group_ports_duplicate(FCServerConfig *ctx,
         const char *config_filename)
 {
     FCServerGroupInfo *g1;
@@ -432,7 +390,33 @@ static int check_group_ports_duplicate(FCServerContext *ctx,
     return 0;
 }
 
-static int fc_server_load_groups(FCServerContext *ctx,
+static int fc_server_cmp_group_info(const void *p1, const void *p2)
+{
+    return strcmp(((FCServerGroupInfo *)p1)->name_buff,
+            ((FCServerGroupInfo *)p2)->name_buff);
+}
+
+static void fc_server_sort_groups(FCServerConfig *ctx)
+{
+    FCServerGroupInfo *group;
+    FCServerGroupInfo *end;
+
+    if (ctx->group_array.count <= 1) {
+        return;
+    }
+
+    qsort(ctx->group_array.groups, ctx->group_array.count,
+            sizeof(FCServerGroupInfo), fc_server_cmp_group_info);
+
+    //must reset stirng_t pointer
+    end = ctx->group_array.groups + ctx->group_array.count;
+    for (group=ctx->group_array.groups; group<end; group++) {
+        group->group_name.str = group->name_buff;
+        group->filter.ip_prefix.str = group->filter.prefix_buff;
+    }
+}
+
+static int fc_server_load_groups(FCServerConfig *ctx,
         const char *config_filename, IniContext *ini_context)
 {
 	int result;
@@ -469,53 +453,41 @@ static int fc_server_load_groups(FCServerContext *ctx,
         }
     }
 
+    fc_server_sort_groups(ctx);
     return 0;
 }
 
-static int fc_server_check_alloc_servers(FCServerInfoArray *array)
+static int fc_server_alloc_servers(FCServerInfoArray *array,
+        const int target_count)
 {
-    int new_alloc;
     int bytes;
-    FCServerInfo *new_servers;
 
-    if (array->count < array->alloc) {
-        return 0;
-    }
-
-    new_alloc = array->alloc > 0 ? 2 * array->alloc : 8;
-    bytes = sizeof(FCServerInfo) * new_alloc;
-    new_servers = (FCServerInfo *)malloc(bytes);
-    if (new_servers == NULL) {
+    bytes = sizeof(FCServerInfo) * target_count;
+    array->servers = (FCServerInfo *)malloc(bytes);
+    if (array->servers == NULL) {
         logError("file: "__FILE__", line: %d, "
                 "malloc %d bytes fail", __LINE__, bytes);
         return ENOMEM;
     }
-    memset(new_servers, 0, bytes); 
+    memset(array->servers, 0, bytes);
 
-    if (array->servers != NULL) {
-        memcpy(new_servers, array->servers,
-                sizeof(FCServerInfo) * array->count);
-        free(array->servers);
-    }
-
-    array->servers = new_servers;
-    array->alloc = new_alloc;
+    array->alloc = target_count;
     return 0;
 }
 
-static int fc_server_check_alloc_group_addresses(FCAddressArray *array)
+static int fc_server_check_alloc_group_address_ptrs(FCAddressPtrArray *array)
 {
     int new_alloc;
     int bytes;
-    FCAddressInfo *new_addrs;
+    FCAddressInfo **new_addrs;
 
     if (array->count < array->alloc) {
         return 0;
     }
 
     new_alloc = array->alloc > 0 ? 2 * array->alloc : 1;
-    bytes = sizeof(FCAddressInfo) * new_alloc;
-    new_addrs = (FCAddressInfo *)malloc(bytes);
+    bytes = sizeof(FCAddressInfo *) * new_alloc;
+    new_addrs = (FCAddressInfo **)malloc(bytes);
     if (new_addrs == NULL) {
         logError("file: "__FILE__", line: %d, "
                 "malloc %d bytes fail", __LINE__, bytes);
@@ -524,7 +496,7 @@ static int fc_server_check_alloc_group_addresses(FCAddressArray *array)
     memset(new_addrs, 0, bytes);
 
     if (array->addrs != NULL) {
-        memcpy(new_addrs, array->addrs, sizeof(FCAddressInfo) * array->count);
+        memcpy(new_addrs, array->addrs, sizeof(FCAddressInfo *) * array->count);
         free(array->addrs);
     }
 
@@ -544,7 +516,7 @@ static inline void fc_server_clear_server_port(FCServerGroupArray *array)
     }
 }
 
-FCServerGroupInfo *fc_server_get_group_by_name(FCServerContext *ctx,
+FCServerGroupInfo *fc_server_get_group_by_name(FCServerConfig *ctx,
         const string_t *group_name)
 {
     FCServerGroupInfo *group;
@@ -560,7 +532,7 @@ FCServerGroupInfo *fc_server_get_group_by_name(FCServerContext *ctx,
     return NULL;
 }
 
-static int fc_server_load_group_port(FCServerContext *ctx,
+static int fc_server_load_group_port(FCServerConfig *ctx,
         const char *config_filename, const char *section_name,
         const string_t *group_name, IniItem *port_item)
 {
@@ -589,13 +561,13 @@ static int fc_server_load_group_port(FCServerContext *ctx,
     return 0;
 }
 
-static int check_server_addresses_duplicate(FCServerContext *ctx,
+static int check_server_addresses_duplicate(FCServerConfig *ctx,
         const char *config_filename, const char *section_name,
-        const FCAddressInfo *addresses, const int count)
+        FCAddressInfo *addresses, const int count)
 {
-    const FCAddressInfo *addr1;
-    const FCAddressInfo *addr2;
-    const FCAddressInfo *end;
+    FCAddressInfo *addr1;
+    FCAddressInfo *addr2;
+    FCAddressInfo *end;
     char port_caption[32];
     char port_prompt[16];
 
@@ -625,7 +597,40 @@ static int check_server_addresses_duplicate(FCServerContext *ctx,
     return 0;
 }
 
-static int check_server_group_addresses_duplicate(FCServerContext *ctx,
+static int check_addresses_duplicate(FCServerConfig *ctx,
+        const char *config_filename, const char *section_name,
+        FCGroupAddresses *group_addr)
+{
+    FCAddressInfo **ppaddr;
+    FCAddressInfo **ppend;
+    FCAddressInfo **pprevious;
+
+    if (group_addr->address_array.count <= 1) {
+        return 0;
+    }
+
+	qsort(group_addr->address_array.addrs, group_addr->address_array.count,
+            sizeof(FCAddressInfo *), fc_server_cmp_address_ptr);
+    pprevious = group_addr->address_array.addrs;
+    ppend = group_addr->address_array.addrs + group_addr->address_array.count;
+    for (ppaddr=group_addr->address_array.addrs+1; ppaddr<ppend; ppaddr++) {
+        if (fc_server_cmp_address_ptr(ppaddr, pprevious) == 0) {
+            logError("file: "__FILE__", line: %d, "
+                    "config filename: %s, section: %s, group: %.*s, "
+                    "duplicate ip and port: %s:%d", __LINE__,
+                    config_filename, section_name,
+                    group_addr->server_group->group_name.len,
+                    group_addr->server_group->group_name.str,
+                    (*ppaddr)->conn.ip_addr, (*ppaddr)->conn.port);
+            return EEXIST;
+        }
+        pprevious = ppaddr;
+    }
+
+    return 0;
+}
+
+static int check_server_group_addresses_duplicate(FCServerConfig *ctx,
         FCServerInfo *server, const char *config_filename,
         const char *section_name)
 {
@@ -635,9 +640,8 @@ static int check_server_group_addresses_duplicate(FCServerContext *ctx,
 
     end = server->group_addrs + ctx->group_array.count;
     for (gaddr=server->group_addrs; gaddr<end; gaddr++) {
-        if ((result=check_server_addresses_duplicate(ctx, config_filename,
-                        section_name, gaddr->address_array.addrs,
-                        gaddr->address_array.count)) != 0)
+        if ((result=check_addresses_duplicate(ctx, config_filename,
+                        section_name, gaddr)) != 0)
         {
             return result;
         }
@@ -646,7 +650,7 @@ static int check_server_group_addresses_duplicate(FCServerContext *ctx,
     return 0;
 }
 
-static int check_server_group_min_hosts(FCServerContext *ctx,
+static int check_server_group_min_hosts(FCServerConfig *ctx,
         FCServerInfo *server, const char *config_filename,
         const char *section_name)
 {
@@ -681,7 +685,7 @@ static bool fc_server_group_match(const FCServerGroupInfo *group,
         return false;
     }
 
-    if ((group->filter.net_type != FC_NET_TYPE_NONE) &&
+    if ((group->filter.net_type != FC_NET_TYPE_ANY) &&
             ((addr->net_type & group->filter.net_type) !=
             group->filter.net_type))
     {
@@ -702,7 +706,7 @@ static bool fc_server_group_match(const FCServerGroupInfo *group,
     return true;
 }
 
-static int fc_server_set_address(FCServerContext *ctx,
+static int fc_server_set_address(FCServerConfig *ctx,
         FCAddressInfo *addr, const char *config_filename,
         const char *section_name, const char *item_name,
         const char *host, const int default_port)
@@ -719,18 +723,39 @@ static int fc_server_set_address(FCServerContext *ctx,
         return result;
     }
 
-    addr->net_type = fc_get_net_type(addr->conn.ip_addr);
+    addr->net_type = fc_get_net_type_by_ip(addr->conn.ip_addr);
     return 0;
 }
 
-static int fc_server_load_group_server(FCServerContext *ctx,
+static int fc_server_set_group_server_address(FCServerInfo *server,
+        FCGroupAddresses *group_addr, FCAddressInfo *address)
+{
+    FCAddressInfo *addr;
+    int result;
+
+    addr = fc_server_add_to_uniq_addresses(&server->uniq_addresses, address);
+    if (addr == NULL) {
+        return ENOMEM;
+    }
+    if ((result=fc_server_check_alloc_group_address_ptrs(
+                    &group_addr->address_array)) != 0)
+    {
+        return result;
+    }
+
+    group_addr->address_array.addrs[group_addr->address_array.count] = addr;
+    group_addr->address_array.count++;
+    return 0;
+}
+
+static int fc_server_load_group_server(FCServerConfig *ctx,
         FCServerInfo *server, const char *config_filename,
         const char *section_name, const string_t *group_name,
         IniItem *host_item)
 {
     FCServerGroupInfo *group;
     FCGroupAddresses *group_addr;
-    FCAddressInfo *addr;
+    FCAddressInfo address;
     int result;
     int group_index;
 
@@ -753,23 +778,16 @@ static int fc_server_load_group_server(FCServerContext *ctx,
                 host_item->name, FC_MAX_SERVER_IP_COUNT);
         return ENOSPC;
     }
-    if ((result=fc_server_check_alloc_group_addresses(
-                    &group_addr->address_array)) != 0) {
-        return result;
-    }
 
-    addr = group_addr->address_array.addrs + group_addr->address_array.count;
-    if ((result=fc_server_set_address(ctx, addr, config_filename,
+    if ((result=fc_server_set_address(ctx, &address, config_filename,
                     section_name, host_item->name, host_item->value,
                     FC_SERVER_GROUP_PORT(group))) != 0)
     {
         return result;
     }
 
-    group_addr->address_array.count++;
-    if ((result=check_server_addresses_duplicate(ctx, config_filename,
-                    section_name, group_addr->address_array.addrs,
-                    group_addr->address_array.count)) != 0)
+    if ((result=fc_server_set_group_server_address(server,
+                    group_addr, &address)) != 0)
     {
         return result;
     }
@@ -777,14 +795,13 @@ static int fc_server_load_group_server(FCServerContext *ctx,
     return 0;
 }
 
-static int fc_server_set_host(FCServerContext *ctx, FCServerInfo *server,
+static int fc_server_set_host(FCServerConfig *ctx, FCServerInfo *server,
         const char *config_filename, const char *section_name,
         FCAddressInfo *addr)
 {
     FCServerGroupInfo *group;
     FCServerGroupInfo *end;
     FCGroupAddresses *group_addr;
-    FCAddressInfo *current;
     int result;
     int count;
     int group_index;
@@ -805,15 +822,13 @@ static int fc_server_set_host(FCServerContext *ctx, FCServerInfo *server,
                 return ENOSPC;
             }
 
-            if ((result=fc_server_check_alloc_group_addresses(
-                            &group_addr->address_array)) != 0) {
-                return result;
-            }
-            current = group_addr->address_array.addrs + group_addr->
-                address_array.count++;
-            *current = *addr;
             if (addr->conn.port == 0) {
-                current->conn.port = FC_SERVER_GROUP_PORT(group);
+                addr->conn.port = FC_SERVER_GROUP_PORT(group);
+            }
+            if ((result=fc_server_set_group_server_address(server,
+                            group_addr, addr)) != 0)
+            {
+                return result;
             }
 
             count++;
@@ -847,7 +862,7 @@ static int fc_server_set_host(FCServerContext *ctx, FCServerInfo *server,
     return 0;
 }
 
-static int fc_server_set_hosts(FCServerContext *ctx, FCServerInfo *server,
+static int fc_server_set_hosts(FCServerConfig *ctx, FCServerInfo *server,
         const char *config_filename, const char *section_name,
         char **hosts, const int host_count)
 {
@@ -896,16 +911,10 @@ static int fc_server_set_hosts(FCServerContext *ctx, FCServerInfo *server,
         }
     }
 
-    if ((result=check_server_group_addresses_duplicate(ctx, server,
-                    config_filename, section_name)) != 0)
-    {
-        return result;
-    }
-
     return 0;
 }
 
-static int fc_server_load_hosts(FCServerContext *ctx, FCServerInfo *server,
+static int fc_server_load_hosts(FCServerConfig *ctx, FCServerInfo *server,
         const char *config_filename, IniContext *ini_context,
         const char *section_name)
 {
@@ -995,6 +1004,12 @@ static int fc_server_load_hosts(FCServerContext *ctx, FCServerInfo *server,
         }
     }
 
+    if ((result=check_server_group_addresses_duplicate(ctx, server,
+                    config_filename, section_name)) != 0)
+    {
+        return result;
+    }
+
     if (ctx->min_hosts_each_group > 0) {
         if ((result=check_server_group_min_hosts(ctx, server,
                         config_filename, section_name)) != 0)
@@ -1005,7 +1020,7 @@ static int fc_server_load_hosts(FCServerContext *ctx, FCServerInfo *server,
     return 0;
 }
 
-static void fc_server_set_group_ptr(FCServerContext *ctx, FCServerInfo *server)
+static void fc_server_set_group_ptr(FCServerConfig *ctx, FCServerInfo *server)
 {
     FCGroupAddresses *gaddr;
     FCGroupAddresses *end;
@@ -1017,7 +1032,7 @@ static void fc_server_set_group_ptr(FCServerContext *ctx, FCServerInfo *server)
     }
 }
 
-static int fc_server_load_one_server(FCServerContext *ctx,
+static int fc_server_load_one_server(FCServerConfig *ctx,
         const char *config_filename, IniContext *ini_context,
         const char *section_name)
 {
@@ -1025,15 +1040,7 @@ static int fc_server_load_one_server(FCServerContext *ctx,
     char *endptr;
     int result;
 
-    if ((result=fc_server_check_alloc_servers(&ctx->
-                    sorted_server_arrays.by_id)) != 0)
-    {
-        return result;
-    }
-
-    server = ctx->sorted_server_arrays.by_id.servers +
-        ctx->sorted_server_arrays.by_id.count;
-
+    server = FC_SID_SERVERS(*ctx) + FC_SID_SERVER_COUNT(*ctx);
     endptr = NULL;
     server->id = strtol(section_name + SERVER_SECTION_PREFIX_LEN,
             &endptr, 10);
@@ -1054,11 +1061,11 @@ static int fc_server_load_one_server(FCServerContext *ctx,
         return result;
     }
 
-    ctx->sorted_server_arrays.by_id.count++;
+    FC_SID_SERVER_COUNT(*ctx)++;
     return 0;
 }
 
-static int fc_server_load_servers(FCServerContext *ctx,
+static int fc_server_load_servers(FCServerConfig *ctx,
         const char *config_filename, IniContext *ini_context)
 {
 #define FIXED_SECTION_COUNT  16
@@ -1102,6 +1109,12 @@ static int fc_server_load_servers(FCServerContext *ctx,
             break;
         }
 
+        if ((result=fc_server_alloc_servers(&ctx->
+                        sorted_server_arrays.by_id, count)) != 0)
+        {
+            return result;
+        }
+
         end = sections + count;
         for (section=sections; section<end; section++) {
             if ((result=fc_server_load_one_server(ctx, config_filename,
@@ -1119,7 +1132,7 @@ static int fc_server_load_servers(FCServerContext *ctx,
     return result;
 }
 
-int fc_server_load_data(FCServerContext *ctx, IniContext *ini_context,
+int fc_server_load_data(FCServerConfig *ctx, IniContext *ini_context,
         const char *config_filename)
 {
 	int result;
@@ -1136,8 +1149,7 @@ int fc_server_load_data(FCServerContext *ctx, IniContext *ini_context,
         return result;
     }
 
-	qsort(ctx->sorted_server_arrays.by_id.servers,
-            ctx->sorted_server_arrays.by_id.count,
+	qsort(FC_SID_SERVERS(*ctx), FC_SID_SERVER_COUNT(*ctx),
             sizeof(FCServerInfo), fc_server_cmp_server_id);
     if ((result=fc_server_check_id_duplicated(ctx, config_filename)) != 0) {
         return result;
@@ -1152,13 +1164,13 @@ int fc_server_load_data(FCServerContext *ctx, IniContext *ini_context,
 
 #define FC_SERVER_INIT_CONTEXT(ctx, port, min_hosts, shared) \
     do {  \
-        memset(ctx, 0, sizeof(FCServerContext));  \
+        memset(ctx, 0, sizeof(FCServerConfig));  \
         ctx->default_port = port;  \
         ctx->min_hosts_each_group = min_hosts; \
         ctx->share_between_groups = shared; \
     } while (0)
 
-int fc_server_load_from_file_ex(FCServerContext *ctx,
+int fc_server_load_from_file_ex(FCServerConfig *ctx,
         const char *config_filename, const int default_port,
         const int min_hosts_each_group, const bool share_between_groups)
 {
@@ -1180,7 +1192,7 @@ int fc_server_load_from_file_ex(FCServerContext *ctx,
 	return result;
 }
 
-int fc_server_load_from_buffer_ex(FCServerContext *ctx, char *content,
+int fc_server_load_from_buffer_ex(FCServerConfig *ctx, char *content,
         const char *caption, const int default_port,
         const int min_hosts_each_group, const bool share_between_groups)
 {
@@ -1201,22 +1213,182 @@ int fc_server_load_from_buffer_ex(FCServerContext *ctx, char *content,
 	return result;
 }
 
-void fc_server_destroy(FCServerContext *ctx)
+static void fc_server_free_addresses(FCServerConfig *ctx)
 {
-    if (ctx->sorted_server_arrays.by_ip_port.maps != NULL) {
-        free(ctx->sorted_server_arrays.by_ip_port.maps);
-        ctx->sorted_server_arrays.by_ip_port.maps = NULL;
-        ctx->sorted_server_arrays.by_ip_port.count = 0;
-    }
+	FCServerInfo *server;
+	FCServerInfo *send;
+    FCGroupAddresses *gaddr;
+    FCGroupAddresses *gend;
 
-    if (ctx->sorted_server_arrays.by_id.servers != NULL) {
-        free(ctx->sorted_server_arrays.by_id.servers);
-        ctx->sorted_server_arrays.by_id.servers = NULL;
-        ctx->sorted_server_arrays.by_id.count = 0;
+    send = FC_SID_SERVERS(*ctx) + FC_SID_SERVER_COUNT(*ctx);
+    for (server=FC_SID_SERVERS(*ctx); server<send; server++) {
+        gend = server->group_addrs + ctx->group_array.count;
+        for (gaddr=server->group_addrs; gaddr<gend; gaddr++) {
+            if (gaddr->address_array.addrs != NULL) {
+                free(gaddr->address_array.addrs);
+                gaddr->address_array.addrs = NULL;
+                gaddr->address_array.count = gaddr->address_array.alloc = 0;
+            }
+        }
+        if (server->uniq_addresses.addrs != NULL) {
+            free(server->uniq_addresses.addrs);
+            server->uniq_addresses.addrs = NULL;
+            server->uniq_addresses.count = server->uniq_addresses.alloc = 0;
+        }
     }
 }
 
-static void fc_server_log_groups(FCServerContext *ctx)
+void fc_server_destroy(FCServerConfig *ctx)
+{
+    if (IP_PORT_MAPS(ctx) != NULL) {
+        free(IP_PORT_MAPS(ctx));
+        IP_PORT_MAPS(ctx) = NULL;
+        IP_PORT_MAP_COUNT(ctx) = 0;
+    }
+
+    if (FC_SID_SERVERS(*ctx) != NULL) {
+        fc_server_free_addresses(ctx);
+
+        free(FC_SID_SERVERS(*ctx));
+        FC_SID_SERVERS(*ctx) = NULL;
+        FC_SID_SERVER_COUNT(*ctx) = 0;
+    }
+}
+
+static FCServerGroupInfo *address_uniq_match_group(FCServerConfig *ctx,
+        const FCAddressInfo *addr)
+{
+    FCServerGroupInfo *group;
+    FCServerGroupInfo *end;
+    FCServerGroupInfo *matched;
+
+    matched = NULL;
+    end = ctx->group_array.groups + ctx->group_array.count;
+    for (group=ctx->group_array.groups; group<end; group++) {
+        if (fc_server_group_match(group, addr)) {
+            if (matched != NULL) {
+                return NULL;
+            } else {
+                matched = group;
+            }
+        }
+    }
+
+    return matched;
+}
+
+static int fc_groups_to_string(FCServerConfig *ctx, FastBuffer *buffer)
+{
+    FCServerGroupInfo *group;
+    FCServerGroupInfo *end;
+    const char *net_type_caption;
+    int result;
+
+    if ((result=fast_buffer_check(buffer, FC_MAX_GROUP_COUNT * 256)) != 0) {
+        return result;
+    }
+
+    end = ctx->group_array.groups + ctx->group_array.count;
+    for (group=ctx->group_array.groups; group<end; group++) {
+        net_type_caption = get_net_type_caption(group->filter.net_type);
+        if (strcmp(net_type_caption, NET_TYPE_ANY_STR) == 0) {
+            net_type_caption = "";
+        }
+
+        fast_buffer_append(buffer,
+                "[%s%.*s]\n"
+                "port = %d\n"
+                "net_type = %s\n"
+                "ip_prefix = %.*s\n\n",
+                GROUP_SECTION_PREFIX_STR,
+                group->group_name.len, group->group_name.str,
+                group->port, net_type_caption,
+                group->filter.ip_prefix.len,
+                group->filter.ip_prefix.str);
+    }
+    return 0;
+}
+
+static void fc_group_servers_to_string(FCServerConfig *ctx,
+        FCGroupAddresses *gaddr, FastBuffer *buffer)
+{
+    FCAddressInfo **addr;
+    FCAddressInfo **end;
+
+    end = gaddr->address_array.addrs + gaddr->address_array.count;
+    for (addr=gaddr->address_array.addrs; addr<end; addr++) {
+        if (address_uniq_match_group(ctx, *addr) == gaddr->server_group) {
+            fast_buffer_append_buff(buffer, SERVER_ITEM_HOST_STR,
+                    SERVER_ITEM_HOST_LEN);
+        } else {
+            fast_buffer_append(buffer, "%.*s%s",
+                    gaddr->server_group->group_name.len,
+                    gaddr->server_group->group_name.str,
+                    SERVER_ITEM_HOST_AFFIX_STR);
+        }
+        fast_buffer_append(buffer, " = %s:%d\n",
+                (*addr)->conn.ip_addr, (*addr)->conn.port);
+    }
+}
+
+static int fc_one_server_to_string(FCServerConfig *ctx,
+        FCServerInfo *server, FastBuffer *buffer)
+{
+    FCGroupAddresses *gaddr;
+    FCGroupAddresses *end;
+    int bytes;
+    int result;
+
+    bytes = 32;
+    end = server->group_addrs + ctx->group_array.count;
+    for (gaddr=server->group_addrs; gaddr<end; gaddr++) {
+        bytes += (IP_ADDRESS_SIZE + 128) * gaddr->address_array.count;
+    }
+
+    if ((result=fast_buffer_check(buffer, bytes)) != 0) {
+        return result;
+    }
+
+    fast_buffer_append(buffer, "[%s%d]\n",
+            SERVER_SECTION_PREFIX_STR, server->id);
+
+    for (gaddr=server->group_addrs; gaddr<end; gaddr++) {
+        fc_group_servers_to_string(ctx, gaddr, buffer);
+    }
+
+    fast_buffer_append_buff(buffer, "\n", 1);
+    return 0;
+}
+
+static int fc_servers_to_string(FCServerConfig *ctx, FastBuffer *buffer)
+{
+    FCServerInfo *server;
+    FCServerInfo *end;
+    int result;
+
+    end = FC_SID_SERVERS(*ctx) + FC_SID_SERVER_COUNT(*ctx);
+    for (server=FC_SID_SERVERS(*ctx); server<end; server++) {
+        if ((result=fc_one_server_to_string(ctx, server, buffer)) != 0) {
+            return result;
+        }
+    }
+
+    return 0;
+}
+
+int fc_server_to_config_string(FCServerConfig *ctx, FastBuffer *buffer)
+{
+    int result;
+
+    fc_server_clear_server_port(&ctx->group_array);
+    if ((result=fc_groups_to_string(ctx, buffer)) != 0) {
+        return result;
+    }
+
+    return fc_servers_to_string(ctx, buffer);
+}
+
+static void fc_server_log_groups(FCServerConfig *ctx)
 {
     FCServerGroupInfo *group;
     FCServerGroupInfo *end;
@@ -1232,17 +1404,17 @@ static void fc_server_log_groups(FCServerContext *ctx)
 
 static void fc_server_log_group_servers(FCGroupAddresses *gaddr)
 {
-    FCAddressInfo *addr;
-    FCAddressInfo *end;
+    FCAddressInfo **addr;
+    FCAddressInfo **end;
 
     end = gaddr->address_array.addrs + gaddr->address_array.count;
     for (addr=gaddr->address_array.addrs; addr<end; addr++) {
         logInfo("    %d. %s:%d", (int)(addr - gaddr->address_array.addrs + 1),
-                addr->conn.ip_addr, addr->conn.port);
+                (*addr)->conn.ip_addr, (*addr)->conn.port);
     }
 }
 
-static void fc_server_log_one_server(FCServerContext *ctx, FCServerInfo *server)
+static void fc_server_log_one_server(FCServerConfig *ctx, FCServerInfo *server)
 {
     FCGroupAddresses *gaddr;
     FCGroupAddresses *end;
@@ -1259,25 +1431,22 @@ static void fc_server_log_one_server(FCServerContext *ctx, FCServerInfo *server)
     logInfo("");
 }
 
-static void fc_server_log_servers(FCServerContext *ctx)
+static void fc_server_log_servers(FCServerConfig *ctx)
 {
     FCServerInfo *server;
     FCServerInfo *end;
 
     logInfo("server count: %d, unique ip and port count: %d",
-            ctx->sorted_server_arrays.by_id.count,
-            ctx->sorted_server_arrays.by_ip_port.count);
+            FC_SID_SERVER_COUNT(*ctx),
+            IP_PORT_MAP_COUNT(ctx));
 
-    end = ctx->sorted_server_arrays.by_id.servers +
-        ctx->sorted_server_arrays.by_id.count;
-    for (server=ctx->sorted_server_arrays.by_id.servers;
-            server<end; server++)
-    {
+    end = FC_SID_SERVERS(*ctx) + FC_SID_SERVER_COUNT(*ctx);
+    for (server=FC_SID_SERVERS(*ctx); server<end; server++) {
         fc_server_log_one_server(ctx, server);
     }
 }
 
-void fc_server_to_log(FCServerContext *ctx)
+void fc_server_to_log(FCServerConfig *ctx)
 {
     fc_server_log_groups(ctx);
     fc_server_log_servers(ctx);

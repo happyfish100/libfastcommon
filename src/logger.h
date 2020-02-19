@@ -159,6 +159,13 @@ int log_init2();
 
 #define log_destroy()  log_destroy_ex(&g_log_context)
 
+#define log_it1(priority, text, text_len) \
+    log_it_ex1(&g_log_context, priority, text, text_len)
+
+#define log_it2(caption, text, text_len, bNeedSync, bNeedLock) \
+    log_it_ex2(&g_log_context, caption, text, text_len, bNeedSync, bNeedLock)
+
+
 /** init function, use stderr for output by default
  *  parameters:
  *           pContext: the log context

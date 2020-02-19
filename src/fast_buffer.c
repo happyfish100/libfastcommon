@@ -47,7 +47,7 @@ int fast_buffer_check(FastBuffer *buffer, const int inc_len)
     int alloc_size;
     char *buff;
 
-    if (buffer->alloc_size > buffer->length + inc_len)
+    if (buffer->alloc_size >= buffer->length + inc_len)
     {
         return 0;
     }

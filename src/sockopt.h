@@ -27,6 +27,19 @@
 #define FC_SUB_NET_TYPE_INNER_172 (FC_NET_TYPE_INNER |  8)
 #define FC_SUB_NET_TYPE_INNER_192 (FC_NET_TYPE_INNER | 16)
 
+#define FC_NET_TYPE_ANY  (FC_NET_TYPE_OUTER | FC_NET_TYPE_INNER | \
+        FC_SUB_NET_TYPE_INNER_10 | FC_SUB_NET_TYPE_INNER_172 |    \
+        FC_SUB_NET_TYPE_INNER_192)
+
+#define NET_TYPE_ANY_STR            "any"
+#define NET_TYPE_OUTER_STR          "outer"
+#define NET_TYPE_INNER_STR          "inner"
+#define NET_TYPE_UNKOWN_STR         "UNKOWN"
+
+#define SUB_NET_TYPE_INNER_10_STR  "inner-10"
+#define SUB_NET_TYPE_INNER_172_STR "inner-172"
+#define SUB_NET_TYPE_INNER_192_STR "inner-192"
+
 #define FAST_WRITE_BUFF_SIZE  (256 * 1024)
 
 typedef struct fast_if_config {
@@ -587,7 +600,9 @@ static inline void tcp_dont_try_again_when_interrupt()
     tcp_set_try_again_when_interrupt(false);
 }
 
-int fc_get_net_type(const char *ip);
+int fc_get_net_type_by_name(const char *net_type);
+
+int fc_get_net_type_by_ip(const char *ip);
 
 static inline bool is_network_error(const int err_no)
 {
@@ -616,20 +631,20 @@ static inline const char *get_net_type_caption(const int net_type)
 {
     switch (net_type)
     {
-        case FC_NET_TYPE_NONE:
-            return "none";
+        case FC_NET_TYPE_ANY:
+            return NET_TYPE_ANY_STR;
         case FC_NET_TYPE_OUTER:
-            return "outer";
+            return NET_TYPE_OUTER_STR;
         case FC_NET_TYPE_INNER:
-            return "inner";
+            return NET_TYPE_INNER_STR;
         case FC_SUB_NET_TYPE_INNER_10:
-            return "inner-10";
+            return SUB_NET_TYPE_INNER_10_STR;
         case FC_SUB_NET_TYPE_INNER_172:
-            return "inner-172";
+            return SUB_NET_TYPE_INNER_172_STR;
         case FC_SUB_NET_TYPE_INNER_192:
-            return "inner-192";
+            return SUB_NET_TYPE_INNER_192_STR;
         default:
-            return "UNKOWN";
+            return NET_TYPE_UNKOWN_STR;
     }
 }
 

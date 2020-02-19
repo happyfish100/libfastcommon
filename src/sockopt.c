@@ -20,6 +20,15 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
+#define SUB_NET_TYPE_INNER_10_STR2  "inner_10"
+#define SUB_NET_TYPE_INNER_172_STR2 "inner_172"
+#define SUB_NET_TYPE_INNER_192_STR2 "inner_192"
+
+#define SUB_NET_TYPE_INNER_10_STR3  "inner10"
+#define SUB_NET_TYPE_INNER_172_STR3 "inner172"
+#define SUB_NET_TYPE_INNER_192_STR3 "inner192"
+
+
 #if defined(OS_LINUX) || defined(OS_FREEBSD)
 #include <ifaddrs.h>
 #endif
@@ -2242,11 +2251,17 @@ int getifconfigs(FastIFConfig *if_configs, const int max_count, int *count)
 }
 #endif
 
-int fc_get_net_type(const char *ip)
+int fc_get_net_type_by_ip(const char *ip)
 {
-    if (ip == NULL || (int)strlen(ip) < 8)
+    int len;
+    if (ip == NULL)
     {
         return FC_NET_TYPE_NONE;
+    }
+    len = strlen(ip);
+    if (len < 8)
+    {
+        return (len < 7) ? FC_NET_TYPE_NONE : FC_NET_TYPE_OUTER;
     }
 
     if (memcmp(ip, "10.", 3) == 0)
@@ -2271,3 +2286,36 @@ int fc_get_net_type(const char *ip)
 
     return FC_NET_TYPE_OUTER;
 }
+
+int fc_get_net_type_by_name(const char *net_type)
+{
+    if (net_type == NULL || *net_type == '\0') {
+        return FC_NET_TYPE_ANY;
+    }
+
+    if (strcasecmp(net_type, NET_TYPE_ANY_STR) == 0) {
+        return FC_NET_TYPE_ANY;
+    } else if (strcasecmp(net_type, NET_TYPE_OUTER_STR) == 0) {
+        return FC_NET_TYPE_OUTER;
+    } else if (strcasecmp(net_type, NET_TYPE_INNER_STR) == 0) {
+        return FC_NET_TYPE_INNER;
+    } else if (strcasecmp(net_type, SUB_NET_TYPE_INNER_10_STR) == 0 ||
+            strcasecmp(net_type, SUB_NET_TYPE_INNER_10_STR2) == 0 ||
+            strcasecmp(net_type, SUB_NET_TYPE_INNER_10_STR3) == 0)
+    {
+        return FC_SUB_NET_TYPE_INNER_10;
+    } else if (strcasecmp(net_type, SUB_NET_TYPE_INNER_172_STR) == 0 ||
+            strcasecmp(net_type, SUB_NET_TYPE_INNER_172_STR2) == 0 ||
+            strcasecmp(net_type, SUB_NET_TYPE_INNER_172_STR3) == 0)
+    {
+        return FC_SUB_NET_TYPE_INNER_172;
+    } else if (strcasecmp(net_type, SUB_NET_TYPE_INNER_192_STR) == 0 ||
+            strcasecmp(net_type, SUB_NET_TYPE_INNER_192_STR2) == 0 ||
+            strcasecmp(net_type, SUB_NET_TYPE_INNER_192_STR3) == 0)
+    {
+        return FC_SUB_NET_TYPE_INNER_192;
+    } else {
+        return FC_NET_TYPE_NONE;
+    }
+}
+

@@ -6,6 +6,7 @@
 #include "common_define.h"
 #include "connection_pool.h"
 #include "ini_file_reader.h"
+#include "fast_buffer.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -13,6 +14,9 @@ extern "C" {
 
 #define FC_MAX_SERVER_IP_COUNT  8
 #define FC_MAX_GROUP_COUNT      4
+
+#define FC_SID_SERVER_COUNT(ctx)  (ctx).sorted_server_arrays.by_id.count
+#define FC_SID_SERVERS(ctx)       (ctx).sorted_server_arrays.by_id.servers
 
 typedef struct
 {
@@ -25,6 +29,12 @@ typedef struct {
     int count;
     FCAddressInfo *addrs;
 } FCAddressArray;
+
+typedef struct {
+    int alloc;
+    int count;
+    FCAddressInfo **addrs;
+} FCAddressPtrArray;
 
 typedef struct
 {
@@ -48,12 +58,13 @@ typedef struct
 typedef struct
 {
     FCServerGroupInfo *server_group;
-    FCAddressArray address_array;
+    FCAddressPtrArray address_array;
 } FCGroupAddresses;
 
 typedef struct
 {
 	int id;  //server id
+    FCAddressArray uniq_addresses;
     FCGroupAddresses group_addrs[FC_MAX_GROUP_COUNT];
 } FCServerInfo;
 
@@ -84,18 +95,18 @@ typedef struct
     bool share_between_groups;  //if an address shared between different groups
     FCServerGroupArray group_array;
     struct {
-        FCServerInfoArray by_id;    //sorted by server id
+        FCServerInfoArray by_id;     //sorted by server id
         FCServerMapArray by_ip_port; //sorted by IP and port
     } sorted_server_arrays;
-} FCServerContext;
+} FCServerConfig;
 
-FCServerInfo *fc_server_get_by_id(FCServerContext *ctx,
+FCServerInfo *fc_server_get_by_id(FCServerConfig *ctx,
         const int server_id);
 
-FCServerInfo *fc_server_get_by_ip_port_ex(FCServerContext *ctx,
+FCServerInfo *fc_server_get_by_ip_port_ex(FCServerConfig *ctx,
         const string_t *ip_addr, const int port);
 
-static inline FCServerInfo *fc_server_get_by_ip_port(FCServerContext *ctx,
+static inline FCServerInfo *fc_server_get_by_ip_port(FCServerConfig *ctx,
         const char *ip_addr, const int port)
 {
     string_t saddr;
@@ -103,10 +114,10 @@ static inline FCServerInfo *fc_server_get_by_ip_port(FCServerContext *ctx,
     return fc_server_get_by_ip_port_ex(ctx, &saddr, port);
 }
 
-FCServerGroupInfo *fc_server_get_group_by_name(FCServerContext *ctx,
+FCServerGroupInfo *fc_server_get_group_by_name(FCServerConfig *ctx,
         const string_t *group_name);
 
-static inline int fc_server_get_group_index_ex(FCServerContext *ctx,
+static inline int fc_server_get_group_index_ex(FCServerConfig *ctx,
         const string_t *group_name)
 {
     FCServerGroupInfo *group;
@@ -118,7 +129,7 @@ static inline int fc_server_get_group_index_ex(FCServerContext *ctx,
     }
 }
 
-static inline int fc_server_get_group_index(FCServerContext *ctx,
+static inline int fc_server_get_group_index(FCServerConfig *ctx,
         const char *group_name)
 {
     string_t gname;
@@ -126,11 +137,11 @@ static inline int fc_server_get_group_index(FCServerContext *ctx,
     return fc_server_get_group_index_ex(ctx, &gname);
 }
 
-int fc_server_load_from_file_ex(FCServerContext *ctx,
+int fc_server_load_from_file_ex(FCServerConfig *ctx,
         const char *config_filename, const int default_port,
         const int min_hosts_each_group, const bool share_between_groups);
 
-static inline int fc_server_load_from_file(FCServerContext *ctx,
+static inline int fc_server_load_from_file(FCServerConfig *ctx,
         const char *config_filename)
 {
     const int default_port = 0;
@@ -140,11 +151,11 @@ static inline int fc_server_load_from_file(FCServerContext *ctx,
             default_port, min_hosts_each_group, share_between_groups);
 }
 
-int fc_server_load_from_buffer_ex(FCServerContext *ctx, char *content,
+int fc_server_load_from_buffer_ex(FCServerConfig *ctx, char *content,
         const char *caption, const int default_port,
         const int min_hosts_each_group, const bool share_between_groups);
 
-static inline int fc_server_load_from_buffer(FCServerContext *ctx,
+static inline int fc_server_load_from_buffer(FCServerConfig *ctx,
         char *content)
 {
     const char *caption = "from-buffer";
@@ -155,9 +166,11 @@ static inline int fc_server_load_from_buffer(FCServerContext *ctx,
             default_port, min_hosts_each_group, share_between_groups);
 }
 
-void fc_server_destroy(FCServerContext *ctx);
+void fc_server_destroy(FCServerConfig *ctx);
 
-void fc_server_to_log(FCServerContext *ctx);
+int fc_server_to_config_string(FCServerConfig *ctx, FastBuffer *buffer);
+
+void fc_server_to_log(FCServerConfig *ctx);
 
 #ifdef __cplusplus
 }

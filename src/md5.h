@@ -41,11 +41,12 @@ int my_md5_file(char *filename, unsigned char digest[16]);
 */
 int my_md5_buffer(char *buffer, unsigned int len, unsigned char digest[16]);
 
-void my_md5_init (MD5_CTX *);
+void my_md5_init (MD5_CTX *context);
 
-void my_md5_update (MD5_CTX *, unsigned char *, unsigned int);
+void my_md5_update (MD5_CTX *context, unsigned char *input,
+        unsigned int inputLen);
 
-void my_md5_final (unsigned char [16], MD5_CTX *);
+void my_md5_final (unsigned char digest[16], MD5_CTX *context);
 
 #ifdef __cplusplus
 }

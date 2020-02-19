@@ -15,10 +15,11 @@ int main(int argc, char *argv[])
 {
 	int result;
     const char *config_filename = "servers.conf";
-    FCServerContext ctx;
+    FCServerConfig ctx;
     const int default_port = 1111;
     const int min_hosts_each_group = 1;
     const bool share_between_groups = true;
+    FastBuffer buffer;
 
     if (argc > 1) {
         config_filename = argv[1];
@@ -33,8 +34,16 @@ int main(int argc, char *argv[])
         return result;
     }
 
-    fc_server_to_log(&ctx);
+    if ((result=fast_buffer_init_ex(&buffer, 1024)) != 0) {
+        return result;
+    }
+    fc_server_to_config_string(&ctx, &buffer);
+    printf("%.*s", buffer.length, buffer.data);
+    //printf("%.*s\n(%d)", buffer.length, buffer.data, buffer.length);
 
+    fast_buffer_destroy(&buffer);
+
+    //fc_server_to_log(&ctx);
     fc_server_destroy(&ctx);
 	return 0;
 }
