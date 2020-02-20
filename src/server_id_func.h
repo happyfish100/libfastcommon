@@ -33,6 +33,7 @@ typedef struct {
 typedef struct {
     int alloc;
     int count;
+    int index;
     FCAddressInfo **addrs;
 } FCAddressPtrArray;
 
@@ -171,6 +172,16 @@ void fc_server_destroy(FCServerConfig *ctx);
 int fc_server_to_config_string(FCServerConfig *ctx, FastBuffer *buffer);
 
 void fc_server_to_log(FCServerConfig *ctx);
+
+ConnectionInfo *fc_server_check_connect_ex(FCAddressPtrArray *addr_array,
+        const int connect_timeout, const char *bind_ipaddr,
+        const bool log_connect_error, int *err_no);
+
+#define fc_server_check_connect(addr_array, connect_timeout, err_no) \
+    fc_server_check_connect_ex(addr_array, connect_timeout, NULL, true, err_no)
+
+
+void fc_server_disconnect(FCAddressPtrArray *addr_array);
 
 #ifdef __cplusplus
 }

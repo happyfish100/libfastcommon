@@ -1451,3 +1451,59 @@ void fc_server_to_log(FCServerConfig *ctx)
     fc_server_log_groups(ctx);
     fc_server_log_servers(ctx);
 }
+
+ConnectionInfo *fc_server_check_connect_ex(FCAddressPtrArray *addr_array,
+        const int connect_timeout, const char *bind_ipaddr,
+        const bool log_connect_error, int *err_no)
+{
+    FCAddressInfo **current;
+    FCAddressInfo **addr;
+    FCAddressInfo **end;
+
+    if (addr_array->count <= 0) {
+        *err_no = ENOENT;
+        return NULL;
+    }
+
+    current = addr_array->addrs + addr_array->index;
+    if ((*current)->conn.sock >= 0) {
+        return &(*current)->conn;
+    }
+
+    if ((*err_no= conn_pool_connect_server_ex(&(*current)->conn,
+                    connect_timeout, bind_ipaddr, log_connect_error)) == 0)
+    {
+        return &(*current)->conn;
+    }
+
+    if (addr_array->count == 1) {
+        return NULL;
+    }
+
+    end = addr_array->addrs + addr_array->count;
+    for (addr=addr_array->addrs; addr<end; addr++) {
+        if (addr == current) {
+            continue;
+        }
+        if ((*err_no= conn_pool_connect_server_ex(&(*addr)->conn,
+                        connect_timeout, bind_ipaddr,
+                        log_connect_error)) == 0)
+        {
+            addr_array->index = addr - addr_array->addrs;
+            return &(*addr)->conn;
+        }
+    }
+
+    return NULL;
+}
+
+void fc_server_disconnect(FCAddressPtrArray *addr_array)
+{
+    FCAddressInfo **current;
+
+    current = addr_array->addrs + addr_array->index;
+    if ((*current)->conn.sock >= 0) {
+        close((*current)->conn.sock);
+        (*current)->conn.sock = -1;
+    }
+}
