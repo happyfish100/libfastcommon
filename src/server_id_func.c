@@ -138,7 +138,7 @@ static int fc_server_check_alloc_group_addresses(FCAddressArray *array)
 }
 
 static FCAddressInfo *fc_server_add_to_uniq_addresses(
-        FCAddressArray *addr_array, FCAddressInfo *addr)
+        FCAddressArray *addr_array, const FCAddressInfo *addr)
 {
     FCAddressInfo *p;
     FCAddressInfo *end;
@@ -728,7 +728,7 @@ static int fc_server_set_address(FCServerConfig *ctx,
 }
 
 static int fc_server_set_group_server_address(FCServerInfo *server,
-        FCGroupAddresses *group_addr, FCAddressInfo *address)
+        FCGroupAddresses *group_addr, const FCAddressInfo *address)
 {
     FCAddressInfo *addr;
     int result;
@@ -797,11 +797,13 @@ static int fc_server_load_group_server(FCServerConfig *ctx,
 
 static int fc_server_set_host(FCServerConfig *ctx, FCServerInfo *server,
         const char *config_filename, const char *section_name,
-        FCAddressInfo *addr)
+        const FCAddressInfo *addr)
 {
     FCServerGroupInfo *group;
     FCServerGroupInfo *end;
     FCGroupAddresses *group_addr;
+    const FCAddressInfo *new_addr;
+    FCAddressInfo addr_holder;
     int result;
     int count;
     int group_index;
@@ -823,10 +825,14 @@ static int fc_server_set_host(FCServerConfig *ctx, FCServerInfo *server,
             }
 
             if (addr->conn.port == 0) {
-                addr->conn.port = FC_SERVER_GROUP_PORT(group);
+                addr_holder = *addr;
+                addr_holder.conn.port = FC_SERVER_GROUP_PORT(group);
+                new_addr = &addr_holder;
+            } else {
+                new_addr = addr;
             }
             if ((result=fc_server_set_group_server_address(server,
-                            group_addr, addr)) != 0)
+                            group_addr, new_addr)) != 0)
             {
                 return result;
             }
