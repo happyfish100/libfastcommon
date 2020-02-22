@@ -22,22 +22,24 @@
 #include "ioevent.h"
 
 typedef enum {
-    fast_multi_sock_stage_recv_header = 'H',
-    fast_multi_sock_stage_recv_body = 'B'
+    fms_stage_recv_header = 'H',
+    fms_stage_recv_body = 'B'
 } FastMultiSockRecvStage;
 
 struct fast_multi_sock_client;
 struct fast_multi_sock_entry;
 
+typedef int64_t (*fms_client_get_current_time_ms_func)();
+
 //return the body length
-typedef int (*fast_multi_sock_client_get_body_length_func)(const FastBuffer *recv_buffer);
+typedef int (*fms_client_get_body_length_func)(const FastBuffer *recv_buffer);
 
 //IO deal fucntion
-typedef int (*fast_multi_sock_client_io_func)(struct fast_multi_sock_client *client,
-         struct fast_multi_sock_entry *entry);
+typedef int (*fast_multi_sock_client_io_func)(struct fast_multi_sock_client *
+        client, struct fast_multi_sock_entry *entry);
 
 typedef struct fast_multi_sock_entry {
-    ConnectionInfo *conn;     //the socket must be non-block socket
+    ConnectionInfo *conn;     //the connected socket must be non-block socket
     FastBuffer *send_buffer;  //send buffer for internal use
     fast_multi_sock_client_io_func io_callback;  //for internal use
     FastBuffer recv_buffer;   //recv buffer for response package
@@ -52,10 +54,11 @@ typedef struct fast_multi_sock_client {
     int header_length;       //package header size
     int pulling_count;
     int success_count;
-    int timeout;
-    time_t deadline_time;
+    int timeout_ms;
+    int64_t deadline_time_ms;
     FastMultiSockEntry *entries;
-    fast_multi_sock_client_get_body_length_func get_body_length_func;
+    fms_client_get_current_time_ms_func get_current_time_ms_func;
+    fms_client_get_body_length_func get_body_length_func;
     IOEventPoller ioevent;
 } FastMultiSockClient;
 
@@ -71,14 +74,33 @@ extern "C" {
       @param entry_count the count of socket entries
       @param header_length the header length of a package
       @param get_body_length_func the get body length function
-      @param init_recv_buffer_size the initial size of response buffer 
+      @param get_current_time_ms_func the get current time in ms function
+      @param init_recv_buffer_size the initial size of response buffer
+      @param timeout_ms the timeout in milliseconds
+      @return error no, 0 for success, != 0 fail
+      */
+    int fast_multi_sock_client_init_ex(FastMultiSockClient *client,
+            FastMultiSockEntry *entries, const int entry_count,
+            const int header_length,
+            fms_client_get_body_length_func get_body_length_func,
+            fms_client_get_current_time_ms_func get_current_time_ms_func,
+            const int init_recv_buffer_size, const int timeout_ms);
+
+    /**
+      init function
+      @param client the client context
+      @param entries the socket entries
+      @param entry_count the count of socket entries
+      @param header_length the header length of a package
+      @param get_body_length_func the get body length function
+      @param init_recv_buffer_size the initial size of response buffer
       @param timeout the timeout in seconds
       @return error no, 0 for success, != 0 fail
       */
     int fast_multi_sock_client_init(FastMultiSockClient *client,
             FastMultiSockEntry *entries, const int entry_count,
             const int header_length,
-            fast_multi_sock_client_get_body_length_func get_body_length_func,
+            fms_client_get_body_length_func get_body_length_func,
             const int init_recv_buffer_size, const int timeout);
 
     /**

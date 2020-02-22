@@ -1434,7 +1434,7 @@ static void fc_server_log_one_server(FCServerConfig *ctx, FCServerInfo *server)
                 gaddr->address_array.count);
         fc_server_log_group_servers(gaddr);
     }
-    logInfo("");
+    logInfo(" ");
 }
 
 static void fc_server_log_servers(FCServerConfig *ctx)
