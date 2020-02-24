@@ -45,7 +45,8 @@ int common_blocked_queue_init_ex(struct common_blocked_queue *queue,
 
 void common_blocked_queue_destroy(struct common_blocked_queue *queue);
 
-static inline void common_blocked_queue_terminate(struct common_blocked_queue *queue)
+static inline void common_blocked_queue_terminate(
+        struct common_blocked_queue *queue)
 {
     pthread_cond_signal(&(queue->cond));
 }
@@ -65,15 +66,26 @@ int common_blocked_queue_push(struct common_blocked_queue *queue, void *data);
 void *common_blocked_queue_pop_ex(struct common_blocked_queue *queue,
         const bool blocked);
 
-static inline void *common_blocked_queue_pop(struct common_blocked_queue *queue)
-{
-    return common_blocked_queue_pop_ex(queue, true);
-}
+#define common_blocked_queue_pop(queue) \
+    common_blocked_queue_pop_ex(queue, true)
 
-static inline void *common_blocked_queue_try_pop(struct common_blocked_queue *queue)
-{
-    return common_blocked_queue_pop_ex(queue, false);
-}
+#define common_blocked_queue_try_pop(queue) \
+    common_blocked_queue_pop_ex(queue, false)
+
+struct common_blocked_node *common_blocked_queue_pop_all_nodes_ex(
+        struct common_blocked_queue *queue, const bool blocked);
+
+#define common_blocked_queue_pop_all_nodes(queue)  \
+    common_blocked_queue_pop_all_nodes_ex(queue, true)
+
+#define common_blocked_queue_try_pop_all_nodes(queue)  \
+    common_blocked_queue_pop_all_nodes_ex(queue, false)
+
+#define common_blocked_queue_free_one_node(queue, node) \
+    fast_mblock_free_object(&queue->mblock, node)
+
+void common_blocked_queue_free_all_nodes(struct common_blocked_queue *queue,
+        struct common_blocked_node *node);
 
 #ifdef __cplusplus
 }

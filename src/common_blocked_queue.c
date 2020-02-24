@@ -161,3 +161,50 @@ void *common_blocked_queue_pop_ex(struct common_blocked_queue *queue,
 	return data;
 }
 
+struct common_blocked_node *common_blocked_queue_pop_all_nodes_ex(
+        struct common_blocked_queue *queue, const bool blocked)
+{
+    struct common_blocked_node *node;
+	int result;
+
+	if ((result=pthread_mutex_lock(&(queue->lock))) != 0)
+	{
+		logError("file: "__FILE__", line: %d, "
+			"call pthread_mutex_lock fail, "
+			"errno: %d, error info: %s",
+			__LINE__, result, STRERROR(result));
+		return NULL;
+	}
+
+    if (queue->head == NULL)
+    {
+        if (blocked)
+        {
+            pthread_cond_wait(&(queue->cond), &(queue->lock));
+        }
+    }
+
+    node = queue->head;
+    queue->head = queue->tail = NULL;
+	if ((result=pthread_mutex_unlock(&(queue->lock))) != 0)
+	{
+		logError("file: "__FILE__", line: %d, "
+			"call pthread_mutex_unlock fail, "
+			"errno: %d, error info: %s",
+			__LINE__, result, STRERROR(result));
+	}
+
+	return node;
+}
+
+void common_blocked_queue_free_all_nodes(struct common_blocked_queue *queue,
+        struct common_blocked_node *node)
+{
+    struct common_blocked_node *deleted;
+
+    while (node != NULL) {
+        deleted = node;
+        node = node->next;
+        fast_mblock_free_object(&queue->mblock, deleted);
+    }
+}
