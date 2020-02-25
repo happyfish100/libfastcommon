@@ -13,6 +13,7 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <signal.h>
+#include <limits.h>
 #include <inttypes.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -1079,16 +1080,12 @@ bool isFile(const char *filename)
 void chopPath(char *filePath)
 {
 	int lastIndex;
-	if (*filePath == '\0')
-	{
-		return;
-	}
 
 	lastIndex = strlen(filePath) - 1;
-	if (filePath[lastIndex] == '/')
-	{
-		filePath[lastIndex] = '\0';
-	}
+	while (lastIndex >= 0 && filePath[lastIndex] == '/')
+    {
+        filePath[lastIndex--] = '\0';
+    }
 }
 
 int getFileContent(const char *filename, char **buff, int64_t *file_size)
@@ -1260,7 +1257,7 @@ int writeToFile(const char *filename, const char *buff, const int file_size)
 		return result;
 	}
 
-	if (write(fd, buff, file_size) != file_size)
+	if (fc_safe_write(fd, buff, file_size) != file_size)
 	{
 		result = errno != 0 ? errno : EIO;
 		logError("file: "__FILE__", line: %d, " \
@@ -1291,7 +1288,7 @@ int writeToFile(const char *filename, const char *buff, const int file_size)
 int safeWriteToFile(const char *filename, const char *buff, \
 		const int file_size)
 {
-	char tmpFilename[MAX_PATH_SIZE];
+	char tmpFilename[PATH_MAX];
 	int result;
 
 	snprintf(tmpFilename, sizeof(tmpFilename), "%s.tmp", filename);
