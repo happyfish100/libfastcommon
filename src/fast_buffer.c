@@ -42,17 +42,17 @@ void fast_buffer_destroy(FastBuffer *buffer)
     }
 }
 
-int fast_buffer_check(FastBuffer *buffer, const int inc_len)
+int fast_buffer_check_capacity(FastBuffer *buffer, const int capacity)
 {
     int alloc_size;
     char *buff;
 
-    if (buffer->alloc_size >= buffer->length + inc_len)
+    if (buffer->alloc_size >= capacity)
     {
         return 0;
     }
     alloc_size = buffer->alloc_size * 2;
-    while (alloc_size <= buffer->length + inc_len)
+    while (alloc_size <= capacity)
     {
         alloc_size *= 2;
     }
@@ -97,7 +97,7 @@ int fast_buffer_append(FastBuffer *buffer, const char *format, ...)
     }
     else  //maybe full, realloc and try again
     {
-        if ((result=fast_buffer_check(buffer, len)) == 0)
+        if ((result=fast_buffer_check(buffer, len + 1)) == 0)
         {
             va_start(ap, format);
             buffer->length += vsnprintf(buffer->data + buffer->length,
@@ -120,7 +120,7 @@ int fast_buffer_append_buff(FastBuffer *buffer, const char *data, const int len)
     {
         return 0;
     }
-    if ((result=fast_buffer_check(buffer, len)) != 0)
+    if ((result=fast_buffer_check(buffer, len + 1)) != 0)
     {
         return result;
     }

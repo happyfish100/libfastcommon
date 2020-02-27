@@ -26,7 +26,6 @@ int main(int argc, char *argv[])
     }
 	
 	log_init();
-
     if ((result=fc_server_load_from_file_ex(&ctx, config_filename,
                     default_port, min_hosts_each_group,
                     share_between_groups)) != 0)

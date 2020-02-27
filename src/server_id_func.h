@@ -180,8 +180,15 @@ ConnectionInfo *fc_server_check_connect_ex(FCAddressPtrArray *addr_array,
 #define fc_server_check_connect(addr_array, connect_timeout, err_no) \
     fc_server_check_connect_ex(addr_array, connect_timeout, NULL, true, err_no)
 
-
 void fc_server_disconnect(FCAddressPtrArray *addr_array);
+
+
+int fc_server_make_connection_ex(FCAddressPtrArray *addr_array,
+        ConnectionInfo *conn, const int connect_timeout,
+        const char *bind_ipaddr, const bool log_connect_error);
+
+#define fc_server_make_connection(addr_array, conn, connect_timeout) \
+    fc_server_make_connection_ex(addr_array, conn, connect_timeout, NULL, true)
 
 #ifdef __cplusplus
 }

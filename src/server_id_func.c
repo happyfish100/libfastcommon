@@ -1476,7 +1476,7 @@ ConnectionInfo *fc_server_check_connect_ex(FCAddressPtrArray *addr_array,
         return &(*current)->conn;
     }
 
-    if ((*err_no= conn_pool_connect_server_ex(&(*current)->conn,
+    if ((*err_no=conn_pool_connect_server_ex(&(*current)->conn,
                     connect_timeout, bind_ipaddr, log_connect_error)) == 0)
     {
         return &(*current)->conn;
@@ -1491,7 +1491,7 @@ ConnectionInfo *fc_server_check_connect_ex(FCAddressPtrArray *addr_array,
         if (addr == current) {
             continue;
         }
-        if ((*err_no= conn_pool_connect_server_ex(&(*addr)->conn,
+        if ((*err_no=conn_pool_connect_server_ex(&(*addr)->conn,
                         connect_timeout, bind_ipaddr,
                         log_connect_error)) == 0)
         {
@@ -1512,4 +1512,49 @@ void fc_server_disconnect(FCAddressPtrArray *addr_array)
         close((*current)->conn.sock);
         (*current)->conn.sock = -1;
     }
+}
+
+int fc_server_make_connection_ex(FCAddressPtrArray *addr_array,
+        ConnectionInfo *conn, const int connect_timeout,
+        const char *bind_ipaddr, const bool log_connect_error)
+{
+    FCAddressInfo **current;
+    FCAddressInfo **addr;
+    FCAddressInfo **end;
+    int result;
+
+    if (addr_array->count <= 0) {
+        return ENOENT;
+    }
+
+    current = addr_array->addrs + addr_array->index;
+    *conn = (*current)->conn;
+    conn->sock = -1;
+    if ((result=conn_pool_connect_server_ex(conn, connect_timeout,
+                    bind_ipaddr, log_connect_error)) == 0)
+    {
+        return 0;
+    }
+
+    if (addr_array->count == 1) {
+        return result;
+    }
+
+    end = addr_array->addrs + addr_array->count;
+    for (addr=addr_array->addrs; addr<end; addr++) {
+        if (addr == current) {
+            continue;
+        }
+
+        *conn = (*addr)->conn;
+        conn->sock = -1;
+        if ((result=conn_pool_connect_server_ex(conn, connect_timeout,
+                        bind_ipaddr, log_connect_error)) == 0)
+        {
+            addr_array->index = addr - addr_array->addrs;
+            return 0;
+        }
+    }
+
+    return result;
 }

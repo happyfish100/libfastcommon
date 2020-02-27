@@ -119,6 +119,8 @@ int conn_pool_connect_server_ex(ConnectionInfo *pConnection,
     {
         if ((result=socketBind2(domain, pConnection->sock, bind_ipaddr, 0)) != 0)
         {
+            close(pConnection->sock);
+            pConnection->sock = -1;
             return result;
         }
     }

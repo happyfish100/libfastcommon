@@ -2947,3 +2947,60 @@ int fc_delete_file_ex(const char *filename, const char *caption)
 
     return result;
 }
+
+bool fc_is_prime(const int n)
+{
+    int loop;
+    int i;
+
+    if (n <= 0)
+    {
+        return false;
+    }
+
+    loop = lround(sqrt((double)n));
+    for (i=2; i<=loop; i++)
+    {
+        if (n % i == 0)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+int fc_floor_prime(const int n)
+{
+    int start;
+    int i;
+
+    start =  (n % 2 == 0 ? n - 1 : n);
+    for (i = start; i > 0; i -= 2)
+    {
+      if (fc_is_prime(i))
+      {
+          return i;
+      }
+    }
+
+    return 1;
+}
+
+int fc_ceil_prime(const int n)
+{
+    int i;
+
+    if (n <= 0)
+    {
+        return 1;
+    }
+
+    i = (n % 2 == 0 ? n + 1 : n);
+    while (!fc_is_prime(i))
+    {
+        i += 2;
+    }
+
+    return i;
+}
