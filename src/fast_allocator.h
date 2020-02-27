@@ -139,6 +139,29 @@ return error no, 0 for success, != 0 fail
 int fast_allocator_retry_reclaim(struct fast_allocator_context *acontext,
 	int64_t *total_reclaim_bytes);
 
+char *fast_allocator_strdup_ex(struct fast_allocator_context *acontext,
+        const char *src, const int len);
+
+static inline char *fast_allocator_strdup(struct fast_allocator_context *
+        acontext, const char *src)
+{
+    return fast_allocator_strdup_ex(acontext, src, strlen(src));
+}
+
+static inline int fast_allocator_alloc_string_ex(struct fast_allocator_context
+        *acontext, string_t *dest, const char *src, const int len)
+{
+    dest->str = fast_allocator_strdup_ex(acontext, src, len);
+    dest->len = len;
+    return dest->str != NULL ? 0 : ENOMEM;
+}
+
+static inline int fast_allocator_alloc_string(struct fast_allocator_context
+        *acontext, string_t *dest, const string_t *src)
+{
+    return fast_allocator_alloc_string_ex(acontext, dest, src->str, src->len);
+}
+
 #ifdef __cplusplus
 }
 #endif

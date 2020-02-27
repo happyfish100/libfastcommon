@@ -11,6 +11,8 @@ Version 1.44  2020-02-27
   * add files: server_id_func.[hc]
   * common_blocked_queue support pop all nodes
   * shared_func.[hc]: add functions fc_floor_prime and fc_ceil_prime
+  * fast_mpool.[hc]: change function fast_mpool_strdup
+  * fast_allocator.[hc]: add function fast_allocator_strdup
 
 Version 1.43  2019-12-25
   * replace function call system to getExecResult,
