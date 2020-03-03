@@ -323,7 +323,7 @@ int getUserProcIds(const char *progName, const bool bAllOwners, \
 		
 		sprintf(fullpath, "%s/%s", path, dirp->d_name);
 		memset(&statbuf, 0, sizeof(statbuf));
-		if (lstat(fullpath, &statbuf)<0)
+		if (lstat(fullpath, &statbuf) < 0)
 		{
 			continue;
 		}
@@ -1238,6 +1238,22 @@ int getFileContentEx(const char *filename, char *buff, \
 	close(fd);
 
 	return 0;
+}
+
+int getFileSize(const char *filename, int64_t *file_size)
+{
+	struct stat buf;
+	if (stat(filename, &buf) != 0)
+	{
+		logError("file: "__FILE__", line: %d, "
+			"stat file %s fail, "
+			"errno: %d, error info: %s", __LINE__,
+			filename, errno, STRERROR(errno));
+		return errno != 0 ? errno : EIO;
+	}
+
+    *file_size = buf.st_size;
+    return 0;
 }
 
 int writeToFile(const char *filename, const char *buff, const int file_size)

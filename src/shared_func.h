@@ -546,6 +546,14 @@ int getFileContent(const char *filename, char **buff, int64_t *file_size);
 int getFileContentEx(const char *filename, char *buff, \
 		int64_t offset, int64_t *size);
 
+/** get file size
+ *  parameters:
+ *  	filename: the filename
+ *  	file_size: store the file size
+ *  return: error no , 0 success, != 0 fail
+*/
+int getFileSize(const char *filename, int64_t *file_size);
+
 /** write to file
  *  parameters:
  *  	filename: the filename to write
