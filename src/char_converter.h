@@ -24,6 +24,9 @@ extern "C" {
 #define FAST_CHAR_OP_ADD_BACKSLASH  1
 #define FAST_CHAR_OP_NO_BACKSLASH   2
 
+#define FAST_CHAR_MAKE_PAIR(pair, from, to) \
+    pair.src = from; pair.dest = to
+
 typedef struct fast_char_pair
 {
     unsigned char src;
@@ -47,6 +50,11 @@ typedef struct fast_char_converter
      * char table to convert
      * */
     FastCharTarget char_table[FAST_MAX_CHAR_COUNT];
+
+    /*
+     * char table to unescape
+     * */
+    FastCharTarget unescape_chars[FAST_MAX_CHAR_COUNT];
 } FastCharConverter;
 
 /**
@@ -132,6 +140,21 @@ void char_converter_set_pair_ex(FastCharConverter *pCharConverter,
 int fast_char_convert(FastCharConverter *pCharConverter,
         const char *input, const int input_len,
         char *output, int *out_len, const int out_size);
+
+#define fast_char_escape(pCharConverter, input, input_len, \
+        output, out_len, out_size)   \
+        fast_char_convert(pCharConverter, input, input_len, \
+        output, out_len, out_size)
+
+/**
+ *  char unescape function
+ *  parameters:
+ *           pCharConverter: the char converter
+ *           str: the string to unescape
+ *           len: the input string length and store the unscaped string length
+ *  return: converted char count
+*/
+int fast_char_unescape(FastCharConverter *pCharConverter, char *str, int *len);
 
 #ifdef __cplusplus
 }

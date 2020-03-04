@@ -20,7 +20,8 @@ int char_converter_init_ex(FastCharConverter *pCharConverter,
         const unsigned op)
 {
     int i;
-    unsigned char src;
+    unsigned char from;
+    unsigned char to;
     if (count > FAST_MAX_CHAR_COUNT)
     {
 		logError("file: "__FILE__", line: %d, "
@@ -33,10 +34,15 @@ int char_converter_init_ex(FastCharConverter *pCharConverter,
     pCharConverter->count = count;
     for (i=0; i<count; i++)
     {
-        src = charPairs[i].src;
-        pCharConverter->char_table[src].op = op;
-        pCharConverter->char_table[src].dest = charPairs[i].dest;
+        from = charPairs[i].src;
+        to = charPairs[i].dest;
+        pCharConverter->char_table[from].op = op;
+        pCharConverter->char_table[from].dest = to;
+
+        pCharConverter->unescape_chars[to].op = op;
+        pCharConverter->unescape_chars[to].dest = from;
     }
+
     return 0;
 }
 
@@ -67,14 +73,14 @@ int std_spaces_add_backslash_converter_init(FastCharConverter *pCharConverter)
 #define SPACE_CHAR_PAIR_COUNT2 8
     FastCharPair pairs[SPACE_CHAR_PAIR_COUNT2];
 
-    pairs[0].src = '\0'; pairs[0].dest = '0';
-    pairs[1].src = '\t'; pairs[1].dest = 't';
-    pairs[2].src = '\n'; pairs[2].dest = 'n';
-    pairs[3].src = '\v'; pairs[3].dest = 'v';
-    pairs[4].src = '\f'; pairs[4].dest = 'f';
-    pairs[5].src = '\r'; pairs[5].dest = 'r';
-    pairs[6].src = ' ';  pairs[6].dest = '-';
-    pairs[7].src = '\\'; pairs[7].dest = '\\';
+    FAST_CHAR_MAKE_PAIR(pairs[0], '\0', '0');
+    FAST_CHAR_MAKE_PAIR(pairs[1], '\t', 't');
+    FAST_CHAR_MAKE_PAIR(pairs[2], '\n', 'n');
+    FAST_CHAR_MAKE_PAIR(pairs[3], '\v', 'v');
+    FAST_CHAR_MAKE_PAIR(pairs[4], '\f', 'f');
+    FAST_CHAR_MAKE_PAIR(pairs[5], '\r', 'r');
+    FAST_CHAR_MAKE_PAIR(pairs[6], ' ',  's');
+    FAST_CHAR_MAKE_PAIR(pairs[7], '\\', '\\');
 
     return char_converter_init_ex(pCharConverter, pairs,
             SPACE_CHAR_PAIR_COUNT2, FAST_CHAR_OP_ADD_BACKSLASH);
@@ -142,7 +148,7 @@ int fast_char_convert(FastCharConverter *pCharConverter,
     out_size_sub1 = out_size - 1;
     for (; pi<end; pi++) {
         if (po - (unsigned char *)output >= out_size_sub1) {
-            logDebug("file: "__FILE__", line: %d, "
+            logWarning("file: "__FILE__", line: %d, "
                     "exceeds max size: %d", __LINE__, out_size);
             break;
         }
@@ -162,3 +168,47 @@ int fast_char_convert(FastCharConverter *pCharConverter,
     return count;
 }
 
+int fast_char_unescape(FastCharConverter *pCharConverter, char *str, int *len)
+{
+    int count;
+    unsigned char *backslash;
+    unsigned char *p;
+    unsigned char *end;
+    unsigned char *dest;
+
+    backslash = (unsigned char *)memchr(str, '\\', *len);
+    if (backslash == NULL) {
+        return 0;
+    }
+
+    count = 0;
+    end = (unsigned char *)str + *len;
+    p = dest = backslash;
+    while (p < end) {
+        if (*p == '\\') {
+            if (p + 1 < end) {
+                if (pCharConverter->unescape_chars[p[1]].op ==
+                        FAST_CHAR_OP_ADD_BACKSLASH)
+                {
+                    *dest++ = pCharConverter->unescape_chars[p[1]].dest;
+                    p += 2;
+                    ++count;
+                } else {
+                    *dest++ = *p++;
+                }
+            } else {
+                *dest++ = *p++;
+            }
+        } else if (pCharConverter->unescape_chars[*p].op ==
+                FAST_CHAR_OP_NO_BACKSLASH)
+        {
+            *dest++ = pCharConverter->unescape_chars[*p++].dest;
+            ++count;
+        } else {
+            *dest++ = *p++;
+        }
+    }
+
+    *len = dest - (unsigned char *)str;
+    return count;
+}
