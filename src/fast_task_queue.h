@@ -61,6 +61,7 @@ struct fast_task_info
 	TaskFinishCallback finish_callback;
 	struct nio_thread_data *thread_data;
 	struct fast_task_info *next;
+	void *ctx;  //context pointer for libserverframe nio
 };
 
 struct fast_task_queue
