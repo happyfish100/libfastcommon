@@ -8,7 +8,7 @@
 #include "fastcommon/logger.h"
 #include "fastcommon/shared_func.h"
 
-#define  LOOP  (200 * 1000)
+#define  LOOP  (2000 * 1000)
 
 int main(int argc, char *argv[])
 {

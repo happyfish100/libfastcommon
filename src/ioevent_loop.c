@@ -7,8 +7,8 @@ static void deal_ioevents(IOEventPoller *ioevent)
 	int event;
 	IOEventEntry *pEntry;
 
-	for (ioevent->iterator.index=0; ioevent->iterator.index < ioevent->iterator.
-            count; ioevent->iterator.index++)
+	for (ioevent->iterator.index=0; ioevent->iterator.index < ioevent->
+            iterator.count; ioevent->iterator.index++)
 	{
 		event = IOEVENT_GET_EVENTS(ioevent, ioevent->iterator.index);
 		pEntry = (IOEventEntry *)IOEVENT_GET_DATA(ioevent,
@@ -18,7 +18,8 @@ static void deal_ioevents(IOEventPoller *ioevent)
         }
         else {
             logDebug("file: "__FILE__", line: %d, "
-                    "ignore iovent : %d, index: %d", __LINE__, event, ioevent->iterator.index);
+                    "ignore iovent : %d, index: %d",
+                    __LINE__, event, ioevent->iterator.index);
         }
 	}
 }
@@ -100,6 +101,7 @@ int ioevent_loop(struct nio_thread_data *pThreadData,
 	memset(&ev_notify, 0, sizeof(ev_notify));
 	ev_notify.fd = pThreadData->pipe_fds[0];
 	ev_notify.callback = recv_notify_callback;
+	ev_notify.timer.data = pThreadData;
 	if (ioevent_attach(&pThreadData->ev_puller,
 		pThreadData->pipe_fds[0], IOEVENT_READ,
 		&ev_notify) != 0)
@@ -116,7 +118,8 @@ int ioevent_loop(struct nio_thread_data *pThreadData,
 	last_check_time = g_current_time;
 	while (*continue_flag)
 	{
-		pThreadData->ev_puller.iterator.count = ioevent_poll(&pThreadData->ev_puller);
+		pThreadData->ev_puller.iterator.count = ioevent_poll(
+                &pThreadData->ev_puller);
 		if (pThreadData->ev_puller.iterator.count > 0)
 		{
 			deal_ioevents(&pThreadData->ev_puller);

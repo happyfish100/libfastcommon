@@ -30,6 +30,8 @@ typedef void (*TaskCleanUpCallback) (struct fast_task_info *pTask);
 
 typedef void (*IOEventCallback) (int sock, short event, void *arg);
 
+struct fast_task_info;
+
 typedef struct ioevent_entry
 {
 	int fd;
@@ -41,10 +43,15 @@ struct nio_thread_data
 {
 	struct ioevent_puller ev_puller;
 	struct fast_timer timer;
-	int pipe_fds[2];
+	int pipe_fds[2];   //for notify
 	struct fast_task_info *deleted_list;
 	ThreadLoopCallback thread_loop_callback;
 	void *arg;   //extra argument pointer
+    struct {
+        struct fast_task_info *head;
+        struct fast_task_info *tail;
+        pthread_mutex_t lock;
+    } waiting_queue;
 };
 
 struct fast_task_info
