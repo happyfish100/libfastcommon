@@ -44,7 +44,7 @@ struct nio_thread_data
 	struct ioevent_puller ev_puller;
 	struct fast_timer timer;
 	int pipe_fds[2];   //for notify
-	struct fast_task_info *deleted_list;
+	struct fast_task_info *deleted_list;   //tasks for cleanup
 	ThreadLoopCallback thread_loop_callback;
 	void *arg;   //extra argument pointer
     struct {
@@ -64,6 +64,7 @@ struct fast_task_info
 	int length; //data length
 	int offset; //current offset
     char nio_stage;  //stage for network IO
+    bool canceled;   //if task canceled
 	int64_t req_count; //request count
 	TaskFinishCallback finish_callback;
 	struct nio_thread_data *thread_data;

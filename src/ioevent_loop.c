@@ -77,16 +77,6 @@ static void deal_timeouts(FastTimerEntry *head)
 	}
 }
 
-void iovent_add_to_deleted_list(struct fast_task_info *pTask)
-{
-    if (pTask->thread_data == NULL) {
-        return;
-    }
-
-    pTask->next = pTask->thread_data->deleted_list;
-    pTask->thread_data->deleted_list = pTask;
-}
-
 int ioevent_loop(struct nio_thread_data *pThreadData,
 	IOEventCallback recv_notify_callback, TaskCleanUpCallback
 	clean_up_callback, volatile bool *continue_flag)
@@ -94,7 +84,7 @@ int ioevent_loop(struct nio_thread_data *pThreadData,
 	int result;
 	IOEventEntry ev_notify;
 	FastTimerEntry head;
-	struct fast_task_info *pTask;
+	struct fast_task_info *task;
 	time_t last_check_time;
 	int count;
 
@@ -142,13 +132,13 @@ int ioevent_loop(struct nio_thread_data *pThreadData,
 			count = 0;
 			while (pThreadData->deleted_list != NULL)
 			{
-				pTask = pThreadData->deleted_list;
-				pThreadData->deleted_list = pTask->next;
+				task = pThreadData->deleted_list;
+				pThreadData->deleted_list = task->next;
 
-				clean_up_callback(pTask);
+				clean_up_callback(task);
 				count++;
 			}
-			logDebug("cleanup task count: %d", count);
+			//logInfo("cleanup task count: %d", count);
 		}
 
 		if (g_current_time - last_check_time > 0)
@@ -170,16 +160,16 @@ int ioevent_loop(struct nio_thread_data *pThreadData,
 	return 0;
 }
 
-int ioevent_set(struct fast_task_info *pTask, struct nio_thread_data *pThread,
+int ioevent_set(struct fast_task_info *task, struct nio_thread_data *pThread,
 	int sock, short event, IOEventCallback callback, const int timeout)
 {
 	int result;
 
-	pTask->thread_data = pThread;
-	pTask->event.fd = sock;
-	pTask->event.callback = callback;
+	task->thread_data = pThread;
+	task->event.fd = sock;
+	task->event.callback = callback;
 	if (ioevent_attach(&pThread->ev_puller,
-		sock, event, pTask) < 0)
+		sock, event, task) < 0)
 	{
 		result = errno != 0 ? errno : ENOENT;
 		logError("file: "__FILE__", line: %d, " \
@@ -189,9 +179,9 @@ int ioevent_set(struct fast_task_info *pTask, struct nio_thread_data *pThread,
 		return result;
 	}
 
-	pTask->event.timer.data = pTask;
-	pTask->event.timer.expires = g_current_time + timeout;
-	result = fast_timer_add(&pThread->timer, &pTask->event.timer);
+	task->event.timer.data = task;
+	task->event.timer.expires = g_current_time + timeout;
+	result = fast_timer_add(&pThread->timer, &task->event.timer);
 	if (result != 0)
 	{
 		logError("file: "__FILE__", line: %d, " \

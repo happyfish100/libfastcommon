@@ -17,7 +17,23 @@ int ioevent_remove(IOEventPoller *ioevent, void *data);
 int ioevent_set(struct fast_task_info *pTask, struct nio_thread_data *pThread,
 	int sock, short event, IOEventCallback callback, const int timeout);
 
-void iovent_add_to_deleted_list(struct fast_task_info *pTask);
+static inline void iovent_add_to_deleted_list(struct fast_task_info *task)
+{
+    if (task->thread_data == NULL)
+    {
+        return;
+    }
+
+    if (task->canceled) {
+        logError("file: "__FILE__", line: %d, "
+                "task %p already canceled", __LINE__, task);
+        return;
+    }
+
+    task->canceled = true;
+    task->next = task->thread_data->deleted_list;
+    task->thread_data->deleted_list = task;
+}
 
 #ifdef __cplusplus
 }
