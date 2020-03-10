@@ -152,6 +152,14 @@ int ioevent_loop(struct nio_thread_data *pThreadData,
 			}
 		}
 
+        if (pThreadData->notify.enabled) {
+            int64_t n;
+            if ((n=__sync_fetch_and_add(&pThreadData->notify.counter, 0)) != 0) {
+                logInfo("file: "__FILE__", line: %d, "
+                        "n ==== %"PRId64, __LINE__, n);
+                __sync_fetch_and_sub(&pThreadData->notify.counter, n);
+            }
+        }
         if (pThreadData->thread_loop_callback != NULL) {
             pThreadData->thread_loop_callback(pThreadData);
         }

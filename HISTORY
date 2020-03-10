@@ -1,5 +1,5 @@
 
-Version 1.44  2020-03-09
+Version 1.44  2020-03-10
   * add test file src/tests/test_pthread_lock.c
   * add uniq_skiplist.[hc]
   * add function split_string_ex
@@ -18,6 +18,7 @@ Version 1.44  2020-03-09
   * struct fast_task_info add ctx pointer for libserverframe nio
   * struct thread_data add waiting_queue for Linux eventfd notify
   * struct fast_task_info add canceled field for complicated thread model
+  * nio_thread_data support thread notify
 
 Version 1.43  2019-12-25
   * replace function call system to getExecResult,

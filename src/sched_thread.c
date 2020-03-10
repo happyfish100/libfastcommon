@@ -438,7 +438,7 @@ static void *sched_thread_entrance(void *args)
 
 		exec_count = 0;
 		pCurrent = pContext->head;
-		while (*(pContext->pcontinue_flag) && (pCurrent != NULL \
+		while (*(pContext->pcontinue_flag) && (pCurrent != NULL
 			&& pCurrent->next_call_time <= g_current_time))
 		{
 			//logInfo("exec task id: %d", pCurrent->id);

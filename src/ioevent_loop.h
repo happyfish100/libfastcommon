@@ -35,6 +35,28 @@ static inline void iovent_add_to_deleted_list(struct fast_task_info *task)
     task->thread_data->deleted_list = task;
 }
 
+static inline int iovent_notify_thread(struct nio_thread_data *thread_data)
+{
+    int64_t n;
+    int result;
+
+    if (__sync_fetch_and_add(&thread_data->notify.counter, 1) == 0)
+    {
+        n = 1;
+        if (write(FC_NOTIFY_WRITE_FD(thread_data), &n, sizeof(n)) != sizeof(n))
+        {
+            result = errno != 0 ? errno : EIO;
+            logError("file: "__FILE__", line: %d, "
+                    "write to fd %d fail, errno: %d, error info: %s",
+                    __LINE__, FC_NOTIFY_WRITE_FD(thread_data),
+                    result, STRERROR(result));
+            return result;
+        }
+    }
+
+    return 0;
+}
+
 #ifdef __cplusplus
 }
 #endif

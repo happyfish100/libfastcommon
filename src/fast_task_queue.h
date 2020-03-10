@@ -19,6 +19,9 @@
 #include "ioevent.h"
 #include "fast_timer.h"
 
+#define FC_NOTIFY_READ_FD(tdata)  (tdata)->pipe_fds[0]
+#define FC_NOTIFY_WRITE_FD(tdata) (tdata)->pipe_fds[1]
+
 #define ALIGNED_TASK_INFO_SIZE  MEM_ALIGN(sizeof(struct fast_task_info))
 
 struct nio_thread_data;
@@ -51,7 +54,12 @@ struct nio_thread_data
         struct fast_task_info *head;
         struct fast_task_info *tail;
         pthread_mutex_t lock;
-    } waiting_queue;
+    } waiting_queue;  //task queue
+
+    struct {
+        bool enabled;
+        volatile int64_t counter;
+    } notify;  //for thread notify
 };
 
 struct fast_task_info
