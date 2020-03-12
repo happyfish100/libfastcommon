@@ -26,7 +26,15 @@ int init_pthread_attr(pthread_attr_t *pattr, const int stack_size);
 
 int create_work_threads(int *count, void *(*start_func)(void *),
 		void **args, pthread_t *tids, const int stack_size);
+
+int create_work_threads_ex(int *count, void *(*start_func)(void *),
+		void *args, const int elment_size, pthread_t *tids,
+        const int stack_size);
+
 int kill_work_threads(pthread_t *tids, const int count);
+
+int fc_create_thread(pthread_t *tid, void *(*start_func)(void *),
+        void *args, const int stack_size);
 
 #ifdef __cplusplus
 }
