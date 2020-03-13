@@ -919,6 +919,14 @@ int fc_floor_prime(const int n);
 */
 int fc_ceil_prime(const int n);
 
+/** init buffer
+ *  parameters:
+ *      buffer: the buffer to init
+ *      buffer_size: the buffer size
+ *  return: error no, 0 success, != 0 fail
+*/
+int fc_init_buffer(BufferInfo *buffer, const int buffer_size);
+
 #ifdef __cplusplus
 }
 #endif

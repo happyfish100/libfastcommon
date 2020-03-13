@@ -3020,3 +3020,17 @@ int fc_ceil_prime(const int n)
 
     return i;
 }
+
+int fc_init_buffer(BufferInfo *buffer, const int buffer_size)
+{
+    buffer->buff = (char *)malloc(buffer_size);
+    if (buffer->buff == NULL)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "malloc %d bytes fail", __LINE__, buffer_size);
+        return ENOMEM;
+    }
+    buffer->alloc_size = buffer_size;
+    buffer->length = 0;
+    return 0;
+}
