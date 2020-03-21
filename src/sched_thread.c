@@ -33,7 +33,7 @@ static int sched_dup_array(const ScheduleArray *pSrcArray,
 
 static int sched_cmp_by_next_call_time(const void *p1, const void *p2)
 {
-	return ((ScheduleEntry *)p1)->next_call_time - \
+	return ((ScheduleEntry *)p1)->next_call_time -
 			((ScheduleEntry *)p2)->next_call_time;
 }
 
@@ -44,6 +44,7 @@ static int sched_init_entries(ScheduleArray *pScheduleArray)
 	time_t time_base;
 	struct tm tm_current;
 	struct tm tm_base;
+    time_t current_time;
     int remain;
     int interval;
 
@@ -59,8 +60,8 @@ static int sched_init_entries(ScheduleArray *pScheduleArray)
 		return 0;
 	}
 
-	g_current_time = time(NULL);
-	localtime_r((time_t *)&g_current_time, &tm_current);
+	current_time = time(NULL);
+	localtime_r((time_t *)&current_time, &tm_current);
 	pEnd = pScheduleArray->entries + pScheduleArray->count;
 	for (pEntry=pScheduleArray->entries; pEntry<pEnd; pEntry++)
 	{
@@ -79,20 +80,20 @@ static int sched_init_entries(ScheduleArray *pScheduleArray)
 
 		if (pEntry->time_base.hour == TIME_NONE)
 		{
-			pEntry->next_call_time = g_current_time + \
+			pEntry->next_call_time = current_time +
 						pEntry->interval;
 		}
 		else
 		{
-			if (tm_current.tm_hour > pEntry->time_base.hour || \
-				(tm_current.tm_hour == pEntry->time_base.hour \
+			if (tm_current.tm_hour > pEntry->time_base.hour ||
+				(tm_current.tm_hour == pEntry->time_base.hour
 				&& tm_current.tm_min >= pEntry->time_base.minute))
-			{
-				memcpy(&tm_base, &tm_current, sizeof(struct tm));
-			}
+            {
+                tm_base = tm_current;
+            }
 			else
 			{
-				time_base = g_current_time - 24 * 3600;
+				time_base = current_time - 24 * 3600;
 				localtime_r(&time_base, &tm_base);
 			}
 
@@ -107,7 +108,7 @@ static int sched_init_entries(ScheduleArray *pScheduleArray)
                 tm_base.tm_sec = 0;
             }
 			time_base = mktime(&tm_base);
-            remain = g_current_time - time_base;
+            remain = current_time - time_base;
             if (remain > 0)
             {
                 interval = pEntry->interval - remain % pEntry->interval;
@@ -121,20 +122,20 @@ static int sched_init_entries(ScheduleArray *pScheduleArray)
                 interval = 0;
             }
 
-			pEntry->next_call_time = g_current_time + interval;
+			pEntry->next_call_time = current_time + interval;
 		}
 
-		/*
+        /*
 		{
 			char buff1[32];
 			char buff2[32];
-			logInfo("id=%d, current time=%s, first call time=%s\n", \
-				pEntry->id, formatDatetime(g_current_time, \
-				"%Y-%m-%d %H:%M:%S", buff1, sizeof(buff1)), \
-				formatDatetime(pEntry->next_call_time, \
+			logInfo("id=%d, current time=%s, first call time=%s",
+				pEntry->id, formatDatetime(current_time,
+				"%Y-%m-%d %H:%M:%S", buff1, sizeof(buff1)),
+				formatDatetime(pEntry->next_call_time,
 				"%Y-%m-%d %H:%M:%S", buff2, sizeof(buff2)));
 		}
-		*/
+        */
 	}
 
 	return 0;
@@ -153,7 +154,7 @@ static void sched_make_chain(ScheduleContext *pContext)
 		return;
 	}
 
-	qsort(pScheduleArray->entries, pScheduleArray->count, \
+	qsort(pScheduleArray->entries, pScheduleArray->count,
 		sizeof(ScheduleEntry), sched_cmp_by_next_call_time);
 
 	pContext->head = pScheduleArray->entries;
@@ -210,10 +211,11 @@ static int print_all_sched_entries(ScheduleArray *pScheduleArray)
                 pEntry->time_base.minute, pEntry->time_base.second);
         }
         logInfo("id: %u, time_base: %s, interval: %d, "
-                "new_thread: %s, task_func: %p, args: %p",
-                pEntry->id, timebase, pEntry->interval,
-                pEntry->new_thread ? "true" : "false",
-                pEntry->task_func, pEntry->func_args);
+                "new_thread: %s, task_func: %p, args: %p, "
+                "next_call_time: %d", pEntry->id, timebase,
+                pEntry->interval, pEntry->new_thread ? "true" : "false",
+                pEntry->task_func, pEntry->func_args,
+                (int)pEntry->next_call_time);
     }
 
     free(sortedByIdArray.entries);
@@ -313,17 +315,15 @@ static int do_check_waiting(ScheduleContext *pContext)
 			pSchedEntry++)
 		{
 			if (pWaitingEntry->id == pSchedEntry->id)
-			{
-				memcpy(pSchedEntry, pWaitingEntry, \
-					sizeof(ScheduleEntry));
-				break;
-			}
+            {
+                *pSchedEntry = *pWaitingEntry;
+                break;
+            }
 		}
 
 		if (pSchedEntry == pSchedEnd)
 		{
-			memcpy(pSchedEntry, pWaitingEntry, \
-				sizeof(ScheduleEntry));
+			*pSchedEntry = *pWaitingEntry;
 			newCount++;
 		}
 	}
@@ -418,6 +418,11 @@ static void *sched_thread_entrance(void *args)
 			continue;
 		}
 
+        /*
+        logInfo("task count: %d, next_call_time: %d, g_current_time: %d",
+                pContext->scheduleArray.count,
+                (int)pContext->head->next_call_time, (int)g_current_time);
+                */
         while (pContext->head->next_call_time > g_current_time &&
                 *(pContext->pcontinue_flag))
         {
@@ -568,6 +573,7 @@ static int sched_dup_array(const ScheduleArray *pSrcArray, \
 	return 0;
 }
 
+/*
 static int sched_append_array(const ScheduleArray *pSrcArray, \
 		ScheduleArray *pDestArray)
 {
@@ -605,38 +611,46 @@ static int sched_append_array(const ScheduleArray *pSrcArray, \
 	pDestArray->count += pSrcArray->count;
 	return 0;
 }
+*/
 
 int sched_add_entries(const ScheduleArray *pScheduleArray)
 {
-	int result;
+    int result;
+    ScheduleArray temp_schedule_array;
 
-	if (pScheduleArray->count == 0)
-	{
-		logDebug("file: "__FILE__", line: %d, " \
-			"no schedule entry", __LINE__);
-		return ENOENT;
-	}
+    if (pScheduleArray->count == 0)
+    {
+        logDebug("file: "__FILE__", line: %d, "
+                "no schedule entry", __LINE__);
+        return ENOENT;
+    }
+
+    if ((result=sched_dup_array(pScheduleArray,
+                    &temp_schedule_array)) != 0)
+    {
+        return result;
+    }
+    if ((result=sched_init_entries(&temp_schedule_array)) != 0)
+    {
+        return result;
+    }
 
     if (waiting_schedule_array.entries != NULL)
     {
         if (g_schedule_flag)
         {
-    	    while (waiting_schedule_array.entries != NULL)
-	        {
-	        	logDebug("file: "__FILE__", line: %d, " \
-			        "waiting for schedule array ready ...", __LINE__);
-	        	sleep(1);
-	        }
+            while (waiting_schedule_array.entries != NULL)
+            {
+                logDebug("file: "__FILE__", line: %d, "
+                        "waiting for schedule array ready ...", __LINE__);
+                sleep(1);
+            }
         }
     }
 
-	if ((result=sched_append_array(pScheduleArray,
-                    &waiting_schedule_array)) != 0)
-	{
-		return result;
-	}
-
-	return sched_init_entries(&waiting_schedule_array);
+    waiting_schedule_array.entries = temp_schedule_array.entries;
+    waiting_schedule_array.count = temp_schedule_array.count;
+    return 0;
 }
 
 int sched_del_entry(const int id)
