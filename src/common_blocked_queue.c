@@ -65,7 +65,8 @@ int common_blocked_queue_push(struct common_blocked_queue *queue, void *data)
 		return result;
 	}
 
-    node = (struct common_blocked_node *)fast_mblock_alloc_object(&queue->mblock);
+    node = (struct common_blocked_node *)fast_mblock_alloc_object(
+            &queue->mblock);
     if (node == NULL)
     {
         pthread_mutex_unlock(&(queue->lock));
@@ -202,9 +203,11 @@ void common_blocked_queue_free_all_nodes(struct common_blocked_queue *queue,
 {
     struct common_blocked_node *deleted;
 
+    pthread_mutex_lock(&(queue->lock));
     while (node != NULL) {
         deleted = node;
         node = node->next;
         fast_mblock_free_object(&queue->mblock, deleted);
     }
+    pthread_mutex_unlock(&(queue->lock));
 }
