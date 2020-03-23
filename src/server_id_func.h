@@ -182,6 +182,8 @@ ConnectionInfo *fc_server_check_connect_ex(FCAddressPtrArray *addr_array,
 
 void fc_server_disconnect(FCAddressPtrArray *addr_array);
 
+const FCAddressInfo *fc_server_get_address_by_peer(
+        FCAddressPtrArray *addr_array, const char *peer_ip);
 
 int fc_server_make_connection_ex(FCAddressPtrArray *addr_array,
         ConnectionInfo *conn, const int connect_timeout,

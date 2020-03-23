@@ -1558,3 +1558,28 @@ int fc_server_make_connection_ex(FCAddressPtrArray *addr_array,
 
     return result;
 }
+
+const FCAddressInfo *fc_server_get_address_by_peer(
+        FCAddressPtrArray *addr_array, const char *peer_ip)
+{
+    FCAddressInfo **addr;
+    FCAddressInfo **end;
+    int net_type;
+
+    if (addr_array->count == 1) {
+        return *(addr_array->addrs);
+    }
+    if (addr_array->count == 0) {
+        return NULL;
+    }
+
+    net_type = fc_get_net_type_by_ip(peer_ip);
+    end = addr_array->addrs + addr_array->count;
+    for (addr=addr_array->addrs; addr<end; addr++) {
+        if ((*addr)->net_type == net_type) {
+            return *addr;
+        }
+    }
+
+    return *(addr_array->addrs);
+}

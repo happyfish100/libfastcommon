@@ -63,6 +63,9 @@ static inline void common_blocked_queue_terminate_all(
 
 int common_blocked_queue_push(struct common_blocked_queue *queue, void *data);
 
+void common_blocked_queue_return_nodes(struct common_blocked_queue *queue,
+        struct common_blocked_node *node);
+
 void *common_blocked_queue_pop_ex(struct common_blocked_queue *queue,
         const bool blocked);
 

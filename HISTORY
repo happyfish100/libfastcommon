@@ -1,5 +1,5 @@
 
-Version 1.44  2020-03-22
+Version 1.44  2020-03-23
   * add test file src/tests/test_pthread_lock.c
   * add uniq_skiplist.[hc]
   * add function split_string_ex
@@ -21,6 +21,7 @@ Version 1.44  2020-03-22
   * nio_thread_data support thread notify
   * pthread_func.[hc] add functions: create_work_threads_ex and fc_create_thread
   * sched_add_entries use temp ScheduleArray for rare case
+  * add function common_blocked_queue_return_nodes
 
 Version 1.43  2019-12-25
   * replace function call system to getExecResult,

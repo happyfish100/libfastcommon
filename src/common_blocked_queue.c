@@ -104,6 +104,31 @@ int common_blocked_queue_push(struct common_blocked_queue *queue, void *data)
 	return 0;
 }
 
+void common_blocked_queue_return_nodes(struct common_blocked_queue *queue,
+        struct common_blocked_node *node)
+{
+    struct common_blocked_node *last;
+
+    if (node == NULL)
+    {
+        return;
+    }
+
+    last = node;
+    while (last->next != NULL) {
+        last = last->next;
+    }
+
+    pthread_mutex_lock(&(queue->lock));
+    last->next = queue->head;
+    queue->head = node;
+    if (queue->tail == NULL)
+    {
+        queue->tail = last;
+    }
+    pthread_mutex_unlock(&(queue->lock));
+}
+
 void *common_blocked_queue_pop_ex(struct common_blocked_queue *queue,
         const bool blocked)
 {
