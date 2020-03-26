@@ -61,7 +61,27 @@ static inline void common_blocked_queue_terminate_all(
     }
 }
 
-int common_blocked_queue_push(struct common_blocked_queue *queue, void *data);
+//notify by the caller
+int common_blocked_queue_push_ex(struct common_blocked_queue *queue,
+        void *data, bool *notify);
+
+static inline int common_blocked_queue_push(struct common_blocked_queue
+        *queue, void *data)
+{
+    bool notify;
+    int result;
+
+    if ((result=common_blocked_queue_push_ex(queue, data, &notify)) == 0)
+    {
+        if (notify)
+        {
+            pthread_cond_signal(&(queue->cond));
+        }
+    }
+
+    return result;
+}
+
 
 void common_blocked_queue_return_nodes(struct common_blocked_queue *queue,
         struct common_blocked_node *node);

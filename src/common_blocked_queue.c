@@ -50,11 +50,11 @@ void common_blocked_queue_destroy(struct common_blocked_queue *queue)
     pthread_mutex_destroy(&(queue->lock));
 }
 
-int common_blocked_queue_push(struct common_blocked_queue *queue, void *data)
+int common_blocked_queue_push_ex(struct common_blocked_queue *queue,
+        void *data, bool *notify)
 {
 	int result;
     struct common_blocked_node *node;
-    bool notify;
 
 	if ((result=pthread_mutex_lock(&(queue->lock))) != 0)
 	{
@@ -75,16 +75,15 @@ int common_blocked_queue_push(struct common_blocked_queue *queue, void *data)
 
 	node->data = data;
 	node->next = NULL;
-
 	if (queue->tail == NULL)
 	{
 		queue->head = node;
-        notify = true;
+        *notify = true;
 	}
 	else
 	{
 		queue->tail->next = node;
-        notify = false;
+        *notify = false;
 	}
 	queue->tail = node;
 
@@ -95,11 +94,6 @@ int common_blocked_queue_push(struct common_blocked_queue *queue, void *data)
 			"errno: %d, error info: %s", \
 			__LINE__, result, STRERROR(result));
 	}
-
-    if (notify)
-    {
-        pthread_cond_signal(&(queue->cond));
-    }
 
 	return 0;
 }
