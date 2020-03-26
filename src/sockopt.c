@@ -768,6 +768,38 @@ in_addr_t getIpaddr(getnamefunc getname, int sock, \
 	return ((struct sockaddr_in *)&addr)->sin_addr.s_addr;  //DO NOT support IPv6
 }
 
+int getIpAndPort(getnamefunc getname, int sock,
+		char *buff, const int bufferSize, int *port)
+{
+	struct sockaddr addr;
+	socklen_t addrlen;
+
+	memset(&addr, 0, sizeof(addr));
+	addrlen = sizeof(addr);
+
+	if (getname(sock, &addr, &addrlen) != 0)
+	{
+		*buff = '\0';
+		return errno != 0 ? errno : EINVAL;
+	}
+
+	if (addrlen > 0)
+	{
+        fc_inet_ntop(&addr, buff, bufferSize);
+	}
+	else
+	{
+		*buff = '\0';
+	}
+
+    if (addr.sa_family == AF_INET) {
+        *port = ntohs(((struct sockaddr_in *)&addr)->sin_port);
+    } else {
+        *port = ntohs(((struct sockaddr_in6 *)&addr)->sin6_port);
+    }
+	return 0;
+}
+
 char *getHostnameByIp(const char *szIpAddr, char *buff, const int bufferSize)
 {
 	struct hostent *ent;

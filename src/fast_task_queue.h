@@ -71,6 +71,7 @@ struct fast_task_info
 	int size;   //alloc size
 	int length; //data length
 	int offset; //current offset
+    uint16_t port; //client port
     char nio_stage;  //stage for network IO
     bool canceled;   //if task canceled
 	int64_t req_count; //request count
@@ -115,6 +116,10 @@ int free_queue_set_buffer_size(struct fast_task_info *pTask,
         const int expect_size);
 int free_queue_realloc_buffer(struct fast_task_info *pTask,
         const int expect_size);
+
+int free_queue_set_max_buffer_size(struct fast_task_info *pTask);
+
+int free_queue_realloc_max_buffer(struct fast_task_info *pTask);
 
 int task_queue_init(struct fast_task_queue *pQueue);
 int task_queue_push(struct fast_task_queue *pQueue, \

@@ -52,7 +52,8 @@ int main(int argc, char *argv[])
                 return result;
             }
         }
-        printf("child done, time used: %"PRId64" ms\n", get_current_time_ms() - start_time);
+        printf("child done, LOOP: %d, time used: %"PRId64" ms\n",
+                LOOP, get_current_time_ms() - start_time);
     } else {
         printf("the child proccess: %d\n", pid);
         start_time = get_current_time_ms();
@@ -68,8 +69,9 @@ int main(int argc, char *argv[])
             }
         }
 
-        printf("parent done, time used: %"PRId64" ms\n", get_current_time_ms() - start_time);
-        sleep(5);
+        printf("parent done, LOOP: %d, time used: %"PRId64" ms\n",
+                LOOP, get_current_time_ms() - start_time);
+        sleep(1);
     }
 
     return 0;

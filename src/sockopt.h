@@ -92,6 +92,12 @@ typedef int (*tcprecvdata_exfunc)(int sock, void *data, const int size, \
 #define getPeerIpaddr(sock, buff, bufferSize) \
 	getIpaddr(getpeername, sock, buff, bufferSize)
 
+#define getSockIpAddPort(sock, buff, bufferSize, port) \
+	getIpAndPort(getsockname, sock, buff, bufferSize, port)
+
+#define getPeerIpAddPort(sock, buff, bufferSize, port) \
+	getIpAndPort(getpeername, sock, buff, bufferSize, port)
+
 /** get a line from socket
  *  parameters:
  *          sock: the socket
@@ -259,6 +265,18 @@ int tcpprintkeepalive(int fd);
 */
 in_addr_t getIpaddr(getnamefunc getname, int sock, \
 		char *buff, const int bufferSize);
+
+/** get ip address
+ *  parameters:
+ *          getname: the function name, should be getpeername or getsockname
+ *          sock: the socket
+ *          buff: buffer to store the ip address
+ *          bufferSize: the buffer size (max bytes)
+ *          port: return the port
+ *  return: error no, 0 success, != 0 fail
+*/
+int getIpAndPort(getnamefunc getname, int sock,
+		char *buff, const int bufferSize, int *port);
 
 /** get hostname by it's ip address
  *  parameters:

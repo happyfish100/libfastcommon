@@ -538,6 +538,17 @@ int free_queue_realloc_buffer(struct fast_task_info *pTask,
     return task_queue_realloc_buffer(&g_free_queue, pTask, expect_size);
 }
 
+int free_queue_set_max_buffer_size(struct fast_task_info *pTask)
+{
+    return task_queue_set_buffer_size(&g_free_queue, pTask,
+            g_free_queue.max_buff_size);
+}
+
+int free_queue_realloc_max_buffer(struct fast_task_info *pTask)
+{
+    return task_queue_realloc_buffer(&g_free_queue, pTask,
+            g_free_queue.max_buff_size);
+}
 int task_queue_push(struct fast_task_queue *pQueue, \
 		struct fast_task_info *pTask)
 {
@@ -716,4 +727,3 @@ int task_queue_realloc_buffer(struct fast_task_queue *pQueue,
 
     return _realloc_buffer(pTask, new_size, true);
 }
-

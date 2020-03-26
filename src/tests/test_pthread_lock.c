@@ -21,6 +21,7 @@ int main(int argc, char *argv[])
 	int k;
     int64_t sum;
 	int64_t start_time;
+    char time_buff[32];
     pthread_mutex_t lock;
 
 	log_init();
@@ -41,7 +42,8 @@ int main(int argc, char *argv[])
         __sync_add_and_fetch(&sum, k);
 	}
 
-	printf("atom add, sum: %"PRId64", time used: %"PRId64" ms\n",
+	printf("atom add, LOOP_COUNT: %s, sum: %"PRId64", time used: "
+            "%"PRId64" ms\n", int_to_comma_str(LOOP_COUNT, time_buff),
             sum, get_current_time_ms() - start_time);
 
 	start_time = get_current_time_ms();
@@ -52,7 +54,8 @@ int main(int argc, char *argv[])
         pthread_mutex_unlock(&lock);
 	}
 
-	printf("locked add, sum: %"PRId64", time used: %"PRId64" ms\n",
+	printf("locked add, LOOP_COUNT: %s, sum: %"PRId64", time used: "
+            "%"PRId64" ms\n", int_to_comma_str(LOOP_COUNT, time_buff),
             sum, get_current_time_ms() - start_time);
 	return 0;
 }
