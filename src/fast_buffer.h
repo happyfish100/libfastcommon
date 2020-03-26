@@ -44,7 +44,18 @@ void fast_buffer_destroy(FastBuffer *buffer);
 #define fast_buffer_check(buffer, inc_len) \
     fast_buffer_check_inc_size(buffer, inc_len)
 
-int fast_buffer_check_capacity(FastBuffer *buffer, const int capacity);
+int fast_buffer_set_capacity(FastBuffer *buffer, const int capacity);
+
+static inline int fast_buffer_check_capacity(FastBuffer *buffer,
+        const int capacity)
+{
+    if (buffer->alloc_size >= capacity)
+    {
+        return 0;
+    }
+
+    return fast_buffer_set_capacity(buffer, capacity);
+}
 
 static inline int fast_buffer_check_inc_size(FastBuffer *buffer,
         const int inc_size)

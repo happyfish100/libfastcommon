@@ -42,32 +42,42 @@ void fast_buffer_destroy(FastBuffer *buffer)
     }
 }
 
-int fast_buffer_check_capacity(FastBuffer *buffer, const int capacity)
+int fast_buffer_set_capacity(FastBuffer *buffer, const int capacity)
 {
     int alloc_size;
+    int new_capacity;
     char *buff;
 
-    if (buffer->alloc_size >= capacity)
-    {
-        return 0;
+    new_capacity = (capacity > buffer->length) ?
+        capacity : (buffer->length + 1);
+    if (buffer->alloc_size >= new_capacity) {
+        if (new_capacity > 1024) {
+            alloc_size = 2048;
+        } else if (new_capacity > 512) {
+            alloc_size = 1024;
+        } else if (new_capacity > 256) {
+            alloc_size = 512;
+        } else {
+            alloc_size = 256;
+        }
+    } else {
+        alloc_size = buffer->alloc_size * 2;
     }
-    alloc_size = buffer->alloc_size * 2;
-    while (alloc_size <= capacity)
-    {
+
+    while (alloc_size < new_capacity) {
         alloc_size *= 2;
     }
 
     buff = (char *)malloc(alloc_size);
-    if (buff == NULL)
-    {
+    if (buff == NULL) {
         logError("file: "__FILE__", line: %d, "
              "malloc %d bytes fail", __LINE__, alloc_size);
         return ENOMEM;
     }
 
-    if (buffer->length > 0)
-    {
+    if (buffer->length > 0) {
         memcpy(buff, buffer->data, buffer->length);
+        *(buff + buffer->length) = '\0';
     }
 
     free(buffer->data);
