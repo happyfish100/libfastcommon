@@ -495,17 +495,17 @@ void fast_allocator_free(struct fast_allocator_context *acontext, void *ptr)
 	}
 }
 
-char *fast_allocator_strdup_ex(struct fast_allocator_context *acontext,
+char *fast_allocator_memdup(struct fast_allocator_context *acontext,
         const char *src, const int len)
 {
     char *dest;
-    dest = (char *)fast_allocator_alloc(acontext, len + 1);
+    dest = (char *)fast_allocator_alloc(acontext, len);
     if (dest == NULL) {
         logError("file: "__FILE__", line: %d, "
-                "malloc %d bytes fail", __LINE__, len + 1);
+                "malloc %d bytes fail", __LINE__, len);
         return NULL;
     }
 
-    memcpy(dest, src, len + 1);
+    memcpy(dest, src, len);
     return dest;
 }

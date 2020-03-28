@@ -31,9 +31,10 @@ int common_blocked_queue_init_ex(struct common_blocked_queue *queue,
         return result;
     }
 
-    if ((result=fast_mblock_init_ex(&queue->mblock,
-                    sizeof(struct common_blocked_node),
-                    alloc_elements_once, NULL, NULL, false)) != 0)
+    if ((result=fast_mblock_init_ex2(&queue->mblock,
+                    "queue_node", sizeof(struct common_blocked_node),
+                    alloc_elements_once, NULL, NULL, false,
+                    NULL, NULL, NULL)) != 0)
     {
         return result;
     }
@@ -46,8 +47,9 @@ int common_blocked_queue_init_ex(struct common_blocked_queue *queue,
 
 void common_blocked_queue_destroy(struct common_blocked_queue *queue)
 {
-    pthread_cond_destroy(&(queue->cond));
-    pthread_mutex_destroy(&(queue->lock));
+    pthread_cond_destroy(&queue->cond);
+    pthread_mutex_destroy(&queue->lock);
+    fast_mblock_destroy(&queue->mblock);
 }
 
 int common_blocked_queue_push_ex(struct common_blocked_queue *queue,
