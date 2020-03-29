@@ -76,15 +76,17 @@ extern "C" {
 allocator init by default region allocators
 parameters:
 	acontext: the context pointer
-        alloc_bytes_limit: the alloc limit, 0 for no limit
+    mblock_name_prefix: the name prefix of mblock
+    alloc_bytes_limit: the alloc limit, 0 for no limit
 	expect_usage_ratio: the trunk usage ratio
 	reclaim_interval: reclaim interval in second, 0 for never reclaim
 	need_lock: if need lock
 return error no, 0 for success, != 0 fail
 */
 int fast_allocator_init(struct fast_allocator_context *acontext,
-        const int64_t alloc_bytes_limit, const double expect_usage_ratio,
-        const int reclaim_interval, const bool need_lock);
+        const char *mblock_name_prefix, const int64_t alloc_bytes_limit,
+        const double expect_usage_ratio, const int reclaim_interval,
+        const bool need_lock);
 
 /**
 allocator init
@@ -99,9 +101,10 @@ parameters:
 return error no, 0 for success, != 0 fail
 */
 int fast_allocator_init_ex(struct fast_allocator_context *acontext,
-        struct fast_region_info *regions, const int region_count,
-        const int64_t alloc_bytes_limit, const double expect_usage_ratio,
-        const int reclaim_interval, const bool need_lock);
+        const char *mblock_name_prefix, struct fast_region_info *regions,
+        const int region_count, const int64_t alloc_bytes_limit,
+        const double expect_usage_ratio, const int reclaim_interval,
+        const bool need_lock);
 
 /**
 allocator destroy

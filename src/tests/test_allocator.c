@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 	g_log_context.log_level = LOG_DEBUG;
 	
 	fast_mblock_manager_init();
-	if ((result=fast_allocator_init(&acontext, 0, 0.00, 0, true)) != 0)
+	if ((result=fast_allocator_init(&acontext, NULL, 0, 0.00, 0, true)) != 0)
 	{
 		return result;
 	}

@@ -109,6 +109,7 @@ static void delete_from_mblock_list(struct fast_mblock_man *mblock)
         } \
         pStat->element_total_count += current->info.element_total_count;  \
         pStat->element_used_count += current->info.element_used_count;    \
+        pStat->delay_free_elements += current->info.delay_free_elements;  \
         pStat->trunk_total_count += current->info.trunk_total_count;  \
         pStat->trunk_used_count += current->info.trunk_used_count;    \
         pStat->instance_count += current->info.instance_count;  \
@@ -233,8 +234,10 @@ int fast_mblock_manager_stat_print_ex(const bool hide_empty, const int order_by)
         int64_t alloc_mem;
         int64_t used_mem;
         int64_t amem;
+        int64_t delay_free_mem;
         char alloc_mem_str[32];
         char used_mem_str[32];
+        char delay_free_mem_str[32];
 
         if (order_by == FAST_MBLOCK_ORDER_BY_ALLOC_BYTES)
         {
@@ -249,31 +252,37 @@ int fast_mblock_manager_stat_print_ex(const bool hide_empty, const int order_by)
 
         alloc_mem = 0;
         used_mem = 0;
-        logInfo("%20s %12s %8s %12s %10s %10s %14s %12s %12s", "name", "element_size",
-                "instance", "alloc_bytes", "trunc_alloc", "trunk_used",
-                "element_alloc", "element_used", "used_ratio");
+        delay_free_mem = 0;
+        logInfo("%20s %8s %8s %12s %10s %10s %10s %10s %10s %12s",
+                "name", "el_size", "instance", "alloc_bytes",
+                "trunc_alloc", "trunk_used", "el_alloc",
+                "el_used", "delay_free", "used_ratio");
         stat_end = stats + count;
         for (pStat=stats; pStat<stat_end; pStat++)
         {
             if (pStat->trunk_total_count > 0)
             {
-		amem = pStat->trunk_size * pStat->trunk_total_count;
+                amem = pStat->trunk_size * pStat->trunk_total_count;
                 alloc_mem += amem;
-                used_mem += GET_BLOCK_SIZE(*pStat) * pStat->element_used_count;
+                used_mem += GET_BLOCK_SIZE(*pStat) *
+                    pStat->element_used_count;
+                delay_free_mem += GET_BLOCK_SIZE(*pStat) *
+                    pStat->delay_free_elements;
             }
             else
             {
-		amem = 0;
+                amem = 0;
                 if (hide_empty)
                 {
                     continue;
                 }
             }
 
-            logInfo("%20s %12d %8d %12"PRId64" %10d %10d %14d %12d %11.2f%%", pStat->name,
-                    pStat->element_size, pStat->instance_count, amem,
-                    pStat->trunk_total_count, pStat->trunk_used_count,
+            logInfo("%20s %8d %8d %12"PRId64" %10d %10d %10d %10d %10d %11.2f%%",
+                    pStat->name, pStat->element_size, pStat->instance_count,
+                    amem, pStat->trunk_total_count, pStat->trunk_used_count,
                     pStat->element_total_count, pStat->element_used_count,
+                    pStat->delay_free_elements,
                     pStat->element_total_count > 0 ? 100.00 * (double)
                     pStat->element_used_count / (double)
                     pStat->element_total_count : 0.00);
@@ -283,26 +292,40 @@ int fast_mblock_manager_stat_print_ex(const bool hide_empty, const int order_by)
         {
             sprintf(alloc_mem_str, "%"PRId64" bytes", alloc_mem);
             sprintf(used_mem_str, "%"PRId64" bytes", used_mem);
+            sprintf(delay_free_mem_str, "%"PRId64" bytes", delay_free_mem);
         }
         else if (alloc_mem < 1024 * 1024)
         {
             sprintf(alloc_mem_str, "%.3f KB", (double)alloc_mem / 1024);
             sprintf(used_mem_str, "%.3f KB", (double)used_mem / 1024);
+            sprintf(delay_free_mem_str, "%.3f KB",
+                    (double)delay_free_mem / 1024);
         }
         else if (alloc_mem < 1024 * 1024 * 1024)
         {
-            sprintf(alloc_mem_str, "%.3f MB", (double)alloc_mem / (1024 * 1024));
-            sprintf(used_mem_str, "%.3f MB", (double)used_mem / (1024 * 1024));
+            sprintf(alloc_mem_str, "%.3f MB",
+                    (double)alloc_mem / (1024 * 1024));
+            sprintf(used_mem_str, "%.3f MB",
+                    (double)used_mem / (1024 * 1024));
+            sprintf(delay_free_mem_str, "%.3f MB",
+                    (double)delay_free_mem / (1024 * 1024));
         }
         else
         {
-            sprintf(alloc_mem_str, "%.3f GB", (double)alloc_mem / (1024 * 1024 * 1024));
-            sprintf(used_mem_str, "%.3f GB", (double)used_mem / (1024 * 1024 * 1024));
+            sprintf(alloc_mem_str, "%.3f GB",
+                    (double)alloc_mem / (1024 * 1024 * 1024));
+            sprintf(used_mem_str, "%.3f GB",
+                    (double)used_mem / (1024 * 1024 * 1024));
+            sprintf(delay_free_mem_str, "%.3f GB",
+                    (double)delay_free_mem / (1024 * 1024 * 1024));
         }
 
-        logInfo("mblock entry count: %d, alloc memory: %s, used memory: %s, used ratio: %.2f%%",
-                count, alloc_mem_str, used_mem_str,
-                alloc_mem > 0 ? 100.00 * (double)used_mem / alloc_mem : 0.00);
+        logInfo("mblock entry count: %d, memory stat => { alloc : %s, "
+                "used: %s (%.2f%%), delay free: %s (%.2f%%) }",
+                count, alloc_mem_str, used_mem_str, alloc_mem > 0 ?
+                100.00 * (double)used_mem / alloc_mem : 0.00,
+                delay_free_mem_str, alloc_mem > 0 ? 100.00 *
+                    (double)delay_free_mem / alloc_mem : 0.00);
     }
 
     if (stats != NULL) free(stats);
@@ -362,6 +385,7 @@ int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
     INIT_HEAD(&mblock->trunks.head);
     mblock->info.trunk_total_count = 0;
     mblock->info.trunk_used_count = 0;
+    mblock->info.delay_free_elements = 0;
     mblock->free_chain_head = NULL;
     mblock->delay_free_chain.head = NULL;
     mblock->delay_free_chain.tail = NULL;
@@ -534,6 +558,7 @@ void fast_mblock_destroy(struct fast_mblock_man *mblock)
     mblock->info.trunk_used_count = 0;
     mblock->free_chain_head = NULL;
     mblock->info.element_used_count = 0;
+    mblock->info.delay_free_elements = 0;
     mblock->info.element_total_count = 0;
 
     if (mblock->need_lock) pthread_mutex_destroy(&(mblock->lock));
@@ -558,9 +583,6 @@ struct fast_mblock_node *fast_mblock_alloc(struct fast_mblock_man *mblock)
 	{
 		pNode = mblock->free_chain_head;
 		mblock->free_chain_head = pNode->next;
-        mblock->info.element_used_count++;
-
-        fast_mblock_ref_counter_inc(mblock, pNode);
 	}
 	else
 	{
@@ -573,13 +595,13 @@ struct fast_mblock_node *fast_mblock_alloc(struct fast_mblock_man *mblock)
             {
                 mblock->delay_free_chain.tail = NULL;
             }
+
+            mblock->info.delay_free_elements--;
         }
         else if ((result=fast_mblock_prealloc(mblock)) == 0)
 		{
 			pNode = mblock->free_chain_head;
 			mblock->free_chain_head = pNode->next;
-            mblock->info.element_used_count++;
-            fast_mblock_ref_counter_inc(mblock, pNode);
 		}
 		else
 		{
@@ -587,6 +609,11 @@ struct fast_mblock_node *fast_mblock_alloc(struct fast_mblock_man *mblock)
 		}
 	}
 
+    if (pNode != NULL)
+    {
+        mblock->info.element_used_count++;
+        fast_mblock_ref_counter_inc(mblock, pNode);
+    }
 	if (mblock->need_lock && (result=pthread_mutex_unlock(&(mblock->lock))) != 0)
 	{
 		logError("file: "__FILE__", line: %d, " \
@@ -653,6 +680,10 @@ int fast_mblock_delay_free(struct fast_mblock_man *mblock,
     }
     mblock->delay_free_chain.tail = pNode;
     pNode->next = NULL;
+
+    mblock->info.element_used_count--;
+    mblock->info.delay_free_elements++;
+    fast_mblock_ref_counter_dec(mblock, pNode);
 
 	if (mblock->need_lock && (result=pthread_mutex_unlock(&(mblock->lock))) != 0)
 	{

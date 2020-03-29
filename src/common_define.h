@@ -116,6 +116,8 @@ extern int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int kind);
 #define ENONET          64      /* Machine is not on the network */
 #endif
 
+#define compile_barrier() __asm__ __volatile__("" : : : "memory")
+
 #define IS_UPPER_HEX(ch) ((ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F'))
 #define IS_HEX_CHAR(ch)  (IS_UPPER_HEX(ch) || (ch >= 'a' && ch <= 'f'))
 #define FC_IS_DIGITAL(ch)  (ch >= '0' && ch <= '9')

@@ -33,6 +33,7 @@ typedef struct uniq_skiplist_factory
     int delay_free_seconds;
     skiplist_compare_func compare_func;
     uniq_skiplist_free_func free_func;
+    UniqSkiplistNode *tail;  //the tail node for interator
     struct fast_mblock_man skiplist_allocator;
     struct fast_mblock_man *node_allocators;
 } UniqSkiplistFactory;
@@ -43,7 +44,6 @@ typedef struct uniq_skiplist
     int top_level_index;
     int element_count;
     UniqSkiplistNode *top;   //the top node
-    UniqSkiplistNode *tail;  //the tail node for interator
 } UniqSkiplist;
 
 typedef struct uniq_skiplist_iterator {
@@ -85,7 +85,7 @@ int uniq_skiplist_find_range(UniqSkiplist *sl, void *start_data,
 static inline void uniq_skiplist_iterator(UniqSkiplist *sl, UniqSkiplistIterator *iterator)
 {
     iterator->current = sl->top->links[0];
-    iterator->tail = sl->tail;
+    iterator->tail = sl->factory->tail;
 }
 
 static inline void *uniq_skiplist_next(UniqSkiplistIterator *iterator)
@@ -103,7 +103,7 @@ static inline void *uniq_skiplist_next(UniqSkiplistIterator *iterator)
 
 static inline bool uniq_skiplist_empty(UniqSkiplist *sl)
 {
-    return sl->top->links[0] == sl->tail;
+    return sl->top->links[0] == sl->factory->tail;
 }
 
 #ifdef __cplusplus
@@ -111,4 +111,3 @@ static inline bool uniq_skiplist_empty(UniqSkiplist *sl)
 #endif
 
 #endif
-

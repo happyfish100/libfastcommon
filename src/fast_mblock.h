@@ -59,6 +59,7 @@ struct fast_mblock_info
     int element_size;         //element size
     int element_total_count;  //total element count
     int element_used_count;   //used element count
+    int delay_free_elements;  //delay free element count
     int trunk_size;           //trunk size
     int trunk_total_count;    //total trunk count
     int trunk_used_count;     //used trunk count

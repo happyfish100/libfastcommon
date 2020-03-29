@@ -108,13 +108,15 @@ static int allocator_array_check_capacity(struct fast_allocator_context *acontex
 }
 
 static int region_init(struct fast_allocator_context *acontext,
-	struct fast_region_info *region)
+        const char *mblock_name_prefix, struct fast_region_info *region)
 {
 	int result;
 	int bytes;
 	int element_size;
 	int allocator_count;
 	struct fast_allocator_info *allocator;
+    char *name;
+    char name_buff[FAST_MBLOCK_NAME_SIZE];
 
 	region->pad_mask = region->step - 1;
 	allocator_count = (region->end - region->start) / region->step;
@@ -136,12 +138,22 @@ static int region_init(struct fast_allocator_context *acontext,
 		return result;
 	}
 
+    name = name_buff;
 	result = 0;
  	allocator = region->allocators;
 	for (element_size=region->start+region->step; element_size<=region->end;
 		element_size+=region->step,allocator++)
 	{
-		result = fast_mblock_init_ex2(&allocator->mblock, NULL, element_size,
+        if (mblock_name_prefix != NULL)
+        {
+            snprintf(name, FAST_MBLOCK_NAME_SIZE, "%s-%d",
+                    mblock_name_prefix, element_size);
+        }
+        else
+        {
+            name = NULL;
+        }
+		result = fast_mblock_init_ex2(&allocator->mblock, name, element_size,
 			region->alloc_elements_once, NULL, NULL, acontext->need_lock,
 			fast_allocator_malloc_trunk_check,
 			fast_allocator_malloc_trunk_notify_func, acontext);
@@ -174,9 +186,10 @@ static void region_destroy(struct fast_allocator_context *acontext,
 }
 
 int fast_allocator_init_ex(struct fast_allocator_context *acontext,
-        struct fast_region_info *regions, const int region_count,
-        const int64_t alloc_bytes_limit, const double expect_usage_ratio,
-	const int reclaim_interval, const bool need_lock)
+        const char *mblock_name_prefix, struct fast_region_info *regions,
+        const int region_count, const int64_t alloc_bytes_limit,
+        const double expect_usage_ratio, const int reclaim_interval,
+        const bool need_lock)
 {
 	int result;
 	int bytes;
@@ -263,7 +276,7 @@ int fast_allocator_init_ex(struct fast_allocator_context *acontext,
 		}
 		previous_end = pRegion->end;
 
-		if ((result=region_init(acontext, pRegion)) != 0)
+		if ((result=region_init(acontext, mblock_name_prefix, pRegion)) != 0)
 		{
 			break;
 		}
@@ -288,8 +301,9 @@ int fast_allocator_init_ex(struct fast_allocator_context *acontext,
 }
 
 int fast_allocator_init(struct fast_allocator_context *acontext,
-        const int64_t alloc_bytes_limit, const double expect_usage_ratio,
-	const int reclaim_interval, const bool need_lock)
+        const char *mblock_name_prefix, const int64_t alloc_bytes_limit,
+        const double expect_usage_ratio, const int reclaim_interval,
+        const bool need_lock)
 {
 #define DEFAULT_REGION_COUNT 5
 
@@ -301,9 +315,9 @@ int fast_allocator_init(struct fast_allocator_context *acontext,
     FAST_ALLOCATOR_INIT_REGION(regions[3],  4096, 16384,  256,   64);
     FAST_ALLOCATOR_INIT_REGION(regions[4], 16384, 65536, 1024,   16);
 
-    return fast_allocator_init_ex(acontext, regions,
-            DEFAULT_REGION_COUNT, alloc_bytes_limit,
-            expect_usage_ratio, reclaim_interval, need_lock);
+    return fast_allocator_init_ex(acontext, mblock_name_prefix, regions,
+            DEFAULT_REGION_COUNT, alloc_bytes_limit, expect_usage_ratio,
+            reclaim_interval, need_lock);
 }
 
 void fast_allocator_destroy(struct fast_allocator_context *acontext)
