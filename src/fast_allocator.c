@@ -66,26 +66,48 @@ static int allocator_array_check_capacity(struct fast_allocator_context *acontex
 {
 	int result;
 	int bytes;
+    int target_count;
+    int alloc_count;
 	struct fast_allocator_info  **new_allocators;
 
-	if (acontext->allocator_array.alloc >= acontext->allocator_array.count +
-		allocator_count)
+    target_count = acontext->allocator_array.count + allocator_count;
+	if (acontext->allocator_array.alloc >= target_count)
 	{
 		return 0;
 	}
 	if (acontext->allocator_array.alloc == 0)
 	{
-		acontext->allocator_array.alloc = 2 * allocator_count;
+        if (target_count < 128)
+        {
+            alloc_count = 128;
+        }
+        else if (target_count < 256)
+        {
+            alloc_count = 256;
+        }
+        else if (target_count < 512)
+        {
+            alloc_count = 512;
+        }
+        else if (target_count < 1024)
+        {
+            alloc_count = 1024;
+        }
+        else
+        {
+            alloc_count = 2 * target_count;
+        }
 	}
 	else
 	{
+        alloc_count = acontext->allocator_array.alloc;
 		do
 		{
-			acontext->allocator_array.alloc *= 2;
-		} while (acontext->allocator_array.alloc < allocator_count);
+			alloc_count *= 2;
+		} while (alloc_count < target_count);
 	}
 
-	bytes = sizeof(struct fast_allocator_info*) * acontext->allocator_array.alloc;
+	bytes = sizeof(struct fast_allocator_info *) * alloc_count;
 	new_allocators = (struct fast_allocator_info **)malloc(bytes);
 	if (new_allocators == NULL)
 	{
@@ -103,6 +125,7 @@ static int allocator_array_check_capacity(struct fast_allocator_context *acontex
 			acontext->allocator_array.count);
 		free(acontext->allocator_array.allocators);
 	}
+    acontext->allocator_array.alloc = alloc_count;
 	acontext->allocator_array.allocators = new_allocators;
 	return 0;
 }
@@ -131,7 +154,6 @@ static int region_init(struct fast_allocator_context *acontext,
 		return result;
 	}
 	memset(region->allocators, 0, bytes);
-
 
 	if ((result=allocator_array_check_capacity(acontext, allocator_count)) != 0)
 	{

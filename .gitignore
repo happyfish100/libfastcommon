@@ -49,6 +49,7 @@ src/tests/test_split_string
 src/tests/test_uniq_skiplist
 src/tests/test_server_id_func
 src/tests/test_pipe
+src/tests/test_atomic
 
 # other
 *.swp
