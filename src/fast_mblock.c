@@ -262,7 +262,7 @@ int fast_mblock_manager_stat_print_ex(const bool hide_empty, const int order_by)
         {
             if (pStat->trunk_total_count > 0)
             {
-                amem = pStat->trunk_size * pStat->trunk_total_count;
+                amem = (int64_t)pStat->trunk_size * pStat->trunk_total_count;
                 alloc_mem += amem;
                 used_mem += GET_BLOCK_SIZE(*pStat) *
                     pStat->element_used_count;
@@ -278,7 +278,8 @@ int fast_mblock_manager_stat_print_ex(const bool hide_empty, const int order_by)
                 }
             }
 
-            logInfo("%20s %8d %8d %12"PRId64" %10d %10d %10d %10d %10d %11.2f%%",
+            logInfo("%20s %8d %8d %12"PRId64" %10"PRId64" %10"PRId64
+                    " %10"PRId64" %10"PRId64" %10"PRId64" %11.2f%%",
                     pStat->name, pStat->element_size, pStat->instance_count,
                     amem, pStat->trunk_total_count, pStat->trunk_used_count,
                     pStat->element_total_count, pStat->element_used_count,

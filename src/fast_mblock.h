@@ -57,13 +57,13 @@ struct fast_mblock_info
 {
     char name[FAST_MBLOCK_NAME_SIZE];
     int element_size;         //element size
-    int element_total_count;  //total element count
-    int element_used_count;   //used element count
-    int delay_free_elements;  //delay free element count
     int trunk_size;           //trunk size
-    int trunk_total_count;    //total trunk count
-    int trunk_used_count;     //used trunk count
     int instance_count;       //instance count
+    int64_t element_total_count;  //total element count
+    int64_t element_used_count;   //used element count
+    int64_t delay_free_elements;  //delay free element count
+    int64_t trunk_total_count;    //total trunk count
+    int64_t trunk_used_count;     //used trunk count
 };
 
 struct fast_mblock_trunks
