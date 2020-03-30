@@ -186,11 +186,13 @@ static int fast_mblock_info_cmp_by_alloc_bytes(const void *p1, const void *p2)
 {
 	struct fast_mblock_info *pStat1;
 	struct fast_mblock_info *pStat2;
+    int64_t sub;
 
 	pStat1 = (struct fast_mblock_info *)p1;
 	pStat2 = (struct fast_mblock_info *)p2;
-	return pStat2->trunk_size * pStat2->trunk_total_count -
-		pStat1->trunk_size * pStat1->trunk_total_count;
+	sub = (int64_t)pStat2->trunk_size * pStat2->trunk_total_count -
+		(int64_t)pStat1->trunk_size * pStat1->trunk_total_count;
+    return (sub == 0) ? 0 : (sub < 0 ? -1 : 1);
 }
 
 //desc order
