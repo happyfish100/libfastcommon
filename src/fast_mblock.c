@@ -255,7 +255,7 @@ int fast_mblock_manager_stat_print_ex(const bool hide_empty, const int order_by)
         alloc_mem = 0;
         used_mem = 0;
         delay_free_mem = 0;
-        logInfo("%20s %8s %8s %12s %10s %10s %10s %10s %10s %12s",
+        logInfo("%20s %8s %8s %12s %11s %10s %10s %10s %10s %12s",
                 "name", "el_size", "instance", "alloc_bytes",
                 "trunc_alloc", "trunk_used", "el_alloc",
                 "el_used", "delay_free", "used_ratio");
@@ -280,7 +280,7 @@ int fast_mblock_manager_stat_print_ex(const bool hide_empty, const int order_by)
                 }
             }
 
-            logInfo("%20s %8d %8d %12"PRId64" %10"PRId64" %10"PRId64
+            logInfo("%20s %8d %8d %12"PRId64" %11"PRId64" %10"PRId64
                     " %10"PRId64" %10"PRId64" %10"PRId64" %11.2f%%",
                     pStat->name, pStat->element_size, pStat->instance_count,
                     amem, pStat->trunk_total_count, pStat->trunk_used_count,
