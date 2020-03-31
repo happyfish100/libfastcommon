@@ -362,6 +362,24 @@ char *urldecode_ex(const char *src, const int src_len, char *dest, int *dest_len
 */
 int getOccurCount(const char *src, const char seperator);
 
+
+/** get the file line count
+ *  parameters:
+ *  	filename: the filename
+ *  	until_offset: util the file offset, -1 for file end
+ *  	line_count: store the line count
+ *  return: error no, 0 success, != 0 fail
+*/
+int fc_get_file_line_count_ex(const char *filename,
+        const int64_t until_offset, int64_t *line_count);
+
+static inline int fc_get_file_line_count(const char *filename,
+        int64_t *line_count)
+{
+    const int64_t until_offset = -1;
+    return fc_get_file_line_count_ex(filename, until_offset, line_count);
+}
+
 /** split string
  *  parameters:
  *  	src: the source string, will be modified by this function

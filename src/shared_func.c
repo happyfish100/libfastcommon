@@ -693,6 +693,64 @@ int getOccurCount(const char *src, const char seperator)
 	return count;
 }
 
+int fc_get_file_line_count_ex(const char *filename,
+        const int64_t until_offset, int64_t *line_count)
+{
+#define READ_BUFFER_SIZE  (256 * 1024)
+    int fd;
+    int result;
+    int read_bytes;
+    int64_t remain_bytes;
+    char *buff;
+
+    *line_count = 0;
+    buff = (char *)malloc(READ_BUFFER_SIZE);
+    if (buff == NULL) {
+        logError("file: "__FILE__", line: %d, "
+                "malloc %d bytes fail",
+                __LINE__, READ_BUFFER_SIZE);
+        return ENOMEM;
+    }
+
+    fd = open(filename, O_RDONLY);
+    if (fd < 0) {
+        result = errno != 0 ? errno : EACCES;
+        logError("file: "__FILE__", line: %d, "
+                "open file \"%s\" fail, errno: %d, error info: %s",
+                __LINE__, filename, result, STRERROR(result));
+        free(buff);
+        return result;
+    }
+
+    if (until_offset >= 0) {
+        remain_bytes = until_offset;
+    } else {
+        remain_bytes = lseek(fd, 0, SEEK_END);
+    }
+    while (remain_bytes > 0) {
+        read_bytes = remain_bytes >= READ_BUFFER_SIZE ?
+            (READ_BUFFER_SIZE - 1) : remain_bytes;
+        read_bytes = read(fd, buff, read_bytes);
+        if (read_bytes == 0) {
+            break;
+        } else if (read_bytes < 0) {
+            result = errno != 0 ? errno : EIO;
+            logError("file: "__FILE__", line: %d, "
+                    "read file \"%s\" fail, errno: %d, error info: %s",
+                    __LINE__, filename, result, STRERROR(result));
+            return result;
+        }
+
+        *(buff + read_bytes) = '\0';
+        *line_count += getOccurCount(buff, '\n');
+        remain_bytes -= read_bytes;
+    }
+
+    close(fd);
+    free(buff);
+    return 0;
+}
+
 char **split(char *src, const char seperator, const int nMaxCols, int *nColCount)
 {
 	char **pCols;
