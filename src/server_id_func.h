@@ -85,6 +85,13 @@ typedef struct
 
 typedef struct
 {
+    int alloc;
+    int count;
+    FCServerInfo **servers;
+} FCServerInfoPtrArray;
+
+typedef struct
+{
     int count;
     FCServerMap *maps;
 } FCServerMapArray;

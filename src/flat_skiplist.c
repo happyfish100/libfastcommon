@@ -364,6 +364,16 @@ int flat_skiplist_find_all(FlatSkiplist *sl, void *data, FlatSkiplistIterator *i
     return 0;
 }
 
+void *flat_skiplist_find_ge(FlatSkiplist *sl, void *data)
+{
+    FlatSkiplistNode *node;
+    node = flat_skiplist_get_first_larger_or_equal(sl, data);
+    if (node == sl->top) {
+        return NULL;
+    }
+    return node->data;
+}
+
 int flat_skiplist_find_range(FlatSkiplist *sl, void *start_data, void *end_data,
         FlatSkiplistIterator *iterator)
 {

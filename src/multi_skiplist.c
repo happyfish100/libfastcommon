@@ -406,6 +406,16 @@ int multi_skiplist_find_all(MultiSkiplist *sl, void *data,
     }
 }
 
+void *multi_skiplist_find_ge(MultiSkiplist *sl, void *data)
+{
+    MultiSkiplistNode *node;
+    node = multi_skiplist_get_first_larger_or_equal(sl, data);
+    if (node == sl->tail) {
+        return NULL;
+    }
+    return node->head->data;
+}
+
 int multi_skiplist_find_range(MultiSkiplist *sl, void *start_data, void *end_data,
         MultiSkiplistIterator *iterator)
 {

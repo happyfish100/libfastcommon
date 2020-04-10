@@ -75,6 +75,7 @@ int multi_skiplist_find_all(MultiSkiplist *sl, void *data,
         MultiSkiplistIterator *iterator);
 int multi_skiplist_find_range(MultiSkiplist *sl, void *start_data, void *end_data,
         MultiSkiplistIterator *iterator);
+void *multi_skiplist_find_ge(MultiSkiplist *sl, void *data);
 
 static inline void multi_skiplist_iterator(MultiSkiplist *sl,
         MultiSkiplistIterator *iterator)

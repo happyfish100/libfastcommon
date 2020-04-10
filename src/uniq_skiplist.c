@@ -482,6 +482,17 @@ int uniq_skiplist_find_all(UniqSkiplist *sl, void *data,
     return 0;
 }
 
+void *uniq_skiplist_find_ge(UniqSkiplist *sl, void *data)
+{
+    UniqSkiplistNode *node;
+    node = uniq_skiplist_get_first_larger_or_equal(sl, data);
+    if (node == sl->factory->tail) {
+        return NULL;
+    }
+
+    return node->data;
+}
+
 int uniq_skiplist_find_range(UniqSkiplist *sl, void *start_data,
         void *end_data, UniqSkiplistIterator *iterator)
 {

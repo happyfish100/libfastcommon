@@ -81,8 +81,10 @@ int uniq_skiplist_find_all(UniqSkiplist *sl, void *data,
         UniqSkiplistIterator *iterator);
 int uniq_skiplist_find_range(UniqSkiplist *sl, void *start_data,
         void *end_data, UniqSkiplistIterator *iterator);
+void *uniq_skiplist_find_ge(UniqSkiplist *sl, void *data);
 
-static inline void uniq_skiplist_iterator(UniqSkiplist *sl, UniqSkiplistIterator *iterator)
+static inline void uniq_skiplist_iterator(UniqSkiplist *sl,
+        UniqSkiplistIterator *iterator)
 {
     iterator->current = sl->top->links[0];
     iterator->tail = sl->factory->tail;

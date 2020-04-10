@@ -64,6 +64,7 @@ void *flat_skiplist_find(FlatSkiplist *sl, void *data);
 int flat_skiplist_find_all(FlatSkiplist *sl, void *data, FlatSkiplistIterator *iterator);
 int flat_skiplist_find_range(FlatSkiplist *sl, void *start_data, void *end_data,
         FlatSkiplistIterator *iterator);
+void *flat_skiplist_find_ge(FlatSkiplist *sl, void *data);
 
 static inline void flat_skiplist_iterator(FlatSkiplist *sl, FlatSkiplistIterator *iterator)
 {
