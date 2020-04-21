@@ -43,8 +43,8 @@ void set_rand_numbers(const int multiple)
     }
 
     for (i=0; i<COUNT; i++) {
-        index1 = LAST_INDEX * (int64_t)rand() / (int64_t)RAND_MAX;
-        index2 = LAST_INDEX * (int64_t)rand() / (int64_t)RAND_MAX;
+        index1 = (LAST_INDEX * (int64_t)rand()) / (int64_t)RAND_MAX;
+        index2 = (LAST_INDEX * (int64_t)rand()) / (int64_t)RAND_MAX;
         if (index1 == index2) {
             continue;
         }
@@ -140,6 +140,7 @@ static void test_find_range()
     int n_end;
     int result;
     int i;
+    int count;
     int *value;
     UniqSkiplistIterator iterator;
 
@@ -157,15 +158,63 @@ static void test_find_range()
     result = uniq_skiplist_find_range(sl, &n_start, &n_end, &iterator);
     assert(result == EINVAL);
 
+    n_start = -100;
+    n_end = -1;
+    result = uniq_skiplist_find_range(sl, &n_start, &n_end, &iterator);
+    assert(result == ENOENT);
+
     n_start = -1;
     n_end = 0;
     result = uniq_skiplist_find_range(sl, &n_start, &n_end, &iterator);
     assert(result == ENOENT);
 
     n_start = 0;
-    n_end = 10;
+    n_end = 0;
+    result = uniq_skiplist_find_range(sl, &n_start, &n_end, &iterator);
+    assert(result == ENOENT);
+
+    n_start = 2 * COUNT;
+    n_end = 2 * COUNT;
+    result = uniq_skiplist_find_range(sl, &n_start, &n_end, &iterator);
+    assert(result == ENOENT);
+    count = uniq_skiplist_iterator_count(&iterator);
+    assert(count == 0);
+
+    n_start = 2 * COUNT;
+    n_end = 4 * COUNT;
+    result = uniq_skiplist_find_range(sl, &n_start, &n_end, &iterator);
+    assert(result == ENOENT);
+    count = uniq_skiplist_iterator_count(&iterator);
+    assert(count == 0);
+
+    n_start = -100;
+    n_end = 2;
     result = uniq_skiplist_find_range(sl, &n_start, &n_end, &iterator);
     assert(result == 0);
+    count = uniq_skiplist_iterator_count(&iterator);
+    if (n_end % 2 == 0) {
+        assert(count == n_end / 2);
+    } else {
+        assert(count == n_end / 2 + 1);
+    }
+
+    n_start = 0;
+    n_end = COUNT;
+    result = uniq_skiplist_find_range(sl, &n_start, &n_end, &iterator);
+    count = uniq_skiplist_iterator_count(&iterator);
+    assert(count == (n_end - n_start) / 2);
+
+    n_start = COUNT;
+    n_end = 2 * COUNT;
+    result = uniq_skiplist_find_range(sl, &n_start, &n_end, &iterator);
+    count = uniq_skiplist_iterator_count(&iterator);
+    assert(count == (n_end - n_start) / 2);
+
+    n_start = 100;
+    n_end = 152;
+    result = uniq_skiplist_find_range(sl, &n_start, &n_end, &iterator);
+    count = uniq_skiplist_iterator_count(&iterator);
+    assert(count == (n_end - n_start) / 2);
 
     i = 0;
     while ((value=(int *)uniq_skiplist_next(&iterator)) != NULL) {
@@ -173,6 +222,23 @@ static void test_find_range()
         i++;
     }
     printf("count: %d\n\n", i);
+}
+
+static void test_reverse_iterator()
+{
+    UniqSkiplistNode *node;
+    int v;
+    int *value;
+
+    v = 21;
+    node = uniq_skiplist_find_ge_node(sl, &v);
+    if (node != NULL) {
+        while (node != sl->top) {
+            value = (int *)node->data;
+            printf("value: %d\n", *value);
+            node = (UniqSkiplistNode *)LEVEL0_DOUBLE_CHAIN_PREV_LINK(node);
+        }
+    }
 }
 
 int main(int argc, char *argv[])
@@ -189,7 +255,7 @@ int main(int argc, char *argv[])
 
     fast_mblock_manager_init();
     result = uniq_skiplist_init_ex(&factory, LEVEL_COUNT, compare_func,
-            free_test_func, 0, MIN_ALLOC_ONCE, 0);
+            free_test_func, 0, MIN_ALLOC_ONCE, 0, true);
     if (result != 0) {
         return result;
     }
@@ -208,6 +274,8 @@ int main(int argc, char *argv[])
     printf("\n");
 
     test_find_range();
+
+    test_reverse_iterator();
 
     test_delete();
     printf("\n");

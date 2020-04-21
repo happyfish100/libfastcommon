@@ -13,7 +13,7 @@ int common_blocked_queue_init_ex(struct common_blocked_queue *queue,
 {
 	int result;
 
-	if ((result=init_pthread_lock(&(queue->lock))) != 0)
+	if ((result=init_pthread_lock(&queue->lock)) != 0)
 	{
 		logError("file: "__FILE__", line: %d, "
 			"init_pthread_lock fail, errno: %d, error info: %s",
@@ -21,8 +21,7 @@ int common_blocked_queue_init_ex(struct common_blocked_queue *queue,
 		return result;
 	}
 
-    result = pthread_cond_init(&(queue->cond), NULL);
-    if (result != 0)
+    if ((result=pthread_cond_init(&queue->cond, NULL)) != 0)
     {
         logError("file: "__FILE__", line: %d, "
                 "pthread_cond_init fail, "

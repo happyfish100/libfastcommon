@@ -13,7 +13,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include <assert.h>
 #include "logger.h"
 #include "uniq_skiplist.h"
 
@@ -46,12 +45,14 @@ static void init_best_element_counts()
 int uniq_skiplist_init_ex(UniqSkiplistFactory *factory,
         const int max_level_count, skiplist_compare_func compare_func,
         uniq_skiplist_free_func free_func, const int alloc_skiplist_once,
-        const int min_alloc_elements_once, const int delay_free_seconds)
+        const int min_alloc_elements_once, const int delay_free_seconds,
+        const bool bidirection)
 {
     char name[64];
     int bytes;
     int element_size;
     int i;
+    int extra_links_count;
     int alloc_elements_once;
     int result;
 
@@ -91,10 +92,11 @@ int uniq_skiplist_init_ex(UniqSkiplistFactory *factory,
         alloc_elements_once = 1024;
     }
 
+    extra_links_count = bidirection ? 1 : 0;
     for (i=max_level_count-1; i>=0; i--) {
         sprintf(name, "sl-level%02d", i);
         element_size = sizeof(UniqSkiplistNode) +
-            sizeof(UniqSkiplistNode *) * (i + 1);
+            sizeof(UniqSkiplistNode *) * (i + 1 + extra_links_count);
         if ((result=fast_mblock_init_ex1(factory->node_allocators + i,
             name, element_size, alloc_elements_once, NULL, NULL, false)) != 0)
         {
@@ -120,6 +122,7 @@ int uniq_skiplist_init_ex(UniqSkiplistFactory *factory,
     }
     memset(factory->tail, 0, factory->node_allocators[0].info.element_size);
 
+    factory->bidirection = bidirection;
     factory->max_level_count = max_level_count;
     factory->compare_func = compare_func;
     factory->free_func = free_func;
@@ -186,6 +189,10 @@ UniqSkiplist *uniq_skiplist_new(UniqSkiplistFactory *factory,
         return NULL;
     }
     memset(sl->top, 0, top_mblock->info.element_size);
+    sl->top->level_index = sl->top_level_index;
+    if (sl->factory->bidirection) {
+        LEVEL0_DOUBLE_CHAIN_TAIL(sl) = sl->top;
+    }
 
     for (i=0; i<level_count; i++) {
         sl->top->links[i] = sl->factory->tail;
@@ -214,6 +221,7 @@ static int uniq_skiplist_grow(UniqSkiplist *sl)
         return ENOMEM;
     }
     memset(top, 0, top_mblock->info.element_size);
+    top->level_index = top_level_index;
 
     top->links[top_level_index] = sl->factory->tail;
     for (i=0; i<=sl->top_level_index; i++) {
@@ -226,6 +234,11 @@ static int uniq_skiplist_grow(UniqSkiplist *sl)
 
     compile_barrier();
     sl->top_level_index = top_level_index;
+
+    if (sl->factory->bidirection) {
+        LEVEL0_DOUBLE_CHAIN_TAIL(sl) =
+            LEVEL0_DOUBLE_CHAIN_PREV_LINK(old_top);
+    }
 
     UNIQ_SKIPLIST_FREE_MBLOCK_OBJECT(sl, old_top_level_index, old_top);
     return 0;
@@ -332,6 +345,14 @@ int uniq_skiplist_insert(UniqSkiplist *sl, void *data)
     compile_barrier();
 
     //thread safe for one write with many read model
+    if (sl->factory->bidirection) {
+        LEVEL0_DOUBLE_CHAIN_PREV_LINK(node) = tmp_previous[0];
+        if (tmp_previous[0]->links[0] == sl->factory->tail) {
+            LEVEL0_DOUBLE_CHAIN_TAIL(sl) = node;
+        } else {
+            LEVEL0_DOUBLE_CHAIN_PREV_LINK(tmp_previous[0]->links[0]) = node;
+        }
+    }
     for (i=0; i<=level_index; i++) {
         node->links[i] = tmp_previous[i]->links[i];
         tmp_previous[i]->links[i] = node;
@@ -441,8 +462,17 @@ int uniq_skiplist_delete(UniqSkiplist *sl, void *data)
             previous = previous->links[i];
         }
 
-        assert(previous->links[i] == deleted);
         previous->links[i] = previous->links[i]->links[i];
+    }
+
+    if (sl->factory->bidirection) {
+        if (deleted->links[0] == sl->factory->tail) {
+            LEVEL0_DOUBLE_CHAIN_TAIL(sl) =
+                LEVEL0_DOUBLE_CHAIN_PREV_LINK(deleted);
+        } else {
+            LEVEL0_DOUBLE_CHAIN_PREV_LINK(deleted->links[0]) =
+                LEVEL0_DOUBLE_CHAIN_PREV_LINK(deleted);
+        }
     }
 
     if (sl->factory->free_func != NULL) {
@@ -482,7 +512,7 @@ int uniq_skiplist_find_all(UniqSkiplist *sl, void *data,
     return 0;
 }
 
-void *uniq_skiplist_find_ge(UniqSkiplist *sl, void *data)
+UniqSkiplistNode *uniq_skiplist_find_ge_node(UniqSkiplist *sl, void *data)
 {
     UniqSkiplistNode *node;
     node = uniq_skiplist_get_first_larger_or_equal(sl, data);
@@ -490,7 +520,7 @@ void *uniq_skiplist_find_ge(UniqSkiplist *sl, void *data)
         return NULL;
     }
 
-    return node->data;
+    return node;
 }
 
 int uniq_skiplist_find_range(UniqSkiplist *sl, void *start_data,

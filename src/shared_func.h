@@ -945,6 +945,13 @@ int fc_ceil_prime(const int n);
 */
 int fc_init_buffer(BufferInfo *buffer, const int buffer_size);
 
+/** free buffer
+ *  parameters:
+ *      buffer: the buffer to free
+ *  return: none
+*/
+void fc_free_buffer(BufferInfo *buffer);
+
 #ifdef __cplusplus
 }
 #endif

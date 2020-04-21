@@ -3092,3 +3092,13 @@ int fc_init_buffer(BufferInfo *buffer, const int buffer_size)
     buffer->length = 0;
     return 0;
 }
+
+void fc_free_buffer(BufferInfo *buffer)
+{
+    if (buffer->buff != NULL)
+    {
+        free(buffer->buff);
+        buffer->buff = NULL;
+        buffer->alloc_size = buffer->length = 0;
+    }
+}
