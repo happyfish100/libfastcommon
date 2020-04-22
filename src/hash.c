@@ -1300,7 +1300,7 @@ int calc_hashnr1_ex(const void* key, const int key_len, \
  \
   h = init_value; \
   pEnd = (unsigned char *)key + key_len; \
-  for (p = (unsigned char *)key; p!= pEnd; p++) \
+  for (p = (unsigned char *)key; p != pEnd; p++) \
   { \
     h = 31 * h + *p; \
   } \

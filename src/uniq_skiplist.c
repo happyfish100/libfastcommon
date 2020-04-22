@@ -42,7 +42,7 @@ static void init_best_element_counts()
     }
 }
 
-int uniq_skiplist_init_ex(UniqSkiplistFactory *factory,
+int uniq_skiplist_init_ex2(UniqSkiplistFactory *factory,
         const int max_level_count, skiplist_compare_func compare_func,
         uniq_skiplist_free_func free_func, const int alloc_skiplist_once,
         const int min_alloc_elements_once, const int delay_free_seconds,

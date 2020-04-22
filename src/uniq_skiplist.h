@@ -58,12 +58,19 @@ extern "C" {
 
 #define uniq_skiplist_count(sl) (sl)->element_count
 
+#define uniq_skiplist_init_ex(factory, max_level_count, compare_func, \
+        free_func, alloc_skiplist_once, min_alloc_elements_once, \
+        delay_free_seconds) \
+    uniq_skiplist_init_ex2(factory, max_level_count, compare_func, \
+        free_func, alloc_skiplist_once, min_alloc_elements_once, \
+        delay_free_seconds, false) \
+
 #define uniq_skiplist_init(factory, max_level_count, compare_func, free_func) \
     uniq_skiplist_init_ex(factory, max_level_count,  \
             compare_func, free_func, 64 * 1024, \
-            SKIPLIST_DEFAULT_MIN_ALLOC_ELEMENTS_ONCE, 0, false)
+            SKIPLIST_DEFAULT_MIN_ALLOC_ELEMENTS_ONCE, 0)
 
-int uniq_skiplist_init_ex(UniqSkiplistFactory *factory,
+int uniq_skiplist_init_ex2(UniqSkiplistFactory *factory,
         const int max_level_count, skiplist_compare_func compare_func,
         uniq_skiplist_free_func free_func, const int alloc_skiplist_once,
         const int min_alloc_elements_once, const int delay_free_seconds,
@@ -146,8 +153,15 @@ static inline bool uniq_skiplist_empty(UniqSkiplist *sl)
     return sl->top->links[0] == sl->factory->tail;
 }
 
-#define LEVEL0_DOUBLE_CHAIN_PREV_LINK(node) node->links[node->level_index + 1]
+#define LEVEL0_DOUBLE_CHAIN_NEXT_LINK(node)  node->links[0]
+#define LEVEL0_DOUBLE_CHAIN_PREV_LINK(node)  node->links[node->level_index + 1]
 #define LEVEL0_DOUBLE_CHAIN_TAIL(sl)  LEVEL0_DOUBLE_CHAIN_PREV_LINK(sl->top)
+
+#define UNIQ_SKIPLIST_LEVEL0_PREV_NODE(node)  ((UniqSkiplistNode *) \
+        LEVEL0_DOUBLE_CHAIN_PREV_LINK(node))
+
+#define UNIQ_SKIPLIST_LEVEL0_NEXT_NODE(node)  ((UniqSkiplistNode *) \
+        LEVEL0_DOUBLE_CHAIN_NEXT_LINK(node))
 
 #ifdef __cplusplus
 }
