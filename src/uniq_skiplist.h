@@ -157,6 +157,9 @@ static inline bool uniq_skiplist_empty(UniqSkiplist *sl)
 #define LEVEL0_DOUBLE_CHAIN_PREV_LINK(node)  node->links[node->level_index + 1]
 #define LEVEL0_DOUBLE_CHAIN_TAIL(sl)  LEVEL0_DOUBLE_CHAIN_PREV_LINK(sl->top)
 
+#define UNIQ_SKIPLIST_LEVEL0_TAIL_NODE(sl)    ((UniqSkiplistNode *) \
+        LEVEL0_DOUBLE_CHAIN_TAIL(sl))
+
 #define UNIQ_SKIPLIST_LEVEL0_PREV_NODE(node)  ((UniqSkiplistNode *) \
         LEVEL0_DOUBLE_CHAIN_PREV_LINK(node))
 
