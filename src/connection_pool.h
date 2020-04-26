@@ -40,9 +40,10 @@ typedef struct
     short socket_domain;  //socket domain, AF_INET, AF_INET6 or AF_UNSPEC for auto dedect
     bool validate_flag;   //for connection pool
 	char ip_addr[INET6_ADDRSTRLEN];
+    char args[0];   //for extra data
 } ConnectionInfo;
 
-typedef int (*fc_validate_connection_func)(ConnectionInfo *conn, void *args);
+typedef int (*fc_connection_callback_func)(ConnectionInfo *conn, void *args);
 
 struct tagConnectionManager;
 
@@ -77,7 +78,12 @@ typedef struct tagConnectionPool {
     struct fast_mblock_man node_allocator;
 
     struct {
-        fc_validate_connection_func func;
+        fc_connection_callback_func func;
+        void *args;
+    } connect_done_callback;
+
+    struct {
+        fc_connection_callback_func func;
         void *args;
     } validate_callback;
 } ConnectionPool;
@@ -90,14 +96,20 @@ typedef struct tagConnectionPool {
 *      max_count_per_entry: max connection count per host:port
 *      max_idle_time: reconnect the server after max idle time in seconds
 *      socket_domain: the socket domain
+*      htable_init_capacity: the init capacity of connection hash table
+*      connect_done_func: the connect done connection callback
+*      connect_done_args: the args for connect done connection callback
 *      validate_func: the validate connection callback
 *      validate_args: the args for validate connection callback
+*      extra_data_size: the extra data size of connection
 *   return 0 for success, != 0 for error
 */
 int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
 	const int max_count_per_entry, const int max_idle_time,
     const int socket_domain, const int htable_init_capacity,
-    fc_validate_connection_func validate_func, void *validate_args);
+    fc_connection_callback_func connect_done_func, void *connect_done_args,
+    fc_connection_callback_func validate_func, void *validate_args,
+    const int extra_data_size);
 
 /**
 *   init ex function
@@ -114,8 +126,10 @@ static inline int conn_pool_init_ex(ConnectionPool *cp, int connect_timeout,
     const int socket_domain)
 {
     const int htable_init_capacity = 0;
+    const int extra_data_size = 0;
     return conn_pool_init_ex1(cp, connect_timeout, max_count_per_entry,
-            max_idle_time, socket_domain, htable_init_capacity, NULL, NULL);
+            max_idle_time, socket_domain, htable_init_capacity,
+            NULL, NULL, NULL, NULL, extra_data_size);
 }
 
 /**
@@ -132,8 +146,10 @@ static inline int conn_pool_init(ConnectionPool *cp, int connect_timeout,
 {
     const int socket_domain = AF_INET;
     const int htable_init_capacity = 0;
+    const int extra_data_size = 0;
     return conn_pool_init_ex1(cp, connect_timeout, max_count_per_entry,
-            max_idle_time, socket_domain, htable_init_capacity, NULL, NULL);
+            max_idle_time, socket_domain, htable_init_capacity,
+            NULL, NULL, NULL, NULL, extra_data_size);
 }
 
 /**
