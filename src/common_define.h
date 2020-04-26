@@ -124,6 +124,8 @@ extern int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int kind);
 #define FC_IS_LETTER(ch)  ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z'))
 #define FC_IS_UPPER_LETTER(ch)  (ch >= 'A' && ch <= 'Z')
 #define FC_IS_LOWER_LETTER(ch)  (ch >= 'a' && ch <= 'z')
+#define FC_MIN(v1, v2) (v1 < v2 ? v1 : v2)
+#define FC_MAX(v1, v2) (v1 > v2 ? v1 : v2)
 
 #define STRERROR(no) (strerror(no) != NULL ? strerror(no) : "Unkown error")
 

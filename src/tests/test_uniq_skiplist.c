@@ -254,7 +254,7 @@ int main(int argc, char *argv[])
     srand(time(NULL));
 
     fast_mblock_manager_init();
-    result = uniq_skiplist_init_ex(&factory, LEVEL_COUNT, compare_func,
+    result = uniq_skiplist_init_ex2(&factory, LEVEL_COUNT, compare_func,
             free_test_func, 0, MIN_ALLOC_ONCE, 0, true);
     if (result != 0) {
         return result;

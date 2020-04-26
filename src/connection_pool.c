@@ -15,11 +15,13 @@
 #include "sched_thread.h"
 #include "connection_pool.h"
 
-int conn_pool_init_ex(ConnectionPool *cp, int connect_timeout, \
+int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
 	const int max_count_per_entry, const int max_idle_time,
-    const int socket_domain)
+    const int socket_domain, const int htable_init_capacity,
+    fc_validate_connection_func validate_func, void *validate_args)
 {
 	int result;
+    int init_capacity;
 
 	if ((result=init_pthread_lock(&cp->lock)) != 0)
 	{
@@ -29,22 +31,34 @@ int conn_pool_init_ex(ConnectionPool *cp, int connect_timeout, \
 	cp->max_count_per_entry = max_count_per_entry;
 	cp->max_idle_time = max_idle_time;
 	cp->socket_domain = socket_domain;
+    cp->validate_callback.func = validate_func;
+    cp->validate_callback.args = validate_args;
 
-	return hash_init(&(cp->hash_array), simple_hash, 1024, 0.75);
+    init_capacity = htable_init_capacity > 0 ? htable_init_capacity : 256;
+    if ((result=fast_mblock_init_ex1(&cp->manager_allocator, "cpool_manager",
+                    sizeof(ConnectionManager), init_capacity, NULL, NULL,
+                    false)) != 0)
+    {
+        return result;
+    }
+
+    if ((result=fast_mblock_init_ex1(&cp->node_allocator, "cpool_node",
+                    sizeof(ConnectionNode) + sizeof(ConnectionInfo),
+                    4 * init_capacity, NULL, NULL, false)) != 0)
+    {
+        return result;
+    }
+
+	return hash_init(&(cp->hash_array), simple_hash, init_capacity, 0.75);
 }
 
-int conn_pool_init(ConnectionPool *cp, int connect_timeout,
-	const int max_count_per_entry, const int max_idle_time)
+static int coon_pool_close_connections(const int index,
+        const HashData *data, void *args)
 {
-    const int socket_domain = AF_INET;
-    return conn_pool_init_ex(cp, connect_timeout, max_count_per_entry,
-            max_idle_time, socket_domain);
-}
-
-int coon_pool_close_connections(const int index, const HashData *data, void *args)
-{
+    ConnectionPool *cp;
     ConnectionManager *cm;
 
+    cp = (ConnectionPool *)args;
     cm = (ConnectionManager *)data->value;
     if (cm != NULL)
     {
@@ -58,9 +72,10 @@ int coon_pool_close_connections(const int index, const HashData *data, void *arg
             node = node->next;
 
             conn_pool_disconnect_server(deleted->conn);
-            free(deleted);
+            fast_mblock_free_object(&cp->node_allocator, deleted);
         }
-        free(cm);
+
+        fast_mblock_free_object(&cp->manager_allocator, cm);
     }
 
     return 0;
@@ -69,7 +84,7 @@ int coon_pool_close_connections(const int index, const HashData *data, void *arg
 void conn_pool_destroy(ConnectionPool *cp)
 {
 	pthread_mutex_lock(&cp->lock);
-    hash_walk(&(cp->hash_array), coon_pool_close_connections, NULL);
+    hash_walk(&(cp->hash_array), coon_pool_close_connections, cp);
 	hash_destroy(&(cp->hash_array));
 	pthread_mutex_unlock(&cp->lock);
 
@@ -163,7 +178,6 @@ ConnectionInfo *conn_pool_get_connection(ConnectionPool *cp,
 {
 	char key[INET6_ADDRSTRLEN + 8];
 	int key_len;
-	int bytes;
 	char *p;
 	ConnectionManager *cm;
 	ConnectionNode *node;
@@ -176,15 +190,14 @@ ConnectionInfo *conn_pool_get_connection(ConnectionPool *cp,
 	cm = (ConnectionManager *)hash_find(&cp->hash_array, key, key_len);
 	if (cm == NULL)
 	{
-		cm = (ConnectionManager *)malloc(sizeof(ConnectionManager));
+		cm = (ConnectionManager *)fast_mblock_alloc_object(
+                &cp->manager_allocator);
 		if (cm == NULL)
 		{
-			*err_no = errno != 0 ? errno : ENOMEM;
-			logError("file: "__FILE__", line: %d, " \
-				"malloc %d bytes fail, errno: %d, " \
-				"error info: %s", __LINE__, \
-				(int)sizeof(ConnectionManager), \
-				*err_no, STRERROR(*err_no));
+			*err_no = ENOMEM;
+			logError("file: "__FILE__", line: %d, "
+				"malloc %d bytes fail", __LINE__,
+				(int)sizeof(ConnectionManager));
 			pthread_mutex_unlock(&cp->lock);
 			return NULL;
 		}
@@ -220,18 +233,16 @@ ConnectionInfo *conn_pool_get_connection(ConnectionPool *cp,
 				return NULL;
 			}
 
-			bytes = sizeof(ConnectionNode) + sizeof(ConnectionInfo);
-			p = (char *)malloc(bytes);
+            p = (char *)fast_mblock_alloc_object(&cp->node_allocator);
 			if (p == NULL)
-			{
-				*err_no = errno != 0 ? errno : ENOMEM;
-				logError("file: "__FILE__", line: %d, " \
-					"malloc %d bytes fail, errno: %d, " \
-					"error info: %s", __LINE__, \
-					bytes, *err_no, STRERROR(*err_no));
-				pthread_mutex_unlock(&cm->lock);
-				return NULL;
-			}
+            {
+                *err_no = ENOMEM;
+                logError("file: "__FILE__", line: %d, "
+                        "malloc %d bytes fail", __LINE__, (int)
+                        (sizeof(ConnectionNode) + sizeof(ConnectionInfo)));
+                pthread_mutex_unlock(&cm->lock);
+                return NULL;
+            }
 
 			node = (ConnectionNode *)p;
 			node->conn = (ConnectionInfo *)(p + sizeof(ConnectionNode));
@@ -245,15 +256,16 @@ ConnectionInfo *conn_pool_get_connection(ConnectionPool *cp,
 			memcpy(node->conn, conn, sizeof(ConnectionInfo));
             node->conn->socket_domain = cp->socket_domain;
 			node->conn->sock = -1;
-			*err_no = conn_pool_connect_server(node->conn, \
+            node->conn->validate_flag = false;
+			*err_no = conn_pool_connect_server(node->conn,
 					cp->connect_timeout);
 			if (*err_no != 0)
 			{
                 pthread_mutex_lock(&cm->lock);
                 cm->total_count--;  //rollback
+                fast_mblock_free_object(&cp->node_allocator, p);
                 pthread_mutex_unlock(&cm->lock);
 
-				free(p);
 				return NULL;
 			}
 
@@ -267,6 +279,8 @@ ConnectionInfo *conn_pool_get_connection(ConnectionPool *cp,
 		}
 		else
 		{
+            bool invalid;
+
 			node = cm->head;
 			ci = node->conn;
 			cm->head = node->next;
@@ -274,6 +288,28 @@ ConnectionInfo *conn_pool_get_connection(ConnectionPool *cp,
 
 			if (current_time - node->atime > cp->max_idle_time)
 			{
+                invalid = true;
+            }
+            else if (ci->validate_flag)
+            {
+                ci->validate_flag = false;
+                if (cp->validate_callback.func != NULL)
+                {
+                    invalid = cp->validate_callback.func(ci,
+                            cp->validate_callback.args) != 0;
+                }
+                else
+                {
+                    invalid = false;
+                }
+            }
+            else
+            {
+                invalid = false;
+            }
+
+            if (invalid)
+            {
 				cm->total_count--;
 
 				logDebug("file: "__FILE__", line: %d, " \
@@ -287,7 +323,7 @@ ConnectionInfo *conn_pool_get_connection(ConnectionPool *cp,
 					cm->free_count);
 
 				conn_pool_disconnect_server(ci);
-				free(node);
+                fast_mblock_free_object(&cp->node_allocator, node);
 				continue;
 			}
 
@@ -335,18 +371,25 @@ int conn_pool_close_connection_ex(ConnectionPool *cp, ConnectionInfo *conn,
 
 	pthread_mutex_lock(&cm->lock);
 	if (bForce)
-	{
-		cm->total_count--;
+    {
+        cm->total_count--;
 
-		logDebug("file: "__FILE__", line: %d, " \
-			"server %s:%d, release connection: %d, " \
-			"total_count: %d, free_count: %d", 
-			__LINE__, conn->ip_addr, conn->port, 
-			conn->sock, cm->total_count, cm->free_count);
+        logDebug("file: "__FILE__", line: %d, "
+                "server %s:%d, release connection: %d, "
+                "total_count: %d, free_count: %d",
+                __LINE__, conn->ip_addr, conn->port,
+                conn->sock, cm->total_count, cm->free_count);
 
-		conn_pool_disconnect_server(conn);
-		free(node);
-	}
+        conn_pool_disconnect_server(conn);
+        fast_mblock_free_object(&cp->node_allocator, node);
+
+        node = cm->head;
+        while (node != NULL)
+        {
+            node->conn->validate_flag = true;
+            node = node->next;
+        }
+    }
 	else
 	{
 		node->atime = get_current_time();

@@ -165,7 +165,8 @@ parameters:
 return error no, 0 for success, != 0 fail
 */
 static inline int fast_mblock_init_ex1(struct fast_mblock_man *mblock,
-        const char *name, const int element_size, const int alloc_elements_once,
+        const char *name, const int element_size,
+        const int alloc_elements_once,
         fast_mblock_alloc_init_func init_func,
         void *init_args, const bool need_lock)
 {

@@ -16,9 +16,10 @@
 #include <string.h>
 #include <time.h>
 #include "common_define.h"
+#include "fast_mblock.h"
+#include "ini_file_reader.h"
 #include "pthread_func.h"
 #include "hash.h"
-#include "ini_file_reader.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,10 +36,13 @@ extern "C" {
 typedef struct
 {
 	int sock;
-	int port;
+	short port;
+    short socket_domain;  //socket domain, AF_INET, AF_INET6 or AF_UNSPEC for auto dedect
+    bool validate_flag;   //for connection pool
 	char ip_addr[INET6_ADDRSTRLEN];
-    int socket_domain;  //socket domain, AF_INET, AF_INET6 or AF_UNSPEC for auto dedect
 } ConnectionInfo;
+
+typedef int (*fc_validate_connection_func)(ConnectionInfo *conn, void *args);
 
 struct tagConnectionManager;
 
@@ -68,7 +72,32 @@ typedef struct tagConnectionPool {
 	*/
 	int max_idle_time;
     int socket_domain;  //socket domain
+
+    struct fast_mblock_man manager_allocator;
+    struct fast_mblock_man node_allocator;
+
+    struct {
+        fc_validate_connection_func func;
+        void *args;
+    } validate_callback;
 } ConnectionPool;
+
+/**
+*   init ex function
+*   parameters:
+*      cp: the ConnectionPool
+*      connect_timeout: the connect timeout in seconds
+*      max_count_per_entry: max connection count per host:port
+*      max_idle_time: reconnect the server after max idle time in seconds
+*      socket_domain: the socket domain
+*      validate_func: the validate connection callback
+*      validate_args: the args for validate connection callback
+*   return 0 for success, != 0 for error
+*/
+int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
+	const int max_count_per_entry, const int max_idle_time,
+    const int socket_domain, const int htable_init_capacity,
+    fc_validate_connection_func validate_func, void *validate_args);
 
 /**
 *   init ex function
@@ -80,9 +109,14 @@ typedef struct tagConnectionPool {
 *      socket_domain: the socket domain
 *   return 0 for success, != 0 for error
 */
-int conn_pool_init_ex(ConnectionPool *cp, int connect_timeout,
+static inline int conn_pool_init_ex(ConnectionPool *cp, int connect_timeout,
 	const int max_count_per_entry, const int max_idle_time,
-    const int socket_domain);
+    const int socket_domain)
+{
+    const int htable_init_capacity = 0;
+    return conn_pool_init_ex1(cp, connect_timeout, max_count_per_entry,
+            max_idle_time, socket_domain, htable_init_capacity, NULL, NULL);
+}
 
 /**
 *   init function
@@ -93,8 +127,14 @@ int conn_pool_init_ex(ConnectionPool *cp, int connect_timeout,
 *      max_idle_time: reconnect the server after max idle time in seconds
 *   return 0 for success, != 0 for error
 */
-int conn_pool_init(ConnectionPool *cp, int connect_timeout,
-	const int max_count_per_entry, const int max_idle_time);
+static inline int conn_pool_init(ConnectionPool *cp, int connect_timeout,
+	const int max_count_per_entry, const int max_idle_time)
+{
+    const int socket_domain = AF_INET;
+    const int htable_init_capacity = 0;
+    return conn_pool_init_ex1(cp, connect_timeout, max_count_per_entry,
+            max_idle_time, socket_domain, htable_init_capacity, NULL, NULL);
+}
 
 /**
 *   destroy function
