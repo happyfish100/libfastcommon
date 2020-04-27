@@ -228,15 +228,18 @@ static void test_reverse_iterator()
 {
     UniqSkiplistNode *node;
     int v;
+    int count;
     int *value;
 
-    v = 21;
+    printf("test_reverse_iterator\n");
+    count = 0;
+    v = 2;
     node = uniq_skiplist_find_ge_node(sl, &v);
     if (node != NULL) {
         while (node != sl->top) {
             value = (int *)node->data;
-            printf("value: %d\n", *value);
-            node = (UniqSkiplistNode *)LEVEL0_DOUBLE_CHAIN_PREV_LINK(node);
+            printf("value[%d]: %d\n", count++, *value);
+            node = UNIQ_SKIPLIST_LEVEL0_PREV_NODE(node);
         }
     }
 }

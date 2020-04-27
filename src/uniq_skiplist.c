@@ -236,8 +236,13 @@ static int uniq_skiplist_grow(UniqSkiplist *sl)
     sl->top_level_index = top_level_index;
 
     if (sl->factory->bidirection) {
-        LEVEL0_DOUBLE_CHAIN_TAIL(sl) =
-            LEVEL0_DOUBLE_CHAIN_PREV_LINK(old_top);
+        if (top->links[0] != sl->factory->tail) {  //not empty
+            LEVEL0_DOUBLE_CHAIN_PREV_LINK(top->links[0]) = top;
+            LEVEL0_DOUBLE_CHAIN_TAIL(sl) =
+                LEVEL0_DOUBLE_CHAIN_PREV_LINK(old_top);
+        } else {
+            LEVEL0_DOUBLE_CHAIN_TAIL(sl) = sl->top;
+        }
     }
 
     UNIQ_SKIPLIST_FREE_MBLOCK_OBJECT(sl, old_top_level_index, old_top);
