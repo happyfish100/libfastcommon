@@ -25,7 +25,6 @@ fc_list_add (struct fc_list_head *_new, struct fc_list_head *head)
 	_new->next->prev = _new;
 }
 
-
 static inline void
 fc_list_add_tail (struct fc_list_head *_new, struct fc_list_head *head)
 {
@@ -37,7 +36,17 @@ fc_list_add_tail (struct fc_list_head *_new, struct fc_list_head *head)
 }
 
 static inline void
-fc_list_add_internal(struct fc_list_head *_new, struct fc_list_head *prev,
+fc_list_add_before (struct fc_list_head *_new, struct fc_list_head *current)
+{
+	_new->prev = current->prev;
+	_new->next = current;
+
+	_new->prev->next = _new;
+	_new->next->prev = _new;
+}
+
+static inline void
+fc_list_add_internal (struct fc_list_head *_new, struct fc_list_head *prev,
         struct fc_list_head *next)
 {
     next->prev = _new;
