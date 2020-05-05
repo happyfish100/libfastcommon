@@ -156,6 +156,15 @@ static inline int fc_list_count(struct fc_list_head *head)
 	((type *)((char *)(ptr)-(unsigned long)(&((type *)0)->member)))
 
 
+#define fc_list_first_entry(head, type, member)	\
+    ((head)->next == head ? NULL : \
+     fc_list_entry((head)->next, type, member))
+
+#define fc_list_last_entry(head, type, member)	\
+    ((head)->prev == head ? NULL : \
+     fc_list_entry((head)->prev, type, member))
+
+
 #define fc_list_for_each(pos, head)				     \
 	for (pos = (head)->next; pos != (head); pos = pos->next)
 
