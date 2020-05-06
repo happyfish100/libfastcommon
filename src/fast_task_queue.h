@@ -30,6 +30,7 @@ struct fast_task_info;
 typedef int (*ThreadLoopCallback) (struct nio_thread_data *pThreadData);
 typedef int (*TaskFinishCallback) (struct fast_task_info *pTask);
 typedef void (*TaskCleanUpCallback) (struct fast_task_info *pTask);
+typedef int (*TaskInitCallback)(struct fast_task_info *pTask);
 
 typedef void (*IOEventCallback) (int sock, short event, void *arg);
 
@@ -94,17 +95,32 @@ struct fast_task_queue
 	int arg_size;
 	int block_size;
 	bool malloc_whole_block;
+    TaskInitCallback init_callback;
 };
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-int free_queue_init(const int max_connections, const int min_buff_size, \
-		const int max_buff_size, const int arg_size);
-int free_queue_init_ex(const int max_connections, const int init_connections,
+int free_queue_init_ex2(const int max_connections, const int init_connections,
         const int alloc_task_once, const int min_buff_size,
-        const int max_buff_size, const int arg_size);
+        const int max_buff_size, const int arg_size,
+        TaskInitCallback init_callback);
+
+static inline int free_queue_init_ex(const int max_connections,
+        const int init_connections, const int alloc_task_once,
+        const int min_buff_size, const int max_buff_size, const int arg_size)
+{
+    return free_queue_init_ex2(max_connections, init_connections,
+            alloc_task_once, min_buff_size, max_buff_size, arg_size, NULL);
+}
+
+static inline int free_queue_init(const int max_connections,
+        const int min_buff_size, const int max_buff_size, const int arg_size)
+{
+    return free_queue_init_ex2(max_connections, max_connections,
+            0, min_buff_size, max_buff_size, arg_size, NULL);
+}
 
 void free_queue_destroy();
 

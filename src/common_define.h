@@ -293,6 +293,19 @@ static inline bool fc_string_equal2(const string_t *s1,
 #define fc_string_equals(s1, s2) fc_string_equal(s1, s2)
 #define fc_string_equals2(s1, str2, len2) fc_string_equal2(s1, str2, len2)
 
+static inline int fc_compare_int64(const int64_t n1, const int64_t n2)
+{
+    int64_t sub;
+    sub = n1 - n2;
+    if (sub < 0) {
+        return -1;
+    } else if (sub > 0) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
 #ifdef __cplusplus
 }
 #endif
