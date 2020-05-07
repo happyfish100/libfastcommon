@@ -43,7 +43,7 @@ typedef struct ini_section
 {
 	IniItem *items;
 	int count;  //item count
-	int alloc_count;
+	int alloc;
 } IniSection;
 
 typedef struct ini_section_info

@@ -50,6 +50,7 @@ src/tests/test_uniq_skiplist
 src/tests/test_server_id_func
 src/tests/test_pipe
 src/tests/test_atomic
+src/tests/test_file_write_hole
 
 # other
 *.swp

@@ -19,6 +19,7 @@
 #include "logger.h"
 #include "http_func.h"
 #include "local_ip_func.h"
+#include "pthread_func.h"
 #include "ini_file_reader.h"
 
 #define _LINE_BUFFER_SIZE	   512
@@ -53,15 +54,15 @@
 #define _PREPROCESS_TAG_STR_FOR_STEP   "step"
 #define _PREPROCESS_TAG_LEN_FOR_STEP   (sizeof(_PREPROCESS_TAG_STR_FOR_STEP) - 1)
 
-#define _MAX_DYNAMIC_CONTENTS     8
-#define _BUILTIN_ANNOTATION_COUNT 3
+#define _INIT_DYNAMIC_CONTENTS     8
+#define _BUILTIN_ANNOTATION_COUNT  3
 
 static AnnotationEntry *g_annotations = NULL;
 static int g_annotation_count = 0;
 
 typedef struct {
     int count;
-    int alloc_count;
+    int alloc;
     char **contents;
 } DynamicContents;
 
@@ -72,7 +73,7 @@ typedef struct {
 
 typedef struct {
     int count;
-    int alloc_count;
+    int alloc;
     AnnotationEntry *annotations;
 } DynamicAnnotations;
 
@@ -84,11 +85,17 @@ typedef struct {
     DynamicAnnotations dynamicAnnotations;
 } CDCPair;
 
+typedef struct {
+    volatile int init_counter;
+    int alloc;
+    int count;
+    int index;
+    CDCPair *contents;
+    pthread_mutex_t lock;
+} DynamicContentArray;
+
 //dynamic alloced contents which will be freed when destroy
-static int g_dynamic_content_count = 0;
-static int g_dynamic_content_index = 0;
-static CDCPair g_dynamic_contents[_MAX_DYNAMIC_CONTENTS] = {{false, NULL,
-    {0, 0, NULL}, {0, NULL}, {0, 0, NULL}}};
+static DynamicContentArray g_dynamic_content_array = {0, 0, 0, 0, NULL};
 
 static int remallocSection(IniSection *pSection, IniItem **pItem);
 static int iniDoLoadFromFile(const char *szFilename, \
@@ -1194,7 +1201,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 			nValueLen = FAST_INI_ITEM_VALUE_LEN;
 		}
 
-		if (pSection->count >= pSection->alloc_count)
+		if (pSection->count >= pSection->alloc)
         {
             result = remallocSection(pSection, &pItem);
             if (result != 0)
@@ -1300,7 +1307,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
                 pItem->value[nValueLen] = '\0';
                 pSection->count++;
                 pItem++;
-                if (pSection->count >= pSection->alloc_count)
+                if (pSection->count >= pSection->alloc)
                 {
                     result = remallocSection(pSection, &pItem);
                     if (result != 0)
@@ -1331,27 +1338,96 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 	return result;
 }
 
+static inline int checkInitDynamicContentArray()
+{
+    if (__sync_fetch_and_add(&g_dynamic_content_array.init_counter, 1) != 0)
+    {
+        return 0;
+    }
+
+    logInfo("file: "__FILE__", line: %d, func: %s, "
+            "init_pthread_lock", __LINE__, __FUNCTION__);
+    return init_pthread_lock(&g_dynamic_content_array.lock);
+}
+
+static int checkAllocDynamicContentArray()
+{
+    CDCPair *contents;
+    int alloc;
+    int bytes;
+
+    if (g_dynamic_content_array.alloc > g_dynamic_content_array.count)
+    {
+        return 0;
+    }
+
+    alloc = (g_dynamic_content_array.alloc == 0) ? _INIT_DYNAMIC_CONTENTS :
+        g_dynamic_content_array.alloc * 2;
+    bytes = sizeof(CDCPair) * alloc;
+    contents = (CDCPair *)malloc(bytes);
+    if (contents == NULL)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "malloc %d bytes fail", __LINE__, bytes);
+        return ENOMEM;
+    }
+    memset(contents, 0, bytes);
+
+    if (g_dynamic_content_array.alloc > 0)
+    {
+        memcpy(contents, g_dynamic_content_array.contents,
+                sizeof(CDCPair) * g_dynamic_content_array.alloc);
+        free(g_dynamic_content_array.contents);
+    }
+
+    logInfo("file: "__FILE__", line: %d, func: %s, "
+            "alloc count: %d", __LINE__, __FUNCTION__, alloc);
+
+    g_dynamic_content_array.contents = contents;
+    g_dynamic_content_array.alloc = alloc;
+    return 0;
+}
+
 static CDCPair *iniGetCDCPair(IniContext *pContext)
 {
     int i;
-    if (g_dynamic_contents[g_dynamic_content_index].context == pContext)
+    CDCPair *pair;
+
+    if (checkInitDynamicContentArray() != 0)
     {
-        return g_dynamic_contents + g_dynamic_content_index;
+        return NULL;
     }
 
-    if (g_dynamic_content_count > 0)
+    pthread_mutex_lock(&g_dynamic_content_array.lock);
+    if (g_dynamic_content_array.contents == NULL)
     {
-        for (i=0; i<_MAX_DYNAMIC_CONTENTS; i++)
+        pair = NULL;
+    }
+    else if (g_dynamic_content_array.contents[g_dynamic_content_array.index].
+            context == pContext)
+    {
+        pair = g_dynamic_content_array.contents + g_dynamic_content_array.index;
+    }
+    else
+    {
+        pair = NULL;
+        if (g_dynamic_content_array.count > 0)
         {
-            if (g_dynamic_contents[i].context == pContext)
+            for (i=0; i<g_dynamic_content_array.alloc; i++)
             {
-                g_dynamic_content_index = i;
-                return g_dynamic_contents + g_dynamic_content_index;
+                if (g_dynamic_content_array.contents[i].context == pContext)
+                {
+                    g_dynamic_content_array.index = i;
+                    pair = g_dynamic_content_array.contents +
+                        g_dynamic_content_array.index;
+                    break;
+                }
             }
         }
     }
+    pthread_mutex_unlock(&g_dynamic_content_array.lock);
 
-    return NULL;
+    return pair;
 }
 
 static CDCPair *iniAllocCDCPair(IniContext *pContext)
@@ -1363,29 +1439,35 @@ static CDCPair *iniAllocCDCPair(IniContext *pContext)
         return pair;
     }
 
-    if (g_dynamic_content_count == _MAX_DYNAMIC_CONTENTS)
-    {
-        return NULL;
-    }
-
-    for (i=0; i<_MAX_DYNAMIC_CONTENTS; i++)
-    {
-        if (!g_dynamic_contents[i].used)
+    pthread_mutex_lock(&g_dynamic_content_array.lock);
+    do {
+        if (checkAllocDynamicContentArray() != 0)
         {
-            g_dynamic_contents[i].used = true;
-            g_dynamic_contents[i].context = pContext;
-            g_dynamic_content_index = i;
-            g_dynamic_content_count++;
-            return g_dynamic_contents + g_dynamic_content_index;
+            break;
         }
-    }
 
-    return NULL;
+        for (i=0; i<g_dynamic_content_array.alloc; i++)
+        {
+            if (!g_dynamic_content_array.contents[i].used)
+            {
+                g_dynamic_content_array.contents[i].used = true;
+                g_dynamic_content_array.contents[i].context = pContext;
+                g_dynamic_content_array.index = i;
+                g_dynamic_content_array.count++;
+                pair = g_dynamic_content_array.contents +
+                    g_dynamic_content_array.index;
+                break;
+            }
+        }
+    } while (0);
+    pthread_mutex_unlock(&g_dynamic_content_array.lock);
+
+    return pair;
 }
 
 static DynamicContents *iniAllocDynamicContent(IniContext *pContext)
 {
-    static CDCPair *pair;
+    CDCPair *pair;
 
     pair = iniAllocCDCPair(pContext);
     if (pair == NULL)
@@ -1397,7 +1479,7 @@ static DynamicContents *iniAllocDynamicContent(IniContext *pContext)
 
 static SetDirectiveVars *iniGetVars(IniContext *pContext)
 {
-    static CDCPair *pair;
+    CDCPair *pair;
 
     pair = iniGetCDCPair(pContext);
     if (pair == NULL)
@@ -1409,7 +1491,7 @@ static SetDirectiveVars *iniGetVars(IniContext *pContext)
 
 static DynamicAnnotations *iniAllocDynamicAnnotation(IniContext *pContext)
 {
-    static CDCPair *pair;
+    CDCPair *pair;
 
     pair = iniAllocCDCPair(pContext);
     if (pair == NULL)
@@ -1421,7 +1503,7 @@ static DynamicAnnotations *iniAllocDynamicAnnotation(IniContext *pContext)
 
 static AnnotationEntry *iniGetAnnotations(IniContext *pContext)
 {
-    static CDCPair *pair;
+    CDCPair *pair;
 
     pair = iniGetCDCPair(pContext);
     if (pair == NULL)
@@ -1433,7 +1515,7 @@ static AnnotationEntry *iniGetAnnotations(IniContext *pContext)
 
 static SetDirectiveVars *iniAllocVars(IniContext *pContext, const bool initVars)
 {
-    static CDCPair *pair;
+    CDCPair *pair;
     SetDirectiveVars *set;
 
     set = iniGetVars(pContext);
@@ -1475,60 +1557,73 @@ static void iniFreeDynamicContent(IniContext *pContext)
     DynamicAnnotations *pDynamicAnnotations;
     int i;
 
-    if (g_dynamic_content_count == 0)
+    if (checkInitDynamicContentArray() != 0)
     {
         return;
     }
 
-    if (g_dynamic_contents[g_dynamic_content_index].context == pContext)
+    pthread_mutex_lock(&g_dynamic_content_array.lock);
+    do
     {
-        pCDCPair = g_dynamic_contents + g_dynamic_content_index;
-    }
-    else
-    {
-        pCDCPair = NULL;
-        for (i=0; i<_MAX_DYNAMIC_CONTENTS; i++)
+        if (g_dynamic_content_array.count == 0)
         {
-            if (g_dynamic_contents[i].context == pContext)
+            break;
+        }
+
+        if (g_dynamic_content_array.contents[g_dynamic_content_array.index].
+                context == pContext)
+        {
+            pCDCPair = g_dynamic_content_array.contents +
+                g_dynamic_content_array.index;
+        }
+        else
+        {
+            pCDCPair = NULL;
+            for (i=0; i<g_dynamic_content_array.alloc; i++)
             {
-                pCDCPair = g_dynamic_contents + i;
+                if (g_dynamic_content_array.contents[i].context == pContext)
+                {
+                    pCDCPair = g_dynamic_content_array.contents + i;
+                    break;
+                }
+            }
+            if (pCDCPair == NULL)
+            {
                 break;
             }
         }
-        if (pCDCPair == NULL)
-        {
-            return;
-        }
-    }
 
-    pDynamicContents = &pCDCPair->dynamicContents;
-    if (pDynamicContents->contents != NULL)
-    {
-        for (i=0; i<pDynamicContents->count; i++)
+        pDynamicContents = &pCDCPair->dynamicContents;
+        if (pDynamicContents->contents != NULL)
         {
-            if (pDynamicContents->contents[i] != NULL)
+            for (i=0; i<pDynamicContents->count; i++)
             {
-                free(pDynamicContents->contents[i]);
+                if (pDynamicContents->contents[i] != NULL)
+                {
+                    free(pDynamicContents->contents[i]);
+                }
             }
+            free(pDynamicContents->contents);
+            pDynamicContents->contents = NULL;
+            pDynamicContents->alloc = 0;
+            pDynamicContents->count = 0;
         }
-        free(pDynamicContents->contents);
-        pDynamicContents->contents = NULL;
-        pDynamicContents->alloc_count = 0;
-        pDynamicContents->count = 0;
-    }
 
-    pDynamicAnnotations = &pCDCPair->dynamicAnnotations;
-    if (pDynamicAnnotations->annotations != NULL)
-    {
-        free(pDynamicAnnotations->annotations);
-        pDynamicAnnotations->annotations = NULL;
-        pDynamicAnnotations->alloc_count = 0;
-        pDynamicAnnotations->count = 0;
-    }
+        pDynamicAnnotations = &pCDCPair->dynamicAnnotations;
+        if (pDynamicAnnotations->annotations != NULL)
+        {
+            free(pDynamicAnnotations->annotations);
+            pDynamicAnnotations->annotations = NULL;
+            pDynamicAnnotations->alloc = 0;
+            pDynamicAnnotations->count = 0;
+        }
 
-    pCDCPair->used = false;
-    pCDCPair->context = NULL;
-    g_dynamic_content_count--;
+        pCDCPair->used = false;
+        pCDCPair->context = NULL;
+        g_dynamic_content_array.count--;
+    } while (0);
+
+    pthread_mutex_unlock(&g_dynamic_content_array.lock);
 }
 
 static char *iniAllocContent(IniContext *pContext, const int content_len)
@@ -1542,20 +1637,20 @@ static char *iniAllocContent(IniContext *pContext, const int content_len)
                 "malloc dynamic contents fail", __LINE__);
         return NULL;
     }
-    if (pDynamicContents->count >= pDynamicContents->alloc_count)
+    if (pDynamicContents->count >= pDynamicContents->alloc)
     {
-        int alloc_count;
+        int alloc;
         int bytes;
         char **contents;
-        if (pDynamicContents->alloc_count == 0)
+        if (pDynamicContents->alloc == 0)
         {
-            alloc_count = 8;
+            alloc = 8;
         }
         else
         {
-            alloc_count = pDynamicContents->alloc_count * 2;
+            alloc = pDynamicContents->alloc * 2;
         }
-        bytes = sizeof(char *) * alloc_count;
+        bytes = sizeof(char *) * alloc;
         contents = (char **)malloc(bytes);
         if (contents == NULL)
         {
@@ -1571,7 +1666,7 @@ static char *iniAllocContent(IniContext *pContext, const int content_len)
             free(pDynamicContents->contents);
         }
         pDynamicContents->contents = contents;
-        pDynamicContents->alloc_count = alloc_count;
+        pDynamicContents->alloc = alloc;
     }
 
     buff = malloc(content_len);
@@ -1588,29 +1683,29 @@ static char *iniAllocContent(IniContext *pContext, const int content_len)
 static int iniCheckAllocAnnotations(DynamicAnnotations *pDynamicAnnotations,
         const int annotation_count)
 {
-    int alloc_count;
+    int alloc;
     int bytes;
     AnnotationEntry *annotations;
 
     if (pDynamicAnnotations->count + annotation_count <
-            pDynamicAnnotations->alloc_count)
+            pDynamicAnnotations->alloc)
     {
         return 0;
     }
 
-    if (pDynamicAnnotations->alloc_count == 0)
+    if (pDynamicAnnotations->alloc == 0)
     {
-        alloc_count = 8;
+        alloc = 8;
     }
     else
     {
-        alloc_count = pDynamicAnnotations->alloc_count * 2;
+        alloc = pDynamicAnnotations->alloc * 2;
     }
-    while (alloc_count <= pDynamicAnnotations->count + annotation_count)
+    while (alloc <= pDynamicAnnotations->count + annotation_count)
     {
-        alloc_count *= 2;
+        alloc *= 2;
     }
-    bytes = sizeof(AnnotationEntry) * alloc_count;
+    bytes = sizeof(AnnotationEntry) * alloc;
     annotations = (AnnotationEntry *)malloc(bytes);
     if (annotations == NULL)
     {
@@ -1626,7 +1721,7 @@ static int iniCheckAllocAnnotations(DynamicAnnotations *pDynamicAnnotations,
         free(pDynamicAnnotations->annotations);
     }
     pDynamicAnnotations->annotations = annotations;
-    pDynamicAnnotations->alloc_count = alloc_count;
+    pDynamicAnnotations->alloc = alloc;
     return 0;
 }
 
@@ -2630,18 +2725,18 @@ static int remallocSection(IniSection *pSection, IniItem **pItem)
 {
     int bytes;
     int result;
-    int alloc_count;
+    int alloc;
     IniItem *pNew;
 
-    if (pSection->alloc_count == 0)
+    if (pSection->alloc == 0)
     {
-        alloc_count = _INIT_ALLOC_ITEM_COUNT;
+        alloc = _INIT_ALLOC_ITEM_COUNT;
     }
     else
     {
-        alloc_count = pSection->alloc_count * 2;
+        alloc = pSection->alloc * 2;
     }
-    bytes = sizeof(IniItem) * alloc_count;
+    bytes = sizeof(IniItem) * alloc;
     pNew = (IniItem *)malloc(bytes);
     if (pNew == NULL)
     {
@@ -2658,11 +2753,11 @@ static int remallocSection(IniSection *pSection, IniItem **pItem)
         free(pSection->items);
     }
 
-    pSection->alloc_count = alloc_count;
+    pSection->alloc = alloc;
     pSection->items = pNew;
     *pItem = pSection->items + pSection->count;
     memset(*pItem, 0, sizeof(IniItem) *
-        (pSection->alloc_count - pSection->count));
+        (pSection->alloc - pSection->count));
 
     return 0;
 }
