@@ -1344,9 +1344,6 @@ static inline int checkInitDynamicContentArray()
     {
         return 0;
     }
-
-    logInfo("file: "__FILE__", line: %d, func: %s, "
-            "init_pthread_lock", __LINE__, __FUNCTION__);
     return init_pthread_lock(&g_dynamic_content_array.lock);
 }
 
@@ -1379,9 +1376,6 @@ static int checkAllocDynamicContentArray()
                 sizeof(CDCPair) * g_dynamic_content_array.alloc);
         free(g_dynamic_content_array.contents);
     }
-
-    logInfo("file: "__FILE__", line: %d, func: %s, "
-            "alloc count: %d", __LINE__, __FUNCTION__, alloc);
 
     g_dynamic_content_array.contents = contents;
     g_dynamic_content_array.alloc = alloc;

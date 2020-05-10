@@ -46,6 +46,11 @@ int main(int argc, char *argv[])
             "%"PRId64" ms\n", int_to_comma_str(LOOP_COUNT, time_buff),
             sum, get_current_time_ms() - start_time);
 
+    printf("lock 1: %d\n", pthread_mutex_lock(&lock));
+    printf("lock 2: %d\n", pthread_mutex_lock(&lock));
+    printf("unlock 1: %d\n", pthread_mutex_unlock(&lock));
+    printf("unlock 2: %d\n", pthread_mutex_unlock(&lock));
+
 	start_time = get_current_time_ms();
     sum = 0;
 	for (k=1; k<=LOOP_COUNT; k++) {

@@ -24,6 +24,32 @@ extern "C" {
 int init_pthread_lock(pthread_mutex_t *pthread_lock);
 int init_pthread_attr(pthread_attr_t *pattr, const int stack_size);
 
+#define PTHREAD_MUTEX_LOCK(lock) \
+    do {  \
+        int lock_res;   \
+        if ((lock_res=pthread_mutex_lock(lock)) != 0) \
+        {  \
+            logWarning("file: "__FILE__", line: %d, "  \
+                    "call pthread_mutex_lock fail, " \
+                    "errno: %d, error info: %s", \
+                    __LINE__, lock_res, STRERROR(lock_res)); \
+        }  \
+    } while (0)
+
+
+#define PTHREAD_MUTEX_UNLOCK(lock) \
+    do {  \
+        int unlock_res;   \
+        if ((unlock_res=pthread_mutex_unlock(lock)) != 0) \
+        {  \
+            logWarning("file: "__FILE__", line: %d, "    \
+                    "call pthread_mutex_unlock fail, " \
+                    "errno: %d, error info: %s", \
+                    __LINE__, unlock_res, STRERROR(unlock_res)); \
+        }  \
+    } while (0)
+
+
 int create_work_threads(int *count, void *(*start_func)(void *),
 		void **args, pthread_t *tids, const int stack_size);
 
