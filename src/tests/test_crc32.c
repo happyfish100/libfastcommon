@@ -8,31 +8,78 @@
 #include "fastcommon/logger.h"
 #include "fastcommon/shared_func.h"
 
+static void usage(const char *program)
+{
+    fprintf(stderr, "Usage: %s [-o offset=0] [-s size=0] <filename>\n",
+            program);
+}
+
 int main(int argc, char *argv[])
 {
     int result;
+    int ch;
     char *filename;
     char *content;
+    int64_t offset;
     int64_t file_size;
     int64_t crc32;
     int byte1, byte2;
 
     if (argc < 2) {
-        fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
+        usage(argv[0]);
         return EINVAL;
     }
-    filename = argv[1];
 
+    offset = 0;
+    file_size = 0;
+    while ((ch=getopt(argc, argv, "ho:s:")) != -1) {
+        switch (ch) {
+            case 'h':
+                usage(argv[0]);
+                return 0;
+            case 'o':
+                offset = strtoll(optarg, NULL, 10);
+                break;
+            case 's':
+                file_size = strtoll(optarg, NULL, 10);
+                break;
+            default:
+                usage(argv[0]);
+                return EINVAL;
+        }
+    }
+
+    if (optind >= argc) {
+        usage(argv[0]);
+        return EINVAL;
+    }
+
+    filename = argv[optind];
     log_init();
-    result = getFileContent(filename, &content, &file_size);
+
+    if (file_size == 0) {
+        if ((result=getFileSize(filename, &file_size)) != 0) {
+            return result;
+        }
+    }
+    file_size += 1;
+    content = (char *)malloc(file_size);
+    if (content == NULL) {
+        fprintf(stderr, "malloc %"PRId64" bytes fail", file_size);
+        return ENOMEM;
+    }
+
+    result = getFileContentEx(filename, content,
+            offset, &file_size);
     if (result != 0) {
         return result;
     }
 
-    printf("file_size: %"PRId64"\n", file_size);
+    printf("offset: %"PRId64", size: %"PRId64"\n",
+            offset, file_size);
 
     crc32 = CRC32(content, (int)file_size);
-    printf("crc32: %x\n", (int)crc32);
+    printf("crc32 whole: %x\n", (int)crc32);
 
     byte1 = (int)(file_size / 2);
     byte2 = (int)(file_size - byte1);
@@ -40,7 +87,7 @@ int main(int argc, char *argv[])
     crc32 = CRC32_ex(content, byte1, crc32);
     crc32 = CRC32_ex(content + byte1, byte2, crc32);
     crc32 = CRC32_FINAL(crc32);
-    printf("crc32: %x\n", (int)crc32);
+    printf("crc32 by 2 parts: %x\n", (int)crc32);
 
     return 0;
 }
