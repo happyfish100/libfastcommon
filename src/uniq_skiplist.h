@@ -70,6 +70,13 @@ extern "C" {
             compare_func, free_func, 64 * 1024, \
             SKIPLIST_DEFAULT_MIN_ALLOC_ELEMENTS_ONCE, 0)
 
+#define uniq_skiplist_delete(sl, data)  \
+    uniq_skiplist_delete_ex(sl, data, true)
+
+#define uniq_skiplist_replace(sl, data) \
+    uniq_skiplist_replace_ex(sl, data, true)
+
+
 int uniq_skiplist_init_ex2(UniqSkiplistFactory *factory,
         const int max_level_count, skiplist_compare_func compare_func,
         uniq_skiplist_free_func free_func, const int alloc_skiplist_once,
@@ -84,7 +91,10 @@ UniqSkiplist *uniq_skiplist_new(UniqSkiplistFactory *factory,
 void uniq_skiplist_free(UniqSkiplist *sl);
 
 int uniq_skiplist_insert(UniqSkiplist *sl, void *data);
-int uniq_skiplist_delete(UniqSkiplist *sl, void *data);
+int uniq_skiplist_delete_ex(UniqSkiplist *sl, void *data,
+        const bool need_free);
+int uniq_skiplist_replace_ex(UniqSkiplist *sl, void *data,
+        const bool need_free_old);
 void *uniq_skiplist_find(UniqSkiplist *sl, void *data);
 int uniq_skiplist_find_all(UniqSkiplist *sl, void *data,
         UniqSkiplistIterator *iterator);

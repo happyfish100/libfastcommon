@@ -447,7 +447,8 @@ static UniqSkiplistNode *uniq_skiplist_get_first_larger(
     return (UniqSkiplistNode *)previous->links[0];
 }
 
-int uniq_skiplist_delete(UniqSkiplist *sl, void *data)
+int uniq_skiplist_delete_ex(UniqSkiplist *sl, void *data,
+        const bool need_free)
 {
     int i;
     int level_index;
@@ -480,13 +481,39 @@ int uniq_skiplist_delete(UniqSkiplist *sl, void *data)
         }
     }
 
-    if (sl->factory->free_func != NULL) {
+    if (need_free && sl->factory->free_func != NULL) {
         sl->factory->free_func(deleted->data,
                 sl->factory->delay_free_seconds);
     }
 
     UNIQ_SKIPLIST_FREE_MBLOCK_OBJECT(sl, level_index, deleted);
     sl->element_count--;
+    return 0;
+}
+
+int uniq_skiplist_replace_ex(UniqSkiplist *sl, void *data,
+        const bool need_free_old)
+{
+    int level_index;
+    UniqSkiplistNode *previous;
+    volatile UniqSkiplistNode *current;
+
+    previous = uniq_skiplist_get_equal_previous(sl, data, &level_index);
+    if (previous == NULL) {
+        return ENOENT;
+    }
+
+    current = previous->links[level_index];
+    if (need_free_old && sl->factory->free_func != NULL) {
+        void *deleted_data;
+
+        deleted_data = current->data;
+        current->data = data;
+        sl->factory->free_func(deleted_data, sl->factory->delay_free_seconds);
+    } else {
+        current->data = data;
+    }
+
     return 0;
 }
 
