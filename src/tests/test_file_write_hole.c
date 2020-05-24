@@ -26,13 +26,16 @@ int main(int argc, char *argv[])
 
     log_init();
     filename = argv[1];
+    /*
     if (access(filename, F_OK) == 0) {
         logError("file: "__FILE__", line: %d, "
             "file %s already exists", __LINE__, filename);
         return EEXIST;
     }
+    */
 
-    fd = open(filename, O_RDWR | O_CREAT | O_TRUNC, 0644);
+    //fd = open(filename, O_RDWR | O_CREAT | O_TRUNC, 0644);
+    fd = open(filename, O_RDWR | O_CREAT, 0644);
     if (fd < 0) {
         result = errno != 0 ? errno : EIO;
         logError("file: "__FILE__", line: %d, " \
@@ -41,6 +44,14 @@ int main(int argc, char *argv[])
             __LINE__, filename, \
             result, STRERROR(result));
         return result;
+    }
+
+    if (ftruncate(fd, 102400) < 0) {
+        logError("file: "__FILE__", line: %d, " \
+            "ftruncate file %s fail, " \
+            "errno: %d, error info: %s", __LINE__, \
+            filename, errno, STRERROR(errno));
+        return errno != 0 ? errno : EIO;
     }
 
     if (lseek(fd, SEEK_POS, SEEK_SET) < 0) {
