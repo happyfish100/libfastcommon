@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include "common_define.h"
@@ -951,6 +952,16 @@ int fc_init_buffer(BufferInfo *buffer, const int buffer_size);
  *  return: none
 */
 void fc_free_buffer(BufferInfo *buffer);
+
+
+static inline int fc_get_umask()
+{
+    mode_t mode;
+
+    mode = umask(0); //fetch
+    umask(mode);     //restore
+    return mode;
+}
 
 #ifdef __cplusplus
 }
