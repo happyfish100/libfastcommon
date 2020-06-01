@@ -3102,3 +3102,32 @@ void fc_free_buffer(BufferInfo *buffer)
         buffer->alloc_size = buffer->length = 0;
     }
 }
+
+int fc_check_mkdir_ex(const char *path, const mode_t mode, bool *create)
+{
+    int result;
+
+    *create = false;
+    if (access(path, F_OK) == 0) {
+        return 0;
+    }
+
+    result = errno != 0 ? errno : EPERM;
+    if (result != ENOENT) {
+        logError("file: "__FILE__", line: %d, "
+                "access %s fail, errno: %d, error info: %s",
+                __LINE__, path, result, STRERROR(result));
+        return result;
+    }
+
+    if (mkdir(path, mode) != 0) {
+        result = errno != 0 ? errno : EPERM;
+        logError("file: "__FILE__", line: %d, "
+                "mkdir %s fail, errno: %d, error info: %s",
+                __LINE__, path, result, STRERROR(result));
+        return result;
+    }
+
+    *create = true;
+    return 0;
+}

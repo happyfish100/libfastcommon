@@ -963,6 +963,14 @@ static inline int fc_get_umask()
     return mode;
 }
 
+int fc_check_mkdir_ex(const char *path, const mode_t mode, bool *create);
+
+static inline int fc_check_mkdir(const char *path, const mode_t mode)
+{
+    bool create;
+    return fc_check_mkdir_ex(path, mode, &create);
+}
+
 #ifdef __cplusplus
 }
 #endif
