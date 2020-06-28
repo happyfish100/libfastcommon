@@ -65,7 +65,7 @@ typedef struct
 typedef struct
 {
 	int id;  //server id
-    FCAddressArray uniq_addresses;
+    FCAddressPtrArray uniq_addresses;
     FCGroupAddresses group_addrs[FC_MAX_GROUP_COUNT];
 } FCServerInfo;
 

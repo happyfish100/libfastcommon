@@ -11,6 +11,12 @@
 #include "fastcommon/logger.h"
 #include "fastcommon/shared_func.h"
 
+#define OneArgument(a) printf("One Argument func is called!\n")
+#define TwoArguments(a, b) printf("Two Arguments func is called!\n")
+#define TreeArguments(a, b, c) printf("Tree Arguments func is called!\n")
+#define MacroKernel(_1, _2, _3, FUNC, ...) FUNC
+#define Macro(...) MacroKernel(__VA_ARGS__, TreeArguments, TwoArguments, OneArgument, ...)(__VA_ARGS__)
+
 static inline int get_lock_info(int fd, struct flock *lock)
 {
     int result;
@@ -43,6 +49,9 @@ int main(int argc, char *argv[])
     char buf[1024];
     struct flock lock;
 
+    Macro(1);
+    Macro(1, 2);
+    Macro(1, 2, 3);
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
         return 1;

@@ -107,19 +107,19 @@ static int fc_server_calc_ip_port_count(FCServerConfig *ctx)
     return count;
 }
 
-static int fc_server_check_alloc_group_addresses(FCAddressArray *array)
+static int fc_server_check_alloc_group_addresses(FCAddressPtrArray *array)
 {
     int new_alloc;
     int bytes;
-    FCAddressInfo *new_addrs;
+    FCAddressInfo **new_addrs;
 
     if (array->count < array->alloc) {
         return 0;
     }
 
     new_alloc = array->alloc > 0 ? 2 * array->alloc : 2;
-    bytes = sizeof(FCAddressInfo) * new_alloc;
-    new_addrs = (FCAddressInfo *)malloc(bytes);
+    bytes = sizeof(FCAddressInfo *) * new_alloc;
+    new_addrs = (FCAddressInfo **)malloc(bytes);
     if (new_addrs == NULL) {
         logError("file: "__FILE__", line: %d, "
                 "malloc %d bytes fail", __LINE__, bytes);
@@ -128,7 +128,7 @@ static int fc_server_check_alloc_group_addresses(FCAddressArray *array)
     memset(new_addrs, 0, bytes);
 
     if (array->addrs != NULL) {
-        memcpy(new_addrs, array->addrs, sizeof(FCAddressInfo) * array->count);
+        memcpy(new_addrs, array->addrs, sizeof(FCAddressInfo *) * array->count);
         free(array->addrs);
     }
 
@@ -138,24 +138,32 @@ static int fc_server_check_alloc_group_addresses(FCAddressArray *array)
 }
 
 static FCAddressInfo *fc_server_add_to_uniq_addresses(
-        FCAddressArray *addr_array, const FCAddressInfo *addr)
+        FCAddressPtrArray *addr_ptr_array, const FCAddressInfo *addr)
 {
     FCAddressInfo *p;
-    FCAddressInfo *end;
+    FCAddressInfo **pp;
+    FCAddressInfo **end;
 
-    end = addr_array->addrs + addr_array->count;
-    for (p=addr_array->addrs; p<end; p++) {
-        if (FC_CONNECTION_SERVER_EQUAL1(addr->conn, p->conn)) {
-            return p;
+    end = addr_ptr_array->addrs + addr_ptr_array->count;
+    for (pp=addr_ptr_array->addrs; pp<end; pp++) {
+        if (FC_CONNECTION_SERVER_EQUAL1(addr->conn, (*pp)->conn)) {
+            return *pp;
         }
     }
 
-    if (fc_server_check_alloc_group_addresses(addr_array) != 0) {
+    if (fc_server_check_alloc_group_addresses(addr_ptr_array) != 0) {
         return NULL;
     }
-    p = addr_array->addrs + addr_array->count;
+    p = (FCAddressInfo *)malloc(sizeof(FCAddressInfo));
+    if (p == NULL) {
+        logError("file: "__FILE__", line: %d, "
+                "malloc %d bytes fail", __LINE__,
+                (int)sizeof(FCAddressInfo));
+        return NULL;
+    }
+
     *p = *addr;
-    addr_array->count++;
+    addr_ptr_array->addrs[addr_ptr_array->count++] = p;
     return p;
 }
 
@@ -168,8 +176,8 @@ static int fc_server_init_ip_port_array(FCServerConfig *ctx)
     FCServerMap *map;
 	FCServerInfo *server;
 	FCServerInfo *send;
-    FCAddressInfo *paddr;
-    FCAddressInfo *pend;
+    FCAddressInfo **paddr;
+    FCAddressInfo **pend;
 
     map_array = &ctx->sorted_server_arrays.by_ip_port;
 
@@ -192,8 +200,8 @@ static int fc_server_init_ip_port_array(FCServerConfig *ctx)
         pend = server->uniq_addresses.addrs + server->uniq_addresses.count;
         for (paddr=server->uniq_addresses.addrs; paddr<pend; paddr++) {
             map->server = server;
-            FC_SET_STRING(map->ip_addr, paddr->conn.ip_addr);
-            map->port = paddr->conn.port;
+            FC_SET_STRING(map->ip_addr, (*paddr)->conn.ip_addr);
+            map->port = (*paddr)->conn.port;
             map++;
         }
     }
@@ -737,14 +745,14 @@ static int fc_server_set_group_server_address(FCServerInfo *server,
     if (addr == NULL) {
         return ENOMEM;
     }
+
     if ((result=fc_server_check_alloc_group_address_ptrs(
                     &group_addr->address_array)) != 0)
     {
         return result;
     }
 
-    group_addr->address_array.addrs[group_addr->address_array.count] = addr;
-    group_addr->address_array.count++;
+    group_addr->address_array.addrs[group_addr->address_array.count++] = addr;
     return 0;
 }
 
@@ -831,6 +839,7 @@ static int fc_server_set_host(FCServerConfig *ctx, FCServerInfo *server,
             } else {
                 new_addr = addr;
             }
+
             if ((result=fc_server_set_group_server_address(server,
                             group_addr, new_addr)) != 0)
             {
