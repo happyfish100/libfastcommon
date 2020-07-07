@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include "shared_func.h"
+#include "fc_memory.h"
 #include "json_parser.h"
 
 #define EXPECT_STR_LEN   80
@@ -63,7 +64,7 @@ static int json_escape_string(const string_t *input, string_t *output,
     int size;
 
     size = 2 * input->len + 1;
-    output->str = (char *)malloc(size);
+    output->str = (char *)fc_malloc(size);
     if (output->str == NULL) {
         snprintf(error_info, error_size, "malloc %d bytes fail", size);
         return ENOMEM;
@@ -201,9 +202,9 @@ static int check_alloc_array(common_array_t *array,
     }
 
     bytes = array->element_size * array->alloc;
-    array->elements = realloc(array->elements, bytes);
+    array->elements = fc_realloc(array->elements, bytes);
     if (array->elements == NULL) {
-        snprintf(error_info, error_size, "malloc %d bytes fail", bytes);
+        snprintf(error_info, error_size, "realloc %d bytes fail", bytes);
         return ENOMEM;
     }
 
@@ -249,7 +250,7 @@ static int prepare_json_parse(const string_t *input, common_array_t *array,
     }
 
     buff_len = input->len - 2;
-    array->buff = (char *)malloc(buff_len + 1);
+    array->buff = (char *)fc_malloc(buff_len + 1);
     if (array->buff == NULL) {
         snprintf(error_info, error_size,
                 "malloc %d bytes fail", buff_len + 1);
@@ -384,7 +385,7 @@ int encode_json_array(json_array_t *array, string_t *output,
         size += 2 * el->len + 3;
     }
 
-    output->str = (char *)malloc(size);
+    output->str = (char *)fc_malloc(size);
     if (output->str == NULL) {
         snprintf(error_info, error_size, "malloc %d bytes fail", size);
         return ENOMEM;
@@ -511,7 +512,7 @@ int encode_json_map(json_map_t *map, string_t *output,
         size += 2 * (pair->key.len + pair->value.len + 2) + 1;
     }
 
-    output->str = (char *)malloc(size);
+    output->str = (char *)fc_malloc(size);
     if (output->str == NULL) {
         snprintf(error_info, error_size, "malloc %d bytes fail", size);
         return ENOMEM;

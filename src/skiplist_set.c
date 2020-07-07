@@ -15,6 +15,7 @@
 #include <errno.h>
 #include <assert.h>
 #include "logger.h"
+#include "fc_memory.h"
 #include "skiplist_set.h"
 
 int skiplist_set_init_ex(SkiplistSet *sl, const int level_count,
@@ -43,21 +44,15 @@ int skiplist_set_init_ex(SkiplistSet *sl, const int level_count,
     }
 
     bytes = sizeof(SkiplistSetNode *) * level_count;
-    sl->tmp_previous = (SkiplistSetNode **)malloc(bytes);
+    sl->tmp_previous = (SkiplistSetNode **)fc_malloc(bytes);
     if (sl->tmp_previous == NULL) {
-        logError("file: "__FILE__", line: %d, "
-                "malloc %d bytes fail, errno: %d, error info: %s",
-                __LINE__, bytes, errno, STRERROR(errno));
-        return errno != 0 ? errno : ENOMEM;
+        return ENOMEM;
     }
 
     bytes = sizeof(struct fast_mblock_man) * level_count;
-    sl->mblocks = (struct fast_mblock_man *)malloc(bytes);
+    sl->mblocks = (struct fast_mblock_man *)fc_malloc(bytes);
     if (sl->mblocks == NULL) {
-        logError("file: "__FILE__", line: %d, "
-                "malloc %d bytes fail, errno: %d, error info: %s",
-                __LINE__, bytes, errno, STRERROR(errno));
-        return errno != 0 ? errno : ENOMEM;
+        return ENOMEM;
     }
     memset(sl->mblocks, 0, bytes);
 

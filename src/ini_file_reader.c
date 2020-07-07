@@ -20,6 +20,7 @@
 #include "http_func.h"
 #include "local_ip_func.h"
 #include "pthread_func.h"
+#include "fc_memory.h"
 #include "ini_file_reader.h"
 
 #define _LINE_BUFFER_SIZE	   512
@@ -245,11 +246,8 @@ static int iniAnnotationFuncShellExec(IniContext *context,
     char *output;
 
     count = 0;
-    output = (char *)malloc(FAST_INI_ITEM_VALUE_SIZE);
+    output = (char *)fc_malloc(FAST_INI_ITEM_VALUE_SIZE);
     if (output == NULL) {
-        logError("file: "__FILE__", line: %d, "
-                "malloc %d bytes fail",
-                __LINE__, FAST_INI_ITEM_VALUE_LEN + 1);
         return count;
     }
 
@@ -310,11 +308,8 @@ static char *doReplaceVars(IniContext *pContext, const char *param,
     int name_len;
     int len;
 
-    output = (char *)malloc(max_size);
+    output = (char *)fc_malloc(max_size);
     if (output == NULL) {
-        logError("file: "__FILE__", line: %d, "
-                "malloc %d bytes fail",
-                __LINE__, FAST_INI_ITEM_VALUE_SIZE);
         return NULL;
     }
 
@@ -493,12 +488,9 @@ int iniSetAnnotationCallBack(AnnotationEntry *annotations, int count)
     }
 
     bytes = sizeof(AnnotationEntry) * (g_annotation_count + count + 1);
-    g_annotations = (AnnotationEntry *)realloc(g_annotations, bytes);
+    g_annotations = (AnnotationEntry *)fc_realloc(g_annotations, bytes);
     if (g_annotations == NULL)
     {
-		logError("file: "__FILE__", line: %d, "
-			"realloc %d fail, errno: %d, error info: %s",
-			__LINE__, bytes, errno, STRERROR(errno));
         return ENOMEM;
     }
 
@@ -999,13 +991,10 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 			strncasecmp(pLine+1, "include", 7) == 0 && \
 			(*(pLine+8) == ' ' || *(pLine+8) == '\t'))
 		{
-			pIncludeFilename = strdup(pLine + 9);
+			pIncludeFilename = fc_strdup(pLine + 9);
 			if (pIncludeFilename == NULL)
 			{
-				logError("file: "__FILE__", line: %d, " \
-					"strdup %d bytes fail", __LINE__, \
-					(int)strlen(pLine + 9) + 1);
-				result = errno != 0 ? errno : ENOMEM;
+				result = ENOMEM;
 				break;
 			}
 
@@ -1127,17 +1116,10 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 					section_name, section_len);
 			if (pSection == NULL)
 			{
-				pSection = (IniSection *)malloc(sizeof(IniSection));
+				pSection = (IniSection *)fc_malloc(sizeof(IniSection));
 				if (pSection == NULL)
 				{
-					result = errno != 0 ? errno : ENOMEM;
-					logError("file: "__FILE__", line: %d, "\
-						"malloc %d bytes fail, " \
-						"errno: %d, error info: %s", \
-						__LINE__, \
-						(int)sizeof(IniSection), \
-						result, STRERROR(result));
-
+					result = ENOMEM;
 					break;
 				}
 
@@ -1361,11 +1343,9 @@ static int checkAllocDynamicContentArray()
     alloc = (g_dynamic_content_array.alloc == 0) ? _INIT_DYNAMIC_CONTENTS :
         g_dynamic_content_array.alloc * 2;
     bytes = sizeof(CDCPair) * alloc;
-    contents = (CDCPair *)malloc(bytes);
+    contents = (CDCPair *)fc_malloc(bytes);
     if (contents == NULL)
     {
-        logError("file: "__FILE__", line: %d, "
-                "malloc %d bytes fail", __LINE__, bytes);
         return ENOMEM;
     }
     memset(contents, 0, bytes);
@@ -1525,12 +1505,9 @@ static SetDirectiveVars *iniAllocVars(IniContext *pContext, const bool initVars)
 
     if (initVars && set->vars == NULL)
     {
-        set->vars = (HashArray *)malloc(sizeof(HashArray));
+        set->vars = (HashArray *)fc_malloc(sizeof(HashArray));
         if (set->vars == NULL)
         {
-            logWarning("file: "__FILE__", line: %d, "
-                    "malloc %d bytes fail",
-                    __LINE__, (int)sizeof(HashArray));
             return NULL;
         }
         if (hash_init_ex(set->vars, simple_hash, 17, 0.75, 0, true) != 0)
@@ -1645,11 +1622,9 @@ static char *iniAllocContent(IniContext *pContext, const int content_len)
             alloc = pDynamicContents->alloc * 2;
         }
         bytes = sizeof(char *) * alloc;
-        contents = (char **)malloc(bytes);
+        contents = (char **)fc_malloc(bytes);
         if (contents == NULL)
         {
-            logError("file: "__FILE__", line: %d, "
-                    "malloc %d bytes fail", __LINE__, bytes);
             return NULL;
         }
         memset(contents, 0, bytes);
@@ -1663,11 +1638,9 @@ static char *iniAllocContent(IniContext *pContext, const int content_len)
         pDynamicContents->alloc = alloc;
     }
 
-    buff = malloc(content_len);
+    buff = fc_malloc(content_len);
     if (buff == NULL)
     {
-        logError("file: "__FILE__", line: %d, "
-                "malloc %d bytes fail", __LINE__, content_len);
         return NULL;
     }
     pDynamicContents->contents[pDynamicContents->count++] = buff;
@@ -1700,11 +1673,9 @@ static int iniCheckAllocAnnotations(DynamicAnnotations *pDynamicAnnotations,
         alloc *= 2;
     }
     bytes = sizeof(AnnotationEntry) * alloc;
-    annotations = (AnnotationEntry *)malloc(bytes);
+    annotations = (AnnotationEntry *)fc_malloc(bytes);
     if (annotations == NULL)
     {
-        logError("file: "__FILE__", line: %d, "
-                "malloc %d bytes fail", __LINE__, bytes);
         return ENOMEM;
     }
     memset(annotations, 0, bytes);
@@ -2149,10 +2120,8 @@ static int iniDoProccessSet(char *pSet, char **ppSetEnd,
             if (new_value != value) {
                 free(new_value);
             }
-            new_value = strdup(output);
+            new_value = fc_strdup(output);
             if (new_value == NULL) {
-                logWarning("file: "__FILE__", line: %d, "
-                        "malloc %d bytes fail", __LINE__, value_len + 1);
                 new_value = value;
                 value_len = 0;
             }
@@ -2718,7 +2687,6 @@ static int iniLoadItemsFromBuffer(char *content, IniContext *pContext)
 static int remallocSection(IniSection *pSection, IniItem **pItem)
 {
     int bytes;
-    int result;
     int alloc;
     IniItem *pNew;
 
@@ -2731,13 +2699,10 @@ static int remallocSection(IniSection *pSection, IniItem **pItem)
         alloc = pSection->alloc * 2;
     }
     bytes = sizeof(IniItem) * alloc;
-    pNew = (IniItem *)malloc(bytes);
+    pNew = (IniItem *)fc_malloc(bytes);
     if (pNew == NULL)
     {
-        logError("file: "__FILE__", line: %d, " \
-            "malloc %d bytes fail", __LINE__, bytes);
-        result = errno != 0 ? errno : ENOMEM;
-        return result;
+        return ENOMEM;
     }
 
     if (pSection->count > 0)

@@ -16,6 +16,7 @@
 #include <string.h>
 #include <pthread.h>
 #include "common_define.h"
+#include "fc_memory.h"
 #include "chain.h"
 
 #define FAST_MBLOCK_NAME_SIZE 32
@@ -44,6 +45,8 @@ struct fast_mblock_chain {
 	struct fast_mblock_node *head;
 	struct fast_mblock_node *tail;
 };
+
+typedef void (*fc_oom_notify_func)(const int curr_alloc_size);
 
 typedef int (*fast_mblock_alloc_init_func)(void *element, void *args);
 

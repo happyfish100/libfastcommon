@@ -21,8 +21,9 @@
 #include <dirent.h>
 #include <grp.h>
 #include <pwd.h>
-#include "pthread_func.h"
+#include "fc_memory.h"
 #include "logger.h"
+#include "pthread_func.h"
 
 int init_pthread_lock(pthread_mutex_t *pthread_lock)
 {
@@ -147,10 +148,8 @@ int create_work_threads(int *count, void *(*start_func)(void *),
         } else {
             int bytes;
             bytes = sizeof(pthread_t) * *count;
-            the_tids = (pthread_t *)malloc(bytes);
+            the_tids = (pthread_t *)fc_malloc(bytes);
             if (the_tids == NULL) {
-                logError("file: "__FILE__", line: %d, "
-                        "malloc %d bytes fail", __LINE__, bytes);
                 pthread_attr_destroy(&thread_attr);
                 return ENOMEM;
             }
@@ -200,10 +199,8 @@ int create_work_threads_ex(int *count, void *(*start_func)(void *),
     } else {
         int bytes;
         bytes = sizeof(void *) * (*count);
-        pp_args = (void **)malloc(bytes);
+        pp_args = (void **)fc_malloc(bytes);
         if (pp_args == NULL) {
-            logError("file: "__FILE__", line: %d, "
-                    "malloc %d bytes fail", __LINE__, bytes);
             return ENOMEM;
         }
     }

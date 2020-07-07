@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+#include "fc_memory.h"
 #include "base64.h"
 
 /**
@@ -281,11 +282,9 @@ char *base64_decode_auto(struct base64_context *context, const char *src, \
 	}
 	else
 	{
-		pBuff = (char *)malloc(nNewLen);
+		pBuff = (char *)fc_malloc(nNewLen);
 		if (pBuff == NULL)
 		{
-			fprintf(stderr, "Can't malloc %d bytes\n", \
-				nSrcLen + nPadLen + 1);
 			*dest_len = 0;
 			*dest = '\0';
 			return dest;

@@ -26,9 +26,10 @@
 #include <pwd.h>
 #include <math.h>
 
-#include "shared_func.h"
 #include "logger.h"
 #include "sockopt.h"
+#include "fc_memory.h"
+#include "shared_func.h"
 
 #ifdef OS_LINUX
 #include <sys/sysinfo.h>
@@ -295,12 +296,9 @@ int getUserProcIds(const char *progName, const bool bAllOwners, \
 		return -1;
 	}
 	
-	pTargetProg = (char *)malloc(strlen(progName) + 1);
+	pTargetProg = (char *)fc_malloc(strlen(progName) + 1);
 	if (pTargetProg == NULL)
 	{
-		logError("file: "__FILE__", line: %d, " \
-			"malloc %d bytes fail", __LINE__, \
-			(int)strlen(progName) + 1);
 		return -1;
 	}
 
@@ -704,11 +702,8 @@ int fc_get_file_line_count_ex(const char *filename,
     char *buff;
 
     *line_count = 0;
-    buff = (char *)malloc(READ_BUFFER_SIZE);
+    buff = (char *)fc_malloc(READ_BUFFER_SIZE);
     if (buff == NULL) {
-        logError("file: "__FILE__", line: %d, "
-                "malloc %d bytes fail",
-                __LINE__, READ_BUFFER_SIZE);
         return ENOMEM;
     }
 
@@ -779,12 +774,9 @@ char **split(char *src, const char seperator, const int nMaxCols, int *nColCount
 		*nColCount = nMaxCols;
 	}
 	
-	pCurrent = pCols = (char **)malloc(sizeof(char *) * (*nColCount));
+	pCurrent = pCols = (char **)fc_malloc(sizeof(char *) * (*nColCount));
 	if (pCols == NULL)
 	{
-		logError("file: "__FILE__", line: %d, " \
-			"malloc %d bytes fail", __LINE__, \
-			(int)sizeof(char *) * (*nColCount));
 		return NULL;
 	}
 
@@ -1202,16 +1194,13 @@ int getFileContent(const char *filename, char **buff, int64_t *file_size)
 		return errno != 0 ? errno : EIO;
 	}
 
-	*buff = (char *)malloc(*file_size + 1);
+	*buff = (char *)fc_malloc(*file_size + 1);
 	if (*buff == NULL)
 	{
 		*file_size = 0;
 		close(fd);
 
-		logError("file: "__FILE__", line: %d, " \
-			"malloc %d bytes fail", __LINE__, \
-			(int)(*file_size + 1));
-		return errno != 0 ? errno : ENOMEM;
+		return ENOMEM;
 	}
 
 	if (lseek(fd, 0, SEEK_SET) < 0)
@@ -1765,15 +1754,10 @@ static int check_realloc_allow_ips(in_addr_t **allow_ip_addrs,
 	{
 		*alloc_count = target_ip_count;
 		bytes = sizeof(in_addr_t) * (*alloc_count);
-		*allow_ip_addrs = (in_addr_t *)realloc(*allow_ip_addrs, bytes);
+		*allow_ip_addrs = (in_addr_t *)fc_realloc(*allow_ip_addrs, bytes);
 		if (*allow_ip_addrs == NULL)
 		{
-			logError("file: "__FILE__", line: %d, "\
-				"malloc %d bytes fail, " \
-				"errno: %d, error info: %s", \
-				__LINE__, bytes, errno, STRERROR(errno));
-
-			return errno != 0 ? errno : ENOMEM;
+			return ENOMEM;
 		}
 	}
 
@@ -2062,14 +2046,10 @@ int load_allow_hosts(IniContext *pIniContext, \
 
 	alloc_count = count;
 	*allow_ip_count = 0;
-	*allow_ip_addrs = (in_addr_t *)malloc(sizeof(in_addr_t) * alloc_count);
+	*allow_ip_addrs = (in_addr_t *)fc_malloc(sizeof(in_addr_t) * alloc_count);
 	if (*allow_ip_addrs == NULL)
 	{
-		logError("file: "__FILE__", line: %d, " \
-			"malloc %d bytes fail, errno: %d, error info: %s.", \
-			__LINE__, (int)sizeof(in_addr_t) * alloc_count, \
-			errno, STRERROR(errno));
-		return errno != 0 ? errno : ENOMEM;
+		return ENOMEM;
 	}
 
 	for (pItem=pItemStart; pItem<pItemEnd; pItem++)
@@ -2397,16 +2377,11 @@ int buffer_strcpy(BufferInfo *pBuff, const char *str)
 		}
 
 		pBuff->alloc_size = pBuff->length + 1;
-		pBuff->buff = (char *)malloc(pBuff->alloc_size);
+		pBuff->buff = (char *)fc_malloc(pBuff->alloc_size);
 		if (pBuff->buff == NULL)
 		{
-			logError("file: "__FILE__", line: %d, " \
-				"malloc %d bytes fail, " \
-				"errno: %d, error info: %s", \
-				__LINE__, pBuff->alloc_size, \
-				errno, STRERROR(errno));
 			pBuff->alloc_size = 0;
-			return errno != 0 ? errno : ENOMEM;
+			return ENOMEM;
 		}
 	}
 
@@ -2425,16 +2400,11 @@ int buffer_memcpy(BufferInfo *pBuff, const char *buff, const int len)
 		}
 
 		pBuff->alloc_size = pBuff->length;
-		pBuff->buff = (char *)malloc(pBuff->alloc_size);
+		pBuff->buff = (char *)fc_malloc(pBuff->alloc_size);
 		if (pBuff->buff == NULL)
 		{
-			logError("file: "__FILE__", line: %d, " \
-				"malloc %d bytes fail, " \
-				"errno: %d, error info: %s", \
-				__LINE__, pBuff->alloc_size, \
-				errno, STRERROR(errno));
 			pBuff->alloc_size = 0;
-			return errno != 0 ? errno : ENOMEM;
+			return ENOMEM;
 		}
 	}
 
@@ -2876,15 +2846,12 @@ bool ends_with(const char *str, const char *needle)
     return memcmp(str + start_offset, needle, needle_len) == 0;
 }
 
-char *fc_strdup(const char *str, const int len)
+char *fc_strdup1(const char *str, const int len)
 {
     char *output;
 
-    output = (char *)malloc(len + 1);
+    output = (char *)fc_malloc(len + 1);
     if (output == NULL) {
-        logError("file: "__FILE__", line: %d, "
-                "malloc %d bytes fail",
-                __LINE__, len + 1);
         return NULL;
     }
 
@@ -3081,11 +3048,9 @@ int fc_ceil_prime(const int n)
 
 int fc_init_buffer(BufferInfo *buffer, const int buffer_size)
 {
-    buffer->buff = (char *)malloc(buffer_size);
+    buffer->buff = (char *)fc_malloc(buffer_size);
     if (buffer->buff == NULL)
     {
-        logError("file: "__FILE__", line: %d, "
-                "malloc %d bytes fail", __LINE__, buffer_size);
         return ENOMEM;
     }
     buffer->alloc_size = buffer_size;

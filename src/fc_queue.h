@@ -10,6 +10,12 @@
 #include "common_define.h"
 #include "fast_mblock.h"
 
+struct fc_queue_info
+{
+    void *head;
+    void *tail;
+};
+
 struct fc_queue
 {
 	void *head;
@@ -54,6 +60,20 @@ static inline void fc_queue_push(struct fc_queue *queue, void *data)
     }
 }
 
+void fc_queue_push_queue_to_head_ex(struct fc_queue *queue,
+        struct fc_queue_info *qinfo, bool *notify);
+
+static inline void fc_queue_push_queue_to_head(struct fc_queue *queue,
+        struct fc_queue_info *qinfo)
+{
+    bool notify;
+
+    fc_queue_push_queue_to_head_ex(queue, qinfo, &notify);
+    if (notify) {
+        pthread_cond_signal(&(queue->cond));
+    }
+}
+
 void *fc_queue_pop_ex(struct fc_queue *queue, const bool blocked);
 #define fc_queue_pop(queue) fc_queue_pop_ex(queue, true)
 #define fc_queue_try_pop(queue) fc_queue_pop_ex(queue, false)
@@ -61,6 +81,9 @@ void *fc_queue_pop_ex(struct fc_queue *queue, const bool blocked);
 void *fc_queue_pop_all_ex(struct fc_queue *queue, const bool blocked);
 #define fc_queue_pop_all(queue) fc_queue_pop_all_ex(queue, true)
 #define fc_queue_try_pop_all(queue) fc_queue_pop_all_ex(queue, false)
+
+void fc_queue_pop_to_queue(struct fc_queue *queue,
+        struct fc_queue_info *qinfo);
 
 #ifdef __cplusplus
 }

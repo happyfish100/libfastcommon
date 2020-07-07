@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include "logger.h"
 #include "shared_func.h"
+#include "fc_memory.h"
 #include "fast_buffer.h"
 
 int fast_buffer_init_ex(FastBuffer *buffer, const int init_capacity)
@@ -21,11 +22,9 @@ int fast_buffer_init_ex(FastBuffer *buffer, const int init_capacity)
     {
         buffer->alloc_size = 256;
     }
-    buffer->data = (char *)malloc(buffer->alloc_size);
+    buffer->data = (char *)fc_malloc(buffer->alloc_size);
     if (buffer->data == NULL)
     {
-        logError("file: "__FILE__", line: %d, "
-             "malloc %d bytes fail", __LINE__, buffer->alloc_size);
         return ENOMEM;
     }
     *(buffer->data) = '\0';
@@ -68,10 +67,8 @@ int fast_buffer_set_capacity(FastBuffer *buffer, const int capacity)
         alloc_size *= 2;
     }
 
-    buff = (char *)malloc(alloc_size);
+    buff = (char *)fc_malloc(alloc_size);
     if (buff == NULL) {
-        logError("file: "__FILE__", line: %d, "
-             "malloc %d bytes fail", __LINE__, alloc_size);
         return ENOMEM;
     }
 

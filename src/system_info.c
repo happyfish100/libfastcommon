@@ -22,6 +22,7 @@
 #include <dirent.h>
 #include "logger.h"
 #include "shared_func.h"
+#include "fc_memory.h"
 #include "system_info.h"
 
 #ifdef OS_LINUX
@@ -327,11 +328,9 @@ static int check_process_capacity(FastProcessArray *proc_array)
     alloc_size = proc_array->alloc_size > 0 ?
         proc_array->alloc_size * 2 : 128;
     bytes = sizeof(struct fast_process_info) * alloc_size;
-    procs = (struct fast_process_info *)malloc(bytes);
+    procs = (struct fast_process_info *)fc_malloc(bytes);
     if (procs == NULL)
     {
-		logError("file: "__FILE__", line: %d, "
-			 "malloc %d bytes fail", __LINE__, bytes);
         return ENOMEM;
     }
 
@@ -632,14 +631,10 @@ int get_processes(struct fast_process_info **processes, int *count)
         }
 
         size = sizeof(struct kinfo_proc) * nproc;
-        procs = (struct kinfo_proc *)malloc(size);
+        procs = (struct kinfo_proc *)fc_malloc(size);
         if (procs == NULL)
         {
-            logError("file: "__FILE__", line: %d, " \
-                    "malloc %d bytes fail, " \
-                    "errno: %d, error info: %s", \
-                    __LINE__, (int)size, errno, STRERROR(errno));
-            return errno != 0 ? errno : ENOMEM;
+            return ENOMEM;
         }
 
         if (sysctl(mib, 4, procs, &size, NULL, 0) == 0)
@@ -668,11 +663,9 @@ int get_processes(struct fast_process_info **processes, int *count)
     nproc = size / sizeof(struct kinfo_proc);
 
     bytes = sizeof(struct fast_process_info) * nproc;
-    *processes = (struct fast_process_info *)malloc(bytes);
+    *processes = (struct fast_process_info *)fc_malloc(bytes);
     if (*processes == NULL)
     {
-		logError("file: "__FILE__", line: %d, "
-			 "malloc %d bytes fail", __LINE__, bytes);
         free(procs);
         return ENOMEM;
     }

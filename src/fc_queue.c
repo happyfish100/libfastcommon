@@ -110,3 +110,37 @@ void *fc_queue_pop_all_ex(struct fc_queue *queue, const bool blocked)
     PTHREAD_MUTEX_UNLOCK(&queue->lock);
 	return data;
 }
+
+void fc_queue_push_queue_to_head_ex(struct fc_queue *queue,
+        struct fc_queue_info *qinfo, bool *notify)
+{
+    if (qinfo->head == NULL) {
+        *notify = false;
+        return;
+    }
+
+    PTHREAD_MUTEX_LOCK(&queue->lock);
+    FC_QUEUE_NEXT_PTR(queue, qinfo->tail) = queue->head;
+    queue->head = qinfo->head;
+    if (queue->tail == NULL) {
+        queue->tail = qinfo->tail;
+        *notify = true;
+    } else {
+        *notify = false;
+    }
+    PTHREAD_MUTEX_UNLOCK(&queue->lock);
+}
+
+void fc_queue_pop_to_queue(struct fc_queue *queue,
+        struct fc_queue_info *qinfo)
+{
+    PTHREAD_MUTEX_LOCK(&queue->lock);
+    if (queue->head != NULL) {
+        qinfo->head = queue->head;
+        qinfo->tail = queue->tail;
+        queue->head = queue->tail = NULL;
+    } else {
+        qinfo->head = qinfo->tail = NULL;
+    }
+    PTHREAD_MUTEX_UNLOCK(&queue->lock);
+}

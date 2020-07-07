@@ -11,6 +11,7 @@
 #include <string.h>
 #include <errno.h>
 #include "chain.h"
+#include "fc_memory.h"
 //#include "use_mmalloc.h"
 
 void chain_init(ChainList *pList, const int type, FreeDataFunc freeDataFunc, \
@@ -69,7 +70,7 @@ int insertNodePrior(ChainList *pList, void *data)
 		return EINVAL;
 	}
 
-	pNode = (ChainNode *)malloc(sizeof(ChainNode));
+	pNode = (ChainNode *)fc_malloc(sizeof(ChainNode));
 	if (pNode == NULL)
 	{
 		return ENOMEM;
@@ -95,7 +96,7 @@ int appendNode(ChainList *pList, void *data)
 		return EINVAL;
 	}
 
-	pNode = (ChainNode *)malloc(sizeof(ChainNode));
+	pNode = (ChainNode *)fc_malloc(sizeof(ChainNode));
 	if (pNode == NULL)
 	{
 		return ENOMEM;
@@ -128,7 +129,7 @@ int insertNodeAsc(ChainList *pList, void *data)
 		return EINVAL;
 	}
 
-	pNew = (ChainNode *)malloc(sizeof(ChainNode));
+	pNew = (ChainNode *)fc_malloc(sizeof(ChainNode));
 	if (pNew == NULL)
 	{
 		return ENOMEM;

@@ -15,6 +15,7 @@
 #include <stdarg.h>
 #include "shared_func.h"
 #include "logger.h"
+#include "fc_memory.h"
 #include "buffered_file_writer.h"
 
 int buffered_file_writer_open_ex(BufferedFileWriter *writer,
@@ -34,12 +35,9 @@ int buffered_file_writer_open_ex(BufferedFileWriter *writer,
         return EINVAL;
     }
 
-    writer->buff = (char *)malloc(writer->buffer_size);
+    writer->buff = (char *)fc_malloc(writer->buffer_size);
     if (writer->buff == NULL)
     {
-        logError("file: "__FILE__", line: %d, "
-                "malloc %d bytes fail",
-                __LINE__, writer->buffer_size);
         return ENOMEM;
     }
 

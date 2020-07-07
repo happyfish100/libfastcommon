@@ -13,6 +13,7 @@
 #include "shared_func.h"
 #include "pthread_func.h"
 #include "logger.h"
+#include "fc_memory.h"
 #include "sched_thread.h"
 
 volatile bool g_schedule_flag = false;
@@ -232,7 +233,6 @@ static int do_check_waiting(ScheduleContext *pContext)
 	ScheduleEntry *pSchedEnd;
 	int allocCount;
 	int newCount;
-	int result;
 	int deleteCount;
 
 	pScheduleArray = &(pContext->scheduleArray);
@@ -283,21 +283,14 @@ static int do_check_waiting(ScheduleContext *pContext)
 	}
 
 	allocCount = pScheduleArray->count + waiting_schedule_array.count;
-	newEntries = (ScheduleEntry *)malloc(sizeof(ScheduleEntry) * allocCount);
+	newEntries = (ScheduleEntry *)fc_malloc(sizeof(ScheduleEntry) * allocCount);
 	if (newEntries == NULL)
 	{
-		result = errno != 0 ? errno : ENOMEM;
-		logError("file: "__FILE__", line: %d, " \
-			"malloc %d bytes failed, " \
-			"errno: %d, error info: %s", \
-			__LINE__, (int)sizeof(ScheduleEntry) * allocCount, \
-			result, STRERROR(result));
-
 		if (deleteCount > 0)
 		{
 			sched_make_chain(pContext);
 		}
-		return result;
+		return ENOMEM;
 	}
 
 	if (pScheduleArray->count > 0)
@@ -546,7 +539,6 @@ static void *sched_thread_entrance(void *args)
 static int sched_dup_array(const ScheduleArray *pSrcArray, \
 		ScheduleArray *pDestArray)
 {
-	int result;
 	int bytes;
 
 	if (pSrcArray->count == 0)
@@ -557,15 +549,10 @@ static int sched_dup_array(const ScheduleArray *pSrcArray, \
 	}
 
 	bytes = sizeof(ScheduleEntry) * pSrcArray->count;
-	pDestArray->entries = (ScheduleEntry *)malloc(bytes);
+	pDestArray->entries = (ScheduleEntry *)fc_malloc(bytes);
 	if (pDestArray->entries == NULL)
 	{
-		result = errno != 0 ? errno : ENOMEM;
-		logError("file: "__FILE__", line: %d, " \
-			"malloc %d bytes failed, " \
-			"errno: %d, error info: %s", \
-			__LINE__, bytes, result, STRERROR(result));
-		return result;
+		return ENOMEM;
 	}
 
 	memcpy(pDestArray->entries, pSrcArray->entries, bytes);
@@ -587,15 +574,10 @@ static int sched_append_array(const ScheduleArray *pSrcArray, \
 	}
 
 	bytes = sizeof(ScheduleEntry) * (pDestArray->count + pSrcArray->count);
-	new_entries = (ScheduleEntry *)malloc(bytes);
+	new_entries = (ScheduleEntry *)fc_malloc(bytes);
 	if (new_entries == NULL)
 	{
-		result = errno != 0 ? errno : ENOMEM;
-		logError("file: "__FILE__", line: %d, " \
-			"malloc %d bytes failed, " \
-			"errno: %d, error info: %s", \
-			__LINE__, bytes, result, STRERROR(result));
-		return result;
+		return ENOMEM;
 	}
 
     if (pDestArray->entries != NULL)
@@ -681,16 +663,10 @@ int sched_start_ex(ScheduleArray *pScheduleArray, pthread_t *ptid,
 	pthread_attr_t thread_attr;
 	ScheduleContext *pContext;
 
-	pContext = (ScheduleContext *)malloc(sizeof(ScheduleContext));
+	pContext = (ScheduleContext *)fc_malloc(sizeof(ScheduleContext));
 	if (pContext == NULL)
 	{
-		result = errno != 0 ? errno : ENOMEM;
-		logError("file: "__FILE__", line: %d, " \
-			"malloc %d bytes failed, " \
-			"errno: %d, error info: %s", \
-			__LINE__, (int)sizeof(ScheduleContext), \
-			result, STRERROR(result));
-		return result;
+		return ENOMEM;
 	}
     memset(pContext, 0, sizeof(ScheduleContext));
 

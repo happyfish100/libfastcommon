@@ -44,14 +44,10 @@ static int fast_mpool_prealloc(struct fast_mpool_man *mpool,
     int bytes;
 
     bytes = sizeof(struct fast_mpool_malloc) + alloc_size;
-	pMallocNode = (struct fast_mpool_malloc *)malloc(bytes);
+	pMallocNode = (struct fast_mpool_malloc *)fc_malloc(bytes);
 	if (pMallocNode == NULL)
 	{
-		logError("file: "__FILE__", line: %d, " \
-			"malloc %d bytes fail, " \
-			"errno: %d, error info: %s", \
-			__LINE__, bytes, errno, STRERROR(errno));
-		return errno != 0 ? errno : ENOMEM;
+		return ENOMEM;
 	}
 
     pMallocNode->alloc_size = alloc_size;

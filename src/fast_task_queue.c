@@ -4,10 +4,11 @@
 #include <sys/resource.h>
 #include <pthread.h>
 #include <inttypes.h>
-#include "fast_task_queue.h"
 #include "logger.h"
 #include "shared_func.h"
 #include "pthread_func.h"
+#include "fc_memory.h"
+#include "fast_task_queue.h"
 
 static struct fast_task_queue g_free_queue;
 
@@ -61,26 +62,16 @@ static struct mpool_node *malloc_mpool(const int total_alloc_size)
 	char *pCharEnd;
 	struct mpool_node *mpool;
 
-	mpool = (struct mpool_node *)malloc(sizeof(struct mpool_node));
+	mpool = (struct mpool_node *)fc_malloc(sizeof(struct mpool_node));
 	if (mpool == NULL)
 	{
-		logError("file: "__FILE__", line: %d, " \
-			"malloc %d bytes fail, " \
-			"errno: %d, error info: %s", \
-			__LINE__, (int)sizeof(struct mpool_node), \
-			errno, STRERROR(errno));
 		return NULL;
 	}
 
 	mpool->next = NULL;
-	mpool->blocks = (struct fast_task_info *)malloc(total_alloc_size);
+	mpool->blocks = (struct fast_task_info *)fc_malloc(total_alloc_size);
 	if (mpool->blocks == NULL)
 	{
-		logError("file: "__FILE__", line: %d, " \
-			"malloc %d bytes fail, " \
-			"errno: %d, error info: %s", \
-			__LINE__, total_alloc_size, \
-			errno, STRERROR(errno));
 		free(mpool);
 		return NULL;
 	}
@@ -100,15 +91,9 @@ static struct mpool_node *malloc_mpool(const int total_alloc_size)
 		}
 		else
 		{
-			pTask->data = (char *)malloc(pTask->size);
+			pTask->data = (char *)fc_malloc(pTask->size);
 			if (pTask->data == NULL)
 			{
-				logError("file: "__FILE__", line: %d, " \
-					"malloc %d bytes fail, " \
-					"errno: %d, error info: %s", \
-					__LINE__, pTask->size, \
-					errno, STRERROR(errno));
-
                 free_mpool(mpool, p);
 				return NULL;
 			}
@@ -463,15 +448,10 @@ static int _realloc_buffer(struct fast_task_info *pTask, const int new_size,
         const bool copy_data)
 {
 	char *new_buff;
-    new_buff = (char *)malloc(new_size);
+    new_buff = (char *)fc_malloc(new_size);
     if (new_buff == NULL)
     {
-        logError("file: "__FILE__", line: %d, "
-                "malloc %d bytes fail, "
-                "errno: %d, error info: %s",
-                __LINE__, new_size,
-                errno, STRERROR(errno));
-        return errno != 0 ? errno : ENOMEM;
+        return ENOMEM;
     }
     else
     {

@@ -21,6 +21,7 @@
 #include "sockopt.h"
 #include "logger.h"
 #include "shared_func.h"
+#include "fc_memory.h"
 #include "http_func.h"
 
 int get_url_content_ex(const char *url, const int url_len,
@@ -156,18 +157,11 @@ int get_url_content_ex(const char *url, const int url_len,
 
     if (bNeedAlloc)
     {
-        *content = (char *)malloc(alloc_size + 1);
+        *content = (char *)fc_malloc(alloc_size + 1);
         if (*content == NULL)
         {
             close(sock);
-            result = errno != 0 ? errno : ENOMEM;
-
-            sprintf(error_info, "file: "__FILE__", line: %d, " \
-                    "malloc %d bytes fail, errno: %d, " \
-                    "error info: %s", __LINE__, alloc_size + 1, \
-                    result, STRERROR(result));
-
-            return result;
+            return ENOMEM;
         }
     }
 
@@ -179,20 +173,12 @@ int get_url_content_ex(const char *url, const int url_len,
             if (bNeedAlloc)
             {
                 alloc_size *= 2;
-                *content = (char *)realloc(*content, alloc_size + 1);
+                *content = (char *)fc_realloc(*content, alloc_size + 1);
                 if (*content == NULL)
                 {
                     *content_len = 0;
                     close(sock);
-                    result = errno != 0 ? errno : ENOMEM;
-
-                    sprintf(error_info, "file: "__FILE__", line: %d, " \
-                            "realloc %d bytes fail, errno: %d, " \
-                            "error info: %s", __LINE__, \
-                            alloc_size + 1, \
-                            result, STRERROR(result));
-
-                    return result;
+                    return ENOMEM;
                 }
 
                 recv_bytes = alloc_size - *content_len;

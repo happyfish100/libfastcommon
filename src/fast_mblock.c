@@ -222,7 +222,7 @@ int fast_mblock_manager_stat_print_ex(const bool hide_empty, const int order_by)
     while (result == EOVERFLOW)
     {
         alloc_size *= 2;
-        stats = realloc(stats, sizeof(struct fast_mblock_info) * alloc_size);
+        stats = fc_realloc(stats, sizeof(struct fast_mblock_info) * alloc_size);
         if (stats == NULL)
         {
             return ENOMEM;
@@ -435,15 +435,10 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
 		return ENOMEM;
 	}
 
-	pNew = (char *)malloc(mblock->info.trunk_size);
+	pNew = (char *)fc_malloc(mblock->info.trunk_size);
 	if (pNew == NULL)
 	{
-		logError("file: "__FILE__", line: %d, " \
-			"malloc %d bytes fail, " \
-			"errno: %d, error info: %s", \
-			__LINE__, mblock->info.trunk_size,
-			errno, STRERROR(errno));
-		return errno != 0 ? errno : ENOMEM;
+		return ENOMEM;
 	}
 	memset(pNew, 0, mblock->info.trunk_size);
 

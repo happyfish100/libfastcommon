@@ -119,10 +119,8 @@ static int fc_server_check_alloc_group_addresses(FCAddressPtrArray *array)
 
     new_alloc = array->alloc > 0 ? 2 * array->alloc : 2;
     bytes = sizeof(FCAddressInfo *) * new_alloc;
-    new_addrs = (FCAddressInfo **)malloc(bytes);
+    new_addrs = (FCAddressInfo **)fc_malloc(bytes);
     if (new_addrs == NULL) {
-        logError("file: "__FILE__", line: %d, "
-                "malloc %d bytes fail", __LINE__, bytes);
         return ENOMEM;
     }
     memset(new_addrs, 0, bytes);
@@ -154,11 +152,8 @@ static FCAddressInfo *fc_server_add_to_uniq_addresses(
     if (fc_server_check_alloc_group_addresses(addr_ptr_array) != 0) {
         return NULL;
     }
-    p = (FCAddressInfo *)malloc(sizeof(FCAddressInfo));
+    p = (FCAddressInfo *)fc_malloc(sizeof(FCAddressInfo));
     if (p == NULL) {
-        logError("file: "__FILE__", line: %d, "
-                "malloc %d bytes fail", __LINE__,
-                (int)sizeof(FCAddressInfo));
         return NULL;
     }
 
@@ -169,7 +164,6 @@ static FCAddressInfo *fc_server_add_to_uniq_addresses(
 
 static int fc_server_init_ip_port_array(FCServerConfig *ctx)
 {
-	int result;
     int count;
 	int bytes;
     FCServerMapArray *map_array;
@@ -183,14 +177,9 @@ static int fc_server_init_ip_port_array(FCServerConfig *ctx)
 
     count = fc_server_calc_ip_port_count(ctx);
     bytes = sizeof(FCServerMap) * count;
-    map_array->maps = (FCServerMap *)malloc(bytes);
+    map_array->maps = (FCServerMap *)fc_malloc(bytes);
     if (map_array->maps == NULL) {
-        result = errno != 0 ? errno : ENOMEM;
-        logError("file: "__FILE__", line: %d, "
-                "malloc %d bytes fail, "
-                "errno: %d, error info: %s", __LINE__,
-                bytes, result, STRERROR(result));
-        return result;
+        return ENOMEM;
     }
     memset(map_array->maps, 0, bytes);
 
@@ -471,10 +460,8 @@ static int fc_server_alloc_servers(FCServerInfoArray *array,
     int bytes;
 
     bytes = sizeof(FCServerInfo) * target_count;
-    array->servers = (FCServerInfo *)malloc(bytes);
+    array->servers = (FCServerInfo *)fc_malloc(bytes);
     if (array->servers == NULL) {
-        logError("file: "__FILE__", line: %d, "
-                "malloc %d bytes fail", __LINE__, bytes);
         return ENOMEM;
     }
     memset(array->servers, 0, bytes);
@@ -495,10 +482,8 @@ static int fc_server_check_alloc_group_address_ptrs(FCAddressPtrArray *array)
 
     new_alloc = array->alloc > 0 ? 2 * array->alloc : 1;
     bytes = sizeof(FCAddressInfo *) * new_alloc;
-    new_addrs = (FCAddressInfo **)malloc(bytes);
+    new_addrs = (FCAddressInfo **)fc_malloc(bytes);
     if (new_addrs == NULL) {
-        logError("file: "__FILE__", line: %d, "
-                "malloc %d bytes fail", __LINE__, bytes);
         return ENOMEM;
     }
     memset(new_addrs, 0, bytes);
@@ -1104,10 +1089,8 @@ static int fc_server_load_servers(FCServerConfig *ctx,
         sections = fixed;
     } else {
         alloc_bytes = sizeof(IniSectionInfo) * count;
-        sections = (IniSectionInfo *)malloc(alloc_bytes);
+        sections = (IniSectionInfo *)fc_malloc(alloc_bytes);
         if (sections == NULL) {
-            logError("file: "__FILE__", line: %d, "
-                    "malloc %d bytes fail", __LINE__, alloc_bytes);
             return ENOMEM;
         }
     }

@@ -64,7 +64,6 @@ static void fast_allocator_malloc_trunk_notify_func(const int alloc_bytes, void 
 static int allocator_array_check_capacity(struct fast_allocator_context *acontext,
 	const int allocator_count)
 {
-	int result;
 	int bytes;
     int target_count;
     int alloc_count;
@@ -108,14 +107,10 @@ static int allocator_array_check_capacity(struct fast_allocator_context *acontex
 	}
 
 	bytes = sizeof(struct fast_allocator_info *) * alloc_count;
-	new_allocators = (struct fast_allocator_info **)malloc(bytes);
+	new_allocators = (struct fast_allocator_info **)fc_malloc(bytes);
 	if (new_allocators == NULL)
 	{
-		result = errno != 0 ? errno : ENOMEM;
-		logError("file: "__FILE__", line: %d, "
-				"malloc %d bytes fail, errno: %d, error info: %s",
-				__LINE__, bytes, result, STRERROR(result));
-		return result;
+		return ENOMEM;
 	}
 
 	if (acontext->allocator_array.allocators != NULL)
@@ -144,14 +139,10 @@ static int region_init(struct fast_allocator_context *acontext,
 	region->pad_mask = region->step - 1;
 	allocator_count = (region->end - region->start) / region->step;
 	bytes = sizeof(struct fast_allocator_info) * allocator_count;
-	region->allocators = (struct fast_allocator_info *)malloc(bytes);
+	region->allocators = (struct fast_allocator_info *)fc_malloc(bytes);
 	if (region->allocators == NULL)
 	{
-		result = errno != 0 ? errno : ENOMEM;
-		logError("file: "__FILE__", line: %d, "
-				"malloc %d bytes fail, errno: %d, error info: %s",
-				__LINE__, bytes, result, STRERROR(result));
-		return result;
+		return ENOMEM;
 	}
 	memset(region->allocators, 0, bytes);
 
@@ -227,14 +218,10 @@ int fast_allocator_init_ex(struct fast_allocator_context *acontext,
 	}
 
 	bytes = sizeof(struct fast_region_info) * region_count;
-	acontext->regions = (struct fast_region_info *)malloc(bytes);
+	acontext->regions = (struct fast_region_info *)fc_malloc(bytes);
 	if (acontext->regions == NULL)
 	{
-		result = errno != 0 ? errno : ENOMEM;
-		logError("file: "__FILE__", line: %d, "
-				"malloc %d bytes fail, errno: %d, error info: %s",
-				__LINE__, bytes, result, STRERROR(result));
-		return result;
+		return ENOMEM;
 	}
 	memcpy(acontext->regions, regions, bytes);
 	acontext->region_count = region_count;
@@ -470,7 +457,7 @@ void *fast_allocator_alloc(struct fast_allocator_context *acontext,
 		{
 			return NULL;
 		}
-		ptr = malloc(alloc_bytes);
+		ptr = fc_malloc(alloc_bytes);
 		if (ptr == NULL)
 		{
 			return NULL;

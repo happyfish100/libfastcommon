@@ -14,6 +14,7 @@
 #include <string.h>
 #include <errno.h>
 #include "logger.h"
+#include "fc_memory.h"
 #include "uniq_skiplist.h"
 
 static int best_element_counts[SKIPLIST_MAX_LEVEL_COUNT] = {0};
@@ -75,12 +76,9 @@ int uniq_skiplist_init_ex2(UniqSkiplistFactory *factory,
     }
 
     bytes = sizeof(struct fast_mblock_man) * max_level_count;
-    factory->node_allocators = (struct fast_mblock_man *)malloc(bytes);
+    factory->node_allocators = (struct fast_mblock_man *)fc_malloc(bytes);
     if (factory->node_allocators == NULL) {
-        logError("file: "__FILE__", line: %d, "
-                "malloc %d bytes fail, errno: %d, error info: %s",
-                __LINE__, bytes, errno, STRERROR(errno));
-        return errno != 0 ? errno : ENOMEM;
+        return ENOMEM;
     }
     memset(factory->node_allocators, 0, bytes);
 

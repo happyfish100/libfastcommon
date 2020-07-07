@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include "logger.h"
+#include "fc_memory.h"
 #include "fast_timer.h"
 
 int fast_timer_init(FastTimer *timer, const int slot_count,
@@ -18,9 +19,9 @@ int fast_timer_init(FastTimer *timer, const int slot_count,
   timer->base_time = current_time; //base time for slot 0
   timer->current_time = current_time;
   bytes = sizeof(FastTimerSlot) * slot_count;
-  timer->slots = (FastTimerSlot *)malloc(bytes);
+  timer->slots = (FastTimerSlot *)fc_malloc(bytes);
   if (timer->slots == NULL) {
-     return errno != 0 ? errno : ENOMEM;
+     return ENOMEM;
   }
   memset(timer->slots, 0, bytes);
   return 0;

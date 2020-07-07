@@ -1,3 +1,4 @@
+#include "fc_memory.h"
 #include "avl_tree.h"
 
 int avl_tree_init(AVLTreeInfo *tree, FreeDataFunc free_data_func, \
@@ -45,14 +46,9 @@ void avl_tree_destroy(AVLTreeInfo *tree)
 static AVLTreeNode *createTreeNode(AVLTreeNode *pParentNode, void *target_data)
 {
 	AVLTreeNode *pNewNode;
-	pNewNode = (AVLTreeNode *)malloc(sizeof(AVLTreeNode));
+	pNewNode = (AVLTreeNode *)fc_malloc(sizeof(AVLTreeNode));
 	if (pNewNode == NULL)
 	{
-		/*
-		fprintf(stderr, "file: "__FILE__", line: %d, " \
-			"malloc %d bytes fail!\n", __LINE__, \
-			(int)sizeof(AVLTreeNode));
-		*/
 		return NULL;
 	}
 

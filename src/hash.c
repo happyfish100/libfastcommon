@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <inttypes.h>
 #include "pthread_func.h"
+#include "fc_memory.h"
 #include "hash.h"
 
 static unsigned int prime_array[] = {
@@ -59,7 +60,7 @@ static int _hash_alloc_buckets(HashArray *pHash, const unsigned int old_capacity
 		return ENOSPC;
 	}
 
-	pHash->buckets = (HashData **)malloc(bytes);
+	pHash->buckets = (HashData **)fc_malloc(bytes);
 	if (pHash->buckets == NULL)
 	{
 		return ENOMEM;
@@ -144,7 +145,7 @@ int hash_set_locks(HashArray *pHash, const int lock_count)
 	}
 
 	bytes = sizeof(pthread_mutex_t) * lock_count;
-	pHash->locks = (pthread_mutex_t *)malloc(bytes);
+	pHash->locks = (pthread_mutex_t *)fc_malloc(bytes);
 	if (pHash->locks == NULL)
 	{
 		return ENOMEM;
@@ -461,7 +462,7 @@ int hash_best_op(HashArray *pHash, const int suggest_capacity)
 	}
 
 	old_capacity = *pHash->capacity;
-	new_capacity = (unsigned int *)malloc(sizeof(unsigned int));
+	new_capacity = (unsigned int *)fc_malloc(sizeof(unsigned int));
 	if (new_capacity == NULL)
 	{
 		return -ENOMEM;
@@ -704,7 +705,7 @@ int hash_insert_ex(HashArray *pHash, const void *key, const int key_len, \
 		return -ENOSPC;
 	}
 
-	pBuff = (char *)malloc(bytes);
+	pBuff = (char *)fc_malloc(bytes);
 	if (pBuff == NULL)
 	{
 		return -ENOMEM;
@@ -861,7 +862,7 @@ int hash_partial_set(HashArray *pHash, const void *key, const int key_len,
 				break;
 			}
 
-			pNewBuff = (char *)malloc(offset + value_len);
+			pNewBuff = (char *)fc_malloc(offset + value_len);
 			if (pNewBuff == NULL)
 			{
 				result = errno != 0 ? errno : ENOMEM;

@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include "fc_memory.h"
 #include "ioevent.h"
 
 #if IOEVENT_USE_KQUEUE
@@ -45,21 +46,21 @@ int ioevent_init(IOEventPoller *ioevent, const int size,
     return errno != 0 ? errno : ENOMEM;
   }
   bytes = sizeof(struct epoll_event) * size;
-  ioevent->events = (struct epoll_event *)malloc(bytes);
+  ioevent->events = (struct epoll_event *)fc_malloc(bytes);
 #elif IOEVENT_USE_KQUEUE
   ioevent->poll_fd = kqueue();
   if (ioevent->poll_fd < 0) {
     return errno != 0 ? errno : ENOMEM;
   }
   bytes = sizeof(struct kevent) * size;
-  ioevent->events = (struct kevent *)malloc(bytes);
+  ioevent->events = (struct kevent *)fc_malloc(bytes);
 #elif IOEVENT_USE_PORT
   ioevent->poll_fd = port_create();
   if (ioevent->poll_fd < 0) {
     return errno != 0 ? errno : ENOMEM;
   }
   bytes = sizeof(port_event_t) * size;
-  ioevent->events = (port_event_t *)malloc(bytes);
+  ioevent->events = (port_event_t *)fc_malloc(bytes);
 #endif
 
   if (ioevent->events == NULL) {
