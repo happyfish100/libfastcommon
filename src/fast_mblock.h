@@ -46,8 +46,6 @@ struct fast_mblock_chain {
 	struct fast_mblock_node *tail;
 };
 
-typedef void (*fc_oom_notify_func)(const int curr_alloc_size);
-
 typedef int (*fast_mblock_alloc_init_func)(void *element, void *args);
 
 typedef int (*fast_mblock_malloc_trunk_check_func)(

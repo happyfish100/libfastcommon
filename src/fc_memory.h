@@ -21,9 +21,9 @@ extern "C" {
         void *ptr;
         ptr = malloc(size);
         if (ptr == NULL) {
-            logError("file: %s, line: %d, malloc %d bytes fail, "
+            logError("file: %s, line: %d, malloc %"PRId64" bytes fail, "
                     "errno: %d, error info: %s", file, line,
-                    (int)size, errno, STRERROR(errno));
+                    (int64_t)size, errno, STRERROR(errno));
             if (g_oom_notify != NULL) {
                 g_oom_notify(size);
             }
@@ -38,9 +38,9 @@ extern "C" {
         void *new_ptr;
         new_ptr = realloc(ptr, size);
         if (new_ptr == NULL) {
-            logError("file: %s, line: %d, realloc %d bytes fail, "
+            logError("file: %s, line: %d, realloc %"PRId64" bytes fail, "
                     "errno: %d, error info: %s", file, line,
-                    (int)size, errno, STRERROR(errno));
+                    (int64_t)size, errno, STRERROR(errno));
             if (g_oom_notify != NULL) {
                 g_oom_notify(size);
             }
@@ -68,15 +68,15 @@ extern "C" {
         return output;
     }
 
-    static inline void *fc_calloc(const char *file,
+    static inline void *fc_calloc_ex(const char *file,
             const int line, size_t count, size_t size)
     {
         void *ptr;
         ptr = calloc(count, size);
         if (ptr == NULL) {
-            logError("file: %s, line: %d, malloc %d bytes fail, "
+            logError("file: %s, line: %d, malloc %"PRId64" bytes fail, "
                     "errno: %d, error info: %s", file, line,
-                    (int)(count * size), errno, STRERROR(errno));
+                    (int64_t)(count * size), errno, STRERROR(errno));
             if (g_oom_notify != NULL) {
                 g_oom_notify(count * size);
             }
