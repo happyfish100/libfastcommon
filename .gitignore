@@ -52,6 +52,7 @@ src/tests/test_pipe
 src/tests/test_atomic
 src/tests/test_file_write_hole
 src/tests/test_file_lock
+src/tests/test_thread_pool
 
 # other
 *.swp

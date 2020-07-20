@@ -1,0 +1,128 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#include <time.h>
+#include <inttypes.h>
+#include <sys/time.h>
+#include "fastcommon/logger.h"
+#include "fastcommon/shared_func.h"
+#include "fastcommon/sched_thread.h"
+#include "fastcommon/pthread_func.h"
+#include "fastcommon/ini_file_reader.h"
+#include "fastcommon/thread_pool.h"
+
+#define LOOP_COUNT (10 * 1000 * 1000)
+
+static volatile int counter = 0;
+static volatile int64_t total = 0;
+
+#define TASK_COUNT 10
+
+void thread2_func(void *args)
+{
+    int i;
+    for (i=0; i<LOOP_COUNT; i++) {
+        __sync_add_and_fetch(&counter, 1);
+        __sync_add_and_fetch(&total, 1);
+    }
+}
+
+void thread1_func(void *args)
+{
+    int i;
+    for (i=0; i<LOOP_COUNT; i++) {
+        __sync_sub_and_fetch(&counter, 1);
+        __sync_add_and_fetch(&total, 1);
+    }
+}
+
+void wait_thread_func(void *args)
+{
+    int i;
+    for (i=0; i<LOOP_COUNT; i++) {
+        __sync_add_and_fetch(&counter, 0);
+    }
+}
+
+int test(FCThreadPool *pool)
+{
+    int result;
+    int i;
+
+    for (i=0; i<TASK_COUNT / 2; i++) {
+        if ((result=fc_thread_pool_run(pool, thread1_func, NULL)) != 0) {
+            logError("file: "__FILE__", line: %d, "
+                    "thread_pool_run fail, "
+                    "errno: %d, error info: %s",
+                    __LINE__, result, STRERROR(result));
+            return result;
+        }
+    }
+
+    for (i=0; i<TASK_COUNT / 2; i++) {
+        if ((result=fc_thread_pool_run(pool, thread2_func, NULL)) != 0) {
+            logError("file: "__FILE__", line: %d, "
+                    "thread_pool_run fail, "
+                    "errno: %d, error info: %s",
+                    __LINE__, result, STRERROR(result));
+            return result;
+        }
+    }
+
+    if ((result=fc_thread_pool_run(pool, wait_thread_func, NULL)) != 0) {
+        logError("file: "__FILE__", line: %d, "
+                "thread_pool_run fail, "
+                "errno: %d, error info: %s",
+                __LINE__, result, STRERROR(result));
+        return result;
+    }
+
+    return 0;
+}
+
+int main(int argc, char *argv[])
+{
+    FCThreadPool pool;
+    const int limit = 8;
+    const int stack_size = 128 * 1024;
+    const int max_idle_time = 5;
+    const int min_idle_count = 2;
+    volatile bool continue_flag = true;
+	int result;
+	int64_t start_time;
+
+	log_init();
+	srand(time(NULL));
+	g_log_context.log_level = LOG_DEBUG;
+	
+	start_time = get_current_time_ms();
+    if ((result=fc_thread_pool_init(&pool, limit, stack_size, max_idle_time,
+                    min_idle_count, (bool * volatile)&continue_flag)) != 0)
+    {
+        return result;
+    }
+
+    result = test(&pool);
+
+    sleep(10);
+	printf("counter: %d, total: %"PRId64", time used: %"PRId64" ms\n",
+            __sync_add_and_fetch(&counter, 0),
+            __sync_add_and_fetch(&total, 0),
+            get_current_time_ms() - start_time);
+
+    result = test(&pool);
+    sleep(5);
+
+    continue_flag = false;
+
+    sleep(2);
+	printf("counter: %d, total: %"PRId64", time used: %"PRId64" ms\n",
+            __sync_add_and_fetch(&counter, 0),
+            __sync_add_and_fetch(&total, 0),
+            get_current_time_ms() - start_time);
+
+    fc_thread_pool_destroy(&pool);
+    logInfo("exit");
+	return result;
+}
