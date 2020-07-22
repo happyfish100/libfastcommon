@@ -81,6 +81,17 @@ int test(FCThreadPool *pool)
     return 0;
 }
 
+static void output(FCThreadPool *pool, const int64_t start_time)
+{
+    printf("thread pool dealing count: %d, avail count: %d, "
+            "counter: %d, total: %"PRId64", time used: %"PRId64" ms\n",
+            fc_thread_pool_dealing_count(pool),
+            fc_thread_pool_avail_count(pool),
+            __sync_add_and_fetch(&counter, 0),
+            __sync_add_and_fetch(&total, 0),
+            get_current_time_ms() - start_time);
+}
+
 int main(int argc, char *argv[])
 {
     FCThreadPool pool;
@@ -104,12 +115,10 @@ int main(int argc, char *argv[])
     }
 
     result = test(&pool);
+    output(&pool, start_time);
 
     sleep(10);
-	printf("counter: %d, total: %"PRId64", time used: %"PRId64" ms\n",
-            __sync_add_and_fetch(&counter, 0),
-            __sync_add_and_fetch(&total, 0),
-            get_current_time_ms() - start_time);
+    output(&pool, start_time);
 
     result = test(&pool);
     sleep(5);
@@ -117,10 +126,7 @@ int main(int argc, char *argv[])
     continue_flag = false;
 
     sleep(2);
-	printf("counter: %d, total: %"PRId64", time used: %"PRId64" ms\n",
-            __sync_add_and_fetch(&counter, 0),
-            __sync_add_and_fetch(&total, 0),
-            get_current_time_ms() - start_time);
+    output(&pool, start_time);
 
     fc_thread_pool_destroy(&pool);
     logInfo("exit");

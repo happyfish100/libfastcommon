@@ -3,7 +3,6 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <string.h>
-#include "pthread_func.h"
 #include "sched_thread.h"
 #include "fc_memory.h"
 #include "thread_pool.h"
@@ -203,10 +202,6 @@ int fc_thread_pool_run(FCThreadPool *pool, fc_thread_pool_callback func,
     FCThreadInfo *thread;
     struct timespec ts;
     int result;
-
-    if (func == NULL) {
-        return EINVAL;
-    }
 
     thread = NULL;
     ts.tv_nsec = 0;
