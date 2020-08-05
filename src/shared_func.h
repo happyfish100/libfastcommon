@@ -921,7 +921,7 @@ static inline int fc_delete_file(const char *filename)
  *  	n: the number to detect
  *  return: true for prime number, otherwise false
 */
-bool fc_is_prime(const int n);
+bool fc_is_prime(const int64_t n);
 
 
 /** find the largest prime number not greater than n
@@ -929,14 +929,14 @@ bool fc_is_prime(const int n);
  *  	n: the number to detect
  *  return: the largest prime number near n
 */
-int fc_floor_prime(const int n);
+int64_t fc_floor_prime(const int64_t n);
 
 /** find the smallest prime number not less than n
  *  parameters:
  *  	n: the number to detect
  *  return: the smallest prime number near n
 */
-int fc_ceil_prime(const int n);
+int64_t fc_ceil_prime(const int64_t n);
 
 /** init buffer
  *  parameters:

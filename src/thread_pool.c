@@ -21,14 +21,18 @@ static void *thread_entrance(void *arg)
     thread = (FCThreadInfo *)arg;
     pool = thread->pool;
 
+    if (pool->extra_data_callbacks.alloc != NULL) {
+        thread->tdata = pool->extra_data_callbacks.alloc();
+    }
+
     PTHREAD_MUTEX_LOCK(&thread->lock);
     thread->inited = true;
     PTHREAD_MUTEX_UNLOCK(&thread->lock);
 
     PTHREAD_MUTEX_LOCK(&pool->lock);
     pool->thread_counts.running++;
-    logInfo("tindex: %d start, tcount: %d",
-            thread->index, pool->thread_counts.running);
+    logInfo("thread pool: %s, index: %d start, running count: %d",
+            pool->name, thread->index, pool->thread_counts.running);
     PTHREAD_MUTEX_UNLOCK(&pool->lock);
 
     running = true;
@@ -37,12 +41,12 @@ static void *thread_entrance(void *arg)
     while (running && *pool->pcontinue_flag) {
 
         PTHREAD_MUTEX_LOCK(&thread->lock);
-        if (thread->func == NULL) {
+        if (thread->callback.func == NULL) {
             ts.tv_sec = get_current_time() + 2;
             pthread_cond_timedwait(&thread->cond, &thread->lock, &ts);
         }
 
-        callback = thread->func;
+        callback = thread->callback.func;
         if (callback == NULL) {
             if (pool->max_idle_time > 0 && get_current_time() -
                     last_run_time > pool->max_idle_time)
@@ -59,13 +63,13 @@ static void *thread_entrance(void *arg)
                 PTHREAD_MUTEX_UNLOCK(&pool->lock);
             }
         } else {
-            thread->func = NULL;
+            thread->callback.func = NULL;
         }
         PTHREAD_MUTEX_UNLOCK(&thread->lock);
 
         if (callback != NULL) {
             __sync_add_and_fetch(&pool->thread_counts.dealing, 1);
-            callback(thread->arg);
+            callback(thread->callback.arg, thread->tdata);
             last_run_time = get_current_time();
             __sync_sub_and_fetch(&pool->thread_counts.dealing, 1);
 
@@ -80,6 +84,11 @@ static void *thread_entrance(void *arg)
         }
     }
 
+    if (pool->extra_data_callbacks.free != NULL && thread->tdata != NULL) {
+        pool->extra_data_callbacks.free(thread->tdata);
+        thread->tdata = NULL;
+    }
+
     if (running) {
         PTHREAD_MUTEX_LOCK(&thread->lock);
         thread->inited = false;
@@ -91,8 +100,8 @@ static void *thread_entrance(void *arg)
     }
 
     PTHREAD_MUTEX_LOCK(&pool->lock);
-    logInfo("tindex: %d exit, tcount: %d",
-            thread->index, pool->thread_counts.running);
+    logInfo("thread pool: %s, index: %d exit, running count: %d",
+            pool->name, thread->index, pool->thread_counts.running);
     PTHREAD_MUTEX_UNLOCK(&pool->lock);
 
     return NULL;
@@ -166,9 +175,10 @@ static int thread_pool_alloc_init(FCThreadPool *pool)
     return 0;
 }
 
-int fc_thread_pool_init(FCThreadPool *pool, const int limit,
-        const int stack_size, const int max_idle_time,
-        const int min_idle_count, bool * volatile pcontinue_flag)
+int fc_thread_pool_init_ex(FCThreadPool *pool, const char *name,
+        const int limit, const int stack_size, const int max_idle_time,
+        const int min_idle_count, bool * volatile pcontinue_flag,
+        FCThreadExtraDataCallbacks *extra_data_callbacks)
 {
     int result;
 
@@ -176,6 +186,7 @@ int fc_thread_pool_init(FCThreadPool *pool, const int limit,
         return result;
     }
 
+    snprintf(pool->name, sizeof(pool->name), "%s", name);
     pool->stack_size = stack_size;
     pool->max_idle_time = max_idle_time;
     if (min_idle_count > limit) {
@@ -187,6 +198,12 @@ int fc_thread_pool_init(FCThreadPool *pool, const int limit,
     pool->thread_counts.running = 0;
     pool->thread_counts.dealing = 0;
     pool->pcontinue_flag = pcontinue_flag;
+    if (extra_data_callbacks != NULL) {
+        pool->extra_data_callbacks = *extra_data_callbacks;
+    } else {
+        pool->extra_data_callbacks.alloc = NULL;
+        pool->extra_data_callbacks.free = NULL;
+    }
 
     return thread_pool_alloc_init(pool);
 }
@@ -223,8 +240,8 @@ int fc_thread_pool_run(FCThreadPool *pool, fc_thread_pool_callback func,
     }
 
     PTHREAD_MUTEX_LOCK(&thread->lock);
-    thread->func = func;
-    thread->arg = arg;
+    thread->callback.func = func;
+    thread->callback.arg = arg;
     if (!thread->inited) {
         result = fc_create_thread(&thread->tid, thread_entrance,
                 thread, pool->stack_size);

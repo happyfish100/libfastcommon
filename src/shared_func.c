@@ -2989,17 +2989,17 @@ int fc_delete_file_ex(const char *filename, const char *caption)
     return result;
 }
 
-bool fc_is_prime(const int n)
+bool fc_is_prime(const int64_t n)
 {
-    int loop;
-    int i;
+    int64_t loop;
+    int64_t i;
 
     if (n <= 0)
     {
         return false;
     }
 
-    loop = lround(sqrt((double)n));
+    loop = llround(sqrt((double)n));
     for (i=2; i<=loop; i++)
     {
         if (n % i == 0)
@@ -3011,10 +3011,10 @@ bool fc_is_prime(const int n)
     return true;
 }
 
-int fc_floor_prime(const int n)
+int64_t fc_floor_prime(const int64_t n)
 {
-    int start;
-    int i;
+    int64_t start;
+    int64_t i;
 
     start =  (n % 2 == 0 ? n - 1 : n);
     for (i = start; i > 0; i -= 2)
@@ -3028,9 +3028,9 @@ int fc_floor_prime(const int n)
     return 1;
 }
 
-int fc_ceil_prime(const int n)
+int64_t fc_ceil_prime(const int64_t n)
 {
-    int i;
+    int64_t i;
 
     if (n <= 0)
     {

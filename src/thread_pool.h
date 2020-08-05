@@ -6,7 +6,15 @@
 #include "fast_mblock.h"
 #include "pthread_func.h"
 
-typedef void (*fc_thread_pool_callback)(void *arg);
+typedef void (*fc_thread_pool_callback)(void *arg, void *thread_data);
+typedef void* (*fc_alloc_thread_extra_data_callback)();
+typedef void  (*fc_free_thread_extra_data_callback)(void *ptr);
+
+typedef struct fc_thread_extra_data_callbacks
+{
+    fc_alloc_thread_extra_data_callback alloc;
+    fc_free_thread_extra_data_callback free;
+} FCThreadExtraDataCallbacks;
 
 struct fc_thread_pool;
 typedef struct fc_thread_info
@@ -16,14 +24,18 @@ typedef struct fc_thread_info
     pthread_t tid;
     pthread_mutex_t lock;
     pthread_cond_t cond;
-    fc_thread_pool_callback func;
-    void *arg;
+    void *tdata;  //thread data defined by the caller
+    struct {
+        fc_thread_pool_callback func;
+        void *arg;
+    } callback;
     struct fc_thread_pool *pool;
     struct fc_thread_info *next;
 } FCThreadInfo;
 
 typedef struct fc_thread_pool
 {
+    char name[64];
 	FCThreadInfo *threads;  //all thread info
 	FCThreadInfo *freelist;
 	pthread_mutex_t lock;
@@ -38,15 +50,22 @@ typedef struct fc_thread_pool
         volatile int dealing;  //dealing task thread count
     } thread_counts;
     bool * volatile pcontinue_flag;
+    FCThreadExtraDataCallbacks extra_data_callbacks;
 } FCThreadPool;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-int fc_thread_pool_init(FCThreadPool *pool, const int limit,
-        const int stack_size, const int max_idle_time,
-        const int min_idle_count, bool * volatile pcontinue_flag);
+#define fc_thread_pool_init(pool, name, limit, stack_size, max_idle_time, \
+        min_idle_count, pcontinue_flag) \
+    fc_thread_pool_init_ex(pool, name, limit, stack_size, max_idle_time, \
+        min_idle_count, pcontinue_flag, NULL)
+
+int fc_thread_pool_init_ex(FCThreadPool *pool, const char *name,
+        const int limit, const int stack_size, const int max_idle_time,
+        const int min_idle_count, bool * volatile pcontinue_flag,
+        FCThreadExtraDataCallbacks *extra_data_callbacks);
 
 void fc_thread_pool_destroy(FCThreadPool *pool);
 
