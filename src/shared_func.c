@@ -1499,22 +1499,24 @@ int fd_gets(int fd, char *buff, const int size, int once_bytes)
 int set_rlimit(int resource, const rlim_t value)
 {
 	struct rlimit limit;
+    int64_t old_value;
 
 	if (getrlimit(resource, &limit) != 0)
 	{
-		logError("file: "__FILE__", line: %d, " \
-			"call getrlimit fail, resource=%d, " \
-			"errno: %d, error info: %s", \
+		logError("file: "__FILE__", line: %d, "
+			"call getrlimit fail, resource=%d, "
+			"errno: %d, error info: %s",
 			__LINE__, resource, errno, STRERROR(errno));
 		return errno != 0 ? errno : EPERM;
 	}
 
-	if (limit.rlim_cur == RLIM_INFINITY || \
+	if (limit.rlim_cur == RLIM_INFINITY ||
             (value != RLIM_INFINITY && limit.rlim_cur >= value))
 	{
 		return 0;
 	}
 
+    old_value = limit.rlim_cur;
 	limit.rlim_cur = value;
 	if (setrlimit(resource, &limit) != 0)
 	{
@@ -1562,8 +1564,7 @@ int set_rlimit(int resource, const rlim_t value)
 			"call setrlimit fail, resource=%d (%s), "
             "old value=%"PRId64", new value=%"PRId64", "
 			"errno: %d, error info: %s", __LINE__, resource, label,
-            (int64_t)limit.rlim_cur, (int64_t)value,
-			errno, STRERROR(errno));
+            old_value, (int64_t)value, errno, STRERROR(errno));
 		return errno != 0 ? errno : EPERM;
 	}
 
