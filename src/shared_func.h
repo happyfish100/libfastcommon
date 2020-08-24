@@ -971,6 +971,12 @@ static inline int fc_check_mkdir(const char *path, const mode_t mode)
     return fc_check_mkdir_ex(path, mode, &create);
 }
 
+int fc_get_first_line(const char *filename, char *buff,
+        const int buff_size, string_t *line);
+
+int fc_get_last_line(const char *filename, char *buff,
+        const int buff_size, int64_t *file_size, string_t *line);
+
 #ifdef __cplusplus
 }
 #endif

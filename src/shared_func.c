@@ -3097,3 +3097,71 @@ int fc_check_mkdir_ex(const char *path, const mode_t mode, bool *create)
     *create = true;
     return 0;
 }
+
+int fc_get_first_line(const char *filename, char *buff,
+        const int buff_size, string_t *line)
+{
+    int result;
+    int64_t read_bytes;
+    char *line_end;
+
+    read_bytes = buff_size - 1;
+    if ((result=getFileContentEx(filename, buff, 0, &read_bytes)) != 0) {
+        return result;
+    }
+    if (read_bytes == 0) {
+        return ENOENT;
+    }
+
+    line_end = (char *)memchr(buff, '\n', read_bytes);
+    if (line_end == NULL) {
+        logError("file: "__FILE__", line: %d, "
+                "file: %s, line no: 1, "
+                "expect new line char \"\\n\"",
+                __LINE__, filename);
+        return EINVAL;
+    }
+    line->str = buff;
+    line->len = line_end - buff + 1;
+    return 0;
+}
+
+int fc_get_last_line(const char *filename, char *buff,
+        const int buff_size, int64_t *file_size, string_t *line)
+{
+    int64_t offset;
+    int64_t read_bytes;
+    int result;
+
+    if ((result=getFileSize(filename, file_size)) != 0) {
+        return result;
+    }
+
+    if (*file_size == 0) {
+        return ENOENT;
+    }
+
+    if (*file_size >= buff_size) {
+        offset = (*file_size - buff_size) + 1;
+    } else {
+        offset = 0;
+    }
+    read_bytes = (*file_size - offset) + 1;
+    if ((result=getFileContentEx(filename, buff,
+                    offset, &read_bytes)) != 0)
+    {
+        return result;
+    }
+    if (read_bytes == 0) {
+        return ENOENT;
+    }
+
+    line->str = (char *)fc_memrchr(buff, '\n', read_bytes - 1);
+    if (line->str == NULL) {
+        line->str = buff;
+    } else {
+        line->str += 1;  //skip \n
+    }
+    line->len = (buff + read_bytes) - line->str;
+    return 0;
+}
