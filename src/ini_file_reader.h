@@ -33,6 +33,16 @@
 typedef bool (*IniSectionNameFilterFunc)(const char *section_name,
         const int name_len, void *args);
 
+#define FAST_INI_SET_FULL_CTX_EX(ctx, config_file, sname, ini_context) \
+    do { \
+        ctx.filename = config_file; \
+        ctx.section_name = sname;   \
+        ctx.context = ini_context;  \
+    } while (0)
+
+#define FAST_INI_SET_FULL_CTX(ctx, config_file, sname) \
+    FAST_INI_SET_FULL_CTX_EX(ctx, config_file, sname, NULL)
+
 typedef struct ini_item
 {
 	char name[FAST_INI_ITEM_NAME_SIZE];
@@ -61,6 +71,13 @@ typedef struct ini_context
     char annotation_type;
     char flags;
 } IniContext;
+
+typedef struct ini_full_context
+{
+    const char *filename;
+    const char *section_name;
+    IniContext *context;
+} IniFullContext;
 
 typedef struct ini_annotation_entry {
     char *func_name;
