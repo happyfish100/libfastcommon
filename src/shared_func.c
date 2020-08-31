@@ -2558,9 +2558,9 @@ static inline int do_lock_file(int fd, int cmd, int type)
         if ((result=fcntl(fd, cmd, &lock)) != 0)
         {
             result = errno != 0 ? errno : ENOMEM;
-            fprintf(stderr, "call fcntl fail, "
-                   "errno: %d, error info: %s\n",
-                   result, STRERROR(result));
+            fprintf(stderr, "file: "__FILE__", line: %d, "
+                    "call fcntl fail, errno: %d, error info: %s\n",
+                    __LINE__, result, STRERROR(result));
         }
     } while (result == EINTR);
 
@@ -3164,4 +3164,76 @@ int fc_get_last_line(const char *filename, char *buff,
     }
     line->len = (buff + read_bytes) - line->str;
     return 0;
+}
+
+static bool path_contains_special(const string_t *pts, const int count)
+{
+    const string_t *ps;
+    const string_t *end;
+
+    end = pts + count;
+    for (ps=pts; ps<end; ps++) {
+        if ((ps->len == 1 && *ps->str == '.') ||
+                fc_string_equal2(ps, "..", 2))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool fc_path_contains(const string_t *path, const string_t *needle,
+        int *result)
+{
+#define MAX_PATH_SECTION_COUNT   128
+
+    string_t pts[MAX_PATH_SECTION_COUNT];
+    string_t nds[MAX_PATH_SECTION_COUNT];
+    string_t *ps;
+    string_t *ns;
+    string_t *end;
+    int pc;
+    int nc;
+
+    if ((path->len == 0 || *path->str != '/') ||
+            (needle->len == 0 || *needle->str != '/'))
+    {
+        *result = EINVAL;
+        return false;
+    }
+
+    pc = split_string_ex(path, '/', pts, MAX_PATH_SECTION_COUNT, true);
+    if (pc == MAX_PATH_SECTION_COUNT) {
+        *result = ENAMETOOLONG;
+        return false;
+    }
+    if (path_contains_special(pts, pc)) {
+        *result = EINVAL;
+        return false;
+    }
+
+    nc = split_string_ex(needle, '/', nds, MAX_PATH_SECTION_COUNT, true);
+    if (nc == MAX_PATH_SECTION_COUNT) {
+        *result = ENAMETOOLONG;
+        return false;
+    }
+    if (path_contains_special(nds, nc)) {
+        *result = EINVAL;
+        return false;
+    }
+
+    *result = 0;
+    if (nc > pc) {
+        return false;
+    }
+
+    end = nds + nc;
+    for (ns=nds, ps=pts; ns<end; ns++, ps++) {
+        if (!fc_string_equal(ns, ps)) {
+            return false;
+        }
+    }
+
+    return true;
 }

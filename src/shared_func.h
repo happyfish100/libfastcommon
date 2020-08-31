@@ -977,6 +977,16 @@ int fc_get_first_line(const char *filename, char *buff,
 int fc_get_last_line(const char *filename, char *buff,
         const int buff_size, int64_t *file_size, string_t *line);
 
+/** if the input path contains the needle path
+ *  parameters:
+ *      path: the absolute path to match
+ *      needle: the needle path, must be absolute
+ *      result: store the errno
+ *  return: true for contain, otherwise false
+*/
+bool fc_path_contains(const string_t *path, const string_t *needle,
+        int *result);
+
 #ifdef __cplusplus
 }
 #endif
