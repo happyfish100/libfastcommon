@@ -1,5 +1,5 @@
 
-Version 1.44  2020-08-31
+Version 1.44  2020-09-01
   * add test file src/tests/test_pthread_lock.c
   * add uniq_skiplist.[hc]
   * add function split_string_ex
@@ -35,6 +35,7 @@ Version 1.44  2020-08-31
   * add files: shared_buffer.[hc]
   * add files: thread_pool.[hc]
   * shared_func.[hc]: add function fc_path_contains
+  * fast_mblock.[hc]: support alloc elements limit
 
 Version 1.43  2019-12-25
   * replace function call system to getExecResult,

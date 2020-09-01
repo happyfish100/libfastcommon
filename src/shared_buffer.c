@@ -23,13 +23,14 @@ int shared_buffer_init_ex(SharedBufferContext *context,
         const int alloc_elements_once, const int buffer_init_capacity,
         const bool need_lock)
 {
+    const int64_t alloc_elements_limit = 0;
     int result;
 
     context->buffer_init_capacity = buffer_init_capacity;
-    if ((result=fast_mblock_init_ex2(&context->allocator, "shared_buffer",
+    if ((result=fast_mblock_init_ex1(&context->allocator, "shared_buffer",
                     sizeof(SharedBuffer), alloc_elements_once,
-                    shared_buffer_alloc_init, context, need_lock,
-                    NULL, NULL, NULL)) != 0)
+                    alloc_elements_limit, shared_buffer_alloc_init,
+                    context, need_lock)) != 0)
     {
         return result;
     }

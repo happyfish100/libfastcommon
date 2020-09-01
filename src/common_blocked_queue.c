@@ -11,6 +11,7 @@
 int common_blocked_queue_init_ex(struct common_blocked_queue *queue,
         const int alloc_elements_once)
 {
+    const int64_t alloc_elements_limit = 0;
 	int result;
 
 	if ((result=init_pthread_lock(&queue->lock)) != 0)
@@ -30,10 +31,10 @@ int common_blocked_queue_init_ex(struct common_blocked_queue *queue,
         return result;
     }
 
-    if ((result=fast_mblock_init_ex2(&queue->mblock,
-                    "queue_node", sizeof(struct common_blocked_node),
-                    alloc_elements_once, NULL, NULL, false,
-                    NULL, NULL, NULL)) != 0)
+    if ((result=fast_mblock_init_ex1(&queue->mblock, "queue_node",
+                    sizeof(struct common_blocked_node),
+                    alloc_elements_once, alloc_elements_limit,
+                    NULL, NULL, false)) != 0)
     {
         return result;
     }

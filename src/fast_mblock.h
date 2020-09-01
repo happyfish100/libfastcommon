@@ -36,7 +36,9 @@ struct fast_mblock_node
 /* malloc chain */
 struct fast_mblock_malloc
 {
-    int64_t ref_count;  //refference count
+    int64_t ref_count; //refference count
+    int alloc_count;   //allocated element count
+    int trunk_size;    //trunk bytes
     struct fast_mblock_malloc *prev;
     struct fast_mblock_malloc *next;
 };
@@ -82,7 +84,10 @@ struct fast_mblock_malloc_trunk_callback
 struct fast_mblock_man
 {
     struct fast_mblock_info info;
-    int alloc_elements_once;  //alloc elements once
+    struct {
+        int once;        //alloc elements once
+        int64_t limit;   //<= 0 for no limit
+    } alloc_elements;
     struct fast_mblock_node *free_chain_head;    //free node chain
     struct fast_mblock_trunks trunks;
     struct fast_mblock_chain delay_free_chain;   //delay free node chain
@@ -112,7 +117,7 @@ extern "C" {
 
 #define fast_mblock_init(mblock, element_size, alloc_elements_once) \
     fast_mblock_init_ex(mblock, element_size, alloc_elements_once,  \
-            NULL, NULL, true)
+            0, NULL, NULL, true)
 
 /**
 mblock init
@@ -120,6 +125,7 @@ parameters:
     mblock: the mblock pointer
     element_size: element size, such as sizeof(struct xxx)
     alloc_elements_once: malloc elements once, 0 for malloc 1MB memory once
+    alloc_elements_limit: malloc elements limit, <= 0 for no limit
     init_func: the init function
     init_args: the args for init_func
     need_lock: if need lock
@@ -127,6 +133,7 @@ return error no, 0 for success, != 0 fail
 */
 int fast_mblock_init_ex(struct fast_mblock_man *mblock,
         const int element_size, const int alloc_elements_once,
+        const int64_t alloc_elements_limit,
         fast_mblock_alloc_init_func init_func, void *init_args,
         const bool need_lock);
 
@@ -137,6 +144,7 @@ parameters:
     mblock: the mblock pointer
     element_size: element size, such as sizeof(struct xxx)
     alloc_elements_once: malloc elements once, 0 for malloc 1MB memory once
+    alloc_elements_limit: malloc elements limit, <= 0 for no limit
     init_func: the init function
     init_args: the args for init_func
     need_lock: if need lock
@@ -147,6 +155,7 @@ return error no, 0 for success, != 0 fail
 */
 int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
         const int element_size, const int alloc_elements_once,
+        const int64_t alloc_elements_limit,
         fast_mblock_alloc_init_func init_func,
         void *init_args, const bool need_lock,
         fast_mblock_malloc_trunk_check_func malloc_trunk_check,
@@ -160,6 +169,7 @@ parameters:
     mblock: the mblock pointer
     element_size: element size, such as sizeof(struct xxx)
     alloc_elements_once: malloc elements once, 0 for malloc 1MB memory once
+    alloc_elements_limit: malloc elements limit, <= 0 for no limit
     init_func: the init function
     init_args: the args for init_func
     need_lock: if need lock
@@ -168,12 +178,13 @@ return error no, 0 for success, != 0 fail
 static inline int fast_mblock_init_ex1(struct fast_mblock_man *mblock,
         const char *name, const int element_size,
         const int alloc_elements_once,
+        const int64_t alloc_elements_limit,
         fast_mblock_alloc_init_func init_func,
         void *init_args, const bool need_lock)
 {
     return fast_mblock_init_ex2(mblock, name, element_size,
-            alloc_elements_once, init_func, init_args,
-            need_lock, NULL, NULL, NULL);
+            alloc_elements_once, alloc_elements_limit, init_func,
+            init_args, need_lock, NULL, NULL, NULL);
 }
 
 /**

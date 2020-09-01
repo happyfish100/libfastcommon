@@ -22,6 +22,7 @@ int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
     fc_connection_callback_func validate_func, void *validate_args,
     const int extra_data_size)
 {
+    const int64_t alloc_elements_limit = 0;
 	int result;
     int init_capacity;
 
@@ -40,15 +41,16 @@ int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
 
     init_capacity = htable_init_capacity > 0 ? htable_init_capacity : 256;
     if ((result=fast_mblock_init_ex1(&cp->manager_allocator, "cpool_manager",
-                    sizeof(ConnectionManager), init_capacity, NULL, NULL,
-                    false)) != 0)
+                    sizeof(ConnectionManager), init_capacity,
+                    alloc_elements_limit, NULL, NULL, false)) != 0)
     {
         return result;
     }
 
     if ((result=fast_mblock_init_ex1(&cp->node_allocator, "cpool_node",
                     sizeof(ConnectionNode) + sizeof(ConnectionInfo) +
-                    extra_data_size, init_capacity, NULL, NULL, false)) != 0)
+                    extra_data_size, init_capacity, alloc_elements_limit,
+                    NULL, NULL, false)) != 0)
     {
         return result;
     }

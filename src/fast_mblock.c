@@ -23,6 +23,9 @@ struct _fast_mblock_manager
 
 static struct _fast_mblock_manager mblock_manager = {false, 0};
 
+#define fast_mblock_get_trunk_size(mblock, block_size, element_count) \
+    (sizeof(struct fast_mblock_malloc) + block_size * element_count)
+
 int fast_mblock_manager_init()
 {
     int result;
@@ -337,16 +340,18 @@ int fast_mblock_manager_stat_print_ex(const bool hide_empty, const int order_by)
 
 int fast_mblock_init_ex(struct fast_mblock_man *mblock,
         const int element_size, const int alloc_elements_once,
+        const int64_t alloc_elements_limit,
         fast_mblock_alloc_init_func init_func, void *init_args,
         const bool need_lock)
 {
     return fast_mblock_init_ex2(mblock, NULL, element_size,
-            alloc_elements_once, init_func, init_args,
-            need_lock, NULL, NULL, NULL);
+            alloc_elements_once, alloc_elements_limit, init_func,
+            init_args, need_lock, NULL, NULL, NULL);
 }
 
 int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
         const int element_size, const int alloc_elements_once,
+        const int64_t alloc_elements_limit,
         fast_mblock_alloc_init_func init_func,
         void *init_args, const bool need_lock,
         fast_mblock_malloc_trunk_check_func malloc_trunk_check,
@@ -365,15 +370,21 @@ int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
 	}
 
 	mblock->info.element_size = MEM_ALIGN(element_size);
+    mblock->alloc_elements.limit = alloc_elements_limit;
 	block_size = fast_mblock_get_block_size(mblock);
 	if (alloc_elements_once > 0)
 	{
-		mblock->alloc_elements_once = alloc_elements_once;
+		mblock->alloc_elements.once = alloc_elements_once;
 	}
 	else
 	{
-		mblock->alloc_elements_once = (1024 * 1024) / block_size;
+		mblock->alloc_elements.once = (1024 * 1024) / block_size;
 	}
+    if (mblock->alloc_elements.limit > 0 && mblock->alloc_elements.once >
+            mblock->alloc_elements.limit)
+    {
+        mblock->alloc_elements.once = mblock->alloc_elements.limit;
+    }
 
 	if (need_lock && (result=init_pthread_lock(&(mblock->lock))) != 0)
 	{
@@ -395,8 +406,8 @@ int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
     mblock->info.element_total_count = 0;
     mblock->info.element_used_count = 0;
     mblock->info.instance_count = 1;
-    mblock->info.trunk_size = sizeof(struct fast_mblock_malloc) + block_size *
-			mblock->alloc_elements_once;
+    mblock->info.trunk_size = fast_mblock_get_trunk_size(mblock,
+            block_size, mblock->alloc_elements.once);
     mblock->need_lock = need_lock;
     mblock->malloc_trunk_callback.check_func = malloc_trunk_check;
     mblock->malloc_trunk_callback.notify_func = malloc_trunk_notify;
@@ -425,27 +436,52 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
 	char *pLast;
 	int result;
 	int block_size;
+    int trunk_size;
+    int alloc_count;
 
 	block_size = fast_mblock_get_block_size(mblock);
+    if (mblock->alloc_elements.limit > 0)
+    {
+        int64_t avail_count;
+        avail_count = mblock->alloc_elements.limit -
+            mblock->info.element_total_count;
+        if (avail_count <= 0)
+        {
+            logError("file: "__FILE__", line: %d, "
+                    "allocated elements exceed limit: %"PRId64,
+                    __LINE__, mblock->alloc_elements.limit);
+            return EOVERFLOW;
+        }
+
+        alloc_count = avail_count > mblock->alloc_elements.once ?
+            mblock->alloc_elements.once : avail_count;
+        trunk_size = fast_mblock_get_trunk_size(mblock,
+                block_size, alloc_count);
+    }
+    else
+    {
+        alloc_count = mblock->alloc_elements.once;
+        trunk_size = mblock->info.trunk_size;
+    }
+
 	if (mblock->malloc_trunk_callback.check_func != NULL &&
-		mblock->malloc_trunk_callback.check_func(
-		mblock->info.trunk_size,
-		mblock->malloc_trunk_callback.args) != 0)
+		mblock->malloc_trunk_callback.check_func(trunk_size,
+            mblock->malloc_trunk_callback.args) != 0)
 	{
 		return ENOMEM;
 	}
 
-	pNew = (char *)fc_malloc(mblock->info.trunk_size);
+	pNew = (char *)fc_malloc(trunk_size);
 	if (pNew == NULL)
 	{
 		return ENOMEM;
 	}
-	memset(pNew, 0, mblock->info.trunk_size);
+	memset(pNew, 0, trunk_size);
 
 	pMallocNode = (struct fast_mblock_malloc *)pNew;
 
 	pTrunkStart = pNew + sizeof(struct fast_mblock_malloc);
-	pLast = pNew + (mblock->info.trunk_size - block_size);
+	pLast = pNew + (trunk_size - block_size);
 	for (p=pTrunkStart; p<=pLast; p += block_size)
 	{
 		pNode = (struct fast_mblock_node *)p;
@@ -466,18 +502,20 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
 	mblock->free_chain_head = (struct fast_mblock_node *)pTrunkStart;
 
     pMallocNode->ref_count = 0;
+    pMallocNode->alloc_count = alloc_count;
+    pMallocNode->trunk_size = trunk_size;
     pMallocNode->prev = mblock->trunks.head.prev;
 	pMallocNode->next = &mblock->trunks.head;
     mblock->trunks.head.prev->next = pMallocNode;
     mblock->trunks.head.prev = pMallocNode;
 
     mblock->info.trunk_total_count++;
-    mblock->info.element_total_count += mblock->alloc_elements_once;
+    mblock->info.element_total_count += alloc_count;
 
     if (mblock->malloc_trunk_callback.notify_func != NULL)
     {
-	   mblock->malloc_trunk_callback.notify_func(mblock->info.trunk_size,
-	   mblock->malloc_trunk_callback.args);
+        mblock->malloc_trunk_callback.notify_func(trunk_size,
+                mblock->malloc_trunk_callback.args);
     }
 
     return 0;
@@ -489,11 +527,11 @@ static inline void fast_mblock_remove_trunk(struct fast_mblock_man *mblock,
     pMallocNode->prev->next = pMallocNode->next;
 	pMallocNode->next->prev = pMallocNode->prev;
     mblock->info.trunk_total_count--;
-    mblock->info.element_total_count -= mblock->alloc_elements_once;
+    mblock->info.element_total_count -= pMallocNode->alloc_count;
 
     if (mblock->malloc_trunk_callback.notify_func != NULL)
     {
-	   mblock->malloc_trunk_callback.notify_func(-1 * mblock->info.trunk_size,
+	   mblock->malloc_trunk_callback.notify_func(-1 * pMallocNode->trunk_size,
 	   mblock->malloc_trunk_callback.args);
     }
 }
@@ -570,9 +608,9 @@ struct fast_mblock_node *fast_mblock_alloc(struct fast_mblock_man *mblock)
 
 	if (mblock->need_lock && (result=pthread_mutex_lock(&(mblock->lock))) != 0)
 	{
-		logError("file: "__FILE__", line: %d, " \
-			"call pthread_mutex_lock fail, " \
-			"errno: %d, error info: %s", \
+		logError("file: "__FILE__", line: %d, "
+			"call pthread_mutex_lock fail, "
+			"errno: %d, error info: %s",
 			__LINE__, result, STRERROR(result));
 		return NULL;
 	}

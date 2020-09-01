@@ -49,6 +49,7 @@ int uniq_skiplist_init_ex2(UniqSkiplistFactory *factory,
         const int min_alloc_elements_once, const int delay_free_seconds,
         const bool bidirection)
 {
+    const int64_t alloc_elements_limit = 0;
     char name[64];
     int bytes;
     int element_size;
@@ -92,11 +93,12 @@ int uniq_skiplist_init_ex2(UniqSkiplistFactory *factory,
 
     extra_links_count = bidirection ? 1 : 0;
     for (i=max_level_count-1; i>=0; i--) {
-        sprintf(name, "sl-level%02d", i);
+        sprintf(name, "uniq-sl-level%02d", i);
         element_size = sizeof(UniqSkiplistNode) +
             sizeof(UniqSkiplistNode *) * (i + 1 + extra_links_count);
         if ((result=fast_mblock_init_ex1(factory->node_allocators + i,
-            name, element_size, alloc_elements_once, NULL, NULL, false)) != 0)
+                        name, element_size, alloc_elements_once,
+                        alloc_elements_limit, NULL, NULL, false)) != 0)
         {
             return result;
         }
@@ -108,7 +110,7 @@ int uniq_skiplist_init_ex2(UniqSkiplistFactory *factory,
     if ((result=fast_mblock_init_ex1(&factory->skiplist_allocator,
                     "skiplist", sizeof(UniqSkiplist),
                     alloc_skiplist_once > 0 ?  alloc_skiplist_once :
-                    16 * 1024, NULL, NULL, false)) != 0)
+                    16 * 1024, alloc_elements_limit, NULL, NULL, false)) != 0)
     {
         return result;
     }

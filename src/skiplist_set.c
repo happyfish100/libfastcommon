@@ -22,6 +22,8 @@ int skiplist_set_init_ex(SkiplistSet *sl, const int level_count,
         skiplist_compare_func compare_func, skiplist_free_func free_func,
         const int min_alloc_elements_once)
 {
+    const int64_t alloc_elements_limit = 0;
+    char name[64];
     int bytes;
     int element_size;
     int i;
@@ -65,10 +67,12 @@ int skiplist_set_init_ex(SkiplistSet *sl, const int level_count,
     }
 
     for (i=level_count-1; i>=0; i--) {
+        sprintf(name, "sl-set-level%02d", i);
         element_size = sizeof(SkiplistSetNode) +
             sizeof(SkiplistSetNode *) * (i + 1);
-        if ((result=fast_mblock_init_ex(sl->mblocks + i,
-            element_size, alloc_elements_once, NULL, NULL, false)) != 0)
+        if ((result=fast_mblock_init_ex1(sl->mblocks + i, name,
+            element_size, alloc_elements_once, alloc_elements_limit,
+            NULL, NULL, false)) != 0)
         {
             return result;
         }

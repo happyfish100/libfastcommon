@@ -128,6 +128,7 @@ static int allocator_array_check_capacity(struct fast_allocator_context *acontex
 static int region_init(struct fast_allocator_context *acontext,
         const char *mblock_name_prefix, struct fast_region_info *region)
 {
+    const int64_t alloc_elements_limit = 0;
 	int result;
 	int bytes;
 	int element_size;
@@ -167,8 +168,8 @@ static int region_init(struct fast_allocator_context *acontext,
             name = NULL;
         }
 		result = fast_mblock_init_ex2(&allocator->mblock, name, element_size,
-			region->alloc_elements_once, NULL, NULL, acontext->need_lock,
-			fast_allocator_malloc_trunk_check,
+			region->alloc_elements_once, alloc_elements_limit, NULL, NULL,
+            acontext->need_lock, fast_allocator_malloc_trunk_check,
 			fast_allocator_malloc_trunk_notify_func, acontext);
 		if (result != 0)
 		{

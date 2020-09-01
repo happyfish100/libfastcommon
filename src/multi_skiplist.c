@@ -23,6 +23,8 @@ int multi_skiplist_init_ex(MultiSkiplist *sl, const int level_count,
         skiplist_free_func free_func,
         const int min_alloc_elements_once)
 {
+    const int64_t alloc_elements_limit = 0;
+    char name[64];
     int bytes;
     int element_size;
     int i;
@@ -66,10 +68,12 @@ int multi_skiplist_init_ex(MultiSkiplist *sl, const int level_count,
     }
 
     for (i=level_count-1; i>=0; i--) {
+        sprintf(name, "multi-sl-level%02d", i);
         element_size = sizeof(MultiSkiplistNode) +
             sizeof(MultiSkiplistNode *) * (i + 1);
-        if ((result=fast_mblock_init_ex(sl->mblocks + i,
-            element_size, alloc_elements_once, NULL, NULL, false)) != 0)
+        if ((result=fast_mblock_init_ex1(sl->mblocks + i, name,
+            element_size, alloc_elements_once, alloc_elements_limit,
+            NULL, NULL, false)) != 0)
         {
             return result;
         }
@@ -92,9 +96,9 @@ int multi_skiplist_init_ex(MultiSkiplist *sl, const int level_count,
     }
     memset(sl->tail, 0, sl->mblocks[0].info.element_size);
 
-    if ((result=fast_mblock_init_ex(&sl->data_mblock,
+    if ((result=fast_mblock_init_ex1(&sl->data_mblock, "multi-sl-data",
                     sizeof(MultiSkiplistData), alloc_elements_once,
-                    NULL, NULL, false)) != 0)
+                    alloc_elements_limit, NULL, NULL, false)) != 0)
     {
         return result;
     }
