@@ -1510,7 +1510,7 @@ int set_rlimit(int resource, const rlim_t value)
 		return errno != 0 ? errno : EPERM;
 	}
 
-	if (limit.rlim_cur == RLIM_INFINITY ||
+	if ((limit.rlim_cur == RLIM_INFINITY) ||
             (value != RLIM_INFINITY && limit.rlim_cur >= value))
 	{
 		return 0;
@@ -1518,6 +1518,11 @@ int set_rlimit(int resource, const rlim_t value)
 
     old_value = limit.rlim_cur;
 	limit.rlim_cur = value;
+    if (!((limit.rlim_max == RLIM_INFINITY) ||
+            (value != RLIM_INFINITY && limit.rlim_max >= value)))
+    {
+        limit.rlim_max = value;
+    }
 	if (setrlimit(resource, &limit) != 0)
 	{
         const char *label;
