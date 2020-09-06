@@ -106,72 +106,71 @@ void conn_pool_disconnect_server(ConnectionInfo *pConnection)
 	}
 }
 
-int conn_pool_connect_server_ex(ConnectionInfo *pConnection,
+int conn_pool_connect_server_ex(ConnectionInfo *conn,
 		const int connect_timeout, const char *bind_ipaddr,
         const bool log_connect_error)
 {
 	int result;
-    int domain;
 
-	if (pConnection->sock >= 0)
+	if (conn->sock >= 0)
 	{
-		close(pConnection->sock);
+		close(conn->sock);
 	}
 
-    if (pConnection->socket_domain == AF_INET ||
-            pConnection->socket_domain == AF_INET6)
+    if ((conn->sock=socketCreateEx2(conn->socket_domain, conn->ip_addr,
+                    O_NONBLOCK, bind_ipaddr, &result)) < 0)
     {
-        domain = pConnection->socket_domain;
-    }
-    else
-    {
-        domain = is_ipv6_addr(pConnection->ip_addr) ? AF_INET6 : AF_INET;
-    }
-	pConnection->sock = socket(domain, SOCK_STREAM, 0);
-	if(pConnection->sock < 0)
-	{
-		logError("file: "__FILE__", line: %d, "
-			"socket create fail, errno: %d, "
-			"error info: %s", __LINE__, errno, STRERROR(errno));
-		return errno != 0 ? errno : EPERM;
-	}
-
-    if (bind_ipaddr != NULL && *bind_ipaddr != '\0')
-    {
-        if ((result=socketBind2(domain, pConnection->sock, bind_ipaddr, 0)) != 0)
-        {
-            close(pConnection->sock);
-            pConnection->sock = -1;
-            return result;
-        }
+        return result;
     }
 
-    SET_SOCKOPT_NOSIGPIPE(pConnection->sock);
-	if ((result=tcpsetnonblockopt(pConnection->sock)) != 0)
-	{
-		close(pConnection->sock);
-		pConnection->sock = -1;
-		return result;
-	}
-
-	if ((result=connectserverbyip_nb(pConnection->sock,
-		pConnection->ip_addr, pConnection->port,
-		connect_timeout)) != 0)
+	if ((result=connectserverbyip_nb(conn->sock, conn->ip_addr,
+                    conn->port, connect_timeout)) != 0)
 	{
         if (log_connect_error)
         {
             logError("file: "__FILE__", line: %d, "
                     "connect to server %s:%d fail, errno: %d, "
-                    "error info: %s", __LINE__, pConnection->ip_addr,
-                    pConnection->port, result, STRERROR(result));
+                    "error info: %s", __LINE__, conn->ip_addr,
+                    conn->port, result, STRERROR(result));
         }
 
-		close(pConnection->sock);
-		pConnection->sock = -1;
+		close(conn->sock);
+		conn->sock = -1;
 		return result;
 	}
 
 	return 0;
+}
+
+int conn_pool_async_connect_server_ex(ConnectionInfo *conn,
+        const char *bind_ipaddr)
+{
+    int result;
+
+    if (conn->sock >= 0)
+    {
+        close(conn->sock);
+    }
+
+    if ((conn->sock=socketCreateEx2(conn->socket_domain,
+                    conn->ip_addr, O_NONBLOCK, bind_ipaddr,
+                    &result)) < 0)
+    {
+        return result;
+    }
+
+    result = asyncconnectserverbyip(conn->sock, conn->ip_addr, conn->port);
+    if (!(result == 0 || result == EINPROGRESS))
+    {
+        logError("file: "__FILE__", line: %d, "
+                "connect to server %s:%d fail, errno: %d, "
+                "error info: %s", __LINE__, conn->ip_addr,
+                conn->port, result, STRERROR(result));
+        close(conn->sock);
+        conn->sock = -1;
+    }
+
+    return result;
 }
 
 static inline void  conn_pool_get_key(const ConnectionInfo *conn, char *key, int *key_len)

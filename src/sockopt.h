@@ -208,6 +208,17 @@ int connectserverbyip_nb_ex(int sock, const char *server_ip, \
 #define connectserverbyip_nb_auto(sock, server_ip, server_port, timeout) \
 	connectserverbyip_nb_ex(sock, server_ip, server_port, timeout, true)
 
+
+/** async connect to server
+ *  parameters:
+ *          sock: the non-block socket
+ *          server_ip: ip address of the server
+ *          server_port: port of the server
+ *  return: error no, 0 or EINPROGRESS for success, others for fail
+*/
+int asyncconnectserverbyip(int sock, const char *server_ip,
+        const short server_port);
+
 /** accept client connect request
  *  parameters:
  *          sock: the server socket
@@ -368,30 +379,26 @@ int socketServer2(int af, const char *bind_ipaddr, const int port, int *err_no);
  *  parameters:
  *          af: family, AF_UNSPEC (auto dectect), AF_INET or AF_INET6
  *          server_ip: ip address of the server to detect family when af == AF_UNSPEC
- *          timeout: connect timeout in seconds
  *          flags: socket flags such as O_NONBLOCK for non-block socket
  *          bind_ipaddr: the ip address to bind, NULL or empty for bind ANY
  *          err_no: store the error no
  *  return: >= 0 server socket, < 0 fail
 */
 int socketCreateEx2(int af, const char *server_ip,
-		const int timeout, const int flags,
-        const char *bind_ipaddr, int *err_no);
+		const int flags, const char *bind_ipaddr, int *err_no);
 
 /** create socket (NOT connect to server yet)
  *  parameters:
  *          server_ip: ip address of the server to detect family
- *          timeout: connect timeout in seconds
  *          flags: socket flags such as O_NONBLOCK for non-block socket
  *          bind_ipaddr: the ip address to bind, NULL or empty for bind ANY
  *          err_no: store the error no
  *  return: >= 0 server socket, < 0 fail
 */
 static inline int socketCreateExAuto(const char *server_ip,
-		const int timeout, const int flags,
-        const char *bind_ipaddr, int *err_no)
+		const int flags, const char *bind_ipaddr, int *err_no)
 {
-    return socketCreateEx2(AF_UNSPEC, server_ip, timeout, flags,
+    return socketCreateEx2(AF_UNSPEC, server_ip, flags,
             bind_ipaddr, err_no);
 }
 

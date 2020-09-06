@@ -635,15 +635,34 @@ int connectserverbyip_nb_ex(int sock, const char *server_ip, \
 	return result;
 }
 
+int asyncconnectserverbyip(int sock, const char *server_ip,
+        const short server_port)
+{
+    int result;
+    sockaddr_convert_t convert;
+
+    if ((result=setsockaddrbyip(server_ip, server_port, &convert)) != 0)
+    {
+        return result;
+    }
+
+    if (connect(sock, &convert.sa.addr, convert.len) == 0) {
+        return 0;
+    }
+    else
+    {
+        return errno != 0 ? errno : EINPROGRESS;
+    }
+}
+
 int socketCreateEx2(int af, const char *server_ip,
-		const int timeout, const int flags,
-        const char *bind_ipaddr, int *err_no)
+		const int flags, const char *bind_ipaddr, int *err_no)
 {
     int sock;
 
-    if (af == AF_UNSPEC)
+    if (!(af == AF_INET || af == AF_INET6))
     {
-        af = is_ipv6_addr(server_ip) ?  AF_INET6 : AF_INET;
+        af = is_ipv6_addr(server_ip) ? AF_INET6 : AF_INET;
     }
 
     sock = socket(af, SOCK_STREAM, 0);
@@ -689,7 +708,7 @@ int socketClientEx2(int af, const char *server_ip,
     bool auto_detect;
 
     sock = socketCreateEx2(af, server_ip,
-		timeout, flags, bind_ipaddr, err_no);
+            flags, bind_ipaddr, err_no);
     if (sock < 0)
     {
         return sock;

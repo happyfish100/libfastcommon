@@ -240,6 +240,21 @@ static inline int conn_pool_connect_server_anyway(ConnectionInfo *pConnection,
 }
 
 /**
+*   async connect to the server
+*   parameters:
+*      pConnection: the connection
+*      bind_ipaddr: the ip address to bind, NULL or empty for any
+*   NOTE: pConnection->sock will be closed when it >= 0 before connect
+*   return 0 or EINPROGRESS for success, others for error
+*/
+int conn_pool_async_connect_server_ex(ConnectionInfo *conn,
+        const char *bind_ipaddr);
+
+#define conn_pool_async_connect_server(conn) \
+    conn_pool_async_connect_server_ex(conn, NULL)
+
+
+/**
 *   get connection count of the pool
 *   parameters:
 *      cp: the ConnectionPool

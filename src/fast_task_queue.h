@@ -66,20 +66,25 @@ struct nio_thread_data
 struct fast_task_info
 {
 	IOEventEntry event;  //must first
-	char client_ip[IP_ADDRESS_SIZE];
+    union {
+        char server_ip[IP_ADDRESS_SIZE];
+        char client_ip[IP_ADDRESS_SIZE];
+    };
 	void *arg;  //extra argument pointer
 	char *data; //buffer for write or recv
 	int size;   //alloc size
 	int length; //data length
 	int offset; //current offset
-    uint16_t port; //client port
+    uint16_t port; //peer port
     char nio_stage;  //stage for network IO
     bool canceled;   //if task canceled
+    int connect_timeout; //for client side
+    int network_timeout;
 	int64_t req_count; //request count
 	TaskFinishCallback finish_callback;
 	struct nio_thread_data *thread_data;
-	struct fast_task_info *next;
 	void *ctx;  //context pointer for libserverframe nio
+	struct fast_task_info *next;
 };
 
 struct fast_task_queue
