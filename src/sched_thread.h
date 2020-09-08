@@ -15,6 +15,7 @@
 #include "common_define.h"
 #include "fast_timer.h"
 #include "fast_mblock.h"
+#include "fc_queue.h"
 
 typedef int (*TaskFunc) (void *args);
 
@@ -60,21 +61,14 @@ typedef struct fast_delay_task {
 
 typedef struct
 {
-    FastDelayTask *head;
-    FastDelayTask *tail;
-    pthread_mutex_t lock;
-} FastDelayQueue;
-
-typedef struct
-{
 	ScheduleArray scheduleArray;
 	ScheduleEntry *head;  //schedule chain head
     ScheduleEntry *tail;  //schedule chain tail
 
-    struct fast_mblock_man mblock;  //for timer entry
+    struct fast_mblock_man delay_task_allocator;  //for FastDelayTask
     FastTimer timer;   //for delay task
     bool timer_init;
-    FastDelayQueue delay_queue;
+    struct fc_queue delay_queue;
 
 	bool *pcontinue_flag;
 } ScheduleContext;
@@ -103,9 +97,8 @@ typedef struct
 extern "C" {
 #endif
 
-extern volatile bool g_schedule_flag; //schedule continue running flag
+extern volatile int g_schedule_flag; //schedule continue running flag
 extern volatile time_t g_current_time;  //the current time
-
 
 #define get_current_time() (g_schedule_flag ? g_current_time: time(NULL))
 
