@@ -305,6 +305,16 @@ static inline void conn_pool_set_server_info(ConnectionInfo *pServerInfo,
     pServerInfo->sock = -1;
 }
 
+static inline int conn_pool_compare_ip_and_port(const char *ip1,
+        const short port1, const char *ip2, const short port2)
+{
+    int result;
+    if ((result=strcmp(ip1, ip2)) != 0) {
+        return result;
+    }
+    return port1 - port2;
+}
+
 #ifdef __cplusplus
 }
 #endif
