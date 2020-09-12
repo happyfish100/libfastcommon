@@ -467,13 +467,13 @@ static void *sched_thread_entrance(void *args)
                 }
                 else
                 {
-                    usleep(1*1000);
+                    fc_sleep_ms(1);
                     for (i=1; !pCurrent->thread_running && i<100; i++)
                     {
                         logDebug("file: "__FILE__", line: %d, "
                                 "task_id: %d, waiting thread ready, count %d",
                                 __LINE__, pCurrent->id, i);
-                        usleep(1*1000);
+                        fc_sleep_ms(1);
                     }
                 }
             }
@@ -642,7 +642,7 @@ int sched_add_entries(const ScheduleArray *pScheduleArray)
                         "schedule_flag: %d ...", __LINE__,
                         __sync_add_and_fetch(&g_schedule_flag, 0));
             }
-            else if (++i == 10)
+            else if (++i == 300)
             {
                 logError("file: "__FILE__", line: %d, "
                         "waiting for schedule array ready timeout, "
@@ -650,7 +650,7 @@ int sched_add_entries(const ScheduleArray *pScheduleArray)
                         __sync_add_and_fetch(&g_schedule_flag, 0), i);
                 break;
             }
-            sleep(1);
+            fc_sleep_ms(10);
         }
     }
 
@@ -908,13 +908,13 @@ static void deal_timeout_tasks(ScheduleContext *pContext, FastTimerEntry *head)
             }
             else
             {
-               usleep(1*1000);
+               fc_sleep_ms(1);
                for (i=1; !task->thread_running && i<100; i++)
                {
                    logDebug("file: "__FILE__", line: %d, "
                            "task args: %p, waiting thread ready, count %d",
                            __LINE__, task->func_args, i);
-                   usleep(1*1000);
+                   fc_sleep_ms(1);
                }
             }
         }

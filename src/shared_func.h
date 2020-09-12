@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -986,6 +987,24 @@ int fc_get_last_line(const char *filename, char *buff,
 */
 bool fc_path_contains(const string_t *path, const string_t *needle,
         int *result);
+
+
+/** sleep in milliseconds
+ *  parameters:
+ *      milliseconds: milliseconds to sleep
+ *  return: 0 for success, != 0 for fail
+*/
+static inline int fc_sleep_ms(const int milliseconds)
+{
+    struct timespec ts;
+    ts.tv_sec = milliseconds / 1000;
+    ts.tv_nsec = (milliseconds % 1000) * (1000 * 1000);
+    if (nanosleep(&ts, NULL) == 0) {
+        return 0;
+    } else {
+        return errno != 0 ? errno : EINVAL;
+    }
+}
 
 #ifdef __cplusplus
 }

@@ -19,7 +19,7 @@ static volatile int64_t total = 0;
 
 #define TASK_COUNT 10
 
-void thread2_func(void *args)
+void thread2_func(void *args, void *thread_data)
 {
     int i;
     for (i=0; i<LOOP_COUNT; i++) {
@@ -28,7 +28,7 @@ void thread2_func(void *args)
     }
 }
 
-void thread1_func(void *args)
+void thread1_func(void *args, void *thread_data)
 {
     int i;
     for (i=0; i<LOOP_COUNT; i++) {
@@ -37,7 +37,7 @@ void thread1_func(void *args)
     }
 }
 
-void wait_thread_func(void *args)
+void wait_thread_func(void *args, void *thread_data)
 {
     int i;
     for (i=0; i<LOOP_COUNT; i++) {
@@ -108,8 +108,9 @@ int main(int argc, char *argv[])
 	g_log_context.log_level = LOG_DEBUG;
 	
 	start_time = get_current_time_ms();
-    if ((result=fc_thread_pool_init(&pool, limit, stack_size, max_idle_time,
-                    min_idle_count, (bool * volatile)&continue_flag)) != 0)
+    if ((result=fc_thread_pool_init(&pool, "test", limit, stack_size,
+                    max_idle_time, min_idle_count,
+                    (bool * volatile)&continue_flag)) != 0)
     {
         return result;
     }
