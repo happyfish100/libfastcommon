@@ -114,6 +114,10 @@ static SetDirectiveVars *iniGetVars(IniContext *pContext);
         trim_left(pStr);  \
     } while (0)
 
+
+#define RETRY_FETCH_GLOBAL(szSectionName, bRetryGlobal) \
+        ((szSectionName != NULL && szSectionName != '\0') && bRetryGlobal)
+
 static void iniDoSetAnnotations(AnnotationEntry *src, const int src_count,
         AnnotationEntry *dest, int *dest_count)
 {
@@ -2798,8 +2802,8 @@ do { \
 } while (0)
 
 
-char *iniGetStrValue(const char *szSectionName, const char *szItemName, \
-		IniContext *pContext)
+char *iniGetStrValueEx(const char *szSectionName, const char *szItemName,
+		IniContext *pContext, const bool bRetryGlobal)
 {
 	IniItem targetItem;
 	IniSection *pSection;
@@ -2807,33 +2811,50 @@ char *iniGetStrValue(const char *szSectionName, const char *szItemName, \
 	IniItem *pItem;
 	IniItem *pItemEnd;
 
-	INI_FIND_ITEM(szSectionName, szItemName, pContext, pSection, \
+	INI_FIND_ITEM(szSectionName, szItemName, pContext, pSection,
 			targetItem, pFound, NULL);
 	if (pFound == NULL)
 	{
-		return NULL;
+        if (RETRY_FETCH_GLOBAL(szSectionName, bRetryGlobal))
+        {
+            szSectionName = NULL;
+            INI_FIND_ITEM(szSectionName, szItemName, pContext,
+                    pSection, targetItem, pFound, NULL);
+            if (pFound == NULL)
+            {
+                return NULL;
+            }
+        }
+        else
+        {
+            return NULL;
+        }
 	}
 
 	pItemEnd = pSection->items + pSection->count;
 	for (pItem=pFound+1; pItem<pItemEnd; pItem++)
-	{
-		if (strcmp(pItem->name, szItemName) != 0)
-		{
-			break;
-		}
-
-        pFound = pItem;
-	}
+    {
+        if (strcmp(pItem->name, szItemName) == 0)
+        {
+            pFound = pItem;
+        }
+        else
+        {
+            break;
+        }
+    }
 
     return pFound->value;
 }
 
-int64_t iniGetInt64Value(const char *szSectionName, const char *szItemName, \
-		IniContext *pContext, const int64_t nDefaultValue)
+int64_t iniGetInt64ValueEx(const char *szSectionName,
+        const char *szItemName, IniContext *pContext,
+        const int64_t nDefaultValue, const bool bRetryGlobal)
 {
 	char *pValue;
 
-	pValue = iniGetStrValue(szSectionName, szItemName, pContext);
+	pValue = iniGetStrValueEx(szSectionName, szItemName,
+            pContext, bRetryGlobal);
 	if (pValue == NULL)
 	{
 		return nDefaultValue;
@@ -2844,28 +2865,32 @@ int64_t iniGetInt64Value(const char *szSectionName, const char *szItemName, \
 	}
 }
 
-int iniGetIntValue(const char *szSectionName, const char *szItemName, \
-		IniContext *pContext, const int nDefaultValue)
+int iniGetIntValueEx(const char *szSectionName,
+        const char *szItemName, IniContext *pContext,
+        const int nDefaultValue, const bool bRetryGlobal)
 {
 	char *pValue;
 
-	pValue = iniGetStrValue(szSectionName, szItemName, pContext);
+	pValue = iniGetStrValueEx(szSectionName, szItemName,
+            pContext, bRetryGlobal);
 	if (pValue == NULL)
-	{
-		return nDefaultValue;
-	}
+    {
+        return nDefaultValue;
+    }
 	else
 	{
 		return atoi(pValue);
 	}
 }
 
-double iniGetDoubleValue(const char *szSectionName, const char *szItemName, \
-		IniContext *pContext, const double dbDefaultValue)
+double iniGetDoubleValueEx(const char *szSectionName,
+        const char *szItemName, IniContext *pContext,
+        const double dbDefaultValue, const bool bRetryGlobal)
 {
 	char *pValue;
 
-	pValue = iniGetStrValue(szSectionName, szItemName, pContext);
+	pValue = iniGetStrValueEx(szSectionName, szItemName,
+            pContext, bRetryGlobal);
 	if (pValue == NULL)
 	{
 		return dbDefaultValue;
@@ -2876,12 +2901,14 @@ double iniGetDoubleValue(const char *szSectionName, const char *szItemName, \
 	}
 }
 
-bool iniGetBoolValue(const char *szSectionName, const char *szItemName, \
-		IniContext *pContext, const bool bDefaultValue)
+bool iniGetBoolValueEx(const char *szSectionName,
+        const char *szItemName, IniContext *pContext,
+        const bool bDefaultValue, const bool bRetryGlobal)
 {
 	char *pValue;
 
-	pValue = iniGetStrValue(szSectionName, szItemName, pContext);
+	pValue = iniGetStrValueEx(szSectionName, szItemName,
+            pContext, bRetryGlobal);
 	if (pValue == NULL)
 	{
 		return bDefaultValue;

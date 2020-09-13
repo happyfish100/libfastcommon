@@ -107,6 +107,26 @@ extern "C" {
      strcasecmp(pValue, "on") == 0 ||   \
      strcmp(pValue, "1") == 0)
 
+#define iniGetStrValue(szSectionName, szItemName, pContext) \
+    iniGetStrValueEx(szSectionName, szItemName, pContext, false)
+
+#define iniGetIntValue(szSectionName, szItemName, pContext, nDefaultValue) \
+    iniGetIntValueEx(szSectionName, szItemName, pContext,  \
+    nDefaultValue, false)
+
+#define iniGetInt64Value(szSectionName, szItemName, pContext, nDefaultValue) \
+    iniGetInt64ValueEx(szSectionName, szItemName, pContext, \
+    nDefaultValue, false)
+
+#define iniGetDoubleValue(szSectionName, szItemName, pContext, dbDefaultValue) \
+    iniGetDoubleValueEx(szSectionName, szItemName, pContext, \
+    dbDefaultValue, false)
+
+#define iniGetBoolValue(szSectionName, szItemName, pContext, bDefaultValue) \
+    iniGetBoolValueEx(szSectionName, szItemName, pContext, \
+    bDefaultValue, false)
+
+
 int iniSetAnnotationCallBack(AnnotationEntry *annotations, int count);
 void iniDestroyAnnotationCallBack();
 
@@ -170,10 +190,11 @@ void iniFreeContext(IniContext *pContext);
  *                          global section
  *           szItemName: the item name
  *           pContext:   the ini context
+ *           bRetryGlobal: if fetch from global section when the item not exist
  *  return: item value, return NULL when the item not exist
 */
-char *iniGetStrValue(const char *szSectionName, const char *szItemName, \
-		IniContext *pContext);
+char *iniGetStrValueEx(const char *szSectionName, const char *szItemName,
+		IniContext *pContext, const bool bRetryGlobal);
 
 /** get item string value
  *  parameters:
@@ -195,10 +216,12 @@ int iniGetValues(const char *szSectionName, const char *szItemName, \
  *           szItemName: the item name
  *           pContext:   the ini context
  *           nDefaultValue: the default value
+ *           bRetryGlobal: if fetch from global section when the item not exist
  *  return: item value, return nDefaultValue when the item not exist
 */
-int iniGetIntValue(const char *szSectionName, const char *szItemName, \
-		IniContext *pContext, const int nDefaultValue);
+int iniGetIntValueEx(const char *szSectionName,
+        const char *szItemName, IniContext *pContext,
+        const int nDefaultValue, const bool bRetryGlobal);
 
 /** get item string value array
  *  parameters:
@@ -209,7 +232,7 @@ int iniGetIntValue(const char *szSectionName, const char *szItemName, \
  *           nTargetCount: store the item value count
  *  return: item value array, return NULL when the item not exist
 */
-IniItem *iniGetValuesEx(const char *szSectionName, const char *szItemName, \
+IniItem *iniGetValuesEx(const char *szSectionName, const char *szItemName,
 		IniContext *pContext, int *nTargetCount);
 
 /** get item int64 value (64 bits)
@@ -219,10 +242,12 @@ IniItem *iniGetValuesEx(const char *szSectionName, const char *szItemName, \
  *           szItemName: the item name
  *           pContext:   the ini context
  *           nDefaultValue: the default value
+ *           bRetryGlobal: if fetch from global section when the item not exist
  *  return: int64 value, return nDefaultValue when the item not exist
 */
-int64_t iniGetInt64Value(const char *szSectionName, const char *szItemName, \
-		IniContext *pContext, const int64_t nDefaultValue);
+int64_t iniGetInt64ValueEx(const char *szSectionName,
+        const char *szItemName, IniContext *pContext,
+        const int64_t nDefaultValue, const bool bRetryGlobal);
 
 /** get item boolean value
  *  parameters:
@@ -231,10 +256,12 @@ int64_t iniGetInt64Value(const char *szSectionName, const char *szItemName, \
  *           szItemName: the item name
  *           pContext:   the ini context
  *           bDefaultValue: the default value
+ *           bRetryGlobal: if fetch from global section when the item not exist
  *  return: item boolean value, return bDefaultValue when the item not exist
 */
-bool iniGetBoolValue(const char *szSectionName, const char *szItemName, \
-		IniContext *pContext, const bool bDefaultValue);
+bool iniGetBoolValueEx(const char *szSectionName,
+        const char *szItemName, IniContext *pContext,
+        const bool bDefaultValue, const bool bRetryGlobal);
 
 /** get item double value
  *  parameters:
@@ -243,10 +270,12 @@ bool iniGetBoolValue(const char *szSectionName, const char *szItemName, \
  *           szItemName: the item name
  *           pContext:   the ini context
  *           dbDefaultValue: the default value
+ *           bRetryGlobal: if fetch from global section when the item not exist
  *  return: item value, return dbDefaultValue when the item not exist
 */
-double iniGetDoubleValue(const char *szSectionName, const char *szItemName, \
-		IniContext *pContext, const double dbDefaultValue);
+double iniGetDoubleValueEx(const char *szSectionName,
+        const char *szItemName, IniContext *pContext,
+        const double dbDefaultValue, const bool bRetryGlobal);
 
 /** print all items
  *  parameters:
