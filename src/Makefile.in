@@ -43,7 +43,7 @@ HEADER_FILES = common_define.h hash.h chain.h logger.h base64.h \
 			   char_convert_loader.h common_blocked_queue.h  \
                multi_socket_client.h skiplist_set.h uniq_skiplist.h \
                fc_list.h json_parser.h buffered_file_writer.h server_id_func.h \
-               fc_queue.h fc_memory.h shared_buffer.h thread_pool.h
+               fc_queue.h fc_memory.h shared_buffer.h thread_pool.h fc_atomic.h
 
 ALL_OBJS = $(FAST_STATIC_OBJS) $(FAST_SHARED_OBJS)
 

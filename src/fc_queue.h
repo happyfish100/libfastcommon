@@ -20,8 +20,7 @@ struct fc_queue
 {
 	void *head;
 	void *tail;
-	pthread_mutex_t lock;
-	pthread_cond_t cond;
+    pthread_lock_cond_pair_t lc_pair;
     int next_ptr_offset;
 };
 
@@ -35,7 +34,7 @@ void fc_queue_destroy(struct fc_queue *queue);
 
 static inline void fc_queue_terminate(struct fc_queue *queue)
 {
-    pthread_cond_signal(&queue->cond);
+    pthread_cond_signal(&queue->lc_pair.cond);
 }
 
 static inline void fc_queue_terminate_all(
@@ -43,7 +42,7 @@ static inline void fc_queue_terminate_all(
 {
     int i;
     for (i=0; i<count; i++) {
-        pthread_cond_signal(&(queue->cond));
+        pthread_cond_signal(&(queue->lc_pair.cond));
     }
 }
 
@@ -56,7 +55,7 @@ static inline void fc_queue_push(struct fc_queue *queue, void *data)
 
     fc_queue_push_ex(queue, data, &notify);
     if (notify) {
-        pthread_cond_signal(&(queue->cond));
+        pthread_cond_signal(&(queue->lc_pair.cond));
     }
 }
 
@@ -70,7 +69,7 @@ static inline void fc_queue_push_queue_to_head(struct fc_queue *queue,
 
     fc_queue_push_queue_to_head_ex(queue, qinfo, &notify);
     if (notify) {
-        pthread_cond_signal(&(queue->cond));
+        pthread_cond_signal(&(queue->lc_pair.cond));
     }
 }
 

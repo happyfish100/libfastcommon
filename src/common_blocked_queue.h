@@ -29,8 +29,7 @@ struct common_blocked_queue
 	struct common_blocked_node *head;
 	struct common_blocked_node *tail;
     struct fast_mblock_man mblock;
-	pthread_mutex_t lock;
-	pthread_cond_t cond;
+    pthread_lock_cond_pair_t lc_pair;
 };
 
 #ifdef __cplusplus
@@ -48,7 +47,7 @@ void common_blocked_queue_destroy(struct common_blocked_queue *queue);
 static inline void common_blocked_queue_terminate(
         struct common_blocked_queue *queue)
 {
-    pthread_cond_signal(&(queue->cond));
+    pthread_cond_signal(&(queue->lc_pair.cond));
 }
 
 static inline void common_blocked_queue_terminate_all(
@@ -57,7 +56,7 @@ static inline void common_blocked_queue_terminate_all(
     int i;
     for (i=0; i<count; i++)
     {
-        pthread_cond_signal(&(queue->cond));
+        pthread_cond_signal(&(queue->lc_pair.cond));
     }
 }
 
@@ -75,7 +74,7 @@ static inline int common_blocked_queue_push(struct common_blocked_queue
     {
         if (notify)
         {
-            pthread_cond_signal(&(queue->cond));
+            pthread_cond_signal(&(queue->lc_pair.cond));
         }
     }
 

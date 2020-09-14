@@ -14,22 +14,10 @@ int common_blocked_queue_init_ex(struct common_blocked_queue *queue,
     const int64_t alloc_elements_limit = 0;
 	int result;
 
-	if ((result=init_pthread_lock(&queue->lock)) != 0)
+	if ((result=init_pthread_lock_cond_pair(&queue->lc_pair)) != 0)
 	{
-		logError("file: "__FILE__", line: %d, "
-			"init_pthread_lock fail, errno: %d, error info: %s",
-			__LINE__, result, STRERROR(result));
 		return result;
 	}
-
-    if ((result=pthread_cond_init(&queue->cond, NULL)) != 0)
-    {
-        logError("file: "__FILE__", line: %d, "
-                "pthread_cond_init fail, "
-                "errno: %d, error info: %s",
-                __LINE__, result, STRERROR(result));
-        return result;
-    }
 
     if ((result=fast_mblock_init_ex1(&queue->mblock, "queue_node",
                     sizeof(struct common_blocked_node),
@@ -47,8 +35,7 @@ int common_blocked_queue_init_ex(struct common_blocked_queue *queue,
 
 void common_blocked_queue_destroy(struct common_blocked_queue *queue)
 {
-    pthread_cond_destroy(&queue->cond);
-    pthread_mutex_destroy(&queue->lock);
+    destroy_pthread_lock_cond_pair(&queue->lc_pair);
     fast_mblock_destroy(&queue->mblock);
 }
 
@@ -58,7 +45,7 @@ int common_blocked_queue_push_ex(struct common_blocked_queue *queue,
 	int result;
     struct common_blocked_node *node;
 
-	if ((result=pthread_mutex_lock(&(queue->lock))) != 0)
+	if ((result=pthread_mutex_lock(&(queue->lc_pair.lock))) != 0)
 	{
 		logError("file: "__FILE__", line: %d, " \
 			"call pthread_mutex_lock fail, " \
@@ -71,7 +58,7 @@ int common_blocked_queue_push_ex(struct common_blocked_queue *queue,
             &queue->mblock);
     if (node == NULL)
     {
-        pthread_mutex_unlock(&(queue->lock));
+        pthread_mutex_unlock(&(queue->lc_pair.lock));
 		return ENOMEM;
     }
 
@@ -89,7 +76,7 @@ int common_blocked_queue_push_ex(struct common_blocked_queue *queue,
 	}
 	queue->tail = node;
 
-	if ((result=pthread_mutex_unlock(&(queue->lock))) != 0)
+	if ((result=pthread_mutex_unlock(&(queue->lc_pair.lock))) != 0)
 	{
 		logError("file: "__FILE__", line: %d, " \
 			"call pthread_mutex_unlock fail, " \
@@ -115,14 +102,14 @@ void common_blocked_queue_return_nodes(struct common_blocked_queue *queue,
         last = last->next;
     }
 
-    pthread_mutex_lock(&(queue->lock));
+    pthread_mutex_lock(&(queue->lc_pair.lock));
     last->next = queue->head;
     queue->head = node;
     if (queue->tail == NULL)
     {
         queue->tail = last;
     }
-    pthread_mutex_unlock(&(queue->lock));
+    pthread_mutex_unlock(&(queue->lc_pair.lock));
 }
 
 void *common_blocked_queue_pop_ex(struct common_blocked_queue *queue,
@@ -132,7 +119,7 @@ void *common_blocked_queue_pop_ex(struct common_blocked_queue *queue,
 	void *data;
 	int result;
 
-	if ((result=pthread_mutex_lock(&(queue->lock))) != 0)
+	if ((result=pthread_mutex_lock(&(queue->lc_pair.lock))) != 0)
 	{
 		logError("file: "__FILE__", line: %d, " \
 			"call pthread_mutex_lock fail, " \
@@ -151,7 +138,7 @@ void *common_blocked_queue_pop_ex(struct common_blocked_queue *queue,
                 break;
             }
 
-            pthread_cond_wait(&(queue->cond), &(queue->lock));
+            pthread_cond_wait(&(queue->lc_pair.cond), &(queue->lc_pair.lock));
             node = queue->head;
         }
 
@@ -172,7 +159,7 @@ void *common_blocked_queue_pop_ex(struct common_blocked_queue *queue,
         }
     } while (0);
 
-	if ((result=pthread_mutex_unlock(&(queue->lock))) != 0)
+	if ((result=pthread_mutex_unlock(&(queue->lc_pair.lock))) != 0)
 	{
 		logError("file: "__FILE__", line: %d, " \
 			"call pthread_mutex_unlock fail, " \
@@ -189,7 +176,7 @@ struct common_blocked_node *common_blocked_queue_pop_all_nodes_ex(
     struct common_blocked_node *node;
 	int result;
 
-	if ((result=pthread_mutex_lock(&(queue->lock))) != 0)
+	if ((result=pthread_mutex_lock(&(queue->lc_pair.lock))) != 0)
 	{
 		logError("file: "__FILE__", line: %d, "
 			"call pthread_mutex_lock fail, "
@@ -202,13 +189,13 @@ struct common_blocked_node *common_blocked_queue_pop_all_nodes_ex(
     {
         if (blocked)
         {
-            pthread_cond_wait(&(queue->cond), &(queue->lock));
+            pthread_cond_wait(&(queue->lc_pair.cond), &(queue->lc_pair.lock));
         }
     }
 
     node = queue->head;
     queue->head = queue->tail = NULL;
-	if ((result=pthread_mutex_unlock(&(queue->lock))) != 0)
+	if ((result=pthread_mutex_unlock(&(queue->lc_pair.lock))) != 0)
 	{
 		logError("file: "__FILE__", line: %d, "
 			"call pthread_mutex_unlock fail, "
@@ -224,11 +211,11 @@ void common_blocked_queue_free_all_nodes(struct common_blocked_queue *queue,
 {
     struct common_blocked_node *deleted;
 
-    pthread_mutex_lock(&(queue->lock));
+    pthread_mutex_lock(&(queue->lc_pair.lock));
     while (node != NULL) {
         deleted = node;
         node = node->next;
         fast_mblock_free_object(&queue->mblock, deleted);
     }
-    pthread_mutex_unlock(&(queue->lock));
+    pthread_mutex_unlock(&(queue->lc_pair.lock));
 }

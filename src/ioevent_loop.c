@@ -89,7 +89,7 @@ int ioevent_loop(struct nio_thread_data *pThreadData,
 	int count;
 
 	memset(&ev_notify, 0, sizeof(ev_notify));
-	ev_notify.fd = pThreadData->pipe_fds[0];
+	ev_notify.fd = FC_NOTIFY_READ_FD(pThreadData);
 	ev_notify.callback = recv_notify_callback;
 	ev_notify.timer.data = pThreadData;
 	if (ioevent_attach(&pThreadData->ev_puller,

@@ -116,7 +116,7 @@ static SetDirectiveVars *iniGetVars(IniContext *pContext);
 
 
 #define RETRY_FETCH_GLOBAL(szSectionName, bRetryGlobal) \
-        ((szSectionName != NULL && szSectionName != '\0') && bRetryGlobal)
+        ((szSectionName != NULL && *szSectionName != '\0') && bRetryGlobal)
 
 static void iniDoSetAnnotations(AnnotationEntry *src, const int src_count,
         AnnotationEntry *dest, int *dest_count)

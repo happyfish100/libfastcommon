@@ -204,6 +204,12 @@ typedef struct
     int count;
 } key_value_array_t;
 
+typedef struct
+{
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
+} pthread_lock_cond_pair_t;
+
 typedef void (*FreeDataFunc)(void *ptr);
 typedef int (*CompareFunc)(void *p1, void *p2);
 typedef void* (*MallocFunc)(size_t size);

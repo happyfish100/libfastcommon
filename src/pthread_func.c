@@ -257,3 +257,33 @@ int fc_create_thread(pthread_t *tid, void *(*start_func)(void *),
 	pthread_attr_destroy(&thread_attr);
 	return result;
 }
+
+int init_pthread_lock_cond_pair(pthread_lock_cond_pair_t *lcp)
+{
+    int result;
+
+	if ((result=init_pthread_lock(&lcp->lock)) != 0)
+	{
+		logError("file: "__FILE__", line: %d, "
+			"init_pthread_lock fail, errno: %d, error info: %s",
+			__LINE__, result, STRERROR(result));
+		return result;
+	}
+
+    if ((result=pthread_cond_init(&lcp->cond, NULL)) != 0)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "pthread_cond_init fail, "
+                "errno: %d, error info: %s",
+                __LINE__, result, STRERROR(result));
+        return result;
+    }
+
+    return 0;
+}
+
+void destroy_pthread_lock_cond_pair(pthread_lock_cond_pair_t *lcp)
+{
+    pthread_cond_destroy(&lcp->cond);
+    pthread_mutex_destroy(&lcp->lock);
+}
