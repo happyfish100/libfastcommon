@@ -25,7 +25,8 @@ static struct fast_allocator_info malloc_allocator;
 		(allocator)->pooled = _pooled;        \
 		acontext->allocator_array.allocators[ \
 			acontext->allocator_array.count++] = allocator; \
-		/* logInfo("count: %d, magic_number: %d", acontext->allocator_array.count, (allocator)->magic_number); */\
+	 /* logInfo("count: %d, magic_number: %d", acontext->allocator_array.count, \
+            (allocator)->magic_number); */  \
 	} while (0)
 
 
@@ -388,8 +389,10 @@ int fast_allocator_retry_reclaim(struct fast_allocator_context *acontext,
 
 	acontext->allocator_array.last_reclaim_time = get_current_time();
 	malloc_bytes = acontext->allocator_array.malloc_bytes;
-	logInfo("malloc_bytes: %"PRId64", ratio: %f", malloc_bytes, (double)acontext->alloc_bytes /
-		(double)malloc_bytes);
+    /*
+	logInfo("malloc_bytes: %"PRId64", ratio: %f", malloc_bytes,
+        (double)acontext->alloc_bytes / (double)malloc_bytes);
+        */
 
 	if (malloc_bytes == 0 || (double)acontext->alloc_bytes /
 		(double)malloc_bytes >= acontext->allocator_array.expect_usage_ratio)
@@ -402,7 +405,7 @@ int fast_allocator_retry_reclaim(struct fast_allocator_context *acontext,
 		if (fast_mblock_reclaim(&acontext->allocator_array.
 			allocators[i]->mblock, 0, &reclaim_count, NULL) == 0)
 		{
-			logInfo("reclaim_count: %d", reclaim_count);
+			//logInfo("reclaim_count: %d", reclaim_count);
 			*total_reclaim_bytes += reclaim_count *
 				acontext->allocator_array.allocators[i]->
 					mblock.info.trunk_size;
@@ -440,7 +443,7 @@ void *fast_allocator_alloc(struct fast_allocator_context *acontext,
 			{
 				return NULL;
 			}
-			logInfo("reclaimed bytes: %"PRId64, total_reclaim_bytes);
+			//logInfo("reclaimed bytes: %"PRId64, total_reclaim_bytes);
 			if (total_reclaim_bytes < allocator_info->mblock.info.trunk_size)
 			{
 				return NULL;

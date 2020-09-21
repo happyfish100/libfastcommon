@@ -60,8 +60,10 @@ static inline void shared_buffer_hold(SharedBuffer *buffer)
 static inline void shared_buffer_release(SharedBuffer *buffer)
 {
     if (__sync_sub_and_fetch(&buffer->reffer_count, 1) == 0) {
-        logInfo("file: "__FILE__", line: %d, "
+        /*
+        logDebug("file: "__FILE__", line: %d, "
                 "free shared buffer: %p", __LINE__, buffer);
+                */
         fast_mblock_free_object(&buffer->ctx->allocator, buffer);
     }
 }

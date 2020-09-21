@@ -31,7 +31,7 @@ static void *thread_entrance(void *arg)
 
     PTHREAD_MUTEX_LOCK(&pool->lock);
     pool->thread_counts.running++;
-    logInfo("thread pool: %s, index: %d start, running count: %d",
+    logDebug("thread pool: %s, index: %d start, running count: %d",
             pool->name, thread->index, pool->thread_counts.running);
     PTHREAD_MUTEX_UNLOCK(&pool->lock);
 
@@ -100,7 +100,7 @@ static void *thread_entrance(void *arg)
     }
 
     PTHREAD_MUTEX_LOCK(&pool->lock);
-    logInfo("thread pool: %s, index: %d exit, running count: %d",
+    logDebug("thread pool: %s, index: %d exit, running count: %d",
             pool->name, thread->index, pool->thread_counts.running);
     PTHREAD_MUTEX_UNLOCK(&pool->lock);
 

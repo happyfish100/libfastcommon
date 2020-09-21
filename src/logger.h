@@ -29,10 +29,15 @@ extern "C" {
 #define LOG_COMPRESS_FLAGS_ENABLED    1
 #define LOG_COMPRESS_FLAGS_NEW_THREAD 2
 
+#define LOG_NOTHING    (LOG_DEBUG + 10)
+
 struct log_context;
 
 //log header line callback
 typedef void (*LogHeaderCallback)(struct log_context *pContext);
+
+#define FC_LOG_BY_LEVEL(level) \
+    (level <= g_log_context.log_level)
 
 typedef struct log_context
 {

@@ -116,8 +116,9 @@ static void delete_from_mblock_list(struct fast_mblock_man *mblock)
         pStat->trunk_total_count += current->info.trunk_total_count;  \
         pStat->trunk_used_count += current->info.trunk_used_count;    \
         pStat->instance_count += current->info.instance_count;  \
-        /* logInfo("name: %s, element_size: %d, total_count: %d, used_count: %d", */ \
-        /* pStat->name, pStat->element_size, pStat->element_total_count, pStat->element_used_count); */\
+        /* logInfo("name: %s, element_size: %d, total_count: %d, "  \
+           "used_count: %d", pStat->name, pStat->element_size, \
+           pStat->element_total_count, pStat->element_used_count); */ \
     } while (0)
 
 int fast_mblock_manager_stat(struct fast_mblock_info *stats,
