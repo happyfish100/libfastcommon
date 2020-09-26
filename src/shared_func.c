@@ -3171,6 +3171,66 @@ int fc_get_last_line(const char *filename, char *buff,
     return 0;
 }
 
+int fc_get_last_lines(const char *filename, char *buff,
+        const int buff_size, string_t *lines, int *count)
+{
+    int64_t file_size;
+    int64_t offset;
+    int64_t read_bytes;
+    int remain_len;
+    int i;
+    int result;
+
+    if (*count <= 0) {
+        return EINVAL;
+    }
+
+    if ((result=getFileSize(filename, &file_size)) != 0) {
+        *count = 0;
+        return result;
+    }
+
+    if (file_size == 0) {
+        *count = 0;
+        return ENOENT;
+    }
+
+    if (file_size >= buff_size) {
+        offset = (file_size - buff_size) + 1;
+    } else {
+        offset = 0;
+    }
+    read_bytes = (file_size - offset) + 1;
+    if ((result=getFileContentEx(filename, buff,
+                    offset, &read_bytes)) != 0)
+    {
+        return result;
+    }
+    if (read_bytes == 0) {
+        *count = 0;
+        return ENOENT;
+    }
+
+    remain_len = read_bytes - 1;
+    for (i=0; i<*count; i++) {
+        lines->str = (char *)fc_memrchr(buff, '\n', remain_len);
+        if (lines->str == NULL) {
+            lines->str = buff;
+            break;
+        }
+
+        remain_len = lines->str - buff;
+    }
+
+    if (i < *count) {
+        *count = i + 1;
+    } else {
+        lines->str += 1;  //skip \n
+    }
+    lines->len = (buff + read_bytes) - lines->str;
+    return 0;
+}
+
 static bool path_contains_special(const string_t *pts, const int count)
 {
     const string_t *ps;
