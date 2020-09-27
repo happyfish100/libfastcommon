@@ -175,7 +175,7 @@ int conn_pool_async_connect_server_ex(ConnectionInfo *conn,
 
 static inline void  conn_pool_get_key(const ConnectionInfo *conn, char *key, int *key_len)
 {
-    *key_len = sprintf(key, "%s_%d", conn->ip_addr, conn->port);
+    *key_len = sprintf(key, "%s_%u", conn->ip_addr, conn->port);
 }
 
 ConnectionInfo *conn_pool_get_connection(ConnectionPool *cp, 
