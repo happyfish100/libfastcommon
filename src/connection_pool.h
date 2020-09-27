@@ -36,7 +36,7 @@ extern "C" {
 typedef struct
 {
 	int sock;
-	short port;
+	uint16_t port;
     short socket_domain;  //socket domain, AF_INET, AF_INET6 or AF_UNSPEC for auto dedect
     bool validate_flag;   //for connection pool
 	char ip_addr[INET6_ADDRSTRLEN];
@@ -306,7 +306,7 @@ static inline void conn_pool_set_server_info(ConnectionInfo *pServerInfo,
 }
 
 static inline int conn_pool_compare_ip_and_port(const char *ip1,
-        const short port1, const char *ip2, const short port2)
+        const int port1, const char *ip2, const int port2)
 {
     int result;
     if ((result=strcmp(ip1, ip2)) != 0) {

@@ -471,7 +471,7 @@ int tcpsenddata_nb(int sock, void* data, const int size, const int timeout)
 	return 0;
 }
 
-int setsockaddrbyip(const char *ip, const short port, sockaddr_convert_t *convert)
+int setsockaddrbyip(const char *ip, const uint16_t port, sockaddr_convert_t *convert)
 {
     int af;
     void *dest;
@@ -505,7 +505,7 @@ int setsockaddrbyip(const char *ip, const short port, sockaddr_convert_t *conver
     return 0;
 }
 
-int connectserverbyip(int sock, const char *server_ip, const short server_port)
+int connectserverbyip(int sock, const char *server_ip, const uint16_t server_port)
 {
     int result;
     sockaddr_convert_t convert;
@@ -524,7 +524,7 @@ int connectserverbyip(int sock, const char *server_ip, const short server_port)
 }
 
 int connectserverbyip_nb_ex(int sock, const char *server_ip, \
-		const short server_port, const int timeout, \
+		const uint16_t server_port, const int timeout, \
 		const bool auto_detect)
 {
 	int result;
@@ -636,7 +636,7 @@ int connectserverbyip_nb_ex(int sock, const char *server_ip, \
 }
 
 int asyncconnectserverbyip(int sock, const char *server_ip,
-        const short server_port)
+        const uint16_t server_port)
 {
     int result;
     sockaddr_convert_t convert;
@@ -701,7 +701,7 @@ int socketCreateEx2(int af, const char *server_ip,
 }
 
 int socketClientEx2(int af, const char *server_ip,
-		const short server_port, const int timeout,
+		const uint16_t server_port, const int timeout,
 		const int flags, const char *bind_ipaddr, int *err_no)
 {
     int sock;

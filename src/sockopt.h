@@ -171,7 +171,7 @@ int tcpsenddata_nb(int sock, void* data, const int size, const int timeout);
  *          server_port: port of the server
  *  return: error no, 0 success, != 0 fail
 */
-int connectserverbyip(int sock, const char *server_ip, const short server_port);
+int connectserverbyip(int sock, const char *server_ip, const uint16_t server_port);
 
 /** connect to server by non-block mode
  *  parameters:
@@ -183,7 +183,7 @@ int connectserverbyip(int sock, const char *server_ip, const short server_port);
  *  return: error no, 0 success, != 0 fail
 */
 int connectserverbyip_nb_ex(int sock, const char *server_ip, \
-		const short server_port, const int timeout, \
+		const uint16_t server_port, const int timeout, \
 		const bool auto_detect);
 
 /** connect to server by non-block mode, the socket must be set to non-block
@@ -217,7 +217,7 @@ int connectserverbyip_nb_ex(int sock, const char *server_ip, \
  *  return: error no, 0 or EINPROGRESS for success, others for fail
 */
 int asyncconnectserverbyip(int sock, const char *server_ip,
-        const short server_port);
+        const uint16_t server_port);
 
 /** accept client connect request
  *  parameters:
@@ -414,7 +414,7 @@ static inline int socketCreateExAuto(const char *server_ip,
  *  return: >= 0 server socket, < 0 fail
 */
 int socketClientEx2(int af, const char *server_ip,
-		const short server_port, const int timeout,
+		const uint16_t server_port, const int timeout,
 		const int flags, const char *bind_ipaddr, int *err_no);
 
 /** connect to server
@@ -428,7 +428,7 @@ int socketClientEx2(int af, const char *server_ip,
  *  return: >= 0 server socket, < 0 fail
 */
 static inline int socketClientExAuto(const char *server_ip,
-		const short server_port, const int timeout,
+		const uint16_t server_port, const int timeout,
 		const int flags, const char *bind_ipaddr, int *err_no)
 {
     return socketClientEx2(AF_UNSPEC, server_ip, server_port,
@@ -446,7 +446,7 @@ static inline int socketClientExAuto(const char *server_ip,
  *  return: >= 0 server socket, < 0 fail
 */
 static inline int socketClientAuto(const char *server_ip,
-		const short server_port, const int timeout,
+		const uint16_t server_port, const int timeout,
 		const int flags, int *err_no)
 {
     return socketClientEx2(AF_UNSPEC, server_ip, server_port,
@@ -464,7 +464,7 @@ static inline int socketClientAuto(const char *server_ip,
  *  return: >= 0 server socket, < 0 fail
 */
 static inline int socketClient2(int af, const char *server_ip,
-		const short server_port, const int timeout,
+		const uint16_t server_port, const int timeout,
 		const int flags, int *err_no)
 {
     return socketClientEx2(af, server_ip, server_port,
@@ -481,7 +481,7 @@ static inline int socketClient2(int af, const char *server_ip,
  *  return: >= 0 server socket, < 0 fail
 */
 static inline int socketClient(const char *server_ip,
-		const short server_port, const int timeout,
+		const uint16_t server_port, const int timeout,
 		const int flags, int *err_no)
 {
     return socketClient2(AF_INET, server_ip, server_port,
@@ -498,7 +498,7 @@ static inline int socketClient(const char *server_ip,
  *  return: >= 0 server socket, < 0 fail
 */
 static inline int socketClientIPv6(const char *server_ip,
-		const short server_port, const int timeout,
+		const uint16_t server_port, const int timeout,
 		const int flags, int *err_no)
 {
     return socketClient2(AF_INET6, server_ip, server_port,
@@ -611,7 +611,7 @@ int getifconfigs(FastIFConfig *if_configs, const int max_count, int *count);
  *          convert: the convert struct for IPv4 and IPv6 compatibility
  *  return: error no, 0 success, != 0 fail
 */
-int setsockaddrbyip(const char *ip, const short port, sockaddr_convert_t *convert);
+int setsockaddrbyip(const char *ip, const uint16_t port, sockaddr_convert_t *convert);
 
 static inline bool is_ipv6_addr(const char *ip)
 {
