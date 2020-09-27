@@ -131,7 +131,7 @@ int get_url_content_ex(const char *url, const int url_len,
 		close(sock);
 
 		sprintf(error_info, "file: "__FILE__", line: %d, " \
-			"connect to %s:%d fail, errno: %d, " \
+			"connect to %s:%u fail, errno: %d, " \
 			"error info: %s", __LINE__, domain_name, \
 			port, result, STRERROR(result));
 
@@ -140,7 +140,7 @@ int get_url_content_ex(const char *url, const int url_len,
 
 	out_len = snprintf(out_buff, sizeof(out_buff), \
 		"GET %s HTTP/1.0\r\n" \
-		"Host: %s:%d\r\n" \
+		"Host: %s:%u\r\n" \
 		"Connection: close\r\n" \
 		"\r\n", pURI, domain_name, port);
 	if ((result=tcpsenddata(sock, out_buff, out_len, network_timeout)) != 0)
@@ -148,7 +148,7 @@ int get_url_content_ex(const char *url, const int url_len,
 		close(sock);
 
 		sprintf(error_info, "file: "__FILE__", line: %d, " \
-			"send data to %s:%d fail, errno: %d, " \
+			"send data to %s:%u fail, errno: %d, " \
 			"error info: %s", __LINE__, domain_name, \
 			port, result, STRERROR(result));
 
@@ -206,7 +206,7 @@ int get_url_content_ex(const char *url, const int url_len,
         }
         else {
             sprintf(error_info, "file: "__FILE__", line: %d, " \
-                    "recv data from %s:%d fail, errno: %d, " \
+                    "recv data from %s:%u fail, errno: %d, " \
                     "error info: %s", __LINE__, domain_name, \
                     port, result, STRERROR(result));
 
@@ -218,7 +218,7 @@ int get_url_content_ex(const char *url, const int url_len,
         if (pContent == NULL)
         {
             sprintf(error_info, "file: "__FILE__", line: %d, " \
-                    "response data from %s:%d is invalid", \
+                    "response data from %s:%u is invalid", \
                     __LINE__, domain_name, port);
 
             result = EINVAL;
@@ -230,7 +230,7 @@ int get_url_content_ex(const char *url, const int url_len,
         if (pSpace == NULL || pSpace >= pContent)
         {
             sprintf(error_info, "file: "__FILE__", line: %d, " \
-                    "response data from %s:%d is invalid", \
+                    "response data from %s:%u is invalid", \
                     __LINE__, domain_name, port);
 
             result = EINVAL;

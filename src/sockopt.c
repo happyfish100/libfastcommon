@@ -720,7 +720,7 @@ int socketClientEx2(int af, const char *server_ip,
     if (*err_no != 0)
     {
         logError("file: "__FILE__", line: %d, "
-                "connect to %s:%d fail, "
+                "connect to %s:%u fail, "
                 "errno: %d, error info: %s",
                 __LINE__, server_ip, server_port,
                 *err_no, STRERROR(*err_no));

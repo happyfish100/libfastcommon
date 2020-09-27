@@ -244,7 +244,7 @@ static int fc_server_check_ip_port(FCServerConfig *ctx,
                 id2 = previous->server->id;
             }
             logError("file: "__FILE__", line: %d, "
-                    "config file: %s, duplicate ip:port %s:%d, "
+                    "config file: %s, duplicate ip:port %s:%u, "
                     "the server ids: %d, %d", __LINE__,
                     config_filename, previous->ip_addr.str,
                     previous->port, id1, id2);
@@ -610,7 +610,7 @@ static int check_addresses_duplicate(FCServerConfig *ctx,
         if (fc_server_cmp_address_ptr(ppaddr, pprevious) == 0) {
             logError("file: "__FILE__", line: %d, "
                     "config filename: %s, section: %s, group: %.*s, "
-                    "duplicate ip and port: %s:%d", __LINE__,
+                    "duplicate ip and port: %s:%u", __LINE__,
                     config_filename, section_name,
                     group_addr->server_group->group_name.len,
                     group_addr->server_group->group_name.str,
@@ -853,7 +853,7 @@ static int fc_server_set_host(FCServerConfig *ctx, FCServerInfo *server,
     if (!ctx->share_between_groups && (count > 1 && addr->conn.port > 0)) {
         logError("file: "__FILE__", line: %d, "
                 "config filename: %s, section: %s, "
-                "host %s:%d belongs to %d groups",
+                "host %s:%u belongs to %d groups",
                 __LINE__, config_filename, section_name,
                 addr->conn.ip_addr, addr->conn.port, count);
         return EEXIST;
@@ -1324,7 +1324,7 @@ static void fc_group_servers_to_string(FCServerConfig *ctx,
                     gaddr->server_group->group_name.str,
                     SERVER_ITEM_HOST_AFFIX_STR);
         }
-        fast_buffer_append(buffer, " = %s:%d\n",
+        fast_buffer_append(buffer, " = %s:%u\n",
                 (*addr)->conn.ip_addr, (*addr)->conn.port);
     }
 }
@@ -1407,7 +1407,7 @@ static void fc_server_log_group_servers(FCGroupAddresses *gaddr)
 
     end = gaddr->address_array.addrs + gaddr->address_array.count;
     for (addr=gaddr->address_array.addrs; addr<end; addr++) {
-        logInfo("    %d. %s:%d", (int)(addr - gaddr->address_array.addrs + 1),
+        logInfo("    %d. %s:%u", (int)(addr - gaddr->address_array.addrs + 1),
                 (*addr)->conn.ip_addr, (*addr)->conn.port);
     }
 }

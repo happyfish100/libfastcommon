@@ -129,7 +129,7 @@ int conn_pool_connect_server_ex(ConnectionInfo *conn,
         if (log_connect_error)
         {
             logError("file: "__FILE__", line: %d, "
-                    "connect to server %s:%d fail, errno: %d, "
+                    "connect to server %s:%u fail, errno: %d, "
                     "error info: %s", __LINE__, conn->ip_addr,
                     conn->port, result, STRERROR(result));
         }
@@ -163,7 +163,7 @@ int conn_pool_async_connect_server_ex(ConnectionInfo *conn,
     if (!(result == 0 || result == EINPROGRESS))
     {
         logError("file: "__FILE__", line: %d, "
-                "connect to server %s:%d fail, errno: %d, "
+                "connect to server %s:%u fail, errno: %d, "
                 "error info: %s", __LINE__, conn->ip_addr,
                 conn->port, result, STRERROR(result));
         close(conn->sock);
@@ -229,7 +229,7 @@ ConnectionInfo *conn_pool_get_connection(ConnectionPool *cp,
 			{
 				*err_no = ENOSPC;
 				logError("file: "__FILE__", line: %d, " \
-					"connections: %d of server %s:%d " \
+					"connections: %d of server %s:%u " \
 					"exceed limit: %d", __LINE__, \
 					cm->total_count, conn->ip_addr, \
 					conn->port, cp->max_count_per_entry);
@@ -284,7 +284,7 @@ ConnectionInfo *conn_pool_get_connection(ConnectionPool *cp,
 			}
 
 			logDebug("file: "__FILE__", line: %d, " \
-				"server %s:%d, new connection: %d, " \
+				"server %s:%u, new connection: %d, " \
 				"total_count: %d, free_count: %d",   \
 				__LINE__, conn->ip_addr, conn->port, \
 				node->conn->sock, cm->total_count, \
@@ -332,7 +332,7 @@ ConnectionInfo *conn_pool_get_connection(ConnectionPool *cp,
 				cm->total_count--;
 
 				logDebug("file: "__FILE__", line: %d, " \
-					"server %s:%d, connection: %d idle " \
+					"server %s:%u, connection: %d idle " \
 					"time: %d exceeds max idle time: %d, "\
 					"total_count: %d, free_count: %d", \
 					__LINE__, conn->ip_addr, conn->port, \
@@ -348,7 +348,7 @@ ConnectionInfo *conn_pool_get_connection(ConnectionPool *cp,
 
 			pthread_mutex_unlock(&cm->lock);
 			logDebug("file: "__FILE__", line: %d, " \
-				"server %s:%d, reuse connection: %d, " \
+				"server %s:%u, reuse connection: %d, " \
 				"total_count: %d, free_count: %d", 
 				__LINE__, conn->ip_addr, conn->port, 
 				ci->sock, cm->total_count, cm->free_count);
@@ -374,7 +374,7 @@ int conn_pool_close_connection_ex(ConnectionPool *cp, ConnectionInfo *conn,
 	if (cm == NULL)
 	{
 		logError("file: "__FILE__", line: %d, " \
-			"hash entry of server %s:%d not exist", __LINE__, \
+			"hash entry of server %s:%u not exist", __LINE__, \
 			conn->ip_addr, conn->port);
 		return ENOENT;
 	}
@@ -383,7 +383,7 @@ int conn_pool_close_connection_ex(ConnectionPool *cp, ConnectionInfo *conn,
 	if (node->manager != cm)
 	{
 		logError("file: "__FILE__", line: %d, " \
-			"manager of server entry %s:%d is invalid!", \
+			"manager of server entry %s:%u is invalid!", \
 			__LINE__, conn->ip_addr, conn->port);
 		return EINVAL;
 	}
@@ -394,7 +394,7 @@ int conn_pool_close_connection_ex(ConnectionPool *cp, ConnectionInfo *conn,
         cm->total_count--;
 
         logDebug("file: "__FILE__", line: %d, "
-                "server %s:%d, release connection: %d, "
+                "server %s:%u, release connection: %d, "
                 "total_count: %d, free_count: %d",
                 __LINE__, conn->ip_addr, conn->port,
                 conn->sock, cm->total_count, cm->free_count);
@@ -417,7 +417,7 @@ int conn_pool_close_connection_ex(ConnectionPool *cp, ConnectionInfo *conn,
 		cm->free_count++;
 
 		logDebug("file: "__FILE__", line: %d, " \
-			"server %s:%d, free connection: %d, " \
+			"server %s:%u, free connection: %d, " \
 			"total_count: %d, free_count: %d", 
 			__LINE__, conn->ip_addr, conn->port, 
 			conn->sock, cm->total_count, cm->free_count);
