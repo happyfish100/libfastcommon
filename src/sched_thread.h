@@ -69,6 +69,7 @@ typedef struct
     FastTimer timer;   //for delay task
     bool timer_init;
     struct fc_queue delay_queue;
+    pthread_mutex_t lock;
 
 	bool *pcontinue_flag;
 } ScheduleContext;
@@ -148,18 +149,26 @@ int sched_add_delay_task_ex(ScheduleContext *pContext, TaskFunc task_func,
 int sched_add_delay_task(TaskFunc task_func, void *func_args,
         const int delay_seconds, const bool new_thread);
 
+
+/** init the schedule context
+ *  parameters:
+ *  	     pContext: store the ScheduleContext pointer
+ * return: error no, 0 for success, != 0 fail
+*/
+int sched_thread_init_ex(ScheduleContext **ppContext);
+
 /** execute the schedule thread
  *  parameters:
  *  	     pScheduleArray: the schedule tasks
  *  	     ptid: store the schedule thread id
  *  	     stack_size: set thread stack size (byes)
  *  	     pcontinue_flag: main process continue running flag
- *  	     ppContext: store the ScheduleContext pointer 
+ *  	     pContext: the ScheduleContext pointer
  * return: error no, 0 for success, != 0 fail
 */
 int sched_start_ex(ScheduleArray *pScheduleArray, pthread_t *ptid,
 		const int stack_size, bool * volatile pcontinue_flag,
-        ScheduleContext **ppContext);
+        ScheduleContext *pContext);
 
 int sched_start(ScheduleArray *pScheduleArray, pthread_t *ptid, \
 		const int stack_size, bool * volatile pcontinue_flag);
