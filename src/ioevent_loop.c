@@ -18,7 +18,7 @@ static void deal_ioevents(IOEventPoller *ioevent)
         }
         else {
             logDebug("file: "__FILE__", line: %d, "
-                    "ignore iovent : %d, index: %d",
+                    "ignore ioevent : %d, index: %d",
                     __LINE__, event, ioevent->iterator.index);
         }
 	}
@@ -46,7 +46,7 @@ int ioevent_remove(IOEventPoller *ioevent, void *data)
         pEntry = (IOEventEntry *)IOEVENT_GET_DATA(ioevent, index);
         if (pEntry != NULL && pEntry->timer.data == data) {
             logDebug("file: "__FILE__", line: %d, "
-                    "clear iovent data: %p", __LINE__, data);
+                    "clear ioevent data: %p", __LINE__, data);
             IOEVENT_CLEAR_DATA(ioevent, index);
             return 0;
         }

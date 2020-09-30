@@ -17,7 +17,7 @@ int ioevent_remove(IOEventPoller *ioevent, void *data);
 int ioevent_set(struct fast_task_info *pTask, struct nio_thread_data *pThread,
 	int sock, short event, IOEventCallback callback, const int timeout);
 
-static inline void iovent_add_to_deleted_list(struct fast_task_info *task)
+static inline void ioevent_add_to_deleted_list(struct fast_task_info *task)
 {
     if (task->thread_data == NULL)
     {
@@ -35,7 +35,7 @@ static inline void iovent_add_to_deleted_list(struct fast_task_info *task)
     task->thread_data->deleted_list = task;
 }
 
-static inline int iovent_notify_thread(struct nio_thread_data *thread_data)
+static inline int ioevent_notify_thread(struct nio_thread_data *thread_data)
 {
     int64_t n;
     int result;
