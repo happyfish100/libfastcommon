@@ -85,6 +85,15 @@ static inline void *flat_skiplist_next(FlatSkiplistIterator *iterator)
     return data;
 }
 
+static inline void *flat_skiplist_get_first(FlatSkiplist *sl)
+{
+    if (sl->top->links[0] != sl->tail) {
+        return sl->top->links[0]->data;
+    } else {
+        return NULL;
+    }
+}
+
 static inline bool flat_skiplist_empty(FlatSkiplist *sl)
 {
     return sl->top->links[0] == sl->tail;

@@ -110,6 +110,15 @@ static inline void *multi_skiplist_next(MultiSkiplistIterator *iterator)
     return data;
 }
 
+static inline void *multi_skiplist_get_first(MultiSkiplist *sl)
+{
+    if (sl->top->links[0] != sl->tail) {
+        return sl->top->links[0]->head->data;
+    } else {
+        return NULL;
+    }
+}
+
 static inline bool multi_skiplist_empty(MultiSkiplist *sl)
 {
     return sl->top->links[0] == sl->tail;

@@ -21,6 +21,31 @@
 typedef int (*skiplist_compare_func)(const void *p1, const void *p2);
 typedef void (*skiplist_free_func)(void *ptr);
 
+static inline int skiplist_get_proper_level(const int target_count)
+{
+    if (target_count < 8) {
+        return 2;
+    } else if (target_count < 64) {
+        return 4;
+    } else if (target_count < 256) {
+        return 6;
+    } else if (target_count < 1024) {
+        return 8;
+    } else if (target_count < 4096) {
+        return 10;
+    } else if (target_count < 16 * 1024) {
+        return 12;
+    } else if (target_count < 64 * 1024) {
+        return 14;
+    } else if (target_count < 256 * 1024) {
+        return 16;
+    } else if (target_count < 1024 * 1024) {
+        return 18;
+    } else {
+        return 20;
+    }
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif

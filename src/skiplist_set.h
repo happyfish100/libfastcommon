@@ -81,6 +81,15 @@ static inline void *skiplist_set_next(SkiplistSetIterator *iterator)
     return data;
 }
 
+static inline void *skiplist_set_get_first(SkiplistSet *sl)
+{
+    if (sl->top->links[0] != sl->tail) {
+        return sl->top->links[0]->data;
+    } else {
+        return NULL;
+    }
+}
+
 static inline bool skiplist_set_empty(SkiplistSet *sl)
 {
     return sl->top->links[0] == sl->tail;
