@@ -83,7 +83,10 @@ struct fast_task_info
 	int length; //data length
 	int offset; //current offset
     uint16_t port; //peer port
-    volatile short nio_stage;  //stage for network IO
+    struct {
+        uint8_t current;
+        uint8_t notify;
+    } nio_stages; //stages for network IO
     bool canceled;   //if task canceled
     int connect_timeout; //for client side
     int network_timeout;
