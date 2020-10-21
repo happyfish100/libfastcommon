@@ -85,7 +85,7 @@ struct fast_task_info
     uint16_t port; //peer port
     struct {
         uint8_t current;
-        uint8_t notify;
+        volatile uint8_t notify;
     } nio_stages; //stages for network IO
     bool canceled;   //if task canceled
     int connect_timeout; //for client side
