@@ -177,11 +177,11 @@ int tcprecvdata_ex(int sock, void *data, const int size, \
 		}
 #else
 		res = poll(&pollfds, 1, 1000 * timeout);
-		if (pollfds.revents & POLLHUP)
-		{
-			ret_code = ENOTCONN;
-			break;
-		}
+		if (res > 0 && (pollfds.revents & (POLLHUP | POLLERR)))
+        {
+            ret_code = ENOTCONN;
+            break;
+        }
 #endif
 
 		if (res < 0)
@@ -265,7 +265,7 @@ int tcpsenddata(int sock, void* data, const int size, const int timeout)
 		}
 #else
 		result = poll(&pollfds, 1, 1000 * timeout);
-		if (pollfds.revents & POLLHUP)
+		if (result > 0 && (pollfds.revents & (POLLHUP | POLLERR)))
 		{
 			return ENOTCONN;
 		}
@@ -371,7 +371,7 @@ int tcprecvdata_nb_ms(int sock, void *data, const int size, \
 		}
 #else
 		res = poll(&pollfds, 1, timeout_ms);
-		if (pollfds.revents & POLLHUP)
+		if (res > 0 && (pollfds.revents & (POLLHUP | POLLERR)))
 		{
 			ret_code = ENOTCONN;
 			break;
@@ -455,7 +455,7 @@ int tcpsenddata_nb(int sock, void* data, const int size, const int timeout)
 		}
 #else
 		result = poll(&pollfds, 1, 1000 * timeout);
-		if (pollfds.revents & POLLHUP)
+		if (result > 0 && (pollfds.revents & (POLLHUP | POLLERR)))
 		{
 			return ENOTCONN;
 		}
