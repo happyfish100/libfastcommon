@@ -32,20 +32,16 @@ int ioevent_remove(IOEventPoller *ioevent, void *data);
 int ioevent_set(struct fast_task_info *pTask, struct nio_thread_data *pThread,
 	int sock, short event, IOEventCallback callback, const int timeout);
 
+//only called by the nio thread
 static inline void ioevent_add_to_deleted_list(struct fast_task_info *task)
 {
-    if (task->thread_data == NULL)
+    if (!__sync_bool_compare_and_swap(&task->canceled, 0, 1))
     {
-        return;
-    }
-
-    if (task->canceled) {
-        logError("file: "__FILE__", line: %d, "
+        logWarning("file: "__FILE__", line: %d, "
                 "task %p already canceled", __LINE__, task);
         return;
     }
 
-    task->canceled = true;
     task->next = task->thread_data->deleted_list;
     task->thread_data->deleted_list = task;
 }

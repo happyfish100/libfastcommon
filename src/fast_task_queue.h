@@ -87,7 +87,9 @@ struct fast_task_info
         uint8_t current;
         volatile uint8_t notify;
     } nio_stages; //stages for network IO
-    bool canceled;   //if task canceled
+    int (*continue_callback)(struct fast_task_info *task);  //for continue stage
+    volatile int8_t reffer_count;
+    volatile int8_t canceled;   //if task canceled
     int connect_timeout; //for client side
     int network_timeout;
 	int64_t req_count; //request count
