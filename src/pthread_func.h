@@ -23,6 +23,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include "common_define.h"
+#include "sched_thread.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -59,6 +60,36 @@ void destroy_pthread_lock_cond_pair(pthread_lock_cond_pair_t *lcp);
         }  \
     } while (0)
 
+
+#define lcp_timedwait_sec(lcp, timeout)    \
+    fc_timedwait_sec(&(lcp)->lock, &(lcp)->cond, timeout)
+
+#define lcp_timedwait_ms(lcp, timeout_ms)  \
+    fc_timedwait_ms(&(lcp)->lock, &(lcp)->cond, timeout_ms)
+
+static inline void fc_timedwait_sec(pthread_mutex_t *lock,
+        pthread_cond_t *cond, const int timeout)
+{
+    struct timespec ts;
+
+    PTHREAD_MUTEX_LOCK(lock);
+    ts.tv_sec = get_current_time() + timeout;
+    ts.tv_nsec = 0;
+    pthread_cond_timedwait(cond, lock, &ts);
+    PTHREAD_MUTEX_UNLOCK(lock);
+}
+
+static inline void fc_timedwait_ms(pthread_mutex_t *lock,
+        pthread_cond_t *cond, const int timeout_ms)
+{
+    struct timespec ts;
+
+    PTHREAD_MUTEX_LOCK(lock);
+    ts.tv_sec = get_current_time() + timeout_ms / 1000;
+    ts.tv_nsec = (timeout_ms % 1000) * (1000 * 1000);
+    pthread_cond_timedwait(cond, lock, &ts);
+    PTHREAD_MUTEX_UNLOCK(lock);
+}
 
 int create_work_threads(int *count, void *(*start_func)(void *),
 		void **args, pthread_t *tids, const int stack_size);
