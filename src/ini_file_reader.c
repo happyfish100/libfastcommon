@@ -3268,3 +3268,41 @@ char *iniGetRequiredStrValueEx(const char *szSectionName, const char *szItemName
     return value;
 }
 
+int iniGetPercentValueEx(IniFullContext *ini_ctx,
+        const char *item_name, double *item_value,
+        const double default_value, const bool retry_global)
+{
+    char *value;
+    char *last;
+
+    value = iniGetStrValueEx(ini_ctx->section_name, item_name,
+            ini_ctx->context, retry_global);
+    if (value == NULL || *value == '\0') {
+        *item_value = default_value;
+    } else {
+        double d;
+        char *endptr;
+
+        last = value + strlen(value) - 1;
+        if (*last != '%') {
+            logError("file: "__FILE__", line: %d, "
+                    "config file: %s, item: %s, value: %s "
+                    "is NOT a valid ratio, expect end char: %%",
+                    __LINE__, ini_ctx->filename, item_name, value);
+            return EINVAL;
+        }
+
+        d = strtod(value, &endptr);
+        if ((endptr != last) || (d <= 0.00001 || d >= 100.00001)) {
+            logError("file: "__FILE__", line: %d, "
+                    "config file: %s, item: %s, "
+                    "value: %s is NOT a valid ratio",
+                    __LINE__, ini_ctx->filename, item_name, value);
+            return EINVAL;
+        }
+
+        *item_value = d / 100.00;
+    }
+
+    return 0;
+}

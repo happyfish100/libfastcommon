@@ -133,6 +133,8 @@ extern "C" {
     iniGetBoolValueEx(szSectionName, szItemName, pContext, \
     bDefaultValue, false)
 
+#define iniGetPercentValue(ini_ctx, item_name, item_value, default_value) \
+    iniGetPercentValueEx(ini_ctx, item_name, item_value, default_value, false)
 
 int iniSetAnnotationCallBack(AnnotationEntry *annotations, int count);
 void iniDestroyAnnotationCallBack();
@@ -283,6 +285,20 @@ bool iniGetBoolValueEx(const char *szSectionName,
 double iniGetDoubleValueEx(const char *szSectionName,
         const char *szItemName, IniContext *pContext,
         const double dbDefaultValue, const bool bRetryGlobal);
+
+
+/** get item percent double value
+ *  parameters:
+ *           ini_ctx: the full context
+ *           item_name: the item name
+ *           item_value: store the item value
+ *           default_value: the default value
+ *           retry_global: if fetch from global section when the item not exist
+ *  return: error no, 0 for success, != 0 for fail
+*/
+int iniGetPercentValueEx(IniFullContext *ini_ctx,
+        const char *item_name, double *item_value,
+        const double default_value, const bool retry_global);
 
 /** print all items
  *  parameters:

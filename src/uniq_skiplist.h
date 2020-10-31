@@ -80,6 +80,9 @@ extern "C" {
 #define uniq_skiplist_delete(sl, data)  \
     uniq_skiplist_delete_ex(sl, data, true)
 
+#define uniq_skiplist_delete_node(sl, previous, node)  \
+    uniq_skiplist_delete_node_ex(sl, previous, node, true)
+
 #define uniq_skiplist_replace(sl, data) \
     uniq_skiplist_replace_ex(sl, data, true)
 
@@ -107,6 +110,11 @@ int uniq_skiplist_find_all(UniqSkiplist *sl, void *data,
         UniqSkiplistIterator *iterator);
 int uniq_skiplist_find_range(UniqSkiplist *sl, void *start_data,
         void *end_data, UniqSkiplistIterator *iterator);
+
+UniqSkiplistNode *uniq_skiplist_find_node(UniqSkiplist *sl, void *data);
+void uniq_skiplist_delete_node_ex(UniqSkiplist *sl,
+        UniqSkiplistNode *previous, UniqSkiplistNode *deleted,
+        const bool need_free);
 
 UniqSkiplistNode *uniq_skiplist_find_ge_node(UniqSkiplist *sl, void *data);
 

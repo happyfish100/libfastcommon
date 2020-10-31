@@ -454,25 +454,16 @@ static UniqSkiplistNode *uniq_skiplist_get_first_larger(
     return (UniqSkiplistNode *)previous->links[0];
 }
 
-int uniq_skiplist_delete_ex(UniqSkiplist *sl, void *data,
+void uniq_skiplist_delete_node_ex(UniqSkiplist *sl,
+        UniqSkiplistNode *previous, UniqSkiplistNode *deleted,
         const bool need_free)
 {
     int i;
-    int level_index;
-    volatile UniqSkiplistNode *previous;
-    volatile UniqSkiplistNode *deleted;
-
-    previous = uniq_skiplist_get_equal_previous(sl, data, &level_index);
-    if (previous == NULL) {
-        return ENOENT;
-    }
-
-    deleted = previous->links[level_index];
-    for (i=level_index; i>=0; i--) {
+    for (i=deleted->level_index; i>=0; i--) {
         while (previous->links[i] != sl->factory->tail &&
                 previous->links[i] != deleted)
         {
-            previous = previous->links[i];
+            previous = (UniqSkiplistNode *)previous->links[i];
         }
 
         previous->links[i] = previous->links[i]->links[i];
@@ -493,8 +484,24 @@ int uniq_skiplist_delete_ex(UniqSkiplist *sl, void *data,
                 sl->factory->delay_free_seconds);
     }
 
-    UNIQ_SKIPLIST_FREE_MBLOCK_OBJECT(sl, level_index, deleted);
+    UNIQ_SKIPLIST_FREE_MBLOCK_OBJECT(sl, deleted->level_index, deleted);
     sl->element_count--;
+}
+
+int uniq_skiplist_delete_ex(UniqSkiplist *sl, void *data,
+        const bool need_free)
+{
+    int level_index;
+    UniqSkiplistNode *previous;
+    UniqSkiplistNode *deleted;
+
+    previous = uniq_skiplist_get_equal_previous(sl, data, &level_index);
+    if (previous == NULL) {
+        return ENOENT;
+    }
+
+    deleted = (UniqSkiplistNode *)previous->links[level_index];
+    uniq_skiplist_delete_node_ex(sl, previous, deleted, need_free);
     return 0;
 }
 
@@ -522,6 +529,16 @@ int uniq_skiplist_replace_ex(UniqSkiplist *sl, void *data,
     }
 
     return 0;
+}
+
+UniqSkiplistNode *uniq_skiplist_find_node(UniqSkiplist *sl, void *data)
+{
+    int level_index;
+    UniqSkiplistNode *previous;
+
+    previous = uniq_skiplist_get_equal_previous(sl, data, &level_index);
+    return (previous != NULL) ? (UniqSkiplistNode *)
+        previous->links[level_index] : NULL;
 }
 
 void *uniq_skiplist_find(UniqSkiplist *sl, void *data)
