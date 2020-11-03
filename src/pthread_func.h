@@ -23,6 +23,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include "common_define.h"
+#include "logger.h"
 #include "sched_thread.h"
 
 #ifdef __cplusplus

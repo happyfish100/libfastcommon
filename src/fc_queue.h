@@ -23,7 +23,6 @@
 #include <string.h>
 #include <pthread.h>
 #include "common_define.h"
-#include "fast_mblock.h"
 
 struct fc_queue_info
 {
@@ -74,6 +73,12 @@ static inline void fc_queue_push(struct fc_queue *queue, void *data)
     }
 }
 
+static inline void fc_queue_push_silence(struct fc_queue *queue, void *data)
+{
+    bool notify;
+    fc_queue_push_ex(queue, data, &notify);
+}
+
 void fc_queue_push_queue_to_head_ex(struct fc_queue *queue,
         struct fc_queue_info *qinfo, bool *notify);
 
@@ -98,6 +103,16 @@ void *fc_queue_pop_all_ex(struct fc_queue *queue, const bool blocked);
 
 void fc_queue_pop_to_queue(struct fc_queue *queue,
         struct fc_queue_info *qinfo);
+
+static inline bool fc_queue_empty(struct fc_queue *queue)
+{
+    bool empty;
+
+    pthread_mutex_lock(&queue->lc_pair.lock);
+    empty = (queue->head == NULL);
+    pthread_mutex_unlock(&queue->lc_pair.lock);
+    return empty;
+}
 
 #ifdef __cplusplus
 }

@@ -425,6 +425,7 @@ int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
     mblock->info.trunk_size = fast_mblock_get_trunk_size(mblock,
             block_size, mblock->alloc_elements.once);
     mblock->need_lock = need_lock;
+    mblock->exceed_log_level = LOG_ERR;
     mblock->malloc_trunk_callback.check_func = malloc_trunk_check;
     mblock->malloc_trunk_callback.notify_func = malloc_trunk_notify;
     mblock->malloc_trunk_callback.args = malloc_trunk_args;
@@ -463,7 +464,8 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
             mblock->info.element_total_count;
         if (avail_count <= 0)
         {
-            logError("file: "__FILE__", line: %d, "
+            log_it_ex(&g_log_context, mblock->exceed_log_level,
+                    "file: "__FILE__", line: %d, "
                     "allocated elements exceed limit: %"PRId64,
                     __LINE__, mblock->alloc_elements.limit);
             return EOVERFLOW;

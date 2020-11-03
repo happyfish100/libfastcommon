@@ -102,8 +102,9 @@ struct fast_mblock_man
     fast_mblock_alloc_init_func alloc_init_func;
     struct fast_mblock_malloc_trunk_callback malloc_trunk_callback;
 
-    bool need_lock;           //if need mutex lock
-    pthread_mutex_t lock;     //the lock for read / write free node chain
+    bool need_lock;         //if need mutex lock
+    int exceed_log_level;   //log level for exceed limit
+    pthread_mutex_t lock;   //the lock for read / write free node chain
     struct fast_mblock_man *prev;  //for stat manager
     struct fast_mblock_man *next;  //for stat manager
     void *init_args;          //args for alloc_init_func
