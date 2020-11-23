@@ -45,9 +45,9 @@ struct fast_task_info;
 
 typedef struct ioevent_entry
 {
-	int fd;
-	FastTimerEntry timer;
-	IOEventCallback callback;
+    FastTimerEntry timer; //must first
+    int fd;
+    IOEventCallback callback;
 } IOEventEntry;
 
 struct nio_thread_data
@@ -68,6 +68,12 @@ struct nio_thread_data
         bool enabled;
         volatile int64_t counter;
     } notify;  //for thread notify
+};
+
+struct ioevent_notify_entry
+{
+    IOEventEntry event;  //must first
+    struct nio_thread_data *thread_data;
 };
 
 struct fast_task_info

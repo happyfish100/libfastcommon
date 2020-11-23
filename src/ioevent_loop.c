@@ -29,7 +29,7 @@ static void deal_ioevents(IOEventPoller *ioevent)
 		pEntry = (IOEventEntry *)IOEVENT_GET_DATA(ioevent,
                 ioevent->iterator.index);
         if (pEntry != NULL) {
-            pEntry->callback(pEntry->fd, event, pEntry->timer.data);
+            pEntry->callback(pEntry->fd, event, pEntry);
         }
         else {
             logDebug("file: "__FILE__", line: %d, "
@@ -51,7 +51,7 @@ int ioevent_remove(IOEventPoller *ioevent, void *data)
 
     pEntry = (IOEventEntry *)IOEVENT_GET_DATA(ioevent,
             ioevent->iterator.index);
-    if (pEntry != NULL && pEntry->timer.data == data) {
+    if (pEntry != NULL && (void *)pEntry == data) {
         return 0;  //do NOT clear current entry
     }
 
@@ -59,7 +59,7 @@ int ioevent_remove(IOEventPoller *ioevent, void *data)
             index++)
     {
         pEntry = (IOEventEntry *)IOEVENT_GET_DATA(ioevent, index);
-        if (pEntry != NULL && pEntry->timer.data == data) {
+        if (pEntry != NULL && (void *)pEntry == data) {
             logDebug("file: "__FILE__", line: %d, "
                     "clear ioevent data: %p", __LINE__, data);
             IOEVENT_CLEAR_DATA(ioevent, index);
@@ -83,11 +83,10 @@ static void deal_timeouts(FastTimerEntry *head)
 		entry = entry->next;
 
         current->prev = current->next = NULL; //must set NULL because NOT in time wheel
-		pEventEntry = (IOEventEntry *)current->data;
+		pEventEntry = (IOEventEntry *)current;
 		if (pEventEntry != NULL)
 		{
-			pEventEntry->callback(pEventEntry->fd, IOEVENT_TIMEOUT,
-						current->data);
+			pEventEntry->callback(pEventEntry->fd, IOEVENT_TIMEOUT, current);
 		}
 	}
 }
@@ -97,16 +96,16 @@ int ioevent_loop(struct nio_thread_data *pThreadData,
 	clean_up_callback, volatile bool *continue_flag)
 {
 	int result;
-	IOEventEntry ev_notify;
+	struct ioevent_notify_entry ev_notify;
 	FastTimerEntry head;
 	struct fast_task_info *task;
 	time_t last_check_time;
 	int count;
 
 	memset(&ev_notify, 0, sizeof(ev_notify));
-	ev_notify.fd = FC_NOTIFY_READ_FD(pThreadData);
-	ev_notify.callback = recv_notify_callback;
-	ev_notify.timer.data = pThreadData;
+	ev_notify.event.fd = FC_NOTIFY_READ_FD(pThreadData);
+	ev_notify.event.callback = recv_notify_callback;
+	ev_notify.thread_data = pThreadData;
 	if (ioevent_attach(&pThreadData->ev_puller,
 		pThreadData->pipe_fds[0], IOEVENT_READ,
 		&ev_notify) != 0)
@@ -210,18 +209,7 @@ int ioevent_set(struct fast_task_info *task, struct nio_thread_data *pThread,
 		return result;
 	}
 
-	task->event.timer.data = task;
 	task->event.timer.expires = g_current_time + timeout;
-	result = fast_timer_add(&pThread->timer, &task->event.timer);
-	if (result != 0)
-	{
-		logError("file: "__FILE__", line: %d, " \
-			"fast_timer_add fail, " \
-			"errno: %d, error info: %s", \
-			__LINE__, result, STRERROR(result));
-		return result;
-	}
-
+	fast_timer_add(&pThread->timer, &task->event.timer);
 	return 0;
 }
-

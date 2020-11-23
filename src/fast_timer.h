@@ -17,38 +17,49 @@
 #define __FAST_TIMER_H__
 
 #include <stdint.h>
+#include <pthread.h>
 #include "common_define.h"
 
+struct fast_timer_slot;
 typedef struct fast_timer_entry {
-  int64_t expires;
-  void *data;
-  struct fast_timer_entry *prev;
-  struct fast_timer_entry *next;
-  bool rehash;
+    int64_t expires;
+    struct fast_timer_entry *prev;
+    struct fast_timer_entry *next;
+    int slot_index;
+    bool rehash;
 } FastTimerEntry;
 
 typedef struct fast_timer_slot {
-  struct fast_timer_entry head;
+    struct fast_timer_entry head;
+    pthread_mutex_t lock;
 } FastTimerSlot;
 
 typedef struct fast_timer {
-  int slot_count;    //time wheel slot count
-  int64_t base_time; //base time for slot 0
-  int64_t current_time;
-  FastTimerSlot *slots;
+    bool need_lock;
+    int slot_count;    //time wheel slot count
+    int64_t base_time; //base time for slot 0
+    int64_t current_time;
+    FastTimerSlot *slots;
 } FastTimer;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-int fast_timer_init(FastTimer *timer, const int slot_count,
-    const int64_t current_time);
+#define fast_timer_init(timer, slot_count, current_time)  \
+    fast_timer_init_ex(timer, slot_count, current_time, false)
+
+#define fast_timer_add(timer, entry)  \
+    fast_timer_add_ex(timer, entry, (entry)->expires, false)
+
+int fast_timer_init_ex(FastTimer *timer, const int slot_count,
+    const int64_t current_time, const bool need_lock);
 void fast_timer_destroy(FastTimer *timer);
 
-int fast_timer_add(FastTimer *timer, FastTimerEntry *entry);
+void fast_timer_add_ex(FastTimer *timer, FastTimerEntry *entry,
+        const int64_t expires, const bool set_expires);
 int fast_timer_remove(FastTimer *timer, FastTimerEntry *entry);
-int fast_timer_modify(FastTimer *timer, FastTimerEntry *entry,
+void fast_timer_modify(FastTimer *timer, FastTimerEntry *entry,
     const int64_t new_expires);
 
 FastTimerSlot *fast_timer_slot_get(FastTimer *timer, const int64_t current_time);
