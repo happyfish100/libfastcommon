@@ -27,6 +27,12 @@
 #define FAST_TIMER_STATUS_TIMEOUT  3
 #define FAST_TIMER_STATUS_CLEARED  4
 
+#define FAST_TIMER_FLAGS_SET_NOTHING     0
+#define FAST_TIMER_FLAGS_SET_EXPIRES     1
+#define FAST_TIMER_FLAGS_SET_ENTRY_LOCK  2
+#define FAST_TIMER_FLAGS_SET_ALL  (FAST_TIMER_FLAGS_SET_EXPIRES |  \
+        FAST_TIMER_FLAGS_SET_ENTRY_LOCK)
+
 typedef struct locked_timer_entry {
     int64_t expires;
     struct fc_list_head dlink;        //for timer slot
@@ -60,7 +66,8 @@ extern "C" {
 #endif
 
 #define locked_timer_add(timer, entry)  \
-    locked_timer_add_ex(timer, entry, (entry)->expires, false)
+    locked_timer_add_ex(timer, entry, (entry)->expires, \
+            FAST_TIMER_FLAGS_SET_ENTRY_LOCK)
 
 #define locked_timer_remove(timer, entry) \
     locked_timer_remove_ex(timer, entry, FAST_TIMER_STATUS_CLEARED)
@@ -71,7 +78,7 @@ int locked_timer_init(LockedTimer *timer, const int slot_count,
 void locked_timer_destroy(LockedTimer *timer);
 
 void locked_timer_add_ex(LockedTimer *timer, LockedTimerEntry *entry,
-        const int64_t expires, const bool set_expires);
+        const int64_t expires, const int flags);
 
 int locked_timer_remove_ex(LockedTimer *timer, LockedTimerEntry *entry,
         const int new_status);

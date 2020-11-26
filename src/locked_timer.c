@@ -117,26 +117,37 @@ void locked_timer_destroy(LockedTimer *timer)
 #define TIMER_ENTRY_UNLOCK(timer, entry) \
     PTHREAD_MUTEX_UNLOCK(timer->entry_shares.locks + entry->lock_index)
 
+
+#define TIMER_SET_ENTRY_STATUS_AND_SINDEX(timer, slot, entry) \
+    do {  \
+        TIMER_ENTRY_LOCK(timer, entry);  \
+        entry->status = FAST_TIMER_STATUS_NORMAL; \
+        entry->slot_index = slot - timer->slots;  \
+        TIMER_ENTRY_UNLOCK(timer, entry);  \
+    } while (0)
+
 static inline void add_entry(LockedTimer *timer, LockedTimerSlot *slot,
-        LockedTimerEntry *entry, const int64_t expires,
-        const bool set_expires, const bool set_entry_lock)
+        LockedTimerEntry *entry, const int64_t expires, const int flags)
 {
-    if (set_entry_lock) {
+    if ((flags & FAST_TIMER_FLAGS_SET_ENTRY_LOCK) != 0) {
+        /* init the entry on the first call */
         entry->lock_index = ((unsigned long)entry) %
             timer->entry_shares.count;
+
+        TIMER_SET_ENTRY_STATUS_AND_SINDEX(timer, slot, entry);
     }
 
-    TIMER_ENTRY_LOCK(timer, entry);
-    entry->status = FAST_TIMER_STATUS_NORMAL;
-    entry->slot_index = slot - timer->slots;
-    TIMER_ENTRY_UNLOCK(timer, entry);
-
     PTHREAD_MUTEX_LOCK(&slot->lock);
-    if (set_expires) {
+    if ((flags & FAST_TIMER_FLAGS_SET_EXPIRES) != 0) {
         entry->expires = expires;
     }
     fc_list_add_tail(&entry->dlink, &slot->head);
     entry->rehash = false;
+
+    if ((flags & FAST_TIMER_FLAGS_SET_ENTRY_LOCK) == 0) {
+        /* MUST set entry status and slot index in the end when entry move */
+        TIMER_SET_ENTRY_STATUS_AND_SINDEX(timer, slot, entry);
+    }
     PTHREAD_MUTEX_UNLOCK(&slot->lock);
 }
 
@@ -161,40 +172,42 @@ static inline int check_set_entry_status(LockedTimer *timer,
             case FAST_TIMER_STATUS_MOVING:
                 result = EAGAIN;
                 break;
-            default:
+            case FAST_TIMER_STATUS_NORMAL:
                 result = 0;
                 if (new_status != FAST_TIMER_STATUS_NONE) {
                     entry->status = new_status;
                 }
                 break;
+            default:
+                result = EINVAL;
+                break;
         }
         *slot_index = entry->slot_index;
         TIMER_ENTRY_UNLOCK(timer, entry);
 
-        if (result == EAGAIN) {
-            fc_sleep_ms(1);
-        } else {
+        if (result != EAGAIN) {
             return result;
         }
+        fc_sleep_ms(1);
     }
 }
 
 void locked_timer_add_ex(LockedTimer *timer, LockedTimerEntry *entry,
-        const int64_t expires, const bool set_expires)
+        const int64_t expires, const int flags)
 {
     LockedTimerSlot *slot;
     int64_t new_expires;
-    bool new_set_expires;
+    bool new_flags;
 
     if (expires > timer->current_time) {
         new_expires = expires;
-        new_set_expires = set_expires;
+        new_flags = flags;
     } else {
         new_expires = timer->current_time;
-        new_set_expires = true;
+        new_flags = flags | FAST_TIMER_FLAGS_SET_EXPIRES;
     }
     slot = TIMER_GET_SLOT_POINTER(timer, new_expires);
-    add_entry(timer, slot, entry, new_expires, new_set_expires, true);
+    add_entry(timer, slot, entry, new_expires, new_flags);
 }
 
 int locked_timer_modify(LockedTimer *timer, LockedTimerEntry *entry,
@@ -217,7 +230,8 @@ int locked_timer_modify(LockedTimer *timer, LockedTimerEntry *entry,
         if ((result=locked_timer_remove_ex(timer, entry,
                         FAST_TIMER_STATUS_MOVING)) == 0)
         {
-            locked_timer_add_ex(timer, entry, new_expires, true);
+            locked_timer_add_ex(timer, entry, new_expires,
+                    FAST_TIMER_FLAGS_SET_EXPIRES);
         }
         return result;
     }
@@ -280,8 +294,8 @@ int locked_timer_timeouts_get(LockedTimer *timer, const int64_t current_time,
 
                         if (is_valid) {
                             fc_list_del_init(&entry->dlink);
-                            add_entry(timer, new_slot, entry,
-                                    entry->expires, false, false);
+                            add_entry(timer, new_slot, entry, entry->expires,
+                                    FAST_TIMER_FLAGS_SET_NOTHING);
                         }
                     } else {
                         entry->rehash = false;
