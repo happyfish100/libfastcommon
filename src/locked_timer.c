@@ -85,23 +85,24 @@ void locked_timer_destroy(LockedTimer *timer)
     pthread_mutex_t *lock;
     pthread_mutex_t *lend;
 
-    if (timer->slots != NULL) {
-        send = timer->slots + timer->slot_count;
-        for (slot=timer->slots; slot<send; slot++) {
-            pthread_mutex_destroy(&slot->lock);
-        }
-
-        lend = timer->entry_shares.locks + timer->entry_shares.count;
-        for (lock=timer->entry_shares.locks; lock<lend; lock++) {
-            pthread_mutex_destroy(lock);
-        }
-        free(timer->entry_shares.locks);
-        timer->entry_shares.locks = NULL;
-        timer->entry_shares.count = 0;
-
-        free(timer->slots);
-        timer->slots = NULL;
+    if (timer->slots == NULL) {
+        return;
     }
+    send = timer->slots + timer->slot_count;
+    for (slot=timer->slots; slot<send; slot++) {
+        pthread_mutex_destroy(&slot->lock);
+    }
+
+    lend = timer->entry_shares.locks + timer->entry_shares.count;
+    for (lock=timer->entry_shares.locks; lock<lend; lock++) {
+        pthread_mutex_destroy(lock);
+    }
+    free(timer->entry_shares.locks);
+    timer->entry_shares.locks = NULL;
+    timer->entry_shares.count = 0;
+
+    free(timer->slots);
+    timer->slots = NULL;
 }
 
 #define TIMER_GET_SLOT_INDEX(timer, expires) \
@@ -110,10 +111,10 @@ void locked_timer_destroy(LockedTimer *timer)
 #define TIMER_GET_SLOT_POINTER(timer, expires) \
   (timer->slots + TIMER_GET_SLOT_INDEX(timer, expires))
 
-#define LOCKED_TIMER_ENTRY_LOCK(timer, entry) \
+#define TIMER_ENTRY_LOCK(timer, entry) \
     PTHREAD_MUTEX_LOCK(timer->entry_shares.locks + entry->lock_index)
 
-#define LOCKED_TIMER_ENTRY_UNLOCK(timer, entry) \
+#define TIMER_ENTRY_UNLOCK(timer, entry) \
     PTHREAD_MUTEX_UNLOCK(timer->entry_shares.locks + entry->lock_index)
 
 static inline void add_entry(LockedTimer *timer, LockedTimerSlot *slot,
@@ -125,16 +126,15 @@ static inline void add_entry(LockedTimer *timer, LockedTimerSlot *slot,
             timer->entry_shares.count;
     }
 
-    LOCKED_TIMER_ENTRY_LOCK(timer, entry);
+    TIMER_ENTRY_LOCK(timer, entry);
     entry->status = FAST_TIMER_STATUS_NORMAL;
     entry->slot_index = slot - timer->slots;
-    LOCKED_TIMER_ENTRY_UNLOCK(timer, entry);
+    TIMER_ENTRY_UNLOCK(timer, entry);
 
     PTHREAD_MUTEX_LOCK(&slot->lock);
     if (set_expires) {
         entry->expires = expires;
     }
-
     fc_list_add_tail(&entry->dlink, &slot->head);
     entry->rehash = false;
     PTHREAD_MUTEX_UNLOCK(&slot->lock);
@@ -150,7 +150,7 @@ static inline int check_set_entry_status(LockedTimer *timer,
     int result;
 
     while (1) {
-        LOCKED_TIMER_ENTRY_LOCK(timer, entry);
+        TIMER_ENTRY_LOCK(timer, entry);
         switch (entry->status) {
             case FAST_TIMER_STATUS_CLEARED:
                 result = ECANCELED;
@@ -169,7 +169,7 @@ static inline int check_set_entry_status(LockedTimer *timer,
                 break;
         }
         *slot_index = entry->slot_index;
-        LOCKED_TIMER_ENTRY_UNLOCK(timer, entry);
+        TIMER_ENTRY_UNLOCK(timer, entry);
 
         if (result == EAGAIN) {
             fc_sleep_ms(1);
@@ -243,15 +243,6 @@ int locked_timer_remove_ex(LockedTimer *timer, LockedTimerEntry *entry,
     return 0;
 }
 
-LockedTimerSlot *locked_timer_slot_get(LockedTimer *timer, const int64_t current_time)
-{
-    if (timer->current_time >= current_time) {
-        return NULL;
-    }
-
-    return TIMER_GET_SLOT_POINTER(timer, timer->current_time++);
-}
-
 int locked_timer_timeouts_get(LockedTimer *timer, const int64_t current_time,
         LockedTimerEntry *head)
 {
@@ -278,14 +269,14 @@ int locked_timer_timeouts_get(LockedTimer *timer, const int64_t current_time,
                 if (entry->rehash) {
                     new_slot = TIMER_GET_SLOT_POINTER(timer, entry->expires);
                     if (new_slot != slot) {  //check to avoid deadlock
-                        LOCKED_TIMER_ENTRY_LOCK(timer, entry);
+                        TIMER_ENTRY_LOCK(timer, entry);
                         if (entry->status == FAST_TIMER_STATUS_NORMAL) {
                             entry->status = FAST_TIMER_STATUS_MOVING;
                             is_valid = true;
                         } else {
                             is_valid = false;
                         }
-                        LOCKED_TIMER_ENTRY_UNLOCK(timer, entry);
+                        TIMER_ENTRY_UNLOCK(timer, entry);
 
                         if (is_valid) {
                             fc_list_del_init(&entry->dlink);
@@ -297,14 +288,14 @@ int locked_timer_timeouts_get(LockedTimer *timer, const int64_t current_time,
                     }
                 }
             } else {  //expired
-                LOCKED_TIMER_ENTRY_LOCK(timer, entry);
+                TIMER_ENTRY_LOCK(timer, entry);
                 if (entry->status == FAST_TIMER_STATUS_NORMAL) {
                     entry->status = FAST_TIMER_STATUS_TIMEOUT;
                     is_valid = true;
                 } else {
                     is_valid = false;
                 }
-                LOCKED_TIMER_ENTRY_UNLOCK(timer, entry);
+                TIMER_ENTRY_UNLOCK(timer, entry);
 
                 if (is_valid) {
                     fc_list_del_init(&entry->dlink);

@@ -31,11 +31,9 @@ typedef struct fast_timer_entry {
 
 typedef struct fast_timer_slot {
     struct fast_timer_entry head;
-    pthread_mutex_t lock;
 } FastTimerSlot;
 
 typedef struct fast_timer {
-    bool need_lock;
     int slot_count;    //time wheel slot count
     int64_t base_time; //base time for slot 0
     int64_t current_time;
@@ -46,20 +44,17 @@ typedef struct fast_timer {
 extern "C" {
 #endif
 
-#define fast_timer_init(timer, slot_count, current_time)  \
-    fast_timer_init_ex(timer, slot_count, current_time, false)
-
 #define fast_timer_add(timer, entry)  \
     fast_timer_add_ex(timer, entry, (entry)->expires, false)
 
-int fast_timer_init_ex(FastTimer *timer, const int slot_count,
-    const int64_t current_time, const bool need_lock);
+int fast_timer_init(FastTimer *timer, const int slot_count,
+    const int64_t current_time);
 void fast_timer_destroy(FastTimer *timer);
 
 void fast_timer_add_ex(FastTimer *timer, FastTimerEntry *entry,
         const int64_t expires, const bool set_expires);
 int fast_timer_remove(FastTimer *timer, FastTimerEntry *entry);
-void fast_timer_modify(FastTimer *timer, FastTimerEntry *entry,
+int fast_timer_modify(FastTimer *timer, FastTimerEntry *entry,
     const int64_t new_expires);
 
 FastTimerSlot *fast_timer_slot_get(FastTimer *timer, const int64_t current_time);

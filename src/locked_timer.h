@@ -27,10 +27,9 @@
 #define FAST_TIMER_STATUS_TIMEOUT  3
 #define FAST_TIMER_STATUS_CLEARED  4
 
-struct locked_timer_slot;
 typedef struct locked_timer_entry {
     int64_t expires;
-    struct fc_list_head dlink;
+    struct fc_list_head dlink;        //for timer slot
     struct locked_timer_entry *next;  //for timeout chain
     uint32_t slot_index;  //for slot lock
     uint16_t lock_index;  //for entry lock
@@ -50,7 +49,7 @@ typedef struct locked_timer_shared_locks {
 
 typedef struct locked_timer {
     int slot_count;    //time wheel slot count
-    LockedTimerSharedLocks entry_shares;
+    LockedTimerSharedLocks entry_shares;  //shared locks for entry
     int64_t base_time; //base time for slot 0
     int64_t current_time;
     LockedTimerSlot *slots;
@@ -80,7 +79,6 @@ int locked_timer_remove_ex(LockedTimer *timer, LockedTimerEntry *entry,
 int locked_timer_modify(LockedTimer *timer, LockedTimerEntry *entry,
         const int64_t new_expires);
 
-LockedTimerSlot *locked_timer_slot_get(LockedTimer *timer, const int64_t current_time);
 int locked_timer_timeouts_get(LockedTimer *timer, const int64_t current_time,
    LockedTimerEntry *head);
 
