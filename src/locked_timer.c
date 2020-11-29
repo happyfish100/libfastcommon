@@ -64,8 +64,9 @@ static int locked_timer_init_slots(LockedTimer *timer)
     return 0;
 }
 
-int locked_timer_init(LockedTimer *timer, const int slot_count,
-    const int64_t current_time, const int shared_lock_count)
+int locked_timer_init_ex(LockedTimer *timer, const int slot_count,
+        const int64_t current_time, const int shared_lock_count,
+        const bool set_lock_index)
 {
     if (slot_count <= 0 || current_time <= 0) {
         return EINVAL;
@@ -73,6 +74,7 @@ int locked_timer_init(LockedTimer *timer, const int slot_count,
 
     timer->slot_count = slot_count;
     timer->entry_shares.count = shared_lock_count;
+    timer->entry_shares.set_lock_index = set_lock_index;
     timer->base_time = current_time; //base time for slot 0
     timer->current_time = current_time;
     return locked_timer_init_slots(timer);
@@ -111,30 +113,50 @@ void locked_timer_destroy(LockedTimer *timer)
 #define TIMER_GET_SLOT_POINTER(timer, expires) \
   (timer->slots + TIMER_GET_SLOT_INDEX(timer, expires))
 
-#define TIMER_ENTRY_LOCK(timer, entry) \
-    PTHREAD_MUTEX_LOCK(timer->entry_shares.locks + entry->lock_index)
+#define TIMER_ENTRY_LOCK(timer, lock_index) \
+    PTHREAD_MUTEX_LOCK(timer->entry_shares.locks + lock_index)
 
-#define TIMER_ENTRY_UNLOCK(timer, entry) \
-    PTHREAD_MUTEX_UNLOCK(timer->entry_shares.locks + entry->lock_index)
+#define TIMER_ENTRY_UNLOCK(timer, lock_index) \
+    PTHREAD_MUTEX_UNLOCK(timer->entry_shares.locks + lock_index)
 
+#define TIMER_ENTRY_FETCH_LOCK_INDEX(timer, entry) \
+    (timer->entry_shares.set_lock_index ? \
+     __sync_add_and_fetch(&entry->lock_index, 0) : entry->lock_index)
 
-#define TIMER_SET_ENTRY_STATUS_AND_SINDEX(timer, slot, entry) \
+#define TIMER_ENTRY_FETCH_AND_LOCK(timer, entry) \
+    lock_index = TIMER_ENTRY_FETCH_LOCK_INDEX(timer, entry);  \
+    PTHREAD_MUTEX_LOCK(timer->entry_shares.locks + lock_index)
+
+#define TIMER_SET_ENTRY_STATUS_AND_SINDEX(timer, slot, entry, lock_index) \
     do {  \
-        TIMER_ENTRY_LOCK(timer, entry);  \
+        TIMER_ENTRY_LOCK(timer, lock_index);      \
         entry->status = FAST_TIMER_STATUS_NORMAL; \
         entry->slot_index = slot - timer->slots;  \
-        TIMER_ENTRY_UNLOCK(timer, entry);  \
+        TIMER_ENTRY_UNLOCK(timer, lock_index);    \
     } while (0)
 
 static inline void add_entry(LockedTimer *timer, LockedTimerSlot *slot,
         LockedTimerEntry *entry, const int64_t expires, const int flags)
 {
+    int lock_index;
     if ((flags & FAST_TIMER_FLAGS_SET_ENTRY_LOCK) != 0) {
-        /* init the entry on the first call */
-        entry->lock_index = ((unsigned long)entry) %
-            timer->entry_shares.count;
+        if (timer->entry_shares.set_lock_index) {
+            int old_index;
+            /* init the entry on the first call */
+            lock_index = ((unsigned long)entry) % timer->entry_shares.count;
+            old_index = entry->lock_index;
+            while (!__sync_bool_compare_and_swap(&entry->lock_index,
+                        old_index, lock_index))
+            {
+                old_index = __sync_add_and_fetch(&entry->lock_index, 0);
+            }
+        } else {
+            lock_index = entry->lock_index;
+        }
 
-        TIMER_SET_ENTRY_STATUS_AND_SINDEX(timer, slot, entry);
+        TIMER_SET_ENTRY_STATUS_AND_SINDEX(timer, slot, entry, lock_index);
+    } else {
+        lock_index = TIMER_ENTRY_FETCH_LOCK_INDEX(timer, entry);
     }
 
     PTHREAD_MUTEX_LOCK(&slot->lock);
@@ -146,7 +168,7 @@ static inline void add_entry(LockedTimer *timer, LockedTimerSlot *slot,
 
     if ((flags & FAST_TIMER_FLAGS_SET_ENTRY_LOCK) == 0) {
         /* MUST set entry status and slot index in the end when entry move */
-        TIMER_SET_ENTRY_STATUS_AND_SINDEX(timer, slot, entry);
+        TIMER_SET_ENTRY_STATUS_AND_SINDEX(timer, slot, entry, lock_index);
     }
     PTHREAD_MUTEX_UNLOCK(&slot->lock);
 }
@@ -159,9 +181,11 @@ static inline int check_set_entry_status(LockedTimer *timer,
         LockedTimerEntry *entry, int *slot_index, const int new_status)
 {
     int result;
+    int lock_index;
 
+    lock_index = TIMER_ENTRY_FETCH_LOCK_INDEX(timer, entry);
     while (1) {
-        TIMER_ENTRY_LOCK(timer, entry);
+        TIMER_ENTRY_LOCK(timer, lock_index);
         switch (entry->status) {
             case FAST_TIMER_STATUS_CLEARED:
                 result = ECANCELED;
@@ -183,7 +207,7 @@ static inline int check_set_entry_status(LockedTimer *timer,
                 break;
         }
         *slot_index = entry->slot_index;
-        TIMER_ENTRY_UNLOCK(timer, entry);
+        TIMER_ENTRY_UNLOCK(timer, lock_index);
 
         if (result != EAGAIN) {
             return result;
@@ -266,6 +290,7 @@ int locked_timer_timeouts_get(LockedTimer *timer, const int64_t current_time,
     LockedTimerEntry *tmp;
     LockedTimerEntry *tail;
     bool is_valid;
+    int lock_index;
     int count;
 
     if (timer->current_time >= current_time) {
@@ -283,14 +308,14 @@ int locked_timer_timeouts_get(LockedTimer *timer, const int64_t current_time,
                 if (entry->rehash) {
                     new_slot = TIMER_GET_SLOT_POINTER(timer, entry->expires);
                     if (new_slot != slot) {  //check to avoid deadlock
-                        TIMER_ENTRY_LOCK(timer, entry);
+                        TIMER_ENTRY_FETCH_AND_LOCK(timer, entry);
                         if (entry->status == FAST_TIMER_STATUS_NORMAL) {
                             entry->status = FAST_TIMER_STATUS_MOVING;
                             is_valid = true;
                         } else {
                             is_valid = false;
                         }
-                        TIMER_ENTRY_UNLOCK(timer, entry);
+                        TIMER_ENTRY_UNLOCK(timer, lock_index);
 
                         if (is_valid) {
                             fc_list_del_init(&entry->dlink);
@@ -302,14 +327,14 @@ int locked_timer_timeouts_get(LockedTimer *timer, const int64_t current_time,
                     }
                 }
             } else {  //expired
-                TIMER_ENTRY_LOCK(timer, entry);
+                TIMER_ENTRY_FETCH_AND_LOCK(timer, entry);
                 if (entry->status == FAST_TIMER_STATUS_NORMAL) {
                     entry->status = FAST_TIMER_STATUS_TIMEOUT;
                     is_valid = true;
                 } else {
                     is_valid = false;
                 }
-                TIMER_ENTRY_UNLOCK(timer, entry);
+                TIMER_ENTRY_UNLOCK(timer, lock_index);
 
                 if (is_valid) {
                     fc_list_del_init(&entry->dlink);

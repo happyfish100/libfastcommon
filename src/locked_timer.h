@@ -38,7 +38,7 @@ typedef struct locked_timer_entry {
     struct fc_list_head dlink;        //for timer slot
     struct locked_timer_entry *next;  //for timeout chain
     uint32_t slot_index;  //for slot lock
-    uint16_t lock_index;  //for entry lock
+    volatile uint16_t lock_index;  //for entry lock
     uint8_t status;
     bool rehash;
 } LockedTimerEntry;
@@ -49,6 +49,7 @@ typedef struct locked_timer_slot {
 } LockedTimerSlot;
 
 typedef struct locked_timer_shared_locks {
+    bool set_lock_index;
     uint16_t count;
     pthread_mutex_t *locks;
 } LockedTimerSharedLocks;
@@ -65,6 +66,10 @@ typedef struct locked_timer {
 extern "C" {
 #endif
 
+#define locked_timer_init(timer, slot_count, current_time, shared_lock_count) \
+    locked_timer_init_ex(timer, slot_count, current_time, shared_lock_count,  \
+            true)
+
 #define locked_timer_add(timer, entry)  \
     locked_timer_add_ex(timer, entry, (entry)->expires, \
             FAST_TIMER_FLAGS_SET_ENTRY_LOCK)
@@ -72,8 +77,9 @@ extern "C" {
 #define locked_timer_remove(timer, entry) \
     locked_timer_remove_ex(timer, entry, FAST_TIMER_STATUS_CLEARED)
 
-int locked_timer_init(LockedTimer *timer, const int slot_count,
-        const int64_t current_time, const int shared_lock_count);
+int locked_timer_init_ex(LockedTimer *timer, const int slot_count,
+        const int64_t current_time, const int shared_lock_count,
+        const bool set_lock_index);
 
 void locked_timer_destroy(LockedTimer *timer);
 
