@@ -57,7 +57,7 @@ int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
     if ((result=fast_mblock_init_ex1(&cp->node_allocator, "cpool_node",
                     sizeof(ConnectionNode) + sizeof(ConnectionInfo) +
                     extra_data_size, init_capacity, alloc_elements_limit,
-                    NULL, NULL, false)) != 0)
+                    NULL, NULL, true)) != 0)
     {
         return result;
     }
