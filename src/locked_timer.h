@@ -58,7 +58,7 @@ typedef struct locked_timer {
     int slot_count;    //time wheel slot count
     LockedTimerSharedLocks entry_shares;  //shared locks for entry
     int64_t base_time; //base time for slot 0
-    int64_t current_time;
+    volatile int64_t current_time;
     LockedTimerSlot *slots;
 } LockedTimer;
 

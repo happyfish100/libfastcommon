@@ -240,6 +240,10 @@ int locked_timer_modify(LockedTimer *timer, LockedTimerEntry *entry,
     int result;
     int slot_index;
 
+    if (new_expires <= timer->current_time) {
+        return ETIMEDOUT;
+    }
+
     if (new_expires > entry->expires) {
         if ((result=check_entry_status(timer, entry, &slot_index)) != 0) {
             return result;

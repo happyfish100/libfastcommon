@@ -96,6 +96,11 @@ int fast_timer_modify(FastTimer *timer, FastTimerEntry *entry,
     const int64_t new_expires)
 {
     int result;
+
+    if (new_expires <= timer->current_time) {
+        return ETIMEDOUT;
+    }
+
     if (new_expires > entry->expires) {
         entry->rehash = TIMER_GET_SLOT_INDEX(timer, new_expires) !=
             TIMER_GET_SLOT_INDEX(timer, entry->expires);

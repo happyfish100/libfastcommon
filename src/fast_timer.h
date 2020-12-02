@@ -36,7 +36,7 @@ typedef struct fast_timer_slot {
 typedef struct fast_timer {
     int slot_count;    //time wheel slot count
     int64_t base_time; //base time for slot 0
-    int64_t current_time;
+    volatile int64_t current_time;
     FastTimerSlot *slots;
 } FastTimer;
 
