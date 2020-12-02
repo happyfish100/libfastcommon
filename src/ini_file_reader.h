@@ -136,6 +136,25 @@ extern "C" {
 #define iniGetPercentValue(ini_ctx, item_name, item_value, default_value) \
     iniGetPercentValueEx(ini_ctx, item_name, item_value, default_value, false)
 
+#define iniGetByteValue(szSectionName, szItemName, pContext, nDefaultValue) \
+    iniGetByteValueEx(szSectionName, szItemName, pContext, \
+            nDefaultValue, 1, false)
+
+#define iniGetIntCorrectValue(ini_ctx, item_name, \
+        default_value, min_value, max_value)    \
+    iniGetIntCorrectValueEx(ini_ctx, item_name, \
+        default_value, min_value, max_value, false)
+
+#define iniGetInt64CorrectValue(ini_ctx, item_name, \
+        default_value, min_value, max_value)      \
+    iniGetInt64CorrectValueEx(ini_ctx, item_name, \
+        default_value, min_value, max_value, false)
+
+#define iniGetByteCorrectValue(ini_ctx, item_name, \
+        default_value, min_value, max_value)     \
+    iniGetByteCorrectValueEx(ini_ctx, item_name, \
+            default_value, 1, min_value, max_value, false)
+
 int iniSetAnnotationCallBack(AnnotationEntry *annotations, int count);
 void iniDestroyAnnotationCallBack();
 
@@ -232,6 +251,33 @@ int iniGetIntValueEx(const char *szSectionName,
         const char *szItemName, IniContext *pContext,
         const int nDefaultValue, const bool bRetryGlobal);
 
+/** check and correct item value
+ *  parameters:
+ *           pIniContext: the full ini context
+ *           szItemName:  the item name
+ *           nValue: the item value
+ *           nMinValue: the min value to check (including)
+ *           nMaxValue: the max value to check (including)
+ *  return: corrected value
+*/
+int64_t iniCheckAndCorrectIntValue(IniFullContext *pIniContext,
+        const char *szItemName, const int64_t nValue,
+        const int64_t nMinValue, const int64_t nMaxValue);
+
+/** get item correct value (32 bits integer)
+ *  parameters:
+ *           pIniContext: the full ini context
+ *           szItemName:  the item name
+ *           nDefaultValue: the default value
+ *           nMinValue: the min value to check (including)
+ *           nMaxValue: the max value to check (including)
+ *           bRetryGlobal: if fetch from global section when the item not exist
+ *  return: item value, return nDefaultValue when the item not exist
+*/
+int iniGetIntCorrectValueEx(IniFullContext *pIniContext,
+        const char *szItemName, const int nDefaultValue,
+        const int nMinValue, const int nMaxValue, const bool bRetryGlobal);
+
 /** get item string value array
  *  parameters:
  *           szSectionName: the section name, NULL or empty string for 
@@ -244,9 +290,9 @@ int iniGetIntValueEx(const char *szSectionName,
 IniItem *iniGetValuesEx(const char *szSectionName, const char *szItemName,
 		IniContext *pContext, int *nTargetCount);
 
-/** get item int64 value (64 bits)
+/** get item value (64 bits integer)
  *  parameters:
- *           szSectionName: the section name, NULL or empty string for 
+ *           szSectionName: the section name, NULL or empty string for
  *                          global section
  *           szItemName: the item name
  *           pContext:   the ini context
@@ -257,6 +303,53 @@ IniItem *iniGetValuesEx(const char *szSectionName, const char *szItemName,
 int64_t iniGetInt64ValueEx(const char *szSectionName,
         const char *szItemName, IniContext *pContext,
         const int64_t nDefaultValue, const bool bRetryGlobal);
+
+/** get item correct value (64 bits integer)
+ *  parameters:
+ *           pIniContext: the full ini context
+ *           szItemName:  the item name
+ *           nDefaultValue: the default value
+ *           nMinValue: the min value to check (including)
+ *           nMaxValue: the max value to check (including)
+ *           bRetryGlobal: if fetch from global section when the item not exist
+ *  return: int64 value, return nDefaultValue when the item not exist
+*/
+int64_t iniGetInt64CorrectValueEx(IniFullContext *pIniContext,
+        const char *szItemName, const int64_t nDefaultValue,
+        const int64_t nMinValue, const int64_t nMaxValue,
+        const bool bRetryGlobal);
+
+/** get item byte value (64 bits integer)
+ *  parameters:
+ *           szSectionName: the section name, NULL or empty string for
+ *                          global section
+ *           szItemName: the item name
+ *           pContext:   the ini context
+ *           nDefaultValue: the default value
+ *           nDefaultUnitBytes: the default byte unit, such as 1 for byte, 1024 for KB
+ *           bRetryGlobal: if fetch from global section when the item not exist
+ *  return: int64 value, return nDefaultValue when the item not exist
+*/
+int64_t iniGetByteValueEx(const char *szSectionName,
+        const char *szItemName, IniContext *pContext,
+        const int64_t nDefaultValue, const int nDefaultUnitBytes,
+        const bool bRetryGlobal);
+
+/** get item correct byte value (64 bits integer)
+ *  parameters:
+ *           pIniContext: the full ini context
+ *           szItemName:  the item name
+ *           nDefaultValue: the default value
+ *           nDefaultUnitBytes: the default byte unit, such as 1 for byte, 1024 for KB
+ *           nMinValue: the min value to check (including)
+ *           nMaxValue: the max value to check (including)
+ *           bRetryGlobal: if fetch from global section when the item not exist
+ *  return: int64 value, return nDefaultValue when the item not exist
+*/
+int64_t iniGetByteCorrectValueEx(IniFullContext *pIniContext,
+        const char *szItemName, const int64_t nDefaultValue,
+        const int nDefaultUnitBytes, const int64_t nMinValue,
+        const int64_t nMaxValue, const bool bRetryGlobal);
 
 /** get item boolean value
  *  parameters:

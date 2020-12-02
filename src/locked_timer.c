@@ -227,7 +227,7 @@ void locked_timer_add_ex(LockedTimer *timer, LockedTimerEntry *entry,
         new_expires = expires;
         new_flags = flags;
     } else {
-        new_expires = timer->current_time;
+        new_expires = timer->current_time + 1; //plus 1 for rare case
         new_flags = flags | FAST_TIMER_FLAGS_SET_EXPIRES;
     }
     slot = TIMER_GET_SLOT_POINTER(timer, new_expires);
@@ -239,10 +239,6 @@ int locked_timer_modify(LockedTimer *timer, LockedTimerEntry *entry,
 {
     int result;
     int slot_index;
-
-    if (new_expires <= timer->current_time) {
-        return ETIMEDOUT;
-    }
 
     if (new_expires > entry->expires) {
         if ((result=check_entry_status(timer, entry, &slot_index)) != 0) {

@@ -85,7 +85,7 @@ void fast_timer_add_ex(FastTimer *timer, FastTimerEntry *entry,
         new_expires = expires;
         new_set_expires = set_expires;
     } else {
-        new_expires = timer->current_time;
+        new_expires = timer->current_time + 1; //plus 1 for rare case
         new_set_expires = true;
     }
     slot = TIMER_GET_SLOT_POINTER(timer, new_expires);
@@ -96,10 +96,6 @@ int fast_timer_modify(FastTimer *timer, FastTimerEntry *entry,
     const int64_t new_expires)
 {
     int result;
-
-    if (new_expires <= timer->current_time) {
-        return ETIMEDOUT;
-    }
 
     if (new_expires > entry->expires) {
         entry->rehash = TIMER_GET_SLOT_INDEX(timer, new_expires) !=

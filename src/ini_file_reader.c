@@ -2854,6 +2854,44 @@ char *iniGetStrValueEx(const char *szSectionName, const char *szItemName,
     return pFound->value;
 }
 
+#define INI_FILL_SECTION_PROMPT(prompt, size, section_name) \
+    do { \
+        if (section_name != NULL && *(section_name) != '\0') { \
+            snprintf(prompt, size, "section: %s, ", section_name); \
+        } else { \
+            *prompt = '\0'; \
+        } \
+    } while (0)
+
+int64_t iniCheckAndCorrectIntValue(IniFullContext *pIniContext,
+        const char *szItemName, const int64_t nValue,
+        const int64_t nMinValue, const int64_t nMaxValue)
+{
+    char section_prompt[128];
+    if (nValue < nMinValue) {
+        INI_FILL_SECTION_PROMPT(section_prompt, sizeof(section_prompt),
+                pIniContext->section_name);
+        logWarning("file: "__FILE__", line: %d, "
+                "config file: %s, %sitem name: %s, item value: %"PRId64
+                " < min value: %"PRId64", set to min value: %"PRId64,
+                __LINE__, pIniContext->filename, section_prompt, szItemName,
+                nValue, nMinValue, nMinValue);
+
+        return nMinValue;
+    } else if (nValue > nMaxValue) {
+        INI_FILL_SECTION_PROMPT(section_prompt, sizeof(section_prompt),
+                pIniContext->section_name);
+        logWarning("file: "__FILE__", line: %d, "
+                "config file: %s, %sitem name: %s, item value: %"PRId64
+                " > max value: %"PRId64", set to max value: %"PRId64,
+                __LINE__, pIniContext->filename, section_prompt, szItemName,
+                nValue, nMaxValue, nMaxValue);
+        return nMaxValue;
+    }
+
+    return nValue;
+}
+
 int64_t iniGetInt64ValueEx(const char *szSectionName,
         const char *szItemName, IniContext *pContext,
         const int64_t nDefaultValue, const bool bRetryGlobal)
@@ -2872,6 +2910,56 @@ int64_t iniGetInt64ValueEx(const char *szSectionName,
 	}
 }
 
+int64_t iniGetInt64CorrectValueEx(IniFullContext *pIniContext,
+        const char *szItemName, const int64_t nDefaultValue,
+        const int64_t nMinValue, const int64_t nMaxValue,
+        const bool bRetryGlobal)
+{
+    int64_t value;
+
+    value = iniGetInt64ValueEx(pIniContext->section_name, szItemName,
+            pIniContext->context, nDefaultValue, bRetryGlobal);
+    return iniCheckAndCorrectIntValue(pIniContext, szItemName,
+            value, nMinValue, nMaxValue);
+}
+
+int64_t iniGetByteValueEx(const char *szSectionName,
+        const char *szItemName, IniContext *pContext,
+        const int64_t nDefaultValue, const int nDefaultUnitBytes,
+        const bool bRetryGlobal)
+{
+    char *pValue;
+    int64_t nValue;
+
+    pValue = iniGetStrValueEx(szSectionName,
+            szItemName, pContext, bRetryGlobal);
+    if (pValue == NULL)
+    {
+        return nDefaultValue;
+    }
+
+    if (parse_bytes(pValue, nDefaultUnitBytes, &nValue) != 0)
+    {
+        return nDefaultValue;
+    }
+
+    return nValue;
+}
+
+int64_t iniGetByteCorrectValueEx(IniFullContext *pIniContext,
+        const char *szItemName, const int64_t nDefaultValue,
+        const int nDefaultUnitBytes, const int64_t nMinValue,
+        const int64_t nMaxValue, const bool bRetryGlobal)
+{
+    int64_t nValue;
+
+    nValue = iniGetByteValueEx(pIniContext->section_name, szItemName,
+            pIniContext->context, nDefaultValue, nDefaultUnitBytes,
+            bRetryGlobal);
+    return iniCheckAndCorrectIntValue(pIniContext, szItemName,
+            nValue, nMinValue, nMaxValue);
+}
+
 int iniGetIntValueEx(const char *szSectionName,
         const char *szItemName, IniContext *pContext,
         const int nDefaultValue, const bool bRetryGlobal)
@@ -2888,6 +2976,18 @@ int iniGetIntValueEx(const char *szSectionName,
 	{
 		return atoi(pValue);
 	}
+}
+
+int iniGetIntCorrectValueEx(IniFullContext *pIniContext,
+        const char *szItemName, const int nDefaultValue,
+        const int nMinValue, const int nMaxValue, const bool bRetryGlobal)
+{
+    int value;
+
+    value = iniGetIntValueEx(pIniContext->section_name, szItemName,
+            pIniContext->context, nDefaultValue, bRetryGlobal);
+    return iniCheckAndCorrectIntValue(pIniContext, szItemName,
+            value, nMinValue, nMaxValue);
 }
 
 double iniGetDoubleValueEx(const char *szSectionName,
