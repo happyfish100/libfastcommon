@@ -2536,15 +2536,30 @@ bool is_private_ip(const char* ip)
     return false;
 }
 
+int64_t get_current_time_ns()
+{
+    struct timespec ts;
+    if (clock_gettime(CLOCK_MONOTONIC_RAW, &ts) != 0)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "call clock_gettime fail, "
+                "errno: %d, error info: %s",
+                __LINE__, errno, STRERROR(errno));
+        return errno != 0 ? errno : EPERM;
+    }
+
+	return ((int64_t)ts.tv_sec * 1000 * 1000 * 1000LL + (int64_t)ts.tv_nsec);
+}
+
 int64_t get_current_time_us()
 {
 	struct timeval tv;
 
 	if (gettimeofday(&tv, NULL) != 0)
 	{
-		logError("file: "__FILE__", line: %d, " \
-			 "call gettimeofday fail, " \
-			 "errno: %d, error info: %s", \
+		logError("file: "__FILE__", line: %d, "
+			 "call gettimeofday fail, "
+			 "errno: %d, error info: %s",
 			 __LINE__, errno, STRERROR(errno));
 		return errno != 0 ? errno : EPERM;
 	}

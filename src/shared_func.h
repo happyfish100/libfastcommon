@@ -711,6 +711,10 @@ double get_line_distance_km(const double lat1, const double lon1,
  */
 bool is_private_ip(const char* ip);
 
+/** get current time in ns
+ *  return: current time
+ */
+int64_t get_current_time_ns();
 
 /** get current time in us
  *  return: current time
