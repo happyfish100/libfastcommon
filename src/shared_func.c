@@ -2170,7 +2170,7 @@ int cmp_by_ip_addr_t(const void *p1, const void *p2)
         return memcmp((in_addr_t *)p1, (in_addr_t *)p2, sizeof(in_addr_t));
 }
 
-int parse_bytes(char *pStr, const int default_unit_bytes, int64_t *bytes)
+int parse_bytes(const char *pStr, const int default_unit_bytes, int64_t *bytes)
 {
 	char *pReservedEnd;
 

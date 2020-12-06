@@ -24,6 +24,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netinet/tcp.h>
 #include "common_define.h"
 
 #define FC_NET_TYPE_NONE          0
@@ -80,8 +83,28 @@ typedef struct sockaddr_convert_s {
 #define SET_SOCKOPT_NOSIGPIPE(sock)
 #endif
 
+#ifdef OS_LINUX
+#define TCP_SET_QUICK_ACK(sock) \
+    do {  \
+        int quick_ack = 1; \
+        if (g_tcp_quick_ack && setsockopt(sock, IPPROTO_TCP,    \
+                    TCP_QUICKACK, &quick_ack, sizeof(int)) < 0) \
+        {  \
+            logError("file: "__FILE__", line: %d, " \
+                    "setsockopt failed, errno: %d, error info: %s", \
+                    __LINE__, errno, STRERROR(errno));  \
+        }  \
+    } while (0)
+#else
+#define TCP_SET_QUICK_ACK(sock)
+#endif
+
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#ifdef OS_LINUX
+    extern bool g_tcp_quick_ack;
 #endif
 
 typedef int (*getnamefunc)(int socket, struct sockaddr *address, \
@@ -631,6 +654,8 @@ static inline void tcp_dont_try_again_when_interrupt()
 {
     tcp_set_try_again_when_interrupt(false);
 }
+
+void tcp_set_quick_ack(const bool value);
 
 int fc_get_net_type_by_name(const char *net_type);
 

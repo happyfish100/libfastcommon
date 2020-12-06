@@ -20,9 +20,6 @@
 #include <string.h>
 #include <errno.h>
 #include <time.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netinet/tcp.h>
 #include <netdb.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -86,11 +83,22 @@
 #endif
 #endif
 
+#ifdef OS_LINUX
+    bool g_tcp_quick_ack = false;
+#endif
+
 static bool try_again_when_interrupt = true;
 
 void tcp_set_try_again_when_interrupt(const bool value)
 {
     try_again_when_interrupt = value;
+}
+
+void tcp_set_quick_ack(const bool value)
+{
+#ifdef OS_LINUX
+    g_tcp_quick_ack = value;
+#endif
 }
 
 int tcpgets(int sock, char* s, const int size, const int timeout)
@@ -215,14 +223,15 @@ int tcprecvdata_ex(int sock, void *data, const int size, \
 			break;
 		}
 
+        TCP_SET_QUICK_ACK(sock);
 		left_bytes -= read_bytes;
 		p += read_bytes;
 	}
 
 	if (count != NULL)
-	{
-		*count = size - left_bytes;
-	}
+    {
+        *count = size - left_bytes;
+    }
 
 	return ret_code;
 }
@@ -339,6 +348,7 @@ int tcprecvdata_nb_ms(int sock, void *data, const int size, \
 		read_bytes = recv(sock, p, left_bytes, 0);
 		if (read_bytes > 0)
 		{
+            TCP_SET_QUICK_ACK(sock);
 			left_bytes -= read_bytes;
 			p += read_bytes;
 			continue;
@@ -1620,9 +1630,6 @@ int tcpsendfile_ex(int sock, const char *filename, const int64_t file_offset, \
 
 int tcpsetserveropt(int fd, const int timeout)
 {
-	int flags;
-	int result;
-
 	struct linger linger;
 	struct timeval waittime;
 
@@ -1665,22 +1672,7 @@ int tcpsetserveropt(int fd, const int timeout)
 			__LINE__, errno, STRERROR(errno));
 	}
 
-	flags = 1;
-	if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, \
-		(char *)&flags, sizeof(flags)) < 0)
-	{
-		logError("file: "__FILE__", line: %d, " \
-			"setsockopt failed, errno: %d, error info: %s", \
-			__LINE__, errno, STRERROR(errno));
-		return errno != 0 ? errno : EINVAL;
-	}
-
-	if ((result=tcpsetkeepalive(fd, 2 * timeout + 1)) != 0)
-	{
-		return result;
-	}
-
-	return 0;
+	return tcpsetnodelay(fd, timeout);
 }
 
 int tcpsetkeepalive(int fd, const int idleSeconds)
@@ -1834,14 +1826,15 @@ int tcpsetnodelay(int fd, const int timeout)
 	}
 
 	flags = 1;
-	if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, \
+	if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
 			(char *)&flags, sizeof(flags)) < 0)
 	{
-		logError("file: "__FILE__", line: %d, " \
-			"setsockopt failed, errno: %d, error info: %s", \
+		logError("file: "__FILE__", line: %d, "
+			"setsockopt failed, errno: %d, error info: %s",
 			__LINE__, errno, STRERROR(errno));
 		return errno != 0 ? errno : EINVAL;
 	}
+    TCP_SET_QUICK_ACK(fd);
 
 	return 0;
 }

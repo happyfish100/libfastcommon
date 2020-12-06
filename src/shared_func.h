@@ -673,7 +673,7 @@ int cmp_by_ip_addr_t(const void *p1, const void *p2);
  *  	bytes: store the parsed bytes
  *  return: error no , 0 success, != 0 fail
 */
-int parse_bytes(char *pStr, const int default_unit_bytes, int64_t *bytes);
+int parse_bytes(const char *pStr, const int default_unit_bytes, int64_t *bytes);
 
 /** set rand seed
  *  return: error no , 0 success, != 0 fail

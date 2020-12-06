@@ -27,7 +27,7 @@
 
 #define COUNT 1000000
 #define LEVEL_COUNT 16
-#define MIN_ALLOC_ONCE  8
+#define MIN_ALLOC_ONCE 4
 #define LAST_INDEX (COUNT - 1)
 
 static int *numbers;
