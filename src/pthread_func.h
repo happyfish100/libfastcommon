@@ -23,8 +23,9 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include "common_define.h"
-#include "logger.h"
+#include "shared_func.h"
 #include "sched_thread.h"
+#include "logger.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -83,11 +84,13 @@ static inline void fc_timedwait_sec(pthread_mutex_t *lock,
 static inline void fc_timedwait_ms(pthread_mutex_t *lock,
         pthread_cond_t *cond, const int timeout_ms)
 {
+    int64_t expires_ms;
     struct timespec ts;
 
+    expires_ms = get_current_time_ms() + timeout_ms;
     PTHREAD_MUTEX_LOCK(lock);
-    ts.tv_sec = get_current_time() + timeout_ms / 1000;
-    ts.tv_nsec = (timeout_ms % 1000) * (1000 * 1000);
+    ts.tv_sec =  expires_ms / 1000;
+    ts.tv_nsec = (expires_ms % 1000) * (1000 * 1000);
     pthread_cond_timedwait(cond, lock, &ts);
     PTHREAD_MUTEX_UNLOCK(lock);
 }
