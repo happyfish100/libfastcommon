@@ -112,6 +112,10 @@ int uniq_skiplist_find_range(UniqSkiplist *sl, void *start_data,
         void *end_data, UniqSkiplistIterator *iterator);
 
 UniqSkiplistNode *uniq_skiplist_find_node(UniqSkiplist *sl, void *data);
+
+UniqSkiplistNode *uniq_skiplist_find_node_ex(UniqSkiplist *sl, void *data,
+        UniqSkiplistNode **previous);
+
 void uniq_skiplist_delete_node_ex(UniqSkiplist *sl,
         UniqSkiplistNode *previous, UniqSkiplistNode *deleted,
         const bool need_free);

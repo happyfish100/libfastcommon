@@ -108,4 +108,3 @@ static inline int fast_buffer_append_buffer(FastBuffer *buffer, FastBuffer *src)
 #endif
 
 #endif
-

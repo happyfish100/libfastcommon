@@ -531,6 +531,16 @@ int uniq_skiplist_replace_ex(UniqSkiplist *sl, void *data,
     return 0;
 }
 
+UniqSkiplistNode *uniq_skiplist_find_node_ex(UniqSkiplist *sl, void *data,
+        UniqSkiplistNode **previous)
+{
+    int level_index;
+
+    *previous = uniq_skiplist_get_equal_previous(sl, data, &level_index);
+    return (*previous != NULL) ? (UniqSkiplistNode *)
+        (*previous)->links[level_index] : NULL;
+}
+
 UniqSkiplistNode *uniq_skiplist_find_node(UniqSkiplist *sl, void *data)
 {
     int level_index;
