@@ -533,7 +533,9 @@ static int log_get_matched_files(LogContext *pContext,
     char *log_filename;
     char *filename;
     DIR *dir;
+#ifndef OS_LINUX
     struct dirent ent;
+#endif
     struct dirent *pEntry;
     time_t the_time;
 	struct tm tm;
@@ -579,7 +581,12 @@ static int log_get_matched_files(LogContext *pContext,
     strftime(filename_prefix + len, sizeof(filename_prefix) - len,
             rotate_time_format_prefix, &tm);
     prefix_filename_len = strlen(filename_prefix);
+
+#ifndef OS_LINUX
     while (readdir_r(dir, &ent, &pEntry) == 0)
+#else
+    while ((pEntry=readdir(dir)) != NULL)
+#endif
     {
         if (pEntry == NULL)
         {

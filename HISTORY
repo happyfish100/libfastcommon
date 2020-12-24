@@ -1,6 +1,7 @@
 
 Version 1.45  2020-12-24
   * add function uniq_skiplist_find_node_ex
+  * use readdir instead of readdir_r in Linux
 
 Version 1.44  2020-12-06
   * add test file src/tests/test_pthread_lock.c
