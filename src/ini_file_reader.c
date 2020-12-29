@@ -2781,8 +2781,8 @@ void iniFreeContext(IniContext *pContext)
     iniFreeDynamicContent(pContext);
 }
 
-#define INI_FIND_ITEM(szSectionName, szItemName, pContext, pSection, \
-        targetItem, pItem, return_val) \
+#define INI_FIND_ITEM(szSectionName, szItemName, \
+        pContext, pSection, targetItem, pItem) \
 do { \
     if (szSectionName == NULL || *szSectionName == '\0') \
     { \
@@ -2794,13 +2794,15 @@ do { \
                 szSectionName, strlen(szSectionName)); \
         if (pSection == NULL) \
         { \
-            return return_val; \
+            pItem = NULL;  \
+            break; \
         } \
     } \
     \
     if (pSection->count <= 0) \
     { \
-        return return_val; \
+        pItem = NULL;  \
+        break;  \
     } \
     \
     snprintf(targetItem.name, sizeof(targetItem.name), "%s", szItemName); \
@@ -2818,15 +2820,15 @@ char *iniGetStrValueEx(const char *szSectionName, const char *szItemName,
 	IniItem *pItem;
 	IniItem *pItemEnd;
 
-	INI_FIND_ITEM(szSectionName, szItemName, pContext, pSection,
-			targetItem, pFound, NULL);
+	INI_FIND_ITEM(szSectionName, szItemName, pContext,
+            pSection, targetItem, pFound);
 	if (pFound == NULL)
 	{
         if (RETRY_FETCH_GLOBAL(szSectionName, bRetryGlobal))
         {
             szSectionName = NULL;
             INI_FIND_ITEM(szSectionName, szItemName, pContext,
-                    pSection, targetItem, pFound, NULL);
+                    pSection, targetItem, pFound);
             if (pFound == NULL)
             {
                 return NULL;
@@ -3060,7 +3062,7 @@ int iniGetValues(const char *szSectionName, const char *szItemName, \
 	return count;
 }
 
-IniItem *iniGetValuesEx(const char *szSectionName, const char *szItemName, \
+IniItem *iniGetValuesEx(const char *szSectionName, const char *szItemName,
 		IniContext *pContext, int *nTargetCount)
 {
 	IniItem targetItem;
@@ -3071,8 +3073,8 @@ IniItem *iniGetValuesEx(const char *szSectionName, const char *szItemName, \
 	IniItem *pItemStart;
 
 	*nTargetCount = 0;
-	INI_FIND_ITEM(szSectionName, szItemName, pContext, pSection, \
-			targetItem, pFound, NULL);
+	INI_FIND_ITEM(szSectionName, szItemName, pContext,
+            pSection, targetItem, pFound);
 	if (pFound == NULL)
 	{
 		return NULL;
