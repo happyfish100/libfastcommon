@@ -2220,8 +2220,20 @@ int set_rand_seed()
 	return 0;
 }
 
-int get_time_item_from_conf(IniContext *pIniContext, \
-		const char *item_name, TimeInfo *pTimeInfo, \
+int get_time_item_from_conf_ex(IniFullContext *ini_ctx,
+		const char *item_name, TimeInfo *pTimeInfo,
+		const byte default_hour, const byte default_minute,
+        const bool bRetryGlobal)
+{
+    char *pValue;
+    pValue = iniGetStrValueEx(ini_ctx->section_name, item_name,
+            ini_ctx->context, bRetryGlobal);
+    return get_time_item_from_str(pValue, item_name, pTimeInfo,
+            default_hour, default_minute);
+}
+
+int get_time_item_from_conf(IniContext *pIniContext,
+		const char *item_name, TimeInfo *pTimeInfo,
 		const byte default_hour, const byte default_minute)
 {
 	char *pValue;
@@ -2251,8 +2263,8 @@ int get_time_item_from_str(const char *pValue, const char *item_name,
     count = sscanf(pValue, "%d:%d:%d", &hour, &minute, &second);
 	if (count != 2 && count != 3)
 	{
-		logError("file: "__FILE__", line: %d, " \
-			"item \"%s\" 's value \"%s\" is not an valid time", \
+		logError("file: "__FILE__", line: %d, "
+			"item \"%s\" 's value \"%s\" is not an valid time",
 			__LINE__, item_name, pValue);
 		return EINVAL;
 	}
@@ -2260,8 +2272,8 @@ int get_time_item_from_str(const char *pValue, const char *item_name,
 	if ((hour < 0 || hour > 23) || (minute < 0 || minute > 59)
              || (second < 0 || second > 59))
 	{
-		logError("file: "__FILE__", line: %d, " \
-			"item \"%s\" 's value \"%s\" is not an valid time", \
+		logError("file: "__FILE__", line: %d, "
+			"item \"%s\" 's value \"%s\" is not an valid time",
 			__LINE__, item_name, pValue);
 		return EINVAL;
 	}

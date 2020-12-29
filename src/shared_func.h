@@ -519,6 +519,22 @@ void set_log_level(char *pLogLevel);
 int load_allow_hosts(IniContext *pIniContext, \
 		in_addr_t **allow_ip_addrs, int *allow_ip_count);
 
+
+/** get time item from config context
+ *  parameters:
+ *  	ini_ctx: the full ini context
+ *  	item_name: item name in config file, time format as hour:minute, such as 15:25
+ *  	pTimeInfo: store time info
+ *  	default_hour: default hour value
+ *  	default_minute: default minute value
+ *  	bRetryGlobal: if fetch from global section when the item not exist
+ *  return: error no , 0 success, != 0 fail
+*/
+int get_time_item_from_conf_ex(IniFullContext *ini_ctx,
+		const char *item_name, TimeInfo *pTimeInfo,
+		const byte default_hour, const byte default_minute,
+        const bool bRetryGlobal);
+
 /** get time item from config context
  *  parameters:
  *  	pIniContext: the config context

@@ -1,4 +1,7 @@
 
+Version 1.46  2020-12-28
+  * add function get_time_item_from_conf_ex
+
 Version 1.45  2020-12-24
   * add function uniq_skiplist_find_node_ex
   * use readdir instead of readdir_r in Linux
