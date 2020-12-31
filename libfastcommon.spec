@@ -56,7 +56,6 @@ rm -rf %{buildroot}
 %files
 %defattr(-,root,root,-)
 /usr/lib64/libfastcommon.so*
-/usr/lib/libfastcommon.so*
 
 %files devel
 %defattr(-,root,root,-)

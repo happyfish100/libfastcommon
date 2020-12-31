@@ -72,7 +72,9 @@ install:
 
 	install -m 755 $(SHARED_LIBS) $(TARGET_LIB)
 	install -m 644 $(HEADER_FILES) $(TARGET_PREFIX)/include/fastcommon
-	if [ ! -e $(TARGET_PREFIX)/lib/libfastcommon.so ]; then ln -s $(TARGET_LIB)/libfastcommon.so $(TARGET_PREFIX)/lib/libfastcommon.so; fi
+
+	@BUILDROOT=$$(echo "$(TARGET_PREFIX)" | grep BUILDROOT); \
+	if [ -z "$$BUILDROOT" ] && [ ! -e $(TARGET_PREFIX)/lib/libfastcommon.so ]; then ln -s $(TARGET_LIB)/libfastcommon.so $(TARGET_PREFIX)/lib/libfastcommon.so; fi
 clean:
 	rm -f $(ALL_OBJS) $(ALL_PRGS) $(ALL_LIBS)
 
