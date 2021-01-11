@@ -28,6 +28,18 @@ extern "C" {
         old_value = __sync_add_and_fetch(&var, 0); \
     } while (new_value != old_value)
 
+#define FC_ATOMIC_SET(var, new_value) \
+    do { \
+        typeof(var) _old_value;  \
+        _old_value = var;    \
+        do {  \
+            if (__sync_bool_compare_and_swap(&var, _old_value, new_value)) { \
+                break;  \
+            }   \
+            _old_value = __sync_add_and_fetch(&var, 0); \
+        } while (new_value != _old_value);  \
+    } while (0)
+
 #ifdef __cplusplus
 }
 #endif

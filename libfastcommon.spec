@@ -62,5 +62,5 @@ rm -rf %{buildroot}
 /usr/include/fastcommon/*
 
 %changelog
-* Mon Jun 23 2014  Zaixue Liao <liaozaixue@yongche.com>
+* Mon Jun 23 2014  Zaixue Liao
 - first RPM release (1.0)
