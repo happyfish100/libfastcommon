@@ -1,6 +1,7 @@
 
-Version 1.47  2021-01-11
+Version 1.47  2021-01-14
   * fc_atomic.h: add FC_ATOMIC_SET
+  * fast_mblock.[hc]: support wait with element limit
 
 Version 1.46  2020-12-29
   * add function get_time_item_from_conf_ex

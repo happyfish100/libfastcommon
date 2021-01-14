@@ -25,6 +25,7 @@
 #include "common_define.h"
 #include "fc_memory.h"
 #include "chain.h"
+#include "logger.h"
 
 #define FAST_MBLOCK_NAME_SIZE 32
 
@@ -92,8 +93,11 @@ struct fast_mblock_man
 {
     struct fast_mblock_info info;
     struct {
-        int once;        //alloc elements once
-        int64_t limit;   //<= 0 for no limit
+        bool need_wait;
+        int exceed_log_level;  //for exceed limit
+        int once;              //alloc elements once
+        int64_t limit;         //<= 0 for no limit
+        bool *pcontinue_flag;
     } alloc_elements;
     struct fast_mblock_node *free_chain_head;    //free node chain
     struct fast_mblock_trunks trunks;
@@ -103,8 +107,7 @@ struct fast_mblock_man
     struct fast_mblock_malloc_trunk_callback malloc_trunk_callback;
 
     bool need_lock;         //if need mutex lock
-    int exceed_log_level;   //log level for exceed limit
-    pthread_mutex_t lock;   //the lock for read / write free node chain
+    pthread_lock_cond_pair_t lcp;  //for read / write free node chain
     struct fast_mblock_man *prev;  //for stat manager
     struct fast_mblock_man *next;  //for stat manager
     void *init_args;          //args for alloc_init_func
@@ -201,6 +204,26 @@ parameters:
 	mblock: the mblock pointer
 */
 void fast_mblock_destroy(struct fast_mblock_man *mblock);
+
+static inline int fast_mblock_set_need_wait(struct fast_mblock_man *mblock,
+        const bool need_wait, bool * volatile pcontinue_flag)
+{
+    if (!mblock->need_lock || mblock->alloc_elements.limit <= 0)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "need_lock: %d != 1 or alloc_elements.limit: %"PRId64" <= 0",
+                __LINE__, mblock->need_lock, mblock->alloc_elements.limit);
+        return EINVAL;
+    }
+
+    mblock->alloc_elements.need_wait = need_wait;
+    mblock->alloc_elements.pcontinue_flag = pcontinue_flag;
+    if (need_wait)
+    {
+        mblock->alloc_elements.exceed_log_level = LOG_NOTHING;
+    }
+    return 0;
+}
 
 /**
 alloc a node from the mblock
