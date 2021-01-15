@@ -20,6 +20,14 @@
 extern "C" {
 #endif
 
+#define FC_ATOMIC_GET(var) __sync_add_and_fetch(&var, 0)
+
+#define FC_ATOMIC_INC(var) __sync_add_and_fetch(&var, 1)
+#define FC_ATOMIC_DEC(var) __sync_sub_and_fetch(&var, 1)
+
+#define FC_ATOMIC_INC_EX(var, n) __sync_add_and_fetch(&var, n)
+#define FC_ATOMIC_DEC_EX(var, n) __sync_sub_and_fetch(&var, n)
+
 #define FC_ATOMIC_CAS(var, old_value, new_value) \
     do {  \
         if (__sync_bool_compare_and_swap(&var, old_value, new_value)) { \
