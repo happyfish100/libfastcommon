@@ -1,6 +1,6 @@
 
-Version 1.47  2021-01-14
-  * fc_atomic.h: add FC_ATOMIC_SET
+Version 1.47  2021-01-20
+  * fc_atomic.h: add FC_ATOMIC_GET and FC_ATOMIC_SET etc.
   * fast_mblock.[hc]: support wait with element limit
 
 Version 1.46  2020-12-29
