@@ -153,6 +153,25 @@ int fast_buffer_append_buff(FastBuffer *buffer, const char *data, const int len)
     return 0;
 }
 
+int fast_buffer_append_binary(FastBuffer *buffer,
+        const void *data, const int len)
+{
+    int result;
+
+    if (len <= 0)
+    {
+        return 0;
+    }
+    if ((result=fast_buffer_check(buffer, len)) != 0)
+    {
+        return result;
+    }
+
+    memcpy(buffer->data + buffer->length, data, len);
+    buffer->length += len;
+    return 0;
+}
+
 int fast_buffer_append_int(FastBuffer *buffer, const int n)
 {
     int result;

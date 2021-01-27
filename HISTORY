@@ -1,4 +1,8 @@
 
+Version 1.48  2021-01-27
+  * fast_buffer.[hc]: add function fast_buffer_append_binary
+  * fc_check_mkdir_ex return 0 when mkdir with errno EEXIST
+
 Version 1.47  2021-01-20
   * fc_atomic.h: add FC_ATOMIC_GET and FC_ATOMIC_SET etc.
   * fast_mblock.[hc]: support wait with element limit

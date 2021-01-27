@@ -80,7 +80,11 @@ static inline int fast_buffer_check_inc_size(FastBuffer *buffer,
 
 int fast_buffer_append(FastBuffer *buffer, const char *format, ...);
 
-int fast_buffer_append_buff(FastBuffer *buffer, const char *data, const int len);
+int fast_buffer_append_buff(FastBuffer *buffer,
+        const char *data, const int len);
+
+int fast_buffer_append_binary(FastBuffer *buffer,
+        const void *data, const int len);
 
 int fast_buffer_append_int(FastBuffer *buffer, const int n);
 

@@ -3087,6 +3087,7 @@ int64_t fc_ceil_prime(const int64_t n)
 }
 
 int fc_init_buffer(BufferInfo *buffer, const int buffer_size)
+
 {
     buffer->buff = (char *)fc_malloc(buffer_size);
     if (buffer->buff == NULL)
@@ -3127,6 +3128,10 @@ int fc_check_mkdir_ex(const char *path, const mode_t mode, bool *create)
 
     if (mkdir(path, mode) != 0) {
         result = errno != 0 ? errno : EPERM;
+        if (result == EEXIST) {
+            return 0;
+        }
+
         logError("file: "__FILE__", line: %d, "
                 "mkdir %s fail, errno: %d, error info: %s",
                 __LINE__, path, result, STRERROR(result));

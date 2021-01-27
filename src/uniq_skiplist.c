@@ -215,7 +215,7 @@ static int uniq_skiplist_grow(UniqSkiplist *sl)
     int i;
     struct fast_mblock_man *top_mblock;
     UniqSkiplistNode *old_top;
-    UniqSkiplistNode *top;
+    UniqSkiplistNode *new_top;
 
     top_level_index = sl->top_level_index + 1;
     if (top_level_index >= sl->factory->max_level_count) {
@@ -223,34 +223,33 @@ static int uniq_skiplist_grow(UniqSkiplist *sl)
     }
 
     top_mblock = sl->factory->node_allocators + top_level_index;
-    top = (UniqSkiplistNode *)fast_mblock_alloc_object(top_mblock);
-    if (top == NULL) {
+    new_top = (UniqSkiplistNode *)fast_mblock_alloc_object(top_mblock);
+    if (new_top == NULL) {
         return ENOMEM;
     }
-    memset(top, 0, top_mblock->info.element_size);
-    top->level_index = top_level_index;
-
-    top->links[top_level_index] = sl->factory->tail;
-    for (i=0; i<=sl->top_level_index; i++) {
-        top->links[i] = sl->top->links[i];
-    }
-
+    memset(new_top, 0, top_mblock->info.element_size);
+    new_top->level_index = top_level_index;
     old_top_level_index = sl->top_level_index;
     old_top = sl->top;
-    sl->top = top;
 
-    compile_barrier();
-    sl->top_level_index = top_level_index;
+    for (i=0; i<=old_top_level_index; i++) {
+        new_top->links[i] = old_top->links[i];
+    }
+    new_top->links[top_level_index] = sl->factory->tail;
 
     if (sl->factory->bidirection) {
-        if (top->links[0] != sl->factory->tail) {  //not empty
-            LEVEL0_DOUBLE_CHAIN_PREV_LINK(top->links[0]) = top;
-            LEVEL0_DOUBLE_CHAIN_TAIL(sl) =
+        if (new_top->links[0] != sl->factory->tail) {  //not empty
+            LEVEL0_DOUBLE_CHAIN_PREV_LINK(new_top->links[0]) = new_top;
+            LEVEL0_DOUBLE_CHAIN_PREV_LINK(new_top) =
                 LEVEL0_DOUBLE_CHAIN_PREV_LINK(old_top);
         } else {
-            LEVEL0_DOUBLE_CHAIN_TAIL(sl) = sl->top;
+            LEVEL0_DOUBLE_CHAIN_PREV_LINK(new_top) = new_top;
         }
     }
+
+    sl->top = new_top;
+    compile_barrier();
+    sl->top_level_index = top_level_index;
 
     UNIQ_SKIPLIST_FREE_MBLOCK_OBJECT(sl, old_top_level_index, old_top);
     return 0;
@@ -270,6 +269,7 @@ void uniq_skiplist_free(UniqSkiplist *sl)
         while (node != sl->factory->tail) {
             deleted = node;
             node = node->links[0];
+
             sl->factory->free_func(deleted->data, 0);
             fast_mblock_free_object(sl->factory->node_allocators +
                     deleted->level_index, (void *)deleted);
@@ -278,16 +278,18 @@ void uniq_skiplist_free(UniqSkiplist *sl)
         while (node != sl->factory->tail) {
             deleted = node;
             node = node->links[0];
+
             fast_mblock_free_object(sl->factory->node_allocators +
                     deleted->level_index, (void *)deleted);
         }
     }
 
     fast_mblock_free_object(sl->factory->node_allocators +
-            sl->top_level_index, (void *)sl->top);
+            sl->top_level_index, sl->top);
 
     sl->top = NULL;
     sl->element_count = 0;
+    sl->top_level_index = 0;
     fast_mblock_free_object(&sl->factory->skiplist_allocator, sl);
 }
 
