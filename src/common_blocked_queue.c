@@ -185,6 +185,85 @@ void *common_blocked_queue_pop_ex(struct common_blocked_queue *queue,
 	return data;
 }
 
+void *common_blocked_queue_timedpop(struct common_blocked_queue *queue,
+        const int timeout, const int time_unit)
+{
+    struct common_blocked_node *node;
+    void *data;
+    struct timespec ts;
+    int seconds;
+    int result;
+
+    if ((result=pthread_mutex_lock(&(queue->lc_pair.lock))) != 0)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "call pthread_mutex_lock fail, "
+                "errno: %d, error info: %s",
+                __LINE__, result, STRERROR(result));
+        return NULL;
+    }
+
+    do {
+        node = queue->head;
+        if (node == NULL)
+        {
+            switch (time_unit) {
+                case FC_TIME_UNIT_SECOND:
+                    seconds = timeout;
+                    ts.tv_nsec = 0;
+                    break;
+                case FC_TIME_UNIT_MSECOND:
+                    seconds = timeout / 1000;
+                    ts.tv_nsec = (timeout % 1000) * (1000 * 1000);
+                    break;
+                case FC_TIME_UNIT_USECOND:
+                    seconds = timeout / (1000 * 1000);
+                    ts.tv_nsec = (timeout % (1000 * 1000)) * 1000;
+                    break;
+                case FC_TIME_UNIT_NSECOND:
+                    seconds = timeout / (1000 * 1000 * 1000);
+                    ts.tv_nsec  = timeout % (1000 * 1000 * 1000);
+                    break;
+                default:
+                    seconds = timeout;
+                    ts.tv_nsec = 0;
+                    break;
+            }
+
+            ts.tv_sec = get_current_time() + seconds;
+            pthread_cond_timedwait(&queue->lc_pair.cond,
+                    &queue->lc_pair.lock, &ts);
+            node = queue->head;
+        }
+
+        if (node != NULL)
+        {
+            queue->head = node->next;
+            if (queue->head == NULL)
+            {
+                queue->tail = NULL;
+            }
+
+            data = node->data;
+            fast_mblock_free_object(&queue->mblock, node);
+        }
+        else
+        {
+            data = NULL;
+        }
+    } while (0);
+
+    if ((result=pthread_mutex_unlock(&(queue->lc_pair.lock))) != 0)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "call pthread_mutex_unlock fail, "
+                "errno: %d, error info: %s",
+                __LINE__, result, STRERROR(result));
+    }
+
+    return data;
+}
+
 struct common_blocked_node *common_blocked_queue_pop_all_nodes_ex(
         struct common_blocked_queue *queue, const bool blocked)
 {

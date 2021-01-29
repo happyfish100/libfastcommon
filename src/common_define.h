@@ -134,6 +134,11 @@ extern int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int kind);
 #define FC_MIN(v1, v2) (v1 < v2 ? v1 : v2)
 #define FC_MAX(v1, v2) (v1 > v2 ? v1 : v2)
 
+#define FC_TIME_UNIT_SECOND   's'  //second
+#define FC_TIME_UNIT_MSECOND  'm'  //millisecond
+#define FC_TIME_UNIT_USECOND  'u'  //microsecond
+#define FC_TIME_UNIT_NSECOND  'n'  //nanosecond
+
 #define STRERROR(no) (strerror(no) != NULL ? strerror(no) : "Unkown error")
 
 #if defined(OS_LINUX)

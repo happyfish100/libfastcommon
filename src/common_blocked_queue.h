@@ -116,6 +116,18 @@ struct common_blocked_node *common_blocked_queue_pop_all_nodes_ex(
 void common_blocked_queue_free_all_nodes(struct common_blocked_queue *queue,
         struct common_blocked_node *node);
 
+void *common_blocked_queue_timedpop(struct common_blocked_queue *queue,
+        const int timeout, const int time_unit);
+
+#define common_blocked_queue_timedpop_sec(queue, timeout) \
+    common_blocked_queue_timedpop(queue, timeout, FC_TIME_UNIT_SECOND)
+
+#define common_blocked_queue_timedpop_ms(queue, timeout) \
+    common_blocked_queue_timedpop(queue, timeout, FC_TIME_UNIT_MSECOND)
+
+#define common_blocked_queue_timedpop_us(queue, timeout) \
+    common_blocked_queue_timedpop(queue, timeout, FC_TIME_UNIT_USECOND)
+
 #ifdef __cplusplus
 }
 #endif
