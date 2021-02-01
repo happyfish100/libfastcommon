@@ -817,8 +817,7 @@ int log_rotate(LogContext *pContext)
 
 	close(pContext->log_fd);
 
-	current_time = get_current_time();
-	localtime_r(&current_time, &tm);
+    current_time = get_current_time();
     if (tm.tm_hour == 0 && tm.tm_min <= 1)
     {
         if (strstr(pContext->rotate_time_format, "%H") == NULL
@@ -826,9 +825,9 @@ int log_rotate(LogContext *pContext)
                 && strstr(pContext->rotate_time_format, "%S") == NULL)
         {
             current_time -= 120;
-            localtime_r(&current_time, &tm);
         }
     }
+    localtime_r(&current_time, &tm);
 
     memset(old_filename, 0, sizeof(old_filename));
 	len = sprintf(old_filename, "%s.", pContext->log_filename);
