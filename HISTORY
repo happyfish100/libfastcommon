@@ -1,8 +1,9 @@
 
-Version 1.48  2021-01-29
+Version 1.48  2021-02-01
   * fast_buffer.[hc]: add function fast_buffer_append_binary
   * fc_check_mkdir_ex return 0 when mkdir with errno EEXIST
   * add function common_blocked_queue_timedpop
+  * add function fc_queue_timedpop
 
 Version 1.47  2021-01-20
   * fc_atomic.h: add FC_ATOMIC_GET and FC_ATOMIC_SET etc.

@@ -148,3 +148,28 @@ void fc_queue_pop_to_queue(struct fc_queue *queue,
     }
     PTHREAD_MUTEX_UNLOCK(&queue->lc_pair.lock);
 }
+
+void *fc_queue_timedpop(struct fc_queue *queue,
+        const int timeout, const int time_unit)
+{
+	void *data;
+
+    PTHREAD_MUTEX_LOCK(&queue->lc_pair.lock);
+    do {
+        data = queue->head;
+        if (data == NULL) {
+            fc_cond_timedwait(&queue->lc_pair, timeout, time_unit);
+            data = queue->head;
+        }
+
+        if (data != NULL) {
+            queue->head = FC_QUEUE_NEXT_PTR(queue, data);
+            if (queue->head == NULL) {
+                queue->tail = NULL;
+            }
+        }
+    } while (0);
+
+    PTHREAD_MUTEX_UNLOCK(&queue->lc_pair.lock);
+	return data;
+}

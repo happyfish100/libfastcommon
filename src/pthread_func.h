@@ -95,6 +95,60 @@ static inline void fc_timedwait_ms(pthread_mutex_t *lock,
     PTHREAD_MUTEX_UNLOCK(lock);
 }
 
+static inline int fc_timeout_to_timespec(const int timeout,
+        const int time_unit, struct timespec *ts)
+{
+    int seconds;
+
+    switch (time_unit) {
+        case FC_TIME_UNIT_SECOND:
+            seconds = timeout;
+            ts->tv_nsec = 0;
+            break;
+        case FC_TIME_UNIT_MSECOND:
+            seconds = timeout / 1000;
+            ts->tv_nsec = (timeout % 1000) * (1000 * 1000);
+            break;
+        case FC_TIME_UNIT_USECOND:
+            seconds = timeout / (1000 * 1000);
+            ts->tv_nsec = (timeout % (1000 * 1000)) * 1000;
+            break;
+        case FC_TIME_UNIT_NSECOND:
+            seconds = timeout / (1000 * 1000 * 1000);
+            ts->tv_nsec  = timeout % (1000 * 1000 * 1000);
+            break;
+        default:
+            logError("file: "__FILE__", line: %d, "
+                    "invalid time unit: %d", __LINE__, time_unit);
+            return EINVAL;
+    }
+
+    ts->tv_sec = get_current_time() + seconds;
+    return 0;
+}
+
+static inline int fc_cond_timedwait(pthread_lock_cond_pair_t *lcp,
+        const int timeout, const int time_unit)
+{
+    struct timespec ts;
+    int result;
+
+    if ((result=fc_timeout_to_timespec(timeout, time_unit, &ts)) != 0) {
+        return result;
+    }
+    return pthread_cond_timedwait(&lcp->cond, &lcp->lock, &ts);
+}
+
+#define fc_cond_timedwait_sec(lcp, timeout) \
+    fc_cond_timedwait(lcp, timeout, FC_TIME_UNIT_SECOND)
+
+#define fc_cond_timedwait_ms(lcp, timeout_ms) \
+    fc_cond_timedwait(lcp, timeout_ms, FC_TIME_UNIT_MSECOND)
+
+#define fc_cond_timedwait_us(lcp, timeout_us) \
+    fc_cond_timedwait(lcp, timeout_us, FC_TIME_UNIT_USECOND)
+
+
 int create_work_threads(int *count, void *(*start_func)(void *),
 		void **args, pthread_t *tids, const int stack_size);
 
