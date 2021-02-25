@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
     int fd;
     int result;
     int sleep_seconds;
-    int n;
+    int n = 0;
     char buf[1024];
     struct flock lock;
 

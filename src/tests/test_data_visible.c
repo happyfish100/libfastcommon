@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
     {
         return result;
     }
-    allocator.exceed_log_level = LOG_NOTHING;
+    allocator.alloc_elements.exceed_log_level = LOG_NOTHING;
 
     if ((result=init_pthread_lock(&lock)) != 0) {
         return result;
