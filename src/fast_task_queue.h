@@ -96,8 +96,8 @@ struct fast_task_info
     int (*continue_callback)(struct fast_task_info *task);  //for continue stage
     volatile int8_t reffer_count;
     volatile int8_t canceled;   //if task canceled
-    int connect_timeout; //for client side
-    int network_timeout;
+    short connect_timeout; //for client side
+    short network_timeout;
 	int64_t req_count; //request count
 	TaskFinishCallback finish_callback;
 	struct nio_thread_data *thread_data;

@@ -28,7 +28,7 @@
 #include "fastcommon/fast_allocator.h"
 
 #define THREAD_COUNT 8
-#define LOOP_COUNT (1000)
+#define LOOP_COUNT (100)
 
 static volatile int thread_count = THREAD_COUNT;
 static pthread_mutex_t lock;
@@ -41,7 +41,7 @@ void *thread_func(void *arg)
     sum = 0;
     for (k=1; k<=LOOP_COUNT; k++) {
         pthread_mutex_lock(&lock);
-        usleep(10 * 1000);
+        usleep(100 * 1000);
         sum += k;
         pthread_mutex_unlock(&lock);
     }
