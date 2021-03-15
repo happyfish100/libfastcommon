@@ -54,6 +54,11 @@ typedef struct uniq_skiplist
     UniqSkiplistNode *top;  //the top node
 } UniqSkiplist;
 
+typedef struct uniq_skiplist_pair {
+    UniqSkiplistFactory factory;
+    struct uniq_skiplist *skiplist;
+} UniqSkiplistPair;
+
 typedef struct uniq_skiplist_iterator {
     volatile UniqSkiplistNode *current;
     volatile UniqSkiplistNode *tail;
@@ -70,12 +75,18 @@ extern "C" {
         delay_free_seconds) \
     uniq_skiplist_init_ex2(factory, max_level_count, compare_func, \
         free_func, alloc_skiplist_once, min_alloc_elements_once, \
-        delay_free_seconds, false) \
+        delay_free_seconds, false)
 
 #define uniq_skiplist_init(factory, max_level_count, compare_func, free_func) \
     uniq_skiplist_init_ex(factory, max_level_count,  \
             compare_func, free_func, 64 * 1024, \
             SKIPLIST_DEFAULT_MIN_ALLOC_ELEMENTS_ONCE, 0)
+
+#define uniq_skiplist_init_pair(pair, init_level_count, max_level_count, \
+        compare_func, free_func, min_alloc_elements_once, delay_free_seconds) \
+    uniq_skiplist_init_pair_ex(pair, init_level_count, max_level_count, \
+            compare_func, free_func, min_alloc_elements_once, \
+            delay_free_seconds, false)
 
 #define uniq_skiplist_delete(sl, data)  \
     uniq_skiplist_delete_ex(sl, data, true)
@@ -99,6 +110,33 @@ UniqSkiplist *uniq_skiplist_new(UniqSkiplistFactory *factory,
         const int level_count);
 
 void uniq_skiplist_free(UniqSkiplist *sl);
+
+static inline int uniq_skiplist_init_pair_ex(UniqSkiplistPair *pair,
+        const int init_level_count, const int max_level_count,
+        skiplist_compare_func compare_func, uniq_skiplist_free_func
+        free_func, const int min_alloc_elements_once,
+        const int delay_free_seconds, const bool bidirection)
+{
+    const int alloc_skiplist_once = 1;
+    int result;
+
+    if ((result=uniq_skiplist_init_ex2(&pair->factory, max_level_count,
+                    compare_func, free_func, alloc_skiplist_once,
+                    min_alloc_elements_once, delay_free_seconds,
+                    bidirection)) != 0)
+    {
+        return result;
+    }
+
+    if ((pair->skiplist=uniq_skiplist_new(&pair->factory,
+                    init_level_count)) == NULL)
+    {
+        uniq_skiplist_destroy(&pair->factory);
+        return ENOMEM;
+    }
+
+    return 0;
+}
 
 int uniq_skiplist_insert(UniqSkiplist *sl, void *data);
 int uniq_skiplist_delete_ex(UniqSkiplist *sl, void *data,

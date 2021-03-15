@@ -1,6 +1,7 @@
 
-Version 1.49  2021-03-10
+Version 1.49  2021-03-15
   * add macros: FC_ABS and FC_NEGATIVE
+  * uniq_skiplist.c: add uniq_skiplist_pair struct and init function
 
 Version 1.48  2021-02-01
   * fast_buffer.[hc]: add function fast_buffer_append_binary

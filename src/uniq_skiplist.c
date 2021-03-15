@@ -117,7 +117,7 @@ int uniq_skiplist_init_ex2(UniqSkiplistFactory *factory,
     if ((result=fast_mblock_init_ex1(&factory->skiplist_allocator,
                     "skiplist", sizeof(UniqSkiplist),
                     alloc_skiplist_once > 0 ?  alloc_skiplist_once :
-                    16 * 1024, alloc_elements_limit, NULL, NULL, false)) != 0)
+                    4 * 1024, alloc_elements_limit, NULL, NULL, false)) != 0)
     {
         return result;
     }
