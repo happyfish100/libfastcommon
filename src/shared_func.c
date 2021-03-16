@@ -1017,94 +1017,93 @@ int my_strtok(char *src, const char *delim, char **pCols, const int nMaxCols)
     return count;
 }
 
-int str_replace(const char *s, const int src_len, const char *replaced, 
-		        const char *new_str, char *dest, const int dest_size)
+int str_replace(const string_t *src, const string_t *old_str,
+        const string_t *new_str, string_t *dest, const int size)
 {
-	const char *pStart;
-	const char *pEnd;
-	char *pDest;
+	const char *ps;
+	const char *pe;
 	const char *p;
-	int old_len;
-	int new_len;
+	char *pd;
 	int len;
 	int max_dest_len;
 	int remain_len;
+    int result;
 
-	if (dest_size <= 0)
-	{
-		return 0;
-	}
+    if (size <= 0) {
+        dest->len = 0;
+        return EINVAL;
+    }
 
-	max_dest_len = dest_size - 1;
-	old_len = strlen(replaced);
-	new_len = strlen(new_str);
-	if (old_len == 0)
-	{
-		len = src_len < max_dest_len ? src_len : max_dest_len;
-		memcpy(dest, s, len);
-		dest[len] = '\0';
-		return len;
-	}
+	max_dest_len = size - 1;
+    if (old_str->len == 0) {
+        if (src->len <= max_dest_len) {
+            dest->len = src->len;
+            result = 0;
+        } else {
+            dest->len = max_dest_len;
+            result = EOVERFLOW;
+        }
+        memcpy(dest->str, src->str, dest->len);
+        *(dest->str + dest->len) = '\0';
+        return result;
+    }
 
 	remain_len = max_dest_len;
-	pDest = dest;
-	pStart = s;
-	pEnd = s + src_len;
-	while (1)
-	{
-		p = strstr(pStart, replaced);
-		if (p == NULL)
-		{
+	pd = dest->str;
+	ps = src->str;
+	pe = src->str + src->len;
+	while (1) {
+		p = strstr(ps, old_str->str);
+		if (p == NULL) {
 			break;
 		}
 
-		len = p - pStart;
-		if (len > 0)
-		{
-			if (len < remain_len)
-			{
-				memcpy(pDest, pStart, len);
-				pDest += len;
+		len = p - ps;
+		if (len > 0) {
+			if (len < remain_len) {
+				memcpy(pd, ps, len);
+				pd += len;
 				remain_len -= len;
-			}
-			else
-			{
-				memcpy(pDest, pStart, remain_len);
-				pDest += remain_len;
-				*pDest = '\0';
-				return pDest - dest;
+			} else {
+				memcpy(pd, ps, remain_len);
+				pd += remain_len;
+				*pd = '\0';
+                dest->len = pd - dest->str;
+				return EOVERFLOW;
 			}
 		}
 
-		if (new_len < remain_len)
-		{
-			memcpy(pDest, new_str, new_len);
-			pDest += new_len;
-			remain_len -= new_len;
-		}
-		else
-		{
-			memcpy(pDest, new_str, remain_len);
-			pDest += remain_len;
-			*pDest = '\0';
-			return pDest - dest;
-		}
+		if (new_str->len < remain_len) {
+			memcpy(pd, new_str->str, new_str->len);
+			pd += new_str->len;
+			remain_len -= new_str->len;
+        } else {
+            memcpy(pd, new_str->str, remain_len);
+            pd += remain_len;
+            *pd = '\0';
+            dest->len = pd - dest->str;
+            return EOVERFLOW;
+        }
 
-		pStart = p + old_len;
+		ps = p + old_str->len;
 	}
 
-	len = pEnd - pStart;
-	if (len > 0)
-	{
-		if (len > remain_len)
-		{
-			len = remain_len;
-		}
-		memcpy(pDest, pStart, len);
-		pDest += len;
-	}
-	*pDest = '\0';
-	return pDest - dest;
+	len = pe - ps;
+    if (len > 0) {
+        if (len <= remain_len) {
+            result = 0;
+        } else {
+            len = remain_len;
+            result = EOVERFLOW;
+        }
+        memcpy(pd, ps, len);
+        pd += len;
+    } else {
+        result = 0;
+    }
+	*pd = '\0';
+    dest->len = pd - dest->str;
+	return result;
 }
 
 bool fileExists(const char *filename)
@@ -3109,11 +3108,11 @@ void fc_free_buffer(BufferInfo *buffer)
     }
 }
 
-int fc_check_mkdir_ex(const char *path, const mode_t mode, bool *create)
+int fc_check_mkdir_ex(const char *path, const mode_t mode, bool *created)
 {
     int result;
 
-    *create = false;
+    *created = false;
     if (access(path, F_OK) == 0) {
         return 0;
     }
@@ -3138,7 +3137,49 @@ int fc_check_mkdir_ex(const char *path, const mode_t mode, bool *create)
         return result;
     }
 
-    *create = true;
+    *created = true;
+    return 0;
+}
+
+int fc_mkdirs_ex(const char *path, const mode_t mode, int *create_count)
+{
+#define MAX_SUBDIR_COUNT 128
+    int result;
+    int path_len;
+    int dir_count;
+    int i;
+    bool created;
+    char new_path[PATH_MAX];
+    char buff[PATH_MAX];
+    string_t fp;
+    char *subdirs[MAX_SUBDIR_COUNT];
+
+    *create_count = 0;
+    if (access(path, F_OK) == 0) {
+        return 0;
+    }
+
+    path_len = strlen(path);
+    if (path_len >= sizeof(new_path)) {
+        logError("file: "__FILE__", line: %d, "
+                "path length: %d is too large, exceeds %d",
+                __LINE__, path_len, (int)sizeof(new_path));
+        return ENAMETOOLONG;
+    }
+
+    FC_SET_STRING_EX(fp, buff, 0);
+    memcpy(new_path, path, path_len + 1);
+    dir_count = splitEx(new_path, '/', subdirs, MAX_SUBDIR_COUNT);
+    for (i=0; i<dir_count; i++) {
+        fp.len += sprintf(fp.str + fp.len, "%s/", subdirs[i]);
+        if ((result=fc_check_mkdir_ex(fp.str, mode, &created)) != 0) {
+            return result;
+        }
+        if (created) {
+            (*create_count)++;
+        }
+    }
+
     return 0;
 }
 

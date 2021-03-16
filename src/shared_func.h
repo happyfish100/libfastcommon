@@ -64,6 +64,18 @@ char *formatDatetime(const time_t nTime, \
 */
 int getCharLen(const char *s);
 
+/** string replace
+ *  parameters:
+ *  	src: the input string
+ *      old_str: the old string
+ *      new_str: the new string
+ *      dest: the output string
+ *      size: the size of output buffer
+ *  return: 0 for success, != 0 for fail
+*/
+int str_replace(const string_t *src, const string_t *old_str,
+        const string_t *new_str, string_t *dest, const int size);
+
 /** replace \r and \n to space
  *  parameters:
  *  	s: the string
@@ -991,12 +1003,20 @@ static inline int fc_get_umask()
     return mode;
 }
 
-int fc_check_mkdir_ex(const char *path, const mode_t mode, bool *create);
+int fc_check_mkdir_ex(const char *path, const mode_t mode, bool *created);
 
 static inline int fc_check_mkdir(const char *path, const mode_t mode)
 {
-    bool create;
-    return fc_check_mkdir_ex(path, mode, &create);
+    bool created;
+    return fc_check_mkdir_ex(path, mode, &created);
+}
+
+int fc_mkdirs_ex(const char *path, const mode_t mode, int *create_count);
+
+static inline int fc_mkdirs(const char *path, const mode_t mode)
+{
+    int create_count;
+    return fc_mkdirs_ex(path, mode, &create_count);
 }
 
 int fc_get_first_line(const char *filename, char *buff,
