@@ -546,7 +546,7 @@ int get_processes(struct fast_process_info **processes, int *count)
     return result;
 }
 
-int get_sysinfo(struct fast_sysinfo*info)
+int get_sysinfo(struct fast_sysinfo *info)
 {
     struct sysinfo si;
 
@@ -704,7 +704,7 @@ int get_processes(struct fast_process_info **processes, int *count)
     return 0;
 }
 
-int get_sysinfo(struct fast_sysinfo*info)
+int get_sysinfo(struct fast_sysinfo *info)
 {
         int mib[4];
         size_t size;

@@ -516,34 +516,34 @@ char *bin2hex(const char *s, const int len, char *szHexBuff)
 
 char *hex2bin(const char *s, char *szBinBuff, int *nDestLen)
 {
-        char buff[3];
-	char *pSrc;
-	int nSrcLen;
-	char *pDest;
-	char *pDestEnd;
-	
-	nSrcLen = strlen(s);
-        if (nSrcLen == 0)
-        {
-          *nDestLen = 0;
-          szBinBuff[0] = '\0';
-          return szBinBuff;
-        }
+    char buff[3];
+    char *pSrc;
+    int nSrcLen;
+    char *pDest;
+    char *pDestEnd;
 
-	*nDestLen = nSrcLen / 2;
-	pSrc = (char *)s;
-        buff[2] = '\0';
+    nSrcLen = strlen(s);
+    if (nSrcLen == 0)
+    {
+        *nDestLen = 0;
+        szBinBuff[0] = '\0';
+        return szBinBuff;
+    }
 
-	pDestEnd = szBinBuff + (*nDestLen);
-	for (pDest=szBinBuff; pDest<pDestEnd; pDest++)
-	{
-		buff[0] = *pSrc++;
-		buff[1] = *pSrc++;
-		*pDest = (char)strtol(buff, NULL, 16);
-	}
-	
-	*pDest = '\0';
-	return szBinBuff;
+    *nDestLen = nSrcLen / 2;
+    pSrc = (char *)s;
+    buff[2] = '\0';
+
+    pDestEnd = szBinBuff + (*nDestLen);
+    for (pDest=szBinBuff; pDest<pDestEnd; pDest++)
+    {
+        buff[0] = *pSrc++;
+        buff[1] = *pSrc++;
+        *pDest = (char)strtol(buff, NULL, 16);
+    }
+
+    *pDest = '\0';
+    return szBinBuff;
 }
 
 void printBuffHex(const char *s, const int len)

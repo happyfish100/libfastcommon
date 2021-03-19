@@ -21,6 +21,7 @@
 #include <pthread.h>
 #include <string.h>
 #include <errno.h>
+#include <limits.h>
 
 #ifdef WIN32
 
@@ -224,6 +225,12 @@ typedef struct
     pthread_cond_t cond;
 } pthread_lock_cond_pair_t;
 
+typedef struct
+{
+    char buff[PATH_MAX];
+    string_t s;
+} FilenameString;
+
 typedef void (*FreeDataFunc)(void *ptr);
 typedef int (*CompareFunc)(void *p1, void *p2);
 typedef void* (*MallocFunc)(size_t size);
@@ -282,6 +289,13 @@ typedef void* (*MallocFunc)(size_t size);
 
 #define FC_IS_NULL_STRING(s)  ((s)->str == NULL)
 #define FC_IS_EMPTY_STRING(s)  ((s)->len == 0)
+
+#define FC_INIT_FILENAME_STRING(filename)  \
+    FC_SET_STRING_EX((filename).s, (filename).buff, 0)
+
+#define FC_FILENAME_STRING_OBJ(filename)  ((filename).s)
+#define FC_FILENAME_STRING_PTR(filename)  ((filename).buff)
+#define FC_FILENAME_BUFFER_SIZE(filename)  sizeof((filename).buff)
 
 #define fc_compare_string(s1, s2) fc_string_compare(s1, s2)
 
