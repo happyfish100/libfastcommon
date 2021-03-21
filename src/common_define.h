@@ -209,6 +209,12 @@ typedef struct
 
 typedef struct
 {
+    int64_t id;
+    string_t name;
+} id_name_pair_t;
+
+typedef struct
+{
     string_t key;
     string_t value;
 } key_value_pair_t;
@@ -326,6 +332,39 @@ static inline bool fc_string_equal2(const string_t *s1,
 
 #define fc_string_equals(s1, s2) fc_string_equal(s1, s2)
 #define fc_string_equals2(s1, str2, len2) fc_string_equal2(s1, str2, len2)
+
+
+#define fc_case_compare_string(s1, s2) fc_string_case_compare(s1, s2)
+
+static inline int fc_string_case_compare(const string_t *s1, const string_t *s2)
+{
+    int result;
+    if (s1->len == s2->len) {
+        return strncasecmp(s1->str, s2->str, s1->len);
+    } else if (s1->len < s2->len) {
+        result = strncasecmp(s1->str, s2->str, s1->len);
+        return result == 0 ? -1 : result;
+    } else {
+        result = strncasecmp(s1->str, s2->str, s2->len);
+        return result == 0 ? 1 : result;
+    }
+}
+
+static inline bool fc_string_case_equal(const string_t *s1, const string_t *s2)
+{
+    return (s1->len == s2->len) && (strncasecmp(s1->str, s2->str, s1->len) == 0);
+}
+
+static inline bool fc_string_case_equal2(const string_t *s1,
+        const char *str2, const int len2)
+{
+    return (s1->len == len2) && (strncasecmp(s1->str, str2, s1->len) == 0);
+}
+
+#define fc_string_case_equals(s1, s2) fc_string_case_equal(s1, s2)
+#define fc_string_case_equals2(s1, str2, len2) \
+    fc_string_case_equal2(s1, str2, len2)
+
 
 static inline int fc_compare_int64(const int64_t n1, const int64_t n2)
 {
