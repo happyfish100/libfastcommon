@@ -1056,6 +1056,11 @@ static inline int fc_sleep_ms(const int milliseconds)
     }
 }
 
+int fc_check_filename_ex(const string_t *filename, const char *caption,
+        char *error_info, int *error_len, const int error_size);
+
+int fc_check_filename(const string_t *filename, const char *caption);
+
 #ifdef __cplusplus
 }
 #endif

@@ -2178,13 +2178,18 @@ int parse_bytes(const char *pStr, const int default_unit_bytes, int64_t *bytes)
 	if (*bytes < 0)
 	{
 		logError("file: "__FILE__", line: %d, " \
-			"bytes: %"PRId64" < 0", __LINE__, *bytes);
+			"bytes: %"PRId64" < 0, input string: %s",
+            __LINE__, *bytes, pStr);
 		return EINVAL;
 	}
 
 	if (pReservedEnd == NULL || *pReservedEnd == '\0')
 	{
 		*bytes *= default_unit_bytes;
+	}
+	else if (*pReservedEnd == 'T' || *pReservedEnd == 't')
+	{
+		*bytes *= 1024 * 1024 * 1024 * 1024LL;
 	}
 	else if (*pReservedEnd == 'G' || *pReservedEnd == 'g')
 	{
@@ -2198,6 +2203,13 @@ int parse_bytes(const char *pStr, const int default_unit_bytes, int64_t *bytes)
 	{
 		*bytes *= 1024;
 	}
+    else
+    {
+        logError("file: "__FILE__", line: %d, "
+                "unkown byte unit: %c (0x%02x), input string: %s",
+                __LINE__, *pReservedEnd, *pReservedEnd, pStr);
+        return EINVAL;
+    }
 
 	return 0;
 }
@@ -3381,4 +3393,53 @@ bool fc_path_contains(const string_t *path, const string_t *needle,
     }
 
     return true;
+}
+
+int fc_check_filename_ex(const string_t *filename, const char *caption,
+        char *error_info, int *error_len, const int error_size)
+{
+    if (filename->len <= 0) {
+        *error_len = snprintf(error_info, error_size,
+                "invalid %s, length: %d <= 0",
+                caption, filename->len);
+        return EINVAL;
+    }
+
+    if (fc_string_equal2(filename, ".", 1) ||
+            fc_string_equal2(filename, "..", 2))
+    {
+        *error_len = snprintf(error_info, error_size,
+                "invalid %s: %.*s", caption,
+                filename->len, filename->str);
+        return EINVAL;
+    }
+
+    if (memchr(filename->str, '/', filename->len) != NULL) {
+        *error_len = snprintf(error_info, error_size,
+                "%s is invalid because contains /", caption);
+        return EINVAL;
+    }
+
+    if (memchr(filename->str, '\0', filename->len) != NULL) {
+        *error_len = snprintf(error_info, error_size,
+                "%s is invalid because contains 0x0", caption);
+        return EINVAL;
+    }
+
+    return 0;
+}
+
+int fc_check_filename(const string_t *filename, const char *caption)
+{
+    char error_info[256];
+    int error_len;
+    int result;
+
+    if ((result=fc_check_filename_ex(filename, caption, error_info,
+                    &error_len, sizeof(error_info))) != 0)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "%s", __LINE__, error_info);
+    }
+    return result;
 }

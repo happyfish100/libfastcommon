@@ -1,10 +1,11 @@
 
-Version 1.49  2021-03-21
+Version 1.49  2021-03-28
   * add macros: FC_ABS and FC_NEGATIVE
   * uniq_skiplist.c: add uniq_skiplist_pair struct and init function
   * add functions: fc_mkdirs and str_replace
   * add FilenameString type and macro
   * add functions: fc_string_case_compare, fc_string_case_equal etc.
+  * add functions: fc_check_filename_ex
 
 Version 1.48  2021-02-01
   * fast_buffer.[hc]: add function fast_buffer_append_binary
