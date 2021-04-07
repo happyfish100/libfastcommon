@@ -135,6 +135,26 @@ void fc_queue_push_queue_to_head_ex(struct fc_queue *queue,
     PTHREAD_MUTEX_UNLOCK(&queue->lc_pair.lock);
 }
 
+void fc_queue_push_queue_to_tail_ex(struct fc_queue *queue,
+        struct fc_queue_info *qinfo, bool *notify)
+{
+    if (qinfo->head == NULL) {
+        *notify = false;
+        return;
+    }
+
+    PTHREAD_MUTEX_LOCK(&queue->lc_pair.lock);
+    if (queue->head == NULL) {
+        queue->head = qinfo->head;
+        *notify = true;
+    } else {
+        FC_QUEUE_NEXT_PTR(queue, queue->tail) = qinfo->head;
+        *notify = false;
+    }
+    queue->tail = qinfo->tail;
+    PTHREAD_MUTEX_UNLOCK(&queue->lc_pair.lock);
+}
+
 void fc_queue_pop_to_queue(struct fc_queue *queue,
         struct fc_queue_info *qinfo)
 {

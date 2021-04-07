@@ -93,6 +93,34 @@ static inline void fc_queue_push_queue_to_head(struct fc_queue *queue,
     }
 }
 
+static inline void fc_queue_push_queue_to_head_silence(
+        struct fc_queue *queue, struct fc_queue_info *qinfo)
+{
+    bool notify;
+    fc_queue_push_queue_to_head_ex(queue, qinfo, &notify);
+}
+
+void fc_queue_push_queue_to_tail_ex(struct fc_queue *queue,
+        struct fc_queue_info *qinfo, bool *notify);
+
+static inline void fc_queue_push_queue_to_tail(struct fc_queue *queue,
+        struct fc_queue_info *qinfo)
+{
+    bool notify;
+
+    fc_queue_push_queue_to_tail_ex(queue, qinfo, &notify);
+    if (notify) {
+        pthread_cond_signal(&(queue->lc_pair.cond));
+    }
+}
+
+static inline void fc_queue_push_queue_to_tail_silence(
+        struct fc_queue *queue, struct fc_queue_info *qinfo)
+{
+    bool notify;
+    fc_queue_push_queue_to_tail_ex(queue, qinfo, &notify);
+}
+
 void *fc_queue_pop_ex(struct fc_queue *queue, const bool blocked);
 #define fc_queue_pop(queue) fc_queue_pop_ex(queue, true)
 #define fc_queue_try_pop(queue) fc_queue_pop_ex(queue, false)
