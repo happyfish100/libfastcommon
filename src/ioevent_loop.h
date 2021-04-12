@@ -32,6 +32,11 @@ int ioevent_remove(IOEventPoller *ioevent, void *data);
 int ioevent_set(struct fast_task_info *pTask, struct nio_thread_data *pThread,
 	int sock, short event, IOEventCallback callback, const int timeout);
 
+static inline bool ioevent_is_canceled(struct fast_task_info *task)
+{
+    return __sync_fetch_and_add(&task->canceled, 0) != 0;
+}
+
 //only called by the nio thread
 static inline void ioevent_add_to_deleted_list(struct fast_task_info *task)
 {

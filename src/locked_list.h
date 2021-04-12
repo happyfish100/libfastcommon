@@ -48,6 +48,15 @@ extern "C" {
         PTHREAD_MUTEX_UNLOCK(&list->lock);
     }
 
+    static inline int locked_list_count(FCLockedList *list)
+    {
+        int count;
+        PTHREAD_MUTEX_LOCK(&list->lock);
+        count = fc_list_count(&list->head);
+        PTHREAD_MUTEX_UNLOCK(&list->lock);
+        return count;
+    }
+
 #ifdef __cplusplus
 }
 #endif
