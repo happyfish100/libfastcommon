@@ -2172,46 +2172,67 @@ int cmp_by_ip_addr_t(const void *p1, const void *p2)
 int parse_bytes(const char *pStr, const int default_unit_bytes, int64_t *bytes)
 {
 	char *pReservedEnd;
+    int result;
 
 	pReservedEnd = NULL;
 	*bytes = strtol(pStr, &pReservedEnd, 10);
 	if (*bytes < 0)
-	{
-		logError("file: "__FILE__", line: %d, " \
-			"bytes: %"PRId64" < 0, input string: %s",
-            __LINE__, *bytes, pStr);
-		return EINVAL;
-	}
+    {
+        logError("file: "__FILE__", line: %d, " \
+                "bytes: %"PRId64" < 0, input string: %s",
+                __LINE__, *bytes, pStr);
+        return EINVAL;
+    }
 
 	if (pReservedEnd == NULL || *pReservedEnd == '\0')
 	{
 		*bytes *= default_unit_bytes;
+        return 0;
 	}
-	else if (*pReservedEnd == 'T' || *pReservedEnd == 't')
+
+	if (*pReservedEnd == 'T' || *pReservedEnd == 't')
 	{
 		*bytes *= 1024 * 1024 * 1024 * 1024LL;
+        result = 0;
 	}
 	else if (*pReservedEnd == 'G' || *pReservedEnd == 'g')
 	{
 		*bytes *= 1024 * 1024 * 1024;
+        result = 0;
 	}
 	else if (*pReservedEnd == 'M' || *pReservedEnd == 'm')
 	{
 		*bytes *= 1024 * 1024;
+        result = 0;
 	}
 	else if (*pReservedEnd == 'K' || *pReservedEnd == 'k')
-	{
-		*bytes *= 1024;
-	}
+    {
+        *bytes *= 1024;
+        result = 0;
+    }
     else
     {
-        logError("file: "__FILE__", line: %d, "
-                "unkown byte unit: %c (0x%02x), input string: %s",
-                __LINE__, *pReservedEnd, *pReservedEnd, pStr);
-        return EINVAL;
+        result = EINVAL;
     }
 
-	return 0;
+    if (result == 0)
+    {
+        if (*(pReservedEnd + 1) == '\0')
+        {
+            return 0;
+        }
+        if ((*(pReservedEnd + 1) == 'B' || *(pReservedEnd + 1) == 'b') &&
+                (*(pReservedEnd + 2) == '\0'))
+        {
+            return 0;
+        }
+        result = EINVAL;
+    }
+
+    logError("file: "__FILE__", line: %d, "
+            "unkown byte unit: %s, input string: %s",
+            __LINE__, pReservedEnd, pStr);
+    return result;
 }
 
 int set_rand_seed()

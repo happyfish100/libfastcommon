@@ -1,5 +1,5 @@
 
-Version 1.49  2021-04-09
+Version 1.49  2021-04-17
   * add macros: FC_ABS and FC_NEGATIVE
   * uniq_skiplist.c: add uniq_skiplist_pair struct and init function
   * add functions: fc_mkdirs and str_replace
@@ -8,6 +8,7 @@ Version 1.49  2021-04-09
   * add function: fc_check_filename_ex
   * add functions: fc_queue_push_queue_to_tail etc.
   * add file locked_list.h
+  * parse_bytes function more graceful
 
 Version 1.48  2021-02-01
   * fast_buffer.[hc]: add function fast_buffer_append_binary
