@@ -17,11 +17,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-
-#ifdef OS_LINUX
-#include <sys/prctl.h>
-#endif
-
 #include "shared_func.h"
 #include "pthread_func.h"
 #include "logger.h"

@@ -18,11 +18,6 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <string.h>
-
-#ifdef OS_LINUX
-#include <sys/prctl.h>
-#endif
-
 #include "sched_thread.h"
 #include "fc_memory.h"
 #include "thread_pool.h"
