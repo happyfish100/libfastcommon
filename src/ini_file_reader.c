@@ -596,6 +596,13 @@ int iniLoadFromFile(const char *szFilename, IniContext *pContext)
             NULL, 0, FAST_INI_FLAGS_NONE);
 }
 
+int iniLoadFromFile1(const char *szFilename,
+        IniContext *pContext, const char flags)
+{
+    return iniLoadFromFileEx(szFilename, pContext,
+            FAST_INI_ANNOTATION_WITH_BUILTIN, NULL, 0, flags);
+}
+
 static void iniDestroyAnnotations(const int old_annotation_count)
 {
     AnnotationEntry *pAnnoEntry;
@@ -826,6 +833,11 @@ int iniLoadFromBuffer(char *content, IniContext *pContext)
             NULL, 0, FAST_INI_FLAGS_NONE);
 }
 
+int iniLoadFromBuffer1(char *content, IniContext *pContext, const char flags)
+{
+    return iniLoadFromBufferEx(content, pContext,
+            FAST_INI_ANNOTATION_WITH_BUILTIN, NULL, 0, flags);
+}
 
 typedef int (*init_annotation_func0)(AnnotationEntry *annotation);
 typedef int (*init_annotation_func1)(AnnotationEntry *annotation,

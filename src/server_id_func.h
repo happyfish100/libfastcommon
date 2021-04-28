@@ -189,6 +189,22 @@ static inline int fc_server_load_from_buffer(FCServerConfig *ctx,
             default_port, min_hosts_each_group, share_between_groups);
 }
 
+int fc_server_load_from_ini_context_ex(FCServerConfig *ctx,
+        IniContext *ini_context, const char *config_filename,
+        const int default_port, const int min_hosts_each_group,
+        const bool share_between_groups);
+
+static inline int fc_server_load_from_ini_context(FCServerConfig *ctx,
+        IniContext *ini_context, const char *config_filename)
+{
+    const int default_port = 0;
+    const int min_hosts_each_group = 1;
+    const bool share_between_groups = false;
+    return fc_server_load_from_ini_context_ex(ctx, ini_context,
+            config_filename, default_port, min_hosts_each_group,
+            share_between_groups);
+}
+
 void fc_server_destroy(FCServerConfig *ctx);
 
 int fc_server_to_config_string(FCServerConfig *ctx, FastBuffer *buffer);

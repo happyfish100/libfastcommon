@@ -169,6 +169,16 @@ void iniAnnotationFreeValues(struct ini_annotation_entry *annotation,
 */
 int iniLoadFromFile(const char *szFilename, IniContext *pContext);
 
+/** load ini items from file with flags
+ *  parameters:
+ *           szFilename: the filename, can be an URL
+ *           pContext: the ini context
+ *           flags: the flags
+ *  return: error no, 0 for success, != 0 fail
+*/
+int iniLoadFromFile1(const char *szFilename,
+        IniContext *pContext, const char flags);
+
 /** load ini items from file
  *  parameters:
  *           szFilename: the filename, can be an URL
@@ -204,6 +214,15 @@ int iniLoadFromBuffer(char *content, IniContext *pContext);
 int iniLoadFromBufferEx(char *content, IniContext *pContext,
     const char annotation_type, AnnotationEntry *annotations, const int count,
     const char flags);
+
+/** load ini items from string buffer with flags
+ *  parameters:
+ *           content: the string buffer to parse
+ *           pContext: the ini context
+ *           flags: the flags
+ *  return: error no, 0 for success, != 0 fail
+*/
+int iniLoadFromBuffer1(char *content, IniContext *pContext, const char flags);
 
 /** free ini context
  *  parameters:

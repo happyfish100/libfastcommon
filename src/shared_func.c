@@ -3464,3 +3464,27 @@ int fc_check_filename(const string_t *filename, const char *caption)
     }
     return result;
 }
+
+bool is_digital_string(const char *str)
+{
+    const char *p;
+    const char *end;
+    int len;
+
+    len = strlen(str);
+    if (len == 0)
+    {
+        return false;
+    }
+
+    end = str + len;
+    for (p=str; p<end; p++)
+    {
+        if (!FC_IS_DIGITAL(*p))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}

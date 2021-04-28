@@ -1069,7 +1069,6 @@ static int fc_server_load_one_server(FCServerConfig *ctx,
     }
 
     fc_server_set_group_ptr(ctx, server);
-
     if ((result=fc_server_load_hosts(ctx, server, config_filename,
                     ini_context, section_name)) != 0)
     {
@@ -1085,25 +1084,27 @@ static int fc_server_load_servers(FCServerConfig *ctx,
 {
 #define FIXED_SECTION_COUNT  16
 	int result;
-    int count;
+    int section_count;
+    int server_count;
     IniSectionInfo *sections;
     IniSectionInfo fixed[FIXED_SECTION_COUNT];
     IniSectionInfo *section;
     IniSectionInfo *end;
 	int alloc_bytes;
 
-    count = iniGetSectionCountByPrefix(ini_context, SERVER_SECTION_PREFIX_STR);
-    if (count == 0) {
+    section_count = iniGetSectionCountByPrefix(ini_context,
+            SERVER_SECTION_PREFIX_STR);
+    if (section_count == 0) {
         logError("file: "__FILE__", line: %d, "
                 "config filename: %s, no server section such as [%s$id]",
                 __LINE__, config_filename, SERVER_SECTION_PREFIX_STR);
         return ENOENT;
     }
 
-    if (count < FIXED_SECTION_COUNT) {
+    if (section_count < FIXED_SECTION_COUNT) {
         sections = fixed;
     } else {
-        alloc_bytes = sizeof(IniSectionInfo) * count;
+        alloc_bytes = sizeof(IniSectionInfo) * section_count;
         sections = (IniSectionInfo *)fc_malloc(alloc_bytes);
         if (sections == NULL) {
             return ENOMEM;
@@ -1113,7 +1114,7 @@ static int fc_server_load_servers(FCServerConfig *ctx,
     do {
         if ((result=iniGetSectionNamesByPrefix(ini_context,
                         SERVER_SECTION_PREFIX_STR, sections,
-                        count, &count)) != 0)
+                        section_count, &section_count)) != 0)
         {
             logError("file: "__FILE__", line: %d, "
                     "config filename: %s, get sections by prefix %s fail, "
@@ -1122,14 +1123,35 @@ static int fc_server_load_servers(FCServerConfig *ctx,
             break;
         }
 
-        if ((result=fc_server_alloc_servers(&ctx->
-                        sorted_server_arrays.by_id, count)) != 0)
+        end = sections + section_count;
+        server_count = 0;
+        for (section=sections; section<end; section++) {
+            if (is_digital_string(section->section_name +
+                        SERVER_SECTION_PREFIX_LEN))
+            {
+                ++server_count;
+            }
+        }
+        if (server_count == 0) {
+            logError("file: "__FILE__", line: %d, "
+                    "config filename: %s, no server section such as [%s$id]",
+                    __LINE__, config_filename, SERVER_SECTION_PREFIX_STR);
+            return ENOENT;
+        }
+
+        if ((result=fc_server_alloc_servers(&ctx->sorted_server_arrays.
+                        by_id, server_count)) != 0)
         {
             return result;
         }
 
-        end = sections + count;
         for (section=sections; section<end; section++) {
+            if (!is_digital_string(section->section_name +
+                        SERVER_SECTION_PREFIX_LEN))
+            {
+                continue;
+            }
+
             if ((result=fc_server_load_one_server(ctx, config_filename,
                             ini_context, section->section_name)) != 0)
             {
@@ -1145,8 +1167,8 @@ static int fc_server_load_servers(FCServerConfig *ctx,
     return result;
 }
 
-int fc_server_load_data(FCServerConfig *ctx, IniContext *ini_context,
-        const char *config_filename)
+static int fc_server_load_data(FCServerConfig *ctx,
+        IniContext *ini_context, const char *config_filename)
 {
 	int result;
 
@@ -1193,8 +1215,7 @@ int fc_server_load_from_file_ex(FCServerConfig *ctx,
     FC_SERVER_INIT_CONTEXT(ctx, default_port, min_hosts_each_group,
             share_between_groups);
 
-    if ((result=iniLoadFromFileEx(config_filename, &ini_context,
-            FAST_INI_ANNOTATION_WITH_BUILTIN, NULL, 0,
+    if ((result=iniLoadFromFile1(config_filename, &ini_context,
             FAST_INI_FLAGS_DISABLE_SAME_SECTION_MERGE)) != 0)
     {
         return result;
@@ -1214,8 +1235,7 @@ int fc_server_load_from_buffer_ex(FCServerConfig *ctx, char *content,
 
     FC_SERVER_INIT_CONTEXT(ctx, default_port, min_hosts_each_group,
             share_between_groups);
-    if ((result=iniLoadFromBufferEx(content, &ini_context,
-            FAST_INI_ANNOTATION_WITH_BUILTIN, NULL, 0,
+    if ((result=iniLoadFromBuffer1(content, &ini_context,
             FAST_INI_FLAGS_DISABLE_SAME_SECTION_MERGE)) != 0)
     {
         return result;
@@ -1224,6 +1244,16 @@ int fc_server_load_from_buffer_ex(FCServerConfig *ctx, char *content,
 	result = fc_server_load_data(ctx, &ini_context, caption);
     iniFreeContext(&ini_context);
 	return result;
+}
+
+int fc_server_load_from_ini_context_ex(FCServerConfig *ctx,
+        IniContext *ini_context, const char *config_filename,
+        const int default_port, const int min_hosts_each_group,
+        const bool share_between_groups)
+{
+    FC_SERVER_INIT_CONTEXT(ctx, default_port, min_hosts_each_group,
+            share_between_groups);
+    return fc_server_load_data(ctx, ini_context, config_filename);
 }
 
 static void fc_server_free_addresses(FCServerConfig *ctx)

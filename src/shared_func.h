@@ -1061,6 +1061,13 @@ int fc_check_filename_ex(const string_t *filename, const char *caption,
 
 int fc_check_filename(const string_t *filename, const char *caption);
 
+/** is pure digital string
+ *  parameters:
+ *      str: the string to detect
+ *  return: true for digital string, otherwise false
+ */
+bool is_digital_string(const char *str);
+
 #ifdef __cplusplus
 }
 #endif
