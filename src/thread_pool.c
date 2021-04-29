@@ -18,6 +18,11 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <string.h>
+
+#ifdef OS_LINUX
+#include <sys/prctl.h>
+#endif
+
 #include "sched_thread.h"
 #include "fc_memory.h"
 #include "thread_pool.h"
@@ -35,6 +40,15 @@ static void *thread_entrance(void *arg)
 
     thread = (FCThreadInfo *)arg;
     pool = thread->pool;
+
+#ifdef OS_LINUX
+    {
+        char thread_name[64];
+        snprintf(thread_name, sizeof(thread_name), "%s[%d]",
+                pool->name, thread->index);
+        prctl(PR_SET_NAME, thread_name);
+    }
+#endif
 
     if (pool->extra_data_callbacks.alloc != NULL) {
         thread->tdata = pool->extra_data_callbacks.alloc();

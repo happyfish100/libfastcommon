@@ -1,7 +1,8 @@
 
-Version 1.50  2021-04-28
+Version 1.50  2021-04-29
   * add function is_digital_string
   * add function fc_server_load_from_ini_context
+  * set thread name as necessary
 
 Version 1.49  2021-04-17
   * add macros: FC_ABS and FC_NEGATIVE

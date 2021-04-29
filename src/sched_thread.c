@@ -17,6 +17,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+
+#ifdef OS_LINUX
+#include <sys/prctl.h>
+#endif
+
 #include "shared_func.h"
 #include "pthread_func.h"
 #include "logger.h"
@@ -377,6 +382,10 @@ static void *sched_call_func(void *args)
     TaskFunc task_func;
     int task_id;
 
+#ifdef OS_LINUX
+    prctl(PR_SET_NAME, "sched-call");
+#endif
+
     pEntry = (ScheduleEntry *)args;
     task_func = pEntry->task_func;
     func_args = pEntry->func_args;
@@ -404,6 +413,10 @@ static void *sched_thread_entrance(void *args)
 	ScheduleEntry *pUntil;
 	int exec_count;
 	int i;
+
+#ifdef OS_LINUX
+    prctl(PR_SET_NAME, "sched");
+#endif
 
 	pContext = (ScheduleContext *)args;
 	if (sched_init_entries(pContext->scheduleArray.entries,
@@ -851,6 +864,10 @@ static void *sched_call_delay_func(void *args)
     struct delay_thread_context *delay_context;
     ScheduleContext *pContext;
     FastDelayTask *task;
+
+#ifdef OS_LINUX
+    prctl(PR_SET_NAME, "sched-delay");
+#endif
 
     delay_context = (struct delay_thread_context *)args;
     task = delay_context->task;
