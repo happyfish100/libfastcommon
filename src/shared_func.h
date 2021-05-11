@@ -1068,6 +1068,7 @@ int fc_check_filename(const string_t *filename, const char *caption);
  */
 bool is_digital_string(const char *str);
 
+
 #ifdef __cplusplus
 }
 #endif

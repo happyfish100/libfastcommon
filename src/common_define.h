@@ -35,6 +35,7 @@ typedef DWORD (WINAPI *ThreadEntranceFunc)(LPVOID lpThreadParameter);
 #else
 
 #include <unistd.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <inttypes.h>
@@ -382,6 +383,13 @@ static inline int fc_compare_int64(const int64_t n1, const int64_t n2)
         return 0;
     }
 }
+
+#ifdef OS_LINUX
+#define fc_fallocate(fd, size)  fallocate(fd, 0, 0, size)
+#else
+#define fc_fallocate(fd, size)  ftruncate(fd, size)
+#endif
+
 
 #ifdef __cplusplus
 }
