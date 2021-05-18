@@ -244,6 +244,26 @@ int fast_mblock_free(struct fast_mblock_man *mblock,
 		     struct fast_mblock_node *pNode);
 
 /**
+batch alloc nodes from the mblock
+parameters:
+	mblock: the mblock pointer
+    count: alloc count
+return the alloced node head, return NULL if fail
+*/
+struct fast_mblock_node *fast_mblock_batch_alloc(
+        struct fast_mblock_man *mblock, const int count);
+
+/**
+batch free nodes
+parameters:
+	mblock: the mblock pointer
+	chain: the node chain to free
+return 0 for success, return none zero if fail
+*/
+int fast_mblock_batch_free(struct fast_mblock_man *mblock,
+        struct fast_mblock_chain *chain);
+
+/**
 delay free a node (put a node to the mblock)
 parameters:
 	mblock: the mblock pointer

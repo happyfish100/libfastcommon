@@ -623,20 +623,11 @@ void fast_mblock_destroy(struct fast_mblock_man *mblock)
     delete_from_mblock_list(mblock);
 }
 
-struct fast_mblock_node *fast_mblock_alloc(struct fast_mblock_man *mblock)
+static inline struct fast_mblock_node *alloc_node(
+        struct fast_mblock_man *mblock)
 {
 	struct fast_mblock_node *pNode;
 	int result;
-
-	if (mblock->need_lock && (result=pthread_mutex_lock(
-                    &mblock->lcp.lock)) != 0)
-	{
-		logError("file: "__FILE__", line: %d, "
-			"call pthread_mutex_lock fail, "
-			"errno: %d, error info: %s",
-			__LINE__, result, STRERROR(result));
-		return NULL;
-	}
 
     while (1)
     {
@@ -688,6 +679,27 @@ struct fast_mblock_node *fast_mblock_alloc(struct fast_mblock_man *mblock)
         mblock->info.element_used_count++;
         fast_mblock_ref_counter_inc(mblock, pNode);
     }
+
+	return pNode;
+}
+
+struct fast_mblock_node *fast_mblock_alloc(struct fast_mblock_man *mblock)
+{
+	struct fast_mblock_node *pNode;
+	int result;
+
+	if (mblock->need_lock && (result=pthread_mutex_lock(
+                    &mblock->lcp.lock)) != 0)
+	{
+		logError("file: "__FILE__", line: %d, "
+			"call pthread_mutex_lock fail, "
+			"errno: %d, error info: %s",
+			__LINE__, result, STRERROR(result));
+		return NULL;
+	}
+
+    pNode = alloc_node(mblock);
+
 	if (mblock->need_lock && (result=pthread_mutex_unlock(
                     &mblock->lcp.lock)) != 0)
 	{
@@ -700,7 +712,7 @@ struct fast_mblock_node *fast_mblock_alloc(struct fast_mblock_man *mblock)
 	return pNode;
 }
 
-int fast_mblock_free(struct fast_mblock_man *mblock, \
+int fast_mblock_free(struct fast_mblock_man *mblock,
 		     struct fast_mblock_node *pNode)
 {
 	int result;
@@ -729,12 +741,119 @@ int fast_mblock_free(struct fast_mblock_man *mblock, \
 
 	if (mblock->need_lock && (result=pthread_mutex_unlock(
                     &mblock->lcp.lock)) != 0)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "call pthread_mutex_unlock fail, "
+                "errno: %d, error info: %s",
+                __LINE__, result, STRERROR(result));
+    }
+
+	return 0;
+}
+
+static inline void batch_free(struct fast_mblock_man *mblock,
+        struct fast_mblock_chain *chain)
+{
+    bool notify;
+    struct fast_mblock_node *pNode;
+
+    pNode = chain->head;
+    while (pNode != NULL)
+    {
+        mblock->info.element_used_count--;
+        fast_mblock_ref_counter_dec(mblock, pNode);
+        pNode = pNode->next;
+    }
+
+    notify = (mblock->free_chain_head == NULL);
+    chain->tail->next = mblock->free_chain_head;
+    mblock->free_chain_head = chain->head;
+    if (mblock->alloc_elements.need_wait && notify)
+    {
+        pthread_cond_broadcast(&mblock->lcp.cond);
+    }
+}
+
+struct fast_mblock_node *fast_mblock_batch_alloc(
+        struct fast_mblock_man *mblock, const int count)
+{
+    struct fast_mblock_chain chain;
+	struct fast_mblock_node *pNode;
+    int i;
+	int result;
+
+	if (mblock->need_lock && (result=pthread_mutex_lock(
+                    &mblock->lcp.lock)) != 0)
 	{
 		logError("file: "__FILE__", line: %d, "
-			"call pthread_mutex_unlock fail, "
+			"call pthread_mutex_lock fail, "
 			"errno: %d, error info: %s",
 			__LINE__, result, STRERROR(result));
+		return NULL;
 	}
+
+    if ((chain.head=alloc_node(mblock)) != NULL)
+    {
+        chain.tail = chain.head;
+        for (i=1; i<count; i++)
+        {
+            if ((pNode=alloc_node(mblock)) == NULL)
+            {
+                break;
+            }
+
+            chain.tail->next = pNode;
+            chain.tail = pNode;
+        }
+        chain.tail->next = NULL;
+
+        if (i != count) {  //fail
+            batch_free(mblock, &chain);
+            chain.head = NULL;
+        }
+    }
+
+	if (mblock->need_lock && (result=pthread_mutex_unlock(
+                    &mblock->lcp.lock)) != 0)
+    {
+        logError("file: "__FILE__", line: %d, " \
+                "call pthread_mutex_unlock fail, " \
+                "errno: %d, error info: %s", \
+                __LINE__, result, STRERROR(result));
+    }
+
+	return chain.head;
+}
+
+int fast_mblock_batch_free(struct fast_mblock_man *mblock,
+        struct fast_mblock_chain *chain)
+{
+	int result;
+
+    if (chain->head == NULL) {
+        return ENOENT;
+    }
+
+	if (mblock->need_lock && (result=pthread_mutex_lock(
+                    &mblock->lcp.lock)) != 0)
+	{
+		logError("file: "__FILE__", line: %d, " \
+			"call pthread_mutex_lock fail, " \
+			"errno: %d, error info: %s", \
+			__LINE__, result, STRERROR(result));
+		return result;
+	}
+
+    batch_free(mblock, chain);
+
+	if (mblock->need_lock && (result=pthread_mutex_unlock(
+                    &mblock->lcp.lock)) != 0)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "call pthread_mutex_unlock fail, "
+                "errno: %d, error info: %s",
+                __LINE__, result, STRERROR(result));
+    }
 
 	return 0;
 }
