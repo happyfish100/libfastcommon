@@ -181,6 +181,12 @@ typedef struct
 
 typedef struct
 {
+    char **strs;
+    int count;
+} str_ptr_array_t;
+
+typedef struct
+{
 	char *key;
 	char *value;
 } KeyValuePair;

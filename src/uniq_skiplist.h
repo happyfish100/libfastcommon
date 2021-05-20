@@ -75,7 +75,7 @@ extern "C" {
         delay_free_seconds) \
     uniq_skiplist_init_ex2(factory, max_level_count, compare_func, \
         free_func, alloc_skiplist_once, min_alloc_elements_once, \
-        delay_free_seconds, false)
+        delay_free_seconds, false, false)
 
 #define uniq_skiplist_init(factory, max_level_count, compare_func, free_func) \
     uniq_skiplist_init_ex(factory, max_level_count,  \
@@ -102,7 +102,7 @@ int uniq_skiplist_init_ex2(UniqSkiplistFactory *factory,
         const int max_level_count, skiplist_compare_func compare_func,
         uniq_skiplist_free_func free_func, const int alloc_skiplist_once,
         const int min_alloc_elements_once, const int delay_free_seconds,
-        const bool bidirection);
+        const bool bidirection, const bool allocator_use_lock);
 
 void uniq_skiplist_destroy(UniqSkiplistFactory *factory);
 
@@ -118,12 +118,13 @@ static inline int uniq_skiplist_init_pair_ex(UniqSkiplistPair *pair,
         const int delay_free_seconds, const bool bidirection)
 {
     const int alloc_skiplist_once = 1;
+    const bool allocator_use_lock = false;
     int result;
 
     if ((result=uniq_skiplist_init_ex2(&pair->factory, max_level_count,
                     compare_func, free_func, alloc_skiplist_once,
                     min_alloc_elements_once, delay_free_seconds,
-                    bidirection)) != 0)
+                    bidirection, allocator_use_lock)) != 0)
     {
         return result;
     }
