@@ -34,6 +34,7 @@
 #include "logger.h"
 #include "sockopt.h"
 #include "fc_memory.h"
+#include "http_func.h"
 #include "shared_func.h"
 
 #ifdef OS_LINUX
@@ -2989,28 +2990,156 @@ char *format_http_date(time_t t, BufferInfo *buffer)
     return buffer->buff;
 }
 
-char *resolve_path(const char *from, const char *filename,
+int normalize_path(const char *from, const char *filename,
         char *full_filename, const int size)
 {
     const char *last;
     int len;
 
     if (*filename == '/') {
-        snprintf(full_filename, size, "%s", filename);
-        return full_filename;
+        return snprintf(full_filename, size, "%s", filename);
     }
 
     last = strrchr(from, '/');
     if (last != NULL) {
         len = last - from;
-        snprintf(full_filename, size, "%.*s/%s", len, from, filename);
+        return snprintf(full_filename, size, "%.*s/%s", len, from, filename);
     } else {
-		logWarning("file: "__FILE__", line: %d, "
+        logWarning("file: "__FILE__", line: %d, "
                 "no \"/\" in the from filename: %s",
                 __LINE__, from);
-        snprintf(full_filename, size, "%s", filename);
+        return snprintf(full_filename, size, "%s", filename);
     }
-    return full_filename;
+}
+
+int normalize_uri(const string_t *from, const char *uri,
+        char *dest, const int size)
+{
+#define MAX_UP_PATH_COUNT  8
+    const char *start;
+    const char *end;
+    const char *last;
+    string_t fpath;
+    string_t parts[MAX_UP_PATH_COUNT];
+    int up_count;
+    int path_count;
+    int keep_count;
+    int len;
+    int i;
+
+    if (*uri == '/') {
+        return snprintf(dest, size, "%s", uri);
+    }
+
+    end = uri + strlen(uri);
+    up_count = 0;
+    start = uri;
+    while (start + 3 < end) {
+        if (memcmp(start, "../", 3) != 0) {
+            break;
+        }
+
+        ++up_count;
+        start += 3;
+    }
+
+    last = fc_memrchr(from->str, '/', from->len);
+    if (last == NULL) {
+        logWarning("file: "__FILE__", line: %d, "
+                "no \"/\" in the from uri: %s",
+                __LINE__, from->str);
+        return snprintf(dest, size, "/%s", start);
+    }
+
+    if (up_count == 0) {
+        return snprintf(dest, size, "%.*s/%s",
+                (int)(last - from->str), from->str, uri);
+    } else {
+        fpath.str = (char *)from->str;
+        fpath.len = last - from->str;
+        path_count = split_string_ex(&fpath, '/',
+                parts, MAX_UP_PATH_COUNT, true);
+        keep_count = path_count - up_count;
+        if (keep_count < 0) {
+            logWarning("file: "__FILE__", line: %d, "
+                    "uri: %s, contails too many \"../\"",
+                    __LINE__, uri);
+        }
+
+        len = 0;
+        for (i=0; i<keep_count; i++) {
+            len += snprintf(dest + len, size - len,
+                    "/%.*s", parts[i].len, parts[i].str);
+        }
+
+        len += snprintf(dest + len, size - len, "/%s", start);
+        return len;
+    }
+}
+
+int normalize_path_ex(const char *from, const char *filename,
+        char *full_filename, const int size, const int flags)
+{
+    bool is_url_from;
+    bool is_url_filename;
+    const char *base_end;
+    const char *from_ask;
+    const char *dest_ask;
+    string_t from_uri;
+    int base_len;
+    int full_len;
+
+    if ((flags & NORMALIZE_FLAGS_URL_ENABLED) == 0) {
+        return normalize_path(from, filename, full_filename, size);
+    }
+
+    is_url_from = IS_URL_RESOURCE(from);
+    is_url_filename = IS_URL_RESOURCE(filename);
+    if (!(is_url_from || is_url_filename)) {
+        return normalize_path(from, filename, full_filename, size);
+    }
+
+    if (!is_url_from) {
+        return snprintf(full_filename, size, "%s", filename);
+    }
+
+    if (is_url_filename) {
+        full_len = snprintf(full_filename, size, "%s", filename);
+        if ((flags & NORMALIZE_FLAGS_URL_APPEND_PARAMS) == 0) {
+            return full_len;
+        }
+        from_ask = strchr(from + 8, '?');
+    } else {
+        base_end = strchr(from + 8, '/');
+        if (base_end == NULL) {
+            return snprintf(full_filename, size, "%s%s%s",
+                    from, (*filename == '/' ? "" : "/"), filename);
+        }
+
+        base_len = base_end - from;
+        from_ask = strchr(base_end + 1, '?');
+        from_uri.str = (char *)base_end;
+        if (from_ask == NULL) {
+            from_uri.len = strlen(from_uri.str);
+        } else {
+            from_uri.len = from_ask - from_uri.str;
+        }
+
+        full_len = snprintf(full_filename, size, "%.*s", base_len, from);
+        full_len = normalize_uri(&from_uri, filename,
+                full_filename + full_len, size - full_len);
+    }
+
+    if ((flags & NORMALIZE_FLAGS_URL_APPEND_PARAMS) != 0) {
+        if (from_ask != NULL) {
+            dest_ask = strchr(filename, '?');
+            full_len += snprintf(full_filename + full_len,
+                    size - full_len, "%c%s", (dest_ask == NULL ?
+                        '?' : '&'), from_ask + 1);
+        }
+    }
+
+    return full_len;
 }
 
 const char *get_gzip_command_filename()

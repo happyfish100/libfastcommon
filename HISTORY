@@ -1,7 +1,8 @@
 
-Version 1.51  2021-05-20
+Version 1.51  2021-05-25
   * fast_mblock.[hc]: support batch alloc and batch free
   * uniq_skiplist.[hc]: init function add parameter: allocator_use_lock
+  * add function normalize_path_ex and normalize_uri
 
 Version 1.50  2021-05-11
   * add function is_digital_string

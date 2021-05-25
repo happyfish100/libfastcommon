@@ -54,6 +54,10 @@ src/tests/test_file_write_hole
 src/tests/test_file_lock
 src/tests/test_thread_pool
 src/tests/test_data_visible
+src/tests/test_pthread_wait
+src/tests/test_mutex_lock_perf
+src/tests/test_queue_perf
+src/tests/test_normalize_path
 
 # other
 *.swp

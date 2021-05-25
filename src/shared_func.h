@@ -26,6 +26,16 @@
 #include "common_define.h"
 #include "ini_file_reader.h"
 
+#define NORMALIZE_FLAGS_URL_ENABLED        1
+#define NORMALIZE_FLAGS_URL_APPEND_PARAMS  2
+
+#define NORMALIZE_FLAGS_URL_ENABLED_AND_APPEND_PARAMS  \
+    (NORMALIZE_FLAGS_URL_ENABLED | NORMALIZE_FLAGS_URL_APPEND_PARAMS)
+
+#define resolve_path(from, filename, full_filename, size)  \
+    normalize_path_ex(from, filename, full_filename, size, \
+            NORMALIZE_FLAGS_URL_ENABLED_AND_APPEND_PARAMS)
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -933,10 +943,36 @@ char *format_http_date(time_t t, BufferInfo *buffer);
  *      filename: the filename to resolve path
  *      full_filename: store the resolved full path filename
  *      size: the max size of full_filename
- *  return: the resolved full path filename
+ *  return: length of the resolved full path
 */
-char *resolve_path(const char *from, const char *filename,
+int normalize_path(const char *from, const char *filename,
         char *full_filename, const int size);
+
+/** return absolute uri (the second parameter)
+ *  parameters:
+ *  	from: the input uri to get base path
+ *      uri: the uri to resolve
+ *      dest: store the resolved absolute uri
+ *      size: the max size of dest
+ *  return: length of the resolved uri
+*/
+int normalize_uri(const string_t *from, const char *uri,
+        char *dest, const int size);
+
+/** return full path for the filename (the second parameter)
+ *  parameters:
+ *  	from: the input full path filename to get base path
+ *      filename: the filename to resolve path
+ *      full_filename: store the resolved full path filename
+ *      size: the max size of full_filename
+ *      flags: 
+ *           NORMALIZE_FLAGS_URL_ENABLED: support url resolve
+ *           NORMALIZE_FLAGS_URL_APPEND_PARAMS: append params of from
+ *  return: length of the resolved full path
+*/
+int normalize_path_ex(const char *from, const char *filename,
+        char *full_filename, const int size, const int flags);
+
 
 /** get gzip command full filename
  *  return: the gzip command full filename

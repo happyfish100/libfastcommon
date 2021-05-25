@@ -23,6 +23,10 @@
 #include <ctype.h>
 #include "common_define.h"
 
+#define IS_URL_RESOURCE(str)  \
+    ((strncasecmp(str, "http://", 7) == 0) || \
+     (strncasecmp(str, "https://", 8) == 0))
+
 #ifdef __cplusplus
 extern "C" {
 #endif
