@@ -1146,6 +1146,7 @@ void chopPath(char *filePath)
 int getFileContent(const char *filename, char **buff, int64_t *file_size)
 {
 	int fd;
+    int result;
 
     errno = 0;
     if (!isFile(filename))
@@ -1154,7 +1155,8 @@ int getFileContent(const char *filename, char **buff, int64_t *file_size)
 		*file_size = 0;
         if (errno != 0)
         {
-            if (errno == ENOENT)
+            result = errno;
+            if (result == ENOENT)
             {
                 logError("file: "__FILE__", line: %d, "
                         "file %s not exist", __LINE__, filename);
@@ -1163,9 +1165,9 @@ int getFileContent(const char *filename, char **buff, int64_t *file_size)
             {
                 logError("file: "__FILE__", line: %d, "
                         "stat %s fail, errno: %d, error info: %s",
-                        __LINE__, filename, errno, STRERROR(errno));
+                        __LINE__, filename, result, STRERROR(result));
             }
-            return errno != 0 ? errno : ENOENT;
+            return result;
         }
         else
         {
@@ -1180,23 +1182,25 @@ int getFileContent(const char *filename, char **buff, int64_t *file_size)
 	{
 		*buff = NULL;
 		*file_size = 0;
-		logError("file: "__FILE__", line: %d, " \
-			"open file %s fail, " \
-			"errno: %d, error info: %s", __LINE__, \
-			filename, errno, STRERROR(errno));
-		return errno != 0 ? errno : ENOENT;
+        result = errno != 0 ? errno : ENOENT;
+		logError("file: "__FILE__", line: %d, "
+			"open file %s fail, "
+			"errno: %d, error info: %s", __LINE__,
+			filename, result, STRERROR(result));
+        return result;
 	}
 
 	if ((*file_size=lseek(fd, 0, SEEK_END)) < 0)
 	{
 		*buff = NULL;
 		*file_size = 0;
+        result = errno != 0 ? errno : EIO;
 		close(fd);
-		logError("file: "__FILE__", line: %d, " \
-			"lseek file %s fail, " \
-			"errno: %d, error info: %s", __LINE__, \
-			filename, errno, STRERROR(errno));
-		return errno != 0 ? errno : EIO;
+		logError("file: "__FILE__", line: %d, "
+			"lseek file %s fail, "
+			"errno: %d, error info: %s", __LINE__,
+			filename, result, STRERROR(result));
+        return result;
 	}
 
 	*buff = (char *)fc_malloc(*file_size + 1);
@@ -1204,7 +1208,6 @@ int getFileContent(const char *filename, char **buff, int64_t *file_size)
 	{
 		*file_size = 0;
 		close(fd);
-
 		return ENOMEM;
 	}
 
@@ -1212,24 +1215,26 @@ int getFileContent(const char *filename, char **buff, int64_t *file_size)
 	{
 		*buff = NULL;
 		*file_size = 0;
+        result = errno != 0 ? errno : EIO;
 		close(fd);
-		logError("file: "__FILE__", line: %d, " \
-			"lseek file %s fail, " \
-			"errno: %d, error info: %s", __LINE__, \
-			filename, errno, STRERROR(errno));
-		return errno != 0 ? errno : EIO;
+		logError("file: "__FILE__", line: %d, "
+			"lseek file %s fail, "
+			"errno: %d, error info: %s", __LINE__,
+			filename, result, STRERROR(result));
+        return result;
 	}
 	if (read(fd, *buff, *file_size) != *file_size)
 	{
 		free(*buff);
 		*buff = NULL;
 		*file_size = 0;
+        result = errno != 0 ? errno : EIO;
 		close(fd);
-		logError("file: "__FILE__", line: %d, " \
-			"read from file %s fail, " \
-			"errno: %d, error info: %s", __LINE__, \
-			filename, errno, STRERROR(errno));
-		return errno != 0 ? errno : EIO;
+		logError("file: "__FILE__", line: %d, "
+			"read from file %s fail, "
+			"errno: %d, error info: %s", __LINE__,
+			filename, result, STRERROR(result));
+        return result;
 	}
 
 	(*buff)[*file_size] = '\0';
@@ -1242,13 +1247,13 @@ int getFileContentEx(const char *filename, char *buff, \
 		int64_t offset, int64_t *size)
 {
 	int fd;
+    int result;
 	int read_bytes;
 
 	if (*size <= 0)
 	{
-		logError("file: "__FILE__", line: %d, " \
-			"invalid size: %"PRId64, \
-			__LINE__, *size);
+		logError("file: "__FILE__", line: %d, "
+			"invalid size: %"PRId64, __LINE__, *size);
 		return EINVAL;
 	}
 	
@@ -1256,33 +1261,36 @@ int getFileContentEx(const char *filename, char *buff, \
 	if (fd < 0)
 	{
 		*size = 0;
-		logError("file: "__FILE__", line: %d, " \
-			"open file %s fail, " \
-			"errno: %d, error info: %s", __LINE__, \
-			filename, errno, STRERROR(errno));
-		return errno != 0 ? errno : ENOENT;
+        result = errno != 0 ? errno : ENOENT;
+		logError("file: "__FILE__", line: %d, "
+			"open file %s fail, "
+			"errno: %d, error info: %s", __LINE__,
+			filename, result, STRERROR(result));
+		return result;
 	}
 
 	if (offset > 0 && lseek(fd, offset, SEEK_SET) < 0)
 	{
 		*size = 0;
+        result = errno != 0 ? errno : EIO;
 		close(fd);
-		logError("file: "__FILE__", line: %d, " \
-			"lseek file %s fail, " \
-			"errno: %d, error info: %s", __LINE__, \
-			filename, errno, STRERROR(errno));
-		return errno != 0 ? errno : EIO;
+		logError("file: "__FILE__", line: %d, "
+			"lseek file %s fail, "
+			"errno: %d, error info: %s", __LINE__,
+			filename, result, STRERROR(result));
+		return result;
 	}
 
 	if ((read_bytes=read(fd, buff, *size - 1)) < 0)
 	{
 		*size = 0;
+        result = errno != 0 ? errno : EIO;
 		close(fd);
-		logError("file: "__FILE__", line: %d, " \
-			"read from file %s fail, " \
-			"errno: %d, error info: %s", __LINE__, \
-			filename, errno, STRERROR(errno));
-		return errno != 0 ? errno : EIO;
+		logError("file: "__FILE__", line: %d, "
+			"read from file %s fail, "
+			"errno: %d, error info: %s", __LINE__,
+			filename, result, STRERROR(result));
+		return result;
 	}
 
 	*size = read_bytes;
