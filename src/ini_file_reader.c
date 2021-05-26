@@ -647,7 +647,7 @@ int iniLoadFromFileEx(const char *szFilename, IniContext *pContext,
 	int result;
 	int len;
 	char *pLast;
-	char full_filename[MAX_PATH_SIZE];
+	char full_filename[PATH_MAX];
     int old_annotation_count;
 
 	if ((result=iniInitContext(pContext, annotation_type,
@@ -656,13 +656,18 @@ int iniLoadFromFileEx(const char *szFilename, IniContext *pContext,
 		return result;
 	}
 
-	if (strncasecmp(szFilename, "http://", 7) == 0)
+	if (IS_URL_RESOURCE(szFilename))
 	{
 		*pContext->config_path = '\0';
-		snprintf(full_filename, sizeof(full_filename),"%s",szFilename);
+		snprintf(full_filename, sizeof(full_filename), "%s", szFilename);
 	}
 	else
 	{
+        if (IS_FILE_RESOURCE(szFilename))
+        {
+            szFilename += FILE_RESOURCE_TAG_LEN;
+        }
+
 		if (*szFilename == '/')
 		{
 			pLast = strrchr(szFilename, '/');
@@ -758,7 +763,7 @@ static int iniDoLoadFromFile(const char *szFilename, \
 	int64_t file_size;
 	char error_info[512];
 
-	if (strncasecmp(szFilename, "http://", 7) == 0)
+	if (IS_URL_RESOURCE(szFilename))
 	{
 		if ((result=get_url_content(szFilename, 10, 60, &http_status, \
 				&content, &content_len, error_info)) != 0)
@@ -972,10 +977,11 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 	char *pEqualChar;
     char pItemName[FAST_INI_ITEM_NAME_LEN + 1];
     char *pAnnoItemLine;
-	char *pIncludeFilename;
+	char pIncludeFilename[PATH_MAX];
+	char *pTrueFilename;
     char *pItemValues[100];
     char pFuncName[FAST_INI_ITEM_NAME_LEN + 1];
-	char full_filename[MAX_PATH_SIZE];
+	char full_filename[PATH_MAX];
     int i;
 	int nLineLen;
 	int nNameLen;
@@ -1014,31 +1020,35 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 			strncasecmp(pLine+1, "include", 7) == 0 && \
 			(*(pLine+8) == ' ' || *(pLine+8) == '\t'))
 		{
-			pIncludeFilename = fc_strdup(pLine + 9);
-			if (pIncludeFilename == NULL)
-			{
-				result = ENOMEM;
-				break;
-			}
-
+            snprintf(pIncludeFilename, sizeof(pIncludeFilename),
+                    "%s", pLine + 9);
 			STR_TRIM(pIncludeFilename);
-			if (strncasecmp(pIncludeFilename, "http://", 7) == 0)
+			if (IS_URL_RESOURCE(pIncludeFilename))
 			{
-				snprintf(full_filename, sizeof(full_filename),\
+				snprintf(full_filename, sizeof(full_filename),
 					"%s", pIncludeFilename);
 			}
 			else
 			{
-				if (*pIncludeFilename == '/')
+                if (IS_FILE_RESOURCE(pIncludeFilename))
+                {
+                    pTrueFilename = pIncludeFilename + FILE_RESOURCE_TAG_LEN;
+                }
+                else
+                {
+                    pTrueFilename = pIncludeFilename;
+                }
+
+                if (*pTrueFilename == '/')
 				{
 				snprintf(full_filename, sizeof(full_filename), \
-					"%s", pIncludeFilename);
+					"%s", pTrueFilename);
 				}
 				else
 				{
 				snprintf(full_filename, sizeof(full_filename), \
 					"%s/%s", pContext->config_path, \
-					 pIncludeFilename);
+					 pTrueFilename);
 				}
 
 				if (!fileExists(full_filename))
@@ -1046,8 +1056,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 				logError("file: "__FILE__", line: %d, " \
 					"include file \"%s\" not exists, " \
 					"line: \"%s\"", __LINE__, \
-					pIncludeFilename, pLine);
-				free(pIncludeFilename);
+					pTrueFilename, pLine);
 				result = ENOENT;
 				break;
 				}
@@ -1057,7 +1066,6 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 			result = iniDoLoadFromFile(full_filename, pContext);
 			if (result != 0)
 			{
-				free(pIncludeFilename);
 				break;
 			}
 
@@ -1065,7 +1073,6 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 			pSection = pContext->current_section;
             pItem = pSection->items + pSection->count;  //must re-asign
 
-			free(pIncludeFilename);
 			continue;
 		}
         else if (*pLine == '#')
