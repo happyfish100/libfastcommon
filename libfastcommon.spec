@@ -14,8 +14,8 @@ Source: http://github.com/happyfish100/libfastcommon/%{name}-%{version}.tar.gz
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n) 
 
-#Requires: /sbin/chkconfig
-#BuildRequires: perl %{_includedir}/linux/if.h gettext
+BuildRequires: libcurl-devel
+Requires: libcurl
 Requires: %__cp %__mv %__chmod %__grep %__mkdir %__install %__id
 
 %description
@@ -27,6 +27,7 @@ commit version: %{CommitVersion}
 
 %package devel
 Summary: Development header file
+Requires: libcurl-devel
 Requires: %{name}%{?_isa} = %{version}-%{release}
 
 %description devel

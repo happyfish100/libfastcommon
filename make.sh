@@ -68,6 +68,11 @@ else
 fi
 
 LIBS='-lm -ldl'
+if [ -f /usr/include/curl/curl.h ] || [ -f /usr/local/include/curl/curl.h ]; then
+  CFLAGS="$CFLAGS -DUSE_LIBCURL"
+  LIBS="$LIBS -lcurl"
+fi
+
 uname=`uname`
 
 HAVE_VMMETER_H=0

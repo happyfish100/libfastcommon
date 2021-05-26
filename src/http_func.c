@@ -39,6 +39,131 @@
 #include "fc_memory.h"
 #include "http_func.h"
 
+#ifdef USE_LIBCURL
+#include <curl/curl.h>
+
+static bool curl_inited = false;
+
+typedef struct {
+    char *buff;
+    int length;
+    int alloc_size;
+    bool dynamic_alloc;
+} CurlCallbackArg;
+
+static size_t curl_write_data(void *ptr, size_t size,
+        size_t nmemb, void *userdata)
+{
+    size_t len;
+    int alloc_size;
+    char *new_buff;
+    CurlCallbackArg *cbarg;
+
+    cbarg = (CurlCallbackArg *)userdata;
+    len = size * nmemb;
+    if ((cbarg->alloc_size - cbarg->length) < len) {
+        if (!cbarg->dynamic_alloc) {
+            return 0;
+        }
+
+        alloc_size = 2 * cbarg->alloc_size;
+        while ((alloc_size - cbarg->length) < len) {
+            alloc_size *= 2;
+        }
+
+        new_buff = (char *)fc_malloc(alloc_size);
+        if (new_buff == NULL) {
+            return 0;
+        }
+
+        if (cbarg->length > 0) {
+            memcpy(new_buff, cbarg->buff, cbarg->length);
+        }
+        free(cbarg->buff);
+
+        cbarg->buff = new_buff;
+        cbarg->alloc_size = alloc_size;
+    }
+
+    memcpy(cbarg->buff + cbarg->length, ptr, len);
+    cbarg->length += len;
+    return len;
+}
+
+int get_url_content_ex(const char *url, const int url_len,
+        const int connect_timeout, const int network_timeout,
+        int *http_status, char **content, int *content_len,
+        char *error_info)
+{
+    CURLcode result;
+    long response_code;
+    CURL *curl;
+    CurlCallbackArg cbarg;
+
+    *error_info = '\0';
+	*http_status = 0;
+    if (!curl_inited) {
+        if ((result=curl_global_init(CURL_GLOBAL_ALL)) != 0) {
+            sprintf(error_info, "curl_global_init fail "
+                    "with code: %d", result);
+            return errno != 0 ? errno : EBUSY;
+        }
+        curl_inited = true;
+    }
+
+    if ((curl=curl_easy_init()) == NULL) {
+        sprintf(error_info, "curl_easy_init fail");
+        return errno != 0 ? errno : EBUSY;
+    }
+
+    if (*content == NULL) {
+        cbarg.dynamic_alloc = true;
+        cbarg.alloc_size = 16 * 1024;
+        cbarg.buff = (char *)fc_malloc(cbarg.alloc_size);
+        if (cbarg.buff == NULL) {
+            return ENOMEM;
+        }
+    } else {
+        cbarg.dynamic_alloc = false;
+        cbarg.alloc_size = *content_len;
+        cbarg.buff = *content;
+    }
+    cbarg.length = 0;
+
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, connect_timeout);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, connect_timeout + network_timeout);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_data);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &cbarg);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
+
+    result = curl_easy_perform(curl);
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+    curl_easy_cleanup(curl);
+
+    *http_status = response_code;
+    if (result == CURLE_OK) {
+        if (cbarg.dynamic_alloc) {
+            *content = cbarg.buff;
+        }
+        *content_len = cbarg.length;
+        *(*content + *content_len) = '\0';
+        return 0;
+    } else {
+        sprintf(error_info, "curl_easy_perform fail with code: %d, %s",
+                result, curl_easy_strerror(result));
+        if (cbarg.dynamic_alloc && cbarg.buff != NULL) {
+            free(cbarg.buff);
+        }
+        *content_len = 0;
+        return EACCES;
+    }
+}
+
+#else
+
 int get_url_content_ex(const char *url, const int url_len,
         const int connect_timeout, const int network_timeout,
         int *http_status, char **content, int *content_len, char *error_info)
@@ -269,6 +394,8 @@ int get_url_content_ex(const char *url, const int url_len,
 
 	return result;
 }
+
+#endif
 
 int get_url_content(const char *url, const int connect_timeout, \
 	const int network_timeout, int *http_status, \
