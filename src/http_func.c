@@ -60,6 +60,7 @@ int get_url_content_ex(const char *url, const int url_len,
 	char *pPort;
 	char *pSpace;
 
+    *error_info = '\0';
 	*http_status = 0;
     if (*content == NULL)
     {
@@ -254,9 +255,8 @@ int get_url_content_ex(const char *url, const int url_len,
 
         *http_status = atoi(pSpace + 1);
         *content_len -= pContent - *content;
-        memcpy(*content, pContent, *content_len);
+        memmove(*content, pContent, *content_len);
         *(*content + *content_len) = '\0';
-        *error_info = '\0';
     } while (0);
 
 	close(sock);

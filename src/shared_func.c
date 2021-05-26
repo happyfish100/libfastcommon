@@ -2996,6 +2996,13 @@ int normalize_path(const char *from, const char *filename,
     const char *last;
     int len;
 
+    if (IS_FILE_RESOURCE(from)) {
+        from = from + FILE_RESOURCE_TAG_LEN;
+    }
+    if (IS_FILE_RESOURCE(filename)) {
+        filename = filename + FILE_RESOURCE_TAG_LEN;
+    }
+
     if (*filename == '/') {
         return snprintf(full_filename, size, "%s", filename);
     }
@@ -3097,6 +3104,11 @@ int normalize_path_ex(const char *from, const char *filename,
     is_url_filename = IS_URL_RESOURCE(filename);
     if (!(is_url_from || is_url_filename)) {
         return normalize_path(from, filename, full_filename, size);
+    }
+
+    if (IS_FILE_RESOURCE(filename)) {
+        return snprintf(full_filename, size, "%s",
+                filename + FILE_RESOURCE_TAG_LEN);
     }
 
     if (!is_url_from) {
