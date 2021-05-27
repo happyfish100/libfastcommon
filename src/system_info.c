@@ -23,6 +23,7 @@
 #include <inttypes.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/utsname.h>
 #include <netinet/in.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -785,7 +786,7 @@ int get_sysinfo(struct fast_sysinfo *info)
 	if (sysctl(mib, 2, &sw_usage, &size, NULL, 0) != 0)
 	{
 		logError("file: "__FILE__", line: %d, " \
-			"call sysctl  fail, " \
+			"call sysctl fail, " \
 			"errno: %d, error info: %s", \
 			__LINE__, errno, STRERROR(errno));
 	}
@@ -802,3 +803,35 @@ int get_sysinfo(struct fast_sysinfo *info)
 #endif
 #endif
 
+int get_kernel_version(Version *version)
+{
+    struct utsname name;
+    char *p;
+    int numbers[2];
+    int i;
+
+    if (uname(&name) < 0)
+    {
+		logError("file: "__FILE__", line: %d, "
+			"call uname fail, errno: %d, error info: %s",
+			__LINE__, errno, STRERROR(errno));
+        return errno != 0 ? errno : EFAULT;
+    }
+
+    numbers[0] = numbers[1] = 0;
+    p = name.release;
+    for (i=0; i<2; i++) {
+        p = strchr(p, '.');
+        if (p == NULL) {
+            break;
+        }
+
+        p++;
+        numbers[i] = strtol(p, NULL, 10);
+    }
+
+    version->major = strtol(name.release, NULL, 10);
+    version->minor = numbers[0];
+    version->patch = numbers[1];
+    return 0;
+}

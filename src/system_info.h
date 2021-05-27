@@ -161,6 +161,9 @@ int get_mounted_filesystems(struct fast_statfs *stats,
 int get_processes(struct fast_process_info **processes, int *count);
 
 int get_sysinfo(struct fast_sysinfo *info);
+
+int get_kernel_version(Version *version);
+
 #endif
 
 #ifdef __cplusplus
