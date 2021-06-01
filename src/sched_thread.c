@@ -840,7 +840,7 @@ static void sched_deal_task_queue(ScheduleContext *pContext)
     FastDelayTask *task;
     struct fc_queue_info qinfo;
 
-    fc_queue_pop_to_queue(&pContext->delay_queue, &qinfo);
+    fc_queue_try_pop_to_queue(&pContext->delay_queue, &qinfo);
     task = qinfo.head;
     while (task != NULL)
     {

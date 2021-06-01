@@ -155,10 +155,16 @@ void fc_queue_push_queue_to_tail_ex(struct fc_queue *queue,
     PTHREAD_MUTEX_UNLOCK(&queue->lc_pair.lock);
 }
 
-void fc_queue_pop_to_queue(struct fc_queue *queue,
-        struct fc_queue_info *qinfo)
+void fc_queue_pop_to_queue_ex(struct fc_queue *queue,
+        struct fc_queue_info *qinfo, const bool blocked)
 {
     PTHREAD_MUTEX_LOCK(&queue->lc_pair.lock);
+    if (queue->head == NULL) {
+        if (blocked) {
+            pthread_cond_wait(&queue->lc_pair.cond, &queue->lc_pair.lock);
+        }
+    }
+
     if (queue->head != NULL) {
         qinfo->head = queue->head;
         qinfo->tail = queue->tail;

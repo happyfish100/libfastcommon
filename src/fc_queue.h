@@ -129,8 +129,14 @@ void *fc_queue_pop_all_ex(struct fc_queue *queue, const bool blocked);
 #define fc_queue_pop_all(queue) fc_queue_pop_all_ex(queue, true)
 #define fc_queue_try_pop_all(queue) fc_queue_pop_all_ex(queue, false)
 
-void fc_queue_pop_to_queue(struct fc_queue *queue,
-        struct fc_queue_info *qinfo);
+void fc_queue_pop_to_queue_ex(struct fc_queue *queue,
+        struct fc_queue_info *qinfo, const bool blocked);
+
+#define fc_queue_pop_to_queue(queue, qinfo) \
+    fc_queue_pop_to_queue_ex(queue, qinfo, true)
+
+#define fc_queue_try_pop_to_queue(queue, qinfo) \
+    fc_queue_pop_to_queue_ex(queue, qinfo, false)
 
 static inline bool fc_queue_empty(struct fc_queue *queue)
 {
