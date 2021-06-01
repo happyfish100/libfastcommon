@@ -114,39 +114,47 @@ static int do_stop(const char *pidFilename, const bool bShowError, pid_t *pid)
 
 int process_stop(const char *pidFilename)
 {
+#define MAX_WAIT_COUNT  300
   pid_t pid;
   int result;
+  int sig;
+  int i;
 
-  result = do_stop(pidFilename, true, &pid);
-  if (result != 0) {
+  if ((result=do_stop(pidFilename, true, &pid)) != 0) {
     return result;
   }
 
   fprintf(stderr, "waiting for pid [%d] exit ...\n", (int)pid);
-  do {
-    sleep(1);
-  } while (kill(pid, SIGTERM) == 0);
-  fprintf(stderr, "pid [%d] exit.\n", (int)pid);
+  for (i=0; i<MAX_WAIT_COUNT; i++) {
+    sig = (i % 10 == 0) ? SIGTERM : 0;
+    if (kill(pid, sig) != 0) {
+      break;
+    }
 
+    usleep(100 * 1000);
+  }
+
+  if (i == MAX_WAIT_COUNT) {
+    if (kill(pid, SIGKILL) == 0) {
+      fprintf(stderr, "waiting for pid [%d] exit timeout, "
+              "force kill!\n", (int)pid);
+      usleep(100 * 1000);
+    }
+  }
+
+  fprintf(stderr, "pid [%d] exit.\n\n", (int)pid);
   return 0;
 }
 
 int process_restart(const char *pidFilename)
 {
   int result;
-  pid_t pid;
 
-  result = do_stop(pidFilename, false, &pid);
-  if (result == 0) {
-    fprintf(stderr, "waiting for pid [%d] exit ...\n", (int)pid);
-    do {
-      sleep(1);
-    } while (kill(pid, SIGTERM) == 0);
-    fprintf(stderr, "starting ...\n");
-  }
-
+  result = process_stop(pidFilename);
   if (result == ENOENT || result == ESRCH) {
-    return 0;
+    result = 0;
+  } else if (result == 0) {
+    fprintf(stderr, "starting ...\n");
   }
 
   return result;

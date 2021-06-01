@@ -1,4 +1,7 @@
 
+Version 1.52  2021-06-01
+  * process_stop more gracefully (kill -9 on timeout)
+
 Version 1.51  2021-05-27
   * fast_mblock.[hc]: support batch alloc and batch free
   * uniq_skiplist.[hc]: init function add parameter: allocator_use_lock
