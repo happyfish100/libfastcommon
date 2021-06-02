@@ -164,6 +164,11 @@ int get_sysinfo(struct fast_sysinfo *info);
 
 int get_kernel_version(Version *version);
 
+#ifdef OS_LINUX
+int get_device_block_size(const char *device, int *block_size);
+int get_path_block_size(const char *path, int *block_size);
+#endif
+
 #endif
 
 #ifdef __cplusplus
