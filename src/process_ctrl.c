@@ -112,7 +112,7 @@ static int do_stop(const char *pidFilename, const bool bShowError, pid_t *pid)
   }
 }
 
-int process_stop(const char *pidFilename)
+int process_stop_ex(const char *pidFilename, const bool bShowError)
 {
 #define MAX_WAIT_COUNT  300
   pid_t pid;
@@ -120,7 +120,7 @@ int process_stop(const char *pidFilename)
   int sig;
   int i;
 
-  if ((result=do_stop(pidFilename, true, &pid)) != 0) {
+  if ((result=do_stop(pidFilename, bShowError, &pid)) != 0) {
     return result;
   }
 
@@ -148,9 +148,10 @@ int process_stop(const char *pidFilename)
 
 int process_restart(const char *pidFilename)
 {
+  const bool bShowError = false;
   int result;
 
-  result = process_stop(pidFilename);
+  result = process_stop_ex(pidFilename, bShowError);
   if (result == ENOENT || result == ESRCH) {
     result = 0;
   } else if (result == 0) {
@@ -328,6 +329,7 @@ int get_base_path_from_conf_file(const char *filename, char *base_path,
 
 int process_action(const char *pidFilename, const char *action, bool *stop)
 {
+    const bool bShowError = true;
 	*stop = false;
 	if (action == NULL)
 	{
@@ -337,7 +339,7 @@ int process_action(const char *pidFilename, const char *action, bool *stop)
 	if (strcmp(action, "stop") == 0)
 	{
 		*stop = true;
-		return process_stop(pidFilename);
+		return process_stop_ex(pidFilename, bShowError);
 	}
 	else if (strcmp(action, "restart") == 0)
 	{
