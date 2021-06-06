@@ -62,8 +62,7 @@ int fast_buffer_set_capacity(FastBuffer *buffer, const int capacity)
     int new_capacity;
     char *buff;
 
-    new_capacity = (capacity > buffer->length) ?
-        capacity : (buffer->length + 1);
+    new_capacity = FC_MAX(capacity, buffer->length + 1);
     if (buffer->alloc_size >= new_capacity) {
         if (new_capacity > 1024) {
             alloc_size = 2048;
