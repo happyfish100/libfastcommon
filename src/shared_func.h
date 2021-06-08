@@ -24,6 +24,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include "common_define.h"
+#include "fc_memory.h"
 #include "ini_file_reader.h"
 
 #define NORMALIZE_FLAGS_URL_ENABLED        1
@@ -1104,6 +1105,38 @@ int fc_check_filename(const string_t *filename, const char *caption);
  */
 bool is_digital_string(const char *str);
 
+static inline int fc_check_realloc_iovec_array(
+        iovec_array_t *array, const int target_size)
+{
+    int new_alloc;
+    struct iovec *new_iovs;
+
+    if (array->alloc >= target_size) {
+        return 0;
+    }
+
+    if (array->alloc == 0) {
+        new_alloc = 64;
+    } else {
+        new_alloc = array->alloc * 2;
+    }
+    while (new_alloc < target_size) {
+        new_alloc *= 2;
+    }
+
+    new_iovs = (struct iovec *)fc_malloc(
+            sizeof(struct iovec) * new_alloc);
+    if (new_iovs == NULL) {
+        return ENOMEM;
+    }
+
+    if (array->iovs != NULL) {
+        free(array->iovs);
+    }
+    array->iovs = new_iovs;
+    array->alloc = new_alloc;
+    return 0;
+}
 
 #ifdef __cplusplus
 }

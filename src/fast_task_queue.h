@@ -84,7 +84,13 @@ struct fast_task_info
         char client_ip[IP_ADDRESS_SIZE];
     };
 	void *arg;  //extra argument pointer
-	char *data; //buffer for write or recv
+	char *data; //buffer for write or read
+
+    struct {
+        struct iovec *iovs;
+        int count;
+    } iovec_array; //for writev
+
 	int size;   //alloc size
 	int length; //data length
 	int offset; //current offset

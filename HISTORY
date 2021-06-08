@@ -1,8 +1,9 @@
 
-Version 1.52  2021-06-02
+Version 1.52  2021-06-08
   * process_stop more gracefully (kill -9 on timeout)
   * add function fc_queue_pop_to_queue_ex
   * add function get_path_block_size and get_device_block_size
+  * add function fc_check_realloc_iovec_array
 
 Version 1.51  2021-05-27
   * fast_mblock.[hc]: support batch alloc and batch free

@@ -251,6 +251,13 @@ typedef struct
 
 typedef struct
 {
+    int alloc;
+    int count;
+    struct iovec *iovs;
+} iovec_array_t;
+
+typedef struct
+{
     char buff[PATH_MAX];
     string_t s;
 } FilenameString;
@@ -292,6 +299,12 @@ typedef void* (*MallocFunc)(size_t size);
 
 //for printf format %.*s
 #define FC_PRINTF_STAR_STRING_PARAMS(s)  (s).len, (s).str
+
+#define FC_SET_IOVEC(iovec, buff, len) \
+    do {  \
+        (iovec).iov_base = buff; \
+        (iovec).iov_len = len;   \
+    } while (0)
 
 #define FC_SET_STRING(dest, src)  \
     do {  \
