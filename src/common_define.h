@@ -271,7 +271,7 @@ typedef void* (*MallocFunc)(size_t size);
 #define MEM_ALIGN_FLOOR(x, align_size) ((x) & (~(align_size - 1)))
 #define MEM_ALIGN_CEIL(x, align_size) \
     (((x) + (align_size - 1)) & (~(align_size - 1)))
-#define MEM_ALIGN  MEM_ALIGN_CEIL(8)
+#define MEM_ALIGN(x)  MEM_ALIGN_CEIL(x, 8)
 
 #ifdef WIN32
 #define strcasecmp	_stricmp
