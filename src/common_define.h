@@ -267,7 +267,11 @@ typedef int (*CompareFunc)(void *p1, void *p2);
 typedef void* (*MallocFunc)(size_t size);
 
 #define TO_UPPERCASE(c)  (((c) >= 'a' && (c) <= 'z') ? (c) - 32 : c)
-#define MEM_ALIGN(x)  (((x) + 7) & (~7))
+
+#define MEM_ALIGN_FLOOR(x, align_size) ((x) & (~(align_size - 1)))
+#define MEM_ALIGN_CEIL(x, align_size) \
+    (((x) + (align_size - 1)) & (~(align_size - 1)))
+#define MEM_ALIGN  MEM_ALIGN_CEIL(8)
 
 #ifdef WIN32
 #define strcasecmp	_stricmp
