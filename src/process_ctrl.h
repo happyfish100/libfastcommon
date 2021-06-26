@@ -42,7 +42,7 @@ int process_stop_ex(const char *pidFilename, const bool bShowError);
 
 int process_restart(const char *pidFilename);
 
-int process_exist(const char *pidFilename);
+int process_exist(const char *pidFilename, pid_t *pid);
 
 int process_action(const char *pidFilename, const char *action, bool *stop);
 

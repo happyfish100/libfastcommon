@@ -244,33 +244,33 @@ int process_start(const char* pidFilename)
     }
 }
 
-int process_exist(const char *pidFilename)
+int process_exist(const char *pidFilename, pid_t *pid)
 {
-  pid_t pid;
   int result;
 
-  if ((result=get_pid_from_file(pidFilename, &pid)) != 0) {
+  if ((result=get_pid_from_file(pidFilename, pid)) != 0) {
     if (result == ENOENT) {
-      return false;
+      return result;
     }
     else {
       fprintf(stderr, "get pid from file: %s fail, " \
           "errno: %d, error info: %s\n",
           pidFilename, result, strerror(result));
-      return true;
+      return result;
     }
   }
 
-  if (kill(pid, 0) == 0) {
-    return true;
+  if (kill(*pid, 0) == 0) {
+    return 0;
   }
   else if (errno == ENOENT || errno == ESRCH) {
-    return false;
+    return ENOENT;
   }
   else {
+    result = errno != 0 ? errno : EPERM;
     fprintf(stderr, "kill pid: %d fail, errno: %d, error info: %s\n",
-        (int)pid, errno, strerror(errno));
-    return true;
+        (int)*pid, result, strerror(result));
+    return result;
   }
 }
 
@@ -330,6 +330,9 @@ int get_base_path_from_conf_file(const char *filename, char *base_path,
 int process_action(const char *pidFilename, const char *action, bool *stop)
 {
     const bool bShowError = true;
+    int result;
+    pid_t pid;
+
 	*stop = false;
 	if (action == NULL)
 	{
@@ -340,6 +343,23 @@ int process_action(const char *pidFilename, const char *action, bool *stop)
 	{
 		*stop = true;
 		return process_stop_ex(pidFilename, bShowError);
+	}
+    else if (strcmp(action, "status") == 0)
+	{
+		*stop = true;
+		result = process_exist(pidFilename, &pid);
+        switch (result) {
+            case 0:
+                printf("Running, pid: %d\n", (int)pid);
+                break;
+            case ENOENT:
+                printf("NOT running\n");
+                break;
+            default:
+                printf("Unkown status\n");
+                break;
+        }
+        return result;
 	}
 	else if (strcmp(action, "restart") == 0)
 	{
