@@ -192,6 +192,20 @@ static inline void *uniq_skiplist_next(UniqSkiplistIterator *iterator)
     return data;
 }
 
+static inline void uniq_skiplist_iterator_at(UniqSkiplist *sl,
+        const int offset, UniqSkiplistIterator *iterator)
+{
+    int i;
+
+    iterator->current = sl->top->links[0];
+    iterator->tail = sl->factory->tail;
+
+    i = 0;
+    while (i++ < offset && iterator->current != iterator->tail) {
+        iterator->current = iterator->current->links[0];
+    }
+}
+
 static inline int uniq_skiplist_iterator_count(UniqSkiplistIterator *iterator)
 {
     volatile UniqSkiplistNode *current;
