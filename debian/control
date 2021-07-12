@@ -1,15 +1,25 @@
 Source: libfastcommon
-Section: zhangchunsheng
+Section: libs
 Priority: optional
-Maintainer: zhangchunsheng <zhangchunsheng423@gmail.com>
-Build-Depends: debhelper-compat (= 12)
-Standards-Version: 4.4.1
-Homepage: <insert the upstream URL, if relevant>
-#Vcs-Browser: https://salsa.debian.org/debian/libfastcommon
-#Vcs-Git: https://salsa.debian.org/debian/libfastcommon.git
+Maintainer: YuQing <384681@qq.com>
+Build-Depends: debhelper (>=11~)
+Standards-Version: 4.1.4
+Homepage: http://github.com/happyfish100/libfastcommon/
+
+Package: libfastcommon-dev
+Architecture: any
+Section: libdevel
+Depends: libfastcommon (= ${binary:Version}), ${misc:Depends}
+Description: libfastcommon (development files)
+ This package contains header files.
 
 Package: libfastcommon
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: <insert up to 60 chars description>
- <insert long description, indented with spaces>
+Description: c common functions library
+ c common functions library extracted from my open source projects FastDFS and 
+ FastDHT. this library is very simple and stable.
+ .
+ some functions are wrappered into php extension, such as fastcommon_gethostaddrs,
+     fastcommon_id_generator_xxx, fastcommon_get_ifconfigs, fastcommon_get_sysinfo etc.
+

@@ -1,43 +1,530 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: libfastcommon
-Upstream-Contact: <preferred name and address to reach the upstream project>
-Source: <url://example.com>
-
-Files: *
-Copyright: <years> <put author's name and email here>
-           <years> <likewise for another author>
-License: <special license>
- <Put the license of the package here indented by 1 space>
- <This follows the format of Description: lines in control file>
- .
- <Including paragraphs>
-
-# If you want to use GPL v2 or later for the /debian/* files use
-# the following clauses, or change it to suit. Delete these two lines
-Files: debian/*
-Copyright: 2021 zhangchunsheng <zhangchunsheng423@gmail.com>
-License: GPL-2+
- This package is free software; you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation; either version 2 of the License, or
- (at your option) any later version.
- .
- This package is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
- .
- You should have received a copy of the GNU General Public License
- along with this program. If not, see <https://www.gnu.org/licenses/>
- .
- On Debian systems, the complete text of the GNU General
- Public License version 2 can be found in "/usr/share/common-licenses/GPL-2".
-
-# Please also look if there are files or directories which have a
-# different copyright/license attached and list them here.
-# Please avoid picking licenses with terms that are more restrictive than the
-# packaged work, as it may make Debian's contributions unacceptable upstream.
+Source: http://github.com/happyfish100/libfastcommon/
 #
-# If you need, there are some extra license texts available in two places:
-#   /usr/share/debhelper/dh_make/licenses/
-#   /usr/share/common-licenses/
+# Please double check copyright with the licensecheck(1) command.
+
+Files:     php-fastcommon/fastcommon.c
+           php-fastcommon/fastcommon.h
+           src/avl_tree.c
+           src/avl_tree.h
+           src/base64.c
+           src/buffered_file_writer.c
+           src/buffered_file_writer.h
+           src/chain.c
+           src/chain.h
+           src/char_convert_loader.c
+           src/char_convert_loader.h
+           src/char_converter.c
+           src/char_converter.h
+           src/common_blocked_queue.c
+           src/common_blocked_queue.h
+           src/common_define.h
+           src/connection_pool.c
+           src/connection_pool.h
+           src/fast_allocator.c
+           src/fast_allocator.h
+           src/fast_blocked_queue.c
+           src/fast_blocked_queue.h
+           src/fast_buffer.c
+           src/fast_buffer.h
+           src/fast_mblock.c
+           src/fast_mblock.h
+           src/fast_mpool.c
+           src/fast_mpool.h
+           src/fast_task_queue.c
+           src/fast_task_queue.h
+           src/fast_timer.c
+           src/fast_timer.h
+           src/fc_atomic.h
+           src/fc_memory.c
+           src/fc_memory.h
+           src/fc_queue.c
+           src/fc_queue.h
+           src/flat_skiplist.c
+           src/flat_skiplist.h
+           src/hash.c
+           src/hash.h
+           src/http_func.h
+           src/id_generator.c
+           src/ini_file_reader.c
+           src/ini_file_reader.h
+           src/ioevent.c
+           src/ioevent.h
+           src/ioevent_loop.c
+           src/ioevent_loop.h
+           src/json_parser.c
+           src/json_parser.h
+           src/local_ip_func.c
+           src/local_ip_func.h
+           src/locked_timer.c
+           src/locked_timer.h
+           src/logger.c
+           src/multi_skiplist.c
+           src/multi_skiplist.h
+           src/multi_socket_client.c
+           src/multi_socket_client.h
+           src/process_ctrl.c
+           src/process_ctrl.h
+           src/pthread_func.c
+           src/pthread_func.h
+           src/sched_thread.c
+           src/sched_thread.h
+           src/server_id_func.c
+           src/server_id_func.h
+           src/shared_buffer.c
+           src/shared_buffer.h
+           src/shared_func.c
+           src/shared_func.h
+           src/skiplist_common.h
+           src/skiplist_set.c
+           src/system_info.c
+           src/system_info.h
+           src/tests/test_allocator.c
+           src/tests/test_atomic.c
+           src/tests/test_blocked_queue.c
+           src/tests/test_char_convert.c
+           src/tests/test_char_convert_loader.c
+           src/tests/test_crc32.c
+           src/tests/test_data_visible.c
+           src/tests/test_file_lock.c
+           src/tests/test_file_write_hole.c
+           src/tests/test_id_generator.c
+           src/tests/test_ini_parser.c
+           src/tests/test_json_parser.c
+           src/tests/test_logger.c
+           src/tests/test_mblock.c
+           src/tests/test_multi_skiplist.c
+           src/tests/test_mutex_lock_perf.c
+           src/tests/test_normalize_path.c
+           src/tests/test_pipe.c
+           src/tests/test_pthread_lock.c
+           src/tests/test_pthread_wait.c
+           src/tests/test_queue_perf.c
+           src/tests/test_sched_thread.c
+           src/tests/test_server_id_func.c
+           src/tests/test_skiplist.c
+           src/tests/test_skiplist_set.c
+           src/tests/test_split_string.c
+           src/tests/test_thourands_seperator.c
+           src/tests/test_thread_pool.c
+           src/tests/test_uniq_skiplist.c
+           src/thread_pool.c
+           src/thread_pool.h
+           src/uniq_skiplist.c
+           src/uniq_skiplist.h
+Copyright: 2020 YuQing <384681@qq.com>
+License:   GPL-3.0+
+ This program is free software: you can use, redistribute, and/or modify
+ it under the terms of the Lesser GNU General Public License, version 3
+ or later ("LGPL"), as published by the Free Software Foundation.
+ .
+ This program is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ FITNESS FOR A PARTICULAR PURPOSE.
+ .
+ You should have received a copy of the Lesser GNU General Public License
+ along with this program. If not, see <https://www.gnu.org/licenses/>.
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ Version 3 can be found in `/usr/share/common-licenses/GPL-3'.
+
+Files:     .gitignore
+           HISTORY
+           INSTALL
+           debian/README.Debian
+           debian/compat
+           debian/control
+           debian/libfastcommon-dev.install
+           debian/libfastcommon.install
+           debian/rules
+           debian/source/format
+           debian/watch
+           doc/id_generator-Chinese.md
+           doc/ini_file_reader-Chinese.md
+           doc/php_log_file_performance-Chinese.md
+           libfastcommon.spec
+           make.sh
+           php-fastcommon/config.m4
+           php-fastcommon/fastcommon.ini
+           php-fastcommon/php-fastcommon.spec.in
+           src/Makefile.in
+           src/fast_link_library.sh
+           src/fc_list.h
+           src/io_opt.c
+           src/io_opt.h
+           src/locked_list.h
+           src/md5.c
+           src/md5.h
+           src/tests/Makefile
+           src/tests/servers.conf
+           src/tests/test.ini
+Copyright: __NO_COPYRIGHT_NOR_LICENSE__
+License:   __NO_COPYRIGHT_NOR_LICENSE__
+
+Files:     src/skiplist.h
+Copyright: 2020 YuQing <384681@qq.com>
+License:   GPL-3.0+
+ This program is free software: you can use, redistribute, and/or modify
+ it under the terms of the Lesser GNU General Public License, version 3
+ or later ("LGPL"), as published by the Free Software Foundation.
+ .
+ This program is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ FITNESS FOR A PARTICULAR PURPOSE.
+ .
+ You should have received a copy of the Lesser GNU General Public License
+ along with this program. If not, see <https://www.gnu.org/licenses/>.
+ .
+ skiplist.h, support stable sort  :)
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ Version 3 can be found in `/usr/share/common-licenses/GPL-3'.
+
+Files:     src/skiplist_set.h
+Copyright: 2020 YuQing <384681@qq.com>
+License:   GPL-3.0+
+ This program is free software: you can use, redistribute, and/or modify
+ it under the terms of the Lesser GNU General Public License, version 3
+ or later ("LGPL"), as published by the Free Software Foundation.
+ .
+ This program is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ FITNESS FOR A PARTICULAR PURPOSE.
+ .
+ You should have received a copy of the Lesser GNU General Public License
+ along with this program. If not, see <https://www.gnu.org/licenses/>.
+ .
+ a set implemented by skiplist, the entry can occur only once
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ Version 3 can be found in `/usr/share/common-licenses/GPL-3'.
+
+Files:     src/sockopt.c
+Copyright: 2020 YuQing <384681@qq.com>
+License:   GPL-3.0+
+ This program is free software: you can use, redistribute, and/or modify
+ it under the terms of the Lesser GNU General Public License, version 3
+ or later ("LGPL"), as published by the Free Software Foundation.
+ .
+ This program is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ FITNESS FOR A PARTICULAR PURPOSE.
+ .
+ You should have received a copy of the Lesser GNU General Public License
+ along with this program. If not, see <https://www.gnu.org/licenses/>.
+ .
+ socketopt.c
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ Version 3 can be found in `/usr/share/common-licenses/GPL-3'.
+
+Files:     src/sockopt.h
+Copyright: 2020 YuQing <384681@qq.com>
+License:   GPL-3.0+
+ This program is free software: you can use, redistribute, and/or modify
+ it under the terms of the Lesser GNU General Public License, version 3
+ or later ("LGPL"), as published by the Free Software Foundation.
+ .
+ This program is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ FITNESS FOR A PARTICULAR PURPOSE.
+ .
+ You should have received a copy of the Lesser GNU General Public License
+ along with this program. If not, see <https://www.gnu.org/licenses/>.
+ .
+ socketopt.h
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ Version 3 can be found in `/usr/share/common-licenses/GPL-3'.
+
+Files:     src/http_func.c
+Copyright: 2008 Happy Fish / YuQing
+           2020 YuQing <384681@qq.com>
+License:   GPL-3.0+
+ This program is free software: you can use, redistribute, and/or modify
+ it under the terms of the Lesser GNU General Public License, version 3
+ or later ("LGPL"), as published by the Free Software Foundation.
+ .
+ This program is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ FITNESS FOR A PARTICULAR PURPOSE.
+ .
+ You should have received a copy of the Lesser GNU General Public License
+ along with this program. If not, see <https://www.gnu.org/licenses/>.
+ .
+ FastDFS may be copied only under the terms of the GNU General
+ Public License V3, which may be found in the FastDFS source kit.
+ Please visit the FastDFS Home Page http://www.fastken.com/ for more detail.
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ Version 3 can be found in `/usr/share/common-licenses/GPL-3'.
+
+Files:     src/id_generator.h
+Copyright: 2020 YuQing <384681@qq.com>
+License:   GPL-3.0+
+ This program is free software: you can use, redistribute, and/or modify
+ it under the terms of the Lesser GNU General Public License, version 3
+ or later ("LGPL"), as published by the Free Software Foundation.
+ .
+ This program is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ FITNESS FOR A PARTICULAR PURPOSE.
+ .
+ You should have received a copy of the Lesser GNU General Public License
+ along with this program. If not, see <https://www.gnu.org/licenses/>.
+ .
+ 64 bits id generator for multi processes, the generated id format:
+ 32 bits timestamp + X bits machine id  + Y bits of extra data + Z bits serial number
+ such as 12 bits machine id, 0 bits extra data and 20 bits serial number
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ Version 3 can be found in `/usr/share/common-licenses/GPL-3'.
+
+Files:     src/php7_ext_wrapper.h
+Copyright: 2020 YuQing <384681@qq.com>
+License:   GPL-3.0+
+ This program is free software: you can use, redistribute, and/or modify
+ it under the terms of the Lesser GNU General Public License, version 3
+ or later ("LGPL"), as published by the Free Software Foundation.
+ .
+ This program is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ FITNESS FOR A PARTICULAR PURPOSE.
+ .
+ You should have received a copy of the Lesser GNU General Public License
+ along with this program. If not, see <https://www.gnu.org/licenses/>.
+ .
+ php7 extension wrapper
+ for compatibility, these wrapper functions are designed for old php version.
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ Version 3 can be found in `/usr/share/common-licenses/GPL-3'.
+
+Files:     src/base64.h
+Copyright: 2020 YuQing <384681@qq.com>
+License:   GPL-3.0+
+ This program is free software: you can use, redistribute, and/or modify
+ it under the terms of the Lesser GNU General Public License, version 3
+ or later ("LGPL"), as published by the Free Software Foundation.
+ .
+ This program is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ FITNESS FOR A PARTICULAR PURPOSE.
+ .
+ You should have received a copy of the Lesser GNU General Public License
+ along with this program. If not, see <https://www.gnu.org/licenses/>.
+ .
+ base64.h
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ Version 3 can be found in `/usr/share/common-licenses/GPL-3'.
+
+Files:     src/logger.h
+Copyright: 2020 YuQing <384681@qq.com>
+License:   GPL-3.0+
+ This program is free software: you can use, redistribute, and/or modify
+ it under the terms of the Lesser GNU General Public License, version 3
+ or later ("LGPL"), as published by the Free Software Foundation.
+ .
+ This program is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ FITNESS FOR A PARTICULAR PURPOSE.
+ .
+ You should have received a copy of the Lesser GNU General Public License
+ along with this program. If not, see <https://www.gnu.org/licenses/>.
+ .
+ logger.h
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ Version 3 can be found in `/usr/share/common-licenses/GPL-3'.
+
+Files:     README
+Copyright: 2010 Happy Fish / YuQing
+License:   __UNKNOWN__
+ libfastcommon may be copied only under the terms of the Less GNU General
+ Public License(LGPL).
+ Please visit the libfastcommon Home Page for more detail.
+ English language: https://github.com/happyfish100/libfastcommon
+ Chinese language: http://www.fastken.com/
+ .
+ c common functions library extracted from my open source projects FastDFS and
+ FastDHT. this library is very simple and stable.
+
+#----------------------------------------------------------------------------
+# xml and html files (skipped):
+#         php-fastcommon/test_file_put_contents.php
+#         php-fastcommon/test.php
+#         php-fastcommon/test_error_log.php
+
+#----------------------------------------------------------------------------
+# Files marked as NO_LICENSE_TEXT_FOUND may be covered by the following
+# license/copyright files.
+
+#----------------------------------------------------------------------------
+# License file: LICENSE
+                    GNU LESSER GENERAL PUBLIC LICENSE
+                        Version 3, 29 June 2007
+ .
+  Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
+  Everyone is permitted to copy and distribute verbatim copies
+  of this license document, but changing it is not allowed.
+ .
+ .
+   This version of the GNU Lesser General Public License incorporates
+ the terms and conditions of version 3 of the GNU General Public
+ License, supplemented by the additional permissions listed below.
+ .
+   0. Additional Definitions.
+ .
+   As used herein, "this License" refers to version 3 of the GNU Lesser
+ General Public License, and the "GNU GPL" refers to version 3 of the GNU
+ General Public License.
+ .
+   "The Library" refers to a covered work governed by this License,
+ other than an Application or a Combined Work as defined below.
+ .
+   An "Application" is any work that makes use of an interface provided
+ by the Library, but which is not otherwise based on the Library.
+ Defining a subclass of a class defined by the Library is deemed a mode
+ of using an interface provided by the Library.
+ .
+   A "Combined Work" is a work produced by combining or linking an
+ Application with the Library.  The particular version of the Library
+ with which the Combined Work was made is also called the "Linked
+ Version".
+ .
+   The "Minimal Corresponding Source" for a Combined Work means the
+ Corresponding Source for the Combined Work, excluding any source code
+ for portions of the Combined Work that, considered in isolation, are
+ based on the Application, and not on the Linked Version.
+ .
+   The "Corresponding Application Code" for a Combined Work means the
+ object code and/or source code for the Application, including any data
+ and utility programs needed for reproducing the Combined Work from the
+ Application, but excluding the System Libraries of the Combined Work.
+ .
+   1. Exception to Section 3 of the GNU GPL.
+ .
+   You may convey a covered work under sections 3 and 4 of this License
+ without being bound by section 3 of the GNU GPL.
+ .
+   2. Conveying Modified Versions.
+ .
+   If you modify a copy of the Library, and, in your modifications, a
+ facility refers to a function or data to be supplied by an Application
+ that uses the facility (other than as an argument passed when the
+ facility is invoked), then you may convey a copy of the modified
+ version:
+ .
+    a) under this License, provided that you make a good faith effort to
+    ensure that, in the event an Application does not supply the
+    function or data, the facility still operates, and performs
+    whatever part of its purpose remains meaningful, or
+ .
+    b) under the GNU GPL, with none of the additional permissions of
+    this License applicable to that copy.
+ .
+   3. Object Code Incorporating Material from Library Header Files.
+ .
+   The object code form of an Application may incorporate material from
+ a header file that is part of the Library.  You may convey such object
+ code under terms of your choice, provided that, if the incorporated
+ material is not limited to numerical parameters, data structure
+ layouts and accessors, or small macros, inline functions and templates
+ (ten or fewer lines in length), you do both of the following:
+ .
+    a) Give prominent notice with each copy of the object code that the
+    Library is used in it and that the Library and its use are
+    covered by this License.
+ .
+    b) Accompany the object code with a copy of the GNU GPL and this license
+    document.
+ .
+   4. Combined Works.
+ .
+   You may convey a Combined Work under terms of your choice that,
+ taken together, effectively do not restrict modification of the
+ portions of the Library contained in the Combined Work and reverse
+ engineering for debugging such modifications, if you also do each of
+ the following:
+ .
+    a) Give prominent notice with each copy of the Combined Work that
+    the Library is used in it and that the Library and its use are
+    covered by this License.
+ .
+    b) Accompany the Combined Work with a copy of the GNU GPL and this license
+    document.
+ .
+    c) For a Combined Work that displays copyright notices during
+    execution, include the copyright notice for the Library among
+    these notices, as well as a reference directing the user to the
+    copies of the GNU GPL and this license document.
+ .
+    d) Do one of the following:
+ .
+        0) Convey the Minimal Corresponding Source under the terms of this
+        License, and the Corresponding Application Code in a form
+        suitable for, and under terms that permit, the user to
+        recombine or relink the Application with a modified version of
+        the Linked Version to produce a modified Combined Work, in the
+        manner specified by section 6 of the GNU GPL for conveying
+        Corresponding Source.
+ .
+        1) Use a suitable shared library mechanism for linking with the
+        Library.  A suitable mechanism is one that (a) uses at run time
+        a copy of the Library already present on the user's computer
+        system, and (b) will operate properly with a modified version
+        of the Library that is interface-compatible with the Linked
+        Version.
+ .
+    e) Provide Installation Information, but only if you would otherwise
+    be required to provide such information under section 6 of the
+    GNU GPL, and only to the extent that such information is
+    necessary to install and execute a modified version of the
+    Combined Work produced by recombining or relinking the
+    Application with a modified version of the Linked Version. (If
+    you use option 4d0, the Installation Information must accompany
+    the Minimal Corresponding Source and Corresponding Application
+    Code. If you use option 4d1, you must provide the Installation
+    Information in the manner specified by section 6 of the GNU GPL
+    for conveying Corresponding Source.)
+ .
+   5. Combined Libraries.
+ .
+   You may place library facilities that are a work based on the
+ Library side by side in a single library together with other library
+ facilities that are not Applications and are not covered by this
+ License, and convey such a combined library under terms of your
+ choice, if you do both of the following:
+ .
+    a) Accompany the combined library with a copy of the same work based
+    on the Library, uncombined with any other library facilities,
+    conveyed under the terms of this License.
+ .
+    b) Give prominent notice with the combined library that part of it
+    is a work based on the Library, and explaining where to find the
+    accompanying uncombined form of the same work.
+ .
+   6. Revised Versions of the GNU Lesser General Public License.
+ .
+   The Free Software Foundation may publish revised and/or new versions
+ of the GNU Lesser General Public License from time to time. Such new
+ versions will be similar in spirit to the present version, but may
+ differ in detail to address new problems or concerns.
+ .
+   Each version is given a distinguishing version number. If the
+ Library as you received it specifies that a certain numbered version
+ of the GNU Lesser General Public License "or any later version"
+ applies to it, you have the option of following the terms and
+ conditions either of that published version or of any later version
+ published by the Free Software Foundation. If the Library as you
+ received it does not specify a version number of the GNU Lesser
+ General Public License, you may choose any version of the GNU Lesser
+ General Public License ever published by the Free Software Foundation.
+ .
+   If the Library as you received it specifies that a proxy can decide
+ whether future versions of the GNU Lesser General Public License shall
+ apply, that proxy's public statement of acceptance of any version is
+ permanent authorization for you to choose that version for the
+ Library.
