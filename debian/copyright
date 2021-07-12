@@ -1,7 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: libfastcommon
 Upstream-Contact: <preferred name and address to reach the upstream project>
-Source: <url://example.com>
+Source: https://github.com/happyfish100/libfastcommon
 
 Files: *
 Copyright: <years> <put author's name and email here>
