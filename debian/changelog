@@ -1,5 +1,7 @@
-libfastcommon (1.0.50-1) unstable; urgency=medium
+libfastcommon (1.0.53-1) unstable; urgency=medium
+  
+  * open for write MUST have the third parameter: mode
+  * uniq_skiplist.h: add function uniq_skiplist_iterator_at
+  * process_action support action status
 
-  * Initial release
-
- -- zhangchunsheng <zhangchunsheng423@gmail.com>  Mon, 24 May 2021 18:54:01 +0800
+ -- YuQing <384681@qq.com>  Tue, 6 Jul 2021 21:23:31 +0800

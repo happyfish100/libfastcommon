@@ -1,20 +1,16 @@
 Source: libfastcommon
 Section: libs
 Priority: optional
-Maintainer: zhangchunsheng <zhangchunsheng423@gmail.com>
+Maintainer: YuQing <384681@qq.com>
 Build-Depends: debhelper (>=11~)
 Standards-Version: 4.1.4
-Homepage: <insert the upstream URL, if relevant>
-#Vcs-Browser: https://salsa.debian.org/debian/libfastcommon
-#Vcs-Git: https://salsa.debian.org/debian/libfastcommon.git
+Homepage: http://github.com/happyfish100/libfastcommon/
 
 Package: libfastcommon-dev
 Architecture: any
 Section: libdevel
 Depends: libfastcommon (= ${binary:Version}), ${misc:Depends}
-Description: ${source:Synopsis} (development files)
- ${source:Extended-Description}
- .
+Description: libfastcommon (development files)
  This package contains header files.
 
 Package: libfastcommon
