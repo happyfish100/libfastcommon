@@ -34,7 +34,7 @@ int common_blocked_queue_init_ex(struct common_blocked_queue *queue,
 		return result;
 	}
 
-    if ((result=fast_mblock_init_ex1(&queue->mblock, "queue_node",
+    if ((result=fast_mblock_init_ex1(&queue->mblock, "queue-node",
                     sizeof(struct common_blocked_node),
                     alloc_elements_once, alloc_elements_limit,
                     NULL, NULL, false)) != 0)

@@ -42,7 +42,7 @@ int shared_buffer_init_ex(SharedBufferContext *context,
     int result;
 
     context->buffer_init_capacity = buffer_init_capacity;
-    if ((result=fast_mblock_init_ex1(&context->allocator, "shared_buffer",
+    if ((result=fast_mblock_init_ex1(&context->allocator, "shared-buffer",
                     sizeof(SharedBuffer), alloc_elements_once,
                     alloc_elements_limit, shared_buffer_alloc_init,
                     context, need_lock)) != 0)

@@ -716,7 +716,7 @@ int sched_start_ex(ScheduleArray *pScheduleArray, pthread_t *ptid,
     if (timer_slot_count > 0)
     {
         if ((result=fast_mblock_init_ex1(&pContext->delay_task_allocator,
-                        "sched_delay_task", sizeof(FastDelayTask),
+                        "sched-delay-task", sizeof(FastDelayTask),
                         mblock_alloc_once, 0, NULL, NULL, true)) != 0)
         {
 	    	free(pContext);

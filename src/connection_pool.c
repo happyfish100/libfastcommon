@@ -47,14 +47,14 @@ int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
     cp->validate_callback.args = validate_args;
 
     init_capacity = htable_init_capacity > 0 ? htable_init_capacity : 256;
-    if ((result=fast_mblock_init_ex1(&cp->manager_allocator, "cpool_manager",
+    if ((result=fast_mblock_init_ex1(&cp->manager_allocator, "cpool-manager",
                     sizeof(ConnectionManager), init_capacity,
                     alloc_elements_limit, NULL, NULL, false)) != 0)
     {
         return result;
     }
 
-    if ((result=fast_mblock_init_ex1(&cp->node_allocator, "cpool_node",
+    if ((result=fast_mblock_init_ex1(&cp->node_allocator, "cpool-node",
                     sizeof(ConnectionNode) + sizeof(ConnectionInfo) +
                     extra_data_size, init_capacity, alloc_elements_limit,
                     NULL, NULL, true)) != 0)
