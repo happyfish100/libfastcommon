@@ -7,8 +7,8 @@ export DESTDIR = ../debian/tmp
 
 
 override_dh_auto_build:
-	./make.sh clean && DESTDIR=$(DESTDIR) ./make.sh
+	./make.sh clean && ./make.sh
 
 override_dh_auto_install:
-	DESTDIR=$(DESTDIR) ./make.sh install
+	./make.sh install
 	dh_auto_install
