@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
 
-export DESTDIR = $(CURDIR)/debian/tmp
+export DESTDIR = ../debian/tmp
 
 %:
 	dh $@
