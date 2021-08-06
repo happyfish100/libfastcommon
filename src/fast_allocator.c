@@ -450,7 +450,7 @@ void *fast_allocator_alloc(struct fast_allocator_context *acontext,
 		ptr = fast_mblock_alloc_object(&allocator_info->mblock);
 		if (ptr == NULL)
 		{
-			if (acontext->allocator_array.reclaim_interval <= 0)
+			if (acontext->allocator_array.reclaim_interval < 0)
 			{
 				return NULL;
 			}

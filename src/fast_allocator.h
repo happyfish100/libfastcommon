@@ -47,10 +47,10 @@ struct fast_allocator_array
 {
 	int count;
 	int alloc;
-	int reclaim_interval;   //<= 0 for never reclaim
+	int reclaim_interval;   //< 0 for never reclaim
 	int last_reclaim_time;
 	volatile int64_t malloc_bytes;   //total alloc bytes
-	int64_t malloc_bytes_limit;       //water mark bytes for malloc
+	int64_t malloc_bytes_limit;      //water mark bytes for malloc
 	double expect_usage_ratio;
 	struct fast_allocator_info **allocators;
 };
@@ -69,10 +69,10 @@ struct fast_allocator_context
 
 #define FAST_ALLOCATOR_INIT_REGION(region, _start, _end, _step, _alloc_once) \
 	do { \
-		region.start = _start; \
-		region.end = _end;     \
-		region.step = _step;   \
-		region.alloc_elements_once = _alloc_once;   \
+		(region).start = _start; \
+		(region).end = _end;     \
+		(region).step = _step;   \
+		(region).alloc_elements_once = _alloc_once;   \
 	} while(0)
 
 #ifdef __cplusplus
@@ -86,7 +86,7 @@ parameters:
     mblock_name_prefix: the name prefix of mblock
     alloc_bytes_limit: the alloc limit, 0 for no limit
 	expect_usage_ratio: the trunk usage ratio
-	reclaim_interval: reclaim interval in second, 0 for never reclaim
+	reclaim_interval: reclaim interval in second, < 0 for never reclaim
 	need_lock: if need lock
 return error no, 0 for success, != 0 fail
 */
@@ -103,7 +103,7 @@ parameters:
 	region_count: the region count
         alloc_bytes_limit: the alloc limit, 0 for no limit
 	expect_usage_ratio: the trunk usage ratio
-	reclaim_interval: reclaim interval in second, 0 for never reclaim
+	reclaim_interval: reclaim interval in second, < 0 for never reclaim
 	need_lock: if need lock
 return error no, 0 for success, != 0 fail
 */

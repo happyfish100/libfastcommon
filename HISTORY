@@ -1,4 +1,7 @@
 
+Version 1.54  2021-08-06
+  * fast_allocator.[hc]: correct reclaim_interval logic
+
 Version 1.53  2021-06-30
   * process_action support action status
   * uniq_skiplist.h: add function uniq_skiplist_iterator_at
