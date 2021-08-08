@@ -592,6 +592,17 @@ int get_time_item_from_str(const char *pValue, const char *item_name,
 */
 void chopPath(char *filePath);
 
+/** get file content by fd
+ *  parameters:
+ *  	fd: the file descriptor
+ *  	filename: the filename
+ *  	buff: return the buff, must be freed
+ *  	file_size: store the file size
+ *  return: error no , 0 success, != 0 fail
+*/
+int getFileContent1(int fd, const char *filename,
+        char **buff, int64_t *file_size);
+
 /** get file content
  *  parameters:
  *  	filename: the filename
@@ -600,6 +611,18 @@ void chopPath(char *filePath);
  *  return: error no , 0 success, != 0 fail
 */
 int getFileContent(const char *filename, char **buff, int64_t *file_size);
+
+/** get file content
+ *  parameters:
+ *  	fd: the file descriptor
+ *  	filename: the filename
+ *  	buff: the buff to store file content
+ *      offset: the start offset
+ *  	size: specify the size to fetch and return the fetched size
+ *  return: error no , 0 success, != 0 fail
+*/
+int getFileContentEx1(int fd, const char *filename, char *buff,
+        int64_t offset, int64_t *size);
 
 /** get file content
  *  parameters:
@@ -767,7 +790,10 @@ int64_t get_current_time_us();
  *     n: the number to test
  *  return: true for power 2, otherwise false
 */
-bool is_power2(const int64_t n);
+static inline bool is_power2(const int64_t n)
+{
+    return ((n != 0) && (n & (n - 1)) == 0);
+}
 
 /** set file read lock
  *  parameters:

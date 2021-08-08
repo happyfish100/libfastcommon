@@ -1143,6 +1143,58 @@ void chopPath(char *filePath)
     }
 }
 
+int getFileContent1(int fd, const char *filename,
+        char **buff, int64_t *file_size)
+{
+    int result;
+
+	if ((*file_size=lseek(fd, 0, SEEK_END)) < 0) {
+        *buff = NULL;
+        *file_size = 0;
+        result = errno != 0 ? errno : EIO;
+        logError("file: "__FILE__", line: %d, "
+                "lseek file %s fail, "
+                "errno: %d, error info: %s", __LINE__,
+                filename, result, STRERROR(result));
+        return result;
+    }
+
+	*buff = (char *)fc_malloc(*file_size + 1);
+	if (*buff == NULL) {
+		*file_size = 0;
+		return ENOMEM;
+	}
+
+    result = 0;
+    do {
+        if (lseek(fd, 0, SEEK_SET) < 0) {
+            result = errno != 0 ? errno : EIO;
+            logError("file: "__FILE__", line: %d, "
+                    "lseek file %s fail, "
+                    "errno: %d, error info: %s", __LINE__,
+                    filename, result, STRERROR(result));
+            break;
+        }
+        if (read(fd, *buff, *file_size) != *file_size) {
+            result = errno != 0 ? errno : EIO;
+            logError("file: "__FILE__", line: %d, "
+                    "read from file %s fail, size: %"PRId64", "
+                    "errno: %d, error info: %s", __LINE__,
+                    filename, *file_size, result, STRERROR(result));
+            break;
+        }
+    } while (0);
+
+    if (result == 0) {
+        (*buff)[*file_size] = '\0';
+    } else {
+        free(*buff);
+        *buff = NULL;
+        *file_size = 0;
+    }
+    return result;
+}
+
 int getFileContent(const char *filename, char **buff, int64_t *file_size)
 {
 	int fd;
@@ -1190,65 +1242,49 @@ int getFileContent(const char *filename, char **buff, int64_t *file_size)
         return result;
 	}
 
-	if ((*file_size=lseek(fd, 0, SEEK_END)) < 0)
-	{
-		*buff = NULL;
-		*file_size = 0;
-        result = errno != 0 ? errno : EIO;
-		close(fd);
-		logError("file: "__FILE__", line: %d, "
-			"lseek file %s fail, "
-			"errno: %d, error info: %s", __LINE__,
-			filename, result, STRERROR(result));
-        return result;
-	}
-
-	*buff = (char *)fc_malloc(*file_size + 1);
-	if (*buff == NULL)
-	{
-		*file_size = 0;
-		close(fd);
-		return ENOMEM;
-	}
-
-	if (lseek(fd, 0, SEEK_SET) < 0)
-	{
-		*buff = NULL;
-		*file_size = 0;
-        result = errno != 0 ? errno : EIO;
-		close(fd);
-		logError("file: "__FILE__", line: %d, "
-			"lseek file %s fail, "
-			"errno: %d, error info: %s", __LINE__,
-			filename, result, STRERROR(result));
-        return result;
-	}
-	if (read(fd, *buff, *file_size) != *file_size)
-	{
-		free(*buff);
-		*buff = NULL;
-		*file_size = 0;
-        result = errno != 0 ? errno : EIO;
-		close(fd);
-		logError("file: "__FILE__", line: %d, "
-			"read from file %s fail, "
-			"errno: %d, error info: %s", __LINE__,
-			filename, result, STRERROR(result));
-        return result;
-	}
-
-	(*buff)[*file_size] = '\0';
+    result = getFileContent1(fd, filename, buff, file_size);
 	close(fd);
 
-	return 0;
+	return result;
 }
 
-int getFileContentEx(const char *filename, char *buff, \
+int getFileContentEx1(int fd, const char *filename, char *buff,
+		int64_t offset, int64_t *size)
+{
+    int result;
+    int read_bytes;
+
+    if (lseek(fd, offset, SEEK_SET) < 0) {
+        result = errno != 0 ? errno : EIO;
+        logError("file: "__FILE__", line: %d, "
+                "lseek file %s fail, offset: %"PRId64", "
+                "errno: %d, error info: %s", __LINE__,
+                filename, offset, result, STRERROR(result));
+        *size = 0;
+        return result;
+    }
+
+    if ((read_bytes=read(fd, buff, *size - 1)) < 0) {
+        result = errno != 0 ? errno : EIO;
+        logError("file: "__FILE__", line: %d, "
+                "read from file %s fail, offset: %"PRId64", "
+                "length: %"PRId64", errno: %d, error info: %s",
+                __LINE__, filename, offset, *size - 1,
+                result, STRERROR(result));
+        *size = 0;
+        return result;
+    }
+
+    *size = read_bytes;
+    *(buff + (*size)) = '\0';
+    return 0;
+}
+
+int getFileContentEx(const char *filename, char *buff,
 		int64_t offset, int64_t *size)
 {
 	int fd;
     int result;
-	int read_bytes;
 
 	if (*size <= 0)
 	{
@@ -1269,35 +1305,9 @@ int getFileContentEx(const char *filename, char *buff, \
 		return result;
 	}
 
-	if (offset > 0 && lseek(fd, offset, SEEK_SET) < 0)
-	{
-		*size = 0;
-        result = errno != 0 ? errno : EIO;
-		close(fd);
-		logError("file: "__FILE__", line: %d, "
-			"lseek file %s fail, "
-			"errno: %d, error info: %s", __LINE__,
-			filename, result, STRERROR(result));
-		return result;
-	}
-
-	if ((read_bytes=read(fd, buff, *size - 1)) < 0)
-	{
-		*size = 0;
-        result = errno != 0 ? errno : EIO;
-		close(fd);
-		logError("file: "__FILE__", line: %d, "
-			"read from file %s fail, "
-			"errno: %d, error info: %s", __LINE__,
-			filename, result, STRERROR(result));
-		return result;
-	}
-
-	*size = read_bytes;
-	*(buff + (*size)) = '\0';
+    result = getFileContentEx1(fd, filename, buff, offset, size);
 	close(fd);
-
-	return 0;
+	return result;
 }
 
 int getFileSize(const char *filename, int64_t *file_size)
@@ -2616,11 +2626,6 @@ int64_t get_current_time_us()
 	}
 
 	return ((int64_t)tv.tv_sec * 1000 * 1000 + (int64_t)tv.tv_usec);
-}
-
-inline bool is_power2(const int64_t n)
-{
-    return ((n != 0) && !(n & (n - 1)));	
 }
 
 static inline int do_lock_file(int fd, int cmd, int type)
