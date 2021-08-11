@@ -160,6 +160,18 @@ void *fc_queue_timedpop(struct fc_queue *queue,
 #define fc_queue_timedpop_us(queue, timeout_us) \
     fc_queue_timedpop(queue, timeout_us, FC_TIME_UNIT_USECOND)
 
+void *fc_queue_timedpeek(struct fc_queue *queue,
+        const int timeout, const int time_unit);
+
+#define fc_queue_timedpeek_sec(queue, timeout) \
+    fc_queue_timedpeek(queue, timeout, FC_TIME_UNIT_SECOND)
+
+#define fc_queue_timedpeek_ms(queue, timeout_ms) \
+    fc_queue_timedpeek(queue, timeout_ms, FC_TIME_UNIT_MSECOND)
+
+#define fc_queue_timedpeek_us(queue, timeout_us) \
+    fc_queue_timedpeek(queue, timeout_us, FC_TIME_UNIT_USECOND)
+
 #ifdef __cplusplus
 }
 #endif
