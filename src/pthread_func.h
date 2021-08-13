@@ -32,6 +32,7 @@ extern "C" {
 #endif
 
 int init_pthread_lock(pthread_mutex_t *pthread_lock);
+int init_pthread_rwlock(pthread_rwlock_t *rwlock);
 int init_pthread_attr(pthread_attr_t *pattr, const int stack_size);
 
 int init_pthread_lock_cond_pair(pthread_lock_cond_pair_t *lcp);
@@ -57,6 +58,45 @@ void destroy_pthread_lock_cond_pair(pthread_lock_cond_pair_t *lcp);
         {  \
             logWarning("file: "__FILE__", line: %d, "    \
                     "call pthread_mutex_unlock fail, " \
+                    "errno: %d, error info: %s", \
+                    __LINE__, unlock_res, STRERROR(unlock_res)); \
+        }  \
+    } while (0)
+
+
+#define PTHREAD_RWLOCK_WRLOCK(rwlock) \
+    do {  \
+        int rwlock_res;   \
+        if ((rwlock_res=pthread_rwlock_wrlock(rwlock)) != 0) \
+        {  \
+            logWarning("file: "__FILE__", line: %d, "  \
+                    "call pthread_rwlock_wrlock fail, " \
+                    "errno: %d, error info: %s", \
+                    __LINE__, rwlock_res, STRERROR(rwlock_res)); \
+        }  \
+    } while (0)
+
+
+#define PTHREAD_RWLOCK_RDLOCK(rwlock) \
+    do {  \
+        int rwlock_res;   \
+        if ((rwlock_res=pthread_rwlock_rdlock(rwlock)) != 0) \
+        {  \
+            logWarning("file: "__FILE__", line: %d, "  \
+                    "call pthread_rwlock_rdlock fail, " \
+                    "errno: %d, error info: %s", \
+                    __LINE__, rwlock_res, STRERROR(rwlock_res)); \
+        }  \
+    } while (0)
+
+
+#define PTHREAD_RWLOCK_UNLOCK(rwlock) \
+    do {  \
+        int unlock_res;   \
+        if ((unlock_res=pthread_rwlock_unlock(rwlock)) != 0) \
+        {  \
+            logWarning("file: "__FILE__", line: %d, "    \
+                    "call pthread_rwlock_unlock fail, " \
                     "errno: %d, error info: %s", \
                     __LINE__, unlock_res, STRERROR(unlock_res)); \
         }  \

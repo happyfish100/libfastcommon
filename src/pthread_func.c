@@ -71,6 +71,49 @@ int init_pthread_lock(pthread_mutex_t *pthread_lock)
 	return 0;
 }
 
+int init_pthread_rwlock(pthread_rwlock_t *rwlock)
+{
+	pthread_rwlockattr_t attr;
+	int result;
+
+	if ((result=pthread_rwlockattr_init(&attr)) != 0) {
+		logError("file: "__FILE__", line: %d, "
+			"call pthread_rwlockattr_init fail, "
+			"errno: %d, error info: %s",
+			__LINE__, result, STRERROR(result));
+		return result;
+	}
+
+#ifdef OS_LINUX
+	if ((result=pthread_rwlockattr_setkind_np(&attr,
+			PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP)) != 0)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "call pthread_rwlockattr_settype fail, "
+                "errno: %d, error info: %s",
+                __LINE__, result, STRERROR(result));
+        return result;
+    }
+#endif
+
+	if ((result=pthread_rwlock_init(rwlock, &attr)) != 0) {
+		logError("file: "__FILE__", line: %d, "
+			"call pthread_rwlock_init fail, "
+			"errno: %d, error info: %s",
+			__LINE__, result, STRERROR(result));
+		return result;
+	}
+	if ((result=pthread_rwlockattr_destroy(&attr)) != 0) {
+		logError("file: "__FILE__", line: %d, "
+			"call thread_rwlockattr_destroy fail, "
+			"errno: %d, error info: %s",
+			__LINE__, result, STRERROR(result));
+		return result;
+	}
+
+	return 0;
+}
+
 int init_pthread_attr(pthread_attr_t *pattr, const int stack_size)
 {
 	size_t old_stack_size;
