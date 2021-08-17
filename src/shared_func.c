@@ -1254,17 +1254,7 @@ int getFileContentEx1(int fd, const char *filename, char *buff,
     int result;
     int read_bytes;
 
-    if (lseek(fd, offset, SEEK_SET) < 0) {
-        result = errno != 0 ? errno : EIO;
-        logError("file: "__FILE__", line: %d, "
-                "lseek file %s fail, offset: %"PRId64", "
-                "errno: %d, error info: %s", __LINE__,
-                filename, offset, result, STRERROR(result));
-        *size = 0;
-        return result;
-    }
-
-    if ((read_bytes=read(fd, buff, *size - 1)) < 0) {
+    if ((read_bytes=pread(fd, buff, *size - 1, offset)) < 0) {
         result = errno != 0 ? errno : EIO;
         logError("file: "__FILE__", line: %d, "
                 "read from file %s fail, offset: %"PRId64", "

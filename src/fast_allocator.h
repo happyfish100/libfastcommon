@@ -62,7 +62,7 @@ struct fast_allocator_context
 
 	struct fast_allocator_array allocator_array;
 
-	int64_t alloc_bytes_limit;       //mater mark bytes for alloc
+	int64_t alloc_bytes_limit;       //water mark bytes for alloc
 	volatile int64_t alloc_bytes;    //total alloc bytes
 	bool need_lock;     //if need mutex lock for acontext
 };
@@ -178,9 +178,19 @@ static inline int fast_allocator_alloc_string(struct fast_allocator_context
     return fast_allocator_alloc_string_ex(acontext, dest, src->str, src->len);
 }
 
+static inline int64_t fast_allocator_avail_memory(
+        struct fast_allocator_context *acontext)
+{
+    if (acontext->alloc_bytes_limit == 0) {
+        return INT64_MIN;
+    }
+
+    return acontext->alloc_bytes_limit - __sync_add_and_fetch(
+            &acontext->allocator_array.malloc_bytes, 0);
+}
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif
-
