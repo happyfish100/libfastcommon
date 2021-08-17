@@ -415,7 +415,7 @@ int fast_allocator_retry_reclaim(struct fast_allocator_context *acontext,
 		return EAGAIN;
 	}
 
-	for (i=0; i< acontext->allocator_array.count; i++)
+	for (i=0; i<acontext->allocator_array.count; i++)
 	{
 		if (fast_mblock_reclaim(&acontext->allocator_array.
 			allocators[i]->mblock, 0, &reclaim_count, NULL) == 0)

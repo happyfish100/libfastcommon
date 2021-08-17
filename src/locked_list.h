@@ -48,6 +48,15 @@ extern "C" {
         PTHREAD_MUTEX_UNLOCK(&list->lock);
     }
 
+    static inline int locked_list_empty(FCLockedList *list)
+    {
+        int empty;
+        PTHREAD_MUTEX_LOCK(&list->lock);
+        empty = fc_list_empty(&list->head);
+        PTHREAD_MUTEX_UNLOCK(&list->lock);
+        return empty;
+    }
+
     static inline int locked_list_count(FCLockedList *list)
     {
         int count;
@@ -56,6 +65,24 @@ extern "C" {
         PTHREAD_MUTEX_UNLOCK(&list->lock);
         return count;
     }
+
+#define locked_list_first_entry(list, type, member, var) \
+        PTHREAD_MUTEX_LOCK(&(list)->lock); \
+        var = fc_list_first_entry(&(list)->head, type, member); \
+        PTHREAD_MUTEX_UNLOCK(&(list)->lock)
+
+#define locked_list_last_entry(list, type, member, var) \
+        PTHREAD_MUTEX_LOCK(&(list)->lock); \
+        var = fc_list_last_entry(&(list)->head, type, member); \
+        PTHREAD_MUTEX_UNLOCK(&(list)->lock)
+
+#define locked_list_pop(list, type, member, var) \
+        PTHREAD_MUTEX_LOCK(&(list)->lock); \
+        var = fc_list_first_entry(&(list)->head, type, member); \
+        if (var != NULL) {  \
+            fc_list_del_init(&var->member);  \
+        }  \
+        PTHREAD_MUTEX_UNLOCK(&(list)->lock)
 
 #ifdef __cplusplus
 }
