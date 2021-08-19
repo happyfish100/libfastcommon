@@ -245,6 +245,18 @@ typedef struct
 
 typedef struct
 {
+    int32_t *values;
+    int count;
+} int32_array_t;
+
+typedef struct
+{
+    int64_t *values;
+    int count;
+} int64_array_t;
+
+typedef struct
+{
     pthread_mutex_t lock;
     pthread_cond_t cond;
 } pthread_lock_cond_pair_t;
