@@ -245,15 +245,21 @@ typedef struct
 
 typedef struct
 {
-    int32_t *values;
+    int32_t *elts;
     int count;
 } int32_array_t;
 
 typedef struct
 {
-    int64_t *values;
+    int64_t *elts;
     int count;
 } int64_array_t;
+
+typedef struct
+{
+    void *elts;
+    int count;
+} void_array_t;
 
 typedef struct
 {
