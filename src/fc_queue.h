@@ -18,10 +18,6 @@
 #ifndef _FC_QUEUE_H
 #define _FC_QUEUE_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <pthread.h>
 #include "common_define.h"
 
 struct fc_queue_info
@@ -37,6 +33,10 @@ struct fc_queue
     pthread_lock_cond_pair_t lc_pair;
     int next_ptr_offset;
 };
+
+
+#define FC_QUEUE_NEXT_PTR(queue, data) \
+    *((void **)(((char *)data) + (queue)->next_ptr_offset))
 
 #ifdef __cplusplus
 extern "C" {

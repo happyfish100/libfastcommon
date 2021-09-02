@@ -15,16 +15,8 @@
 
 //fc_queue.c
 
-#include <errno.h>
-#include <pthread.h>
-#include <inttypes.h>
-#include "logger.h"
-#include "shared_func.h"
 #include "pthread_func.h"
 #include "fc_queue.h"
-
-#define FC_QUEUE_NEXT_PTR(queue, data) \
-    *((void **)(((char *)data) + queue->next_ptr_offset))
 
 int fc_queue_init(struct fc_queue *queue, const int next_ptr_offset)
 {
