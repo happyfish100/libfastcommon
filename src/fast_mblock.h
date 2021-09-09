@@ -304,6 +304,9 @@ static inline int fast_mblock_free_object(struct fast_mblock_man *mblock,
     return fast_mblock_free(mblock, fast_mblock_to_node_ptr(object));
 }
 
+void fast_mblock_free_objects(struct fast_mblock_man *mblock,
+        void **objs, const int count);
+
 /**
 delay free a object (put a node to the mblock)
 parameters:

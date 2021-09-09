@@ -858,6 +858,30 @@ int fast_mblock_batch_free(struct fast_mblock_man *mblock,
 	return 0;
 }
 
+void fast_mblock_free_objects(struct fast_mblock_man *mblock,
+        void **objs, const int count)
+{
+    void **obj;
+    void **end;
+    struct fast_mblock_node *previous;
+    struct fast_mblock_chain chain;
+
+    if (count == 0) {
+        return;
+    }
+
+    chain.head = previous = fast_mblock_to_node_ptr(objs[0]);
+    end = objs + count;
+    for (obj=objs+1; obj<end; obj++) {
+        previous->next = *obj;
+        previous = *obj;
+    }
+
+    previous->next = NULL;
+    chain.tail = fast_mblock_to_node_ptr(previous);
+    fast_mblock_batch_free(mblock, &chain);
+}
+
 int fast_mblock_delay_free(struct fast_mblock_man *mblock,
 		     struct fast_mblock_node *pNode, const int deley)
 {
