@@ -89,6 +89,21 @@ static inline bool sorted_queue_empty(struct sorted_queue *sq)
     return fc_queue_empty(&sq->queue);
 }
 
+static inline void *sorted_queue_timedpeek(struct sorted_queue *sq,
+        const int timeout, const int time_unit)
+{
+    return fc_queue_timedpeek(&sq->queue, timeout, time_unit);
+}
+
+#define sorted_queue_timedpeek_sec(sq, timeout) \
+    sorted_queue_timedpeek(sq, timeout, FC_TIME_UNIT_SECOND)
+
+#define sorted_queue_timedpeek_ms(sq, timeout_ms) \
+    sorted_queue_timedpeek(sq, timeout_ms, FC_TIME_UNIT_MSECOND)
+
+#define sorted_queue_timedpeek_us(sq, timeout_us) \
+    sorted_queue_timedpeek(sq, timeout_us, FC_TIME_UNIT_USECOND)
+
 #ifdef __cplusplus
 }
 #endif
