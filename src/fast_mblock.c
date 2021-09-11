@@ -864,6 +864,7 @@ void fast_mblock_free_objects(struct fast_mblock_man *mblock,
     void **obj;
     void **end;
     struct fast_mblock_node *previous;
+    struct fast_mblock_node *current;
     struct fast_mblock_chain chain;
 
     if (count == 0) {
@@ -873,12 +874,13 @@ void fast_mblock_free_objects(struct fast_mblock_man *mblock,
     chain.head = previous = fast_mblock_to_node_ptr(objs[0]);
     end = objs + count;
     for (obj=objs+1; obj<end; obj++) {
-        previous->next = *obj;
-        previous = *obj;
+        current = fast_mblock_to_node_ptr(*obj);
+        previous->next = current;
+        previous = current;
     }
 
     previous->next = NULL;
-    chain.tail = fast_mblock_to_node_ptr(previous);
+    chain.tail = previous;
     fast_mblock_batch_free(mblock, &chain);
 }
 

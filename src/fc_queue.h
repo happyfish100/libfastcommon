@@ -19,6 +19,7 @@
 #define _FC_QUEUE_H
 
 #include "common_define.h"
+#include "fast_mblock.h"
 
 struct fc_queue_info
 {
@@ -171,6 +172,9 @@ void *fc_queue_timedpeek(struct fc_queue *queue,
 
 #define fc_queue_timedpeek_us(queue, timeout_us) \
     fc_queue_timedpeek(queue, timeout_us, FC_TIME_UNIT_USECOND)
+
+int fc_queue_free_chain(struct fc_queue *queue, struct fast_mblock_man
+        *mblock, struct fc_queue_info *qinfo);
 
 #ifdef __cplusplus
 }

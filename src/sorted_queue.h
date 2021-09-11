@@ -121,6 +121,12 @@ static inline void *sorted_queue_timedpeek(struct sorted_queue *sq,
 #define sorted_queue_timedpeek_us(sq, timeout_us) \
     sorted_queue_timedpeek(sq, timeout_us, FC_TIME_UNIT_USECOND)
 
+static inline int sorted_queue_free_chain(struct sorted_queue *sq,
+        struct fast_mblock_man *mblock, struct fc_queue_info *qinfo)
+{
+    return fc_queue_free_chain(&sq->queue, mblock, qinfo);
+}
+
 #ifdef __cplusplus
 }
 #endif

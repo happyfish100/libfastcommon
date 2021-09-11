@@ -205,3 +205,30 @@ void *fc_queue_timedpeek(struct fc_queue *queue,
 
     return data;
 }
+
+int fc_queue_free_chain(struct fc_queue *queue, struct fast_mblock_man
+        *mblock, struct fc_queue_info *qinfo)
+{
+    struct fast_mblock_node *previous;
+    struct fast_mblock_node *current;
+    struct fast_mblock_chain chain;
+    void *data;
+
+    if (qinfo->head == NULL) {
+        return 0;
+    }
+
+    chain.head = previous = fast_mblock_to_node_ptr(qinfo->head);
+    data = FC_QUEUE_NEXT_PTR(queue, qinfo->head);
+    while (data != NULL) {
+        current = fast_mblock_to_node_ptr(data);
+        previous->next = current;
+
+        previous = current;
+        data = FC_QUEUE_NEXT_PTR(queue, data);
+    }
+
+    previous->next = NULL;
+    chain.tail = previous;
+    return fast_mblock_batch_free(mblock, &chain);
+}
