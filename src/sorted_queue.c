@@ -102,16 +102,15 @@ void *sorted_queue_pop_ex(struct sorted_queue *sq,
 	return data;
 }
 
-void *sorted_queue_pop_all_ex(struct sorted_queue *sq,
-        void *less_equal, const bool blocked)
+void sorted_queue_pop_to_queue_ex(struct sorted_queue *sq,
+        void *less_equal, struct fc_queue_info *qinfo,
+        const bool blocked)
 {
-    struct fc_queue_info chain;
-
     PTHREAD_MUTEX_LOCK(&sq->queue.lc_pair.lock);
     do {
         if (sq->queue.head == NULL) {
             if (!blocked) {
-                chain.head = NULL;
+                qinfo->head = qinfo->tail = NULL;
                 break;
             }
 
@@ -120,27 +119,30 @@ void *sorted_queue_pop_all_ex(struct sorted_queue *sq,
         }
 
         if (sq->queue.head == NULL) {
-            chain.head = NULL;
+            qinfo->head = qinfo->tail = NULL;
         } else {
             if (sq->compare_func(sq->queue.head, less_equal) <= 0) {
-                chain.head = chain.tail = sq->queue.head;
-                sq->queue.head = FC_QUEUE_NEXT_PTR(&sq->queue, sq->queue.head);
-                while (sq->compare_func(sq->queue.head, less_equal) <= 0) {
-                    chain.tail = sq->queue.head;
-                    sq->queue.head = FC_QUEUE_NEXT_PTR(&sq->queue, sq->queue.head);
+                qinfo->head = qinfo->tail = sq->queue.head;
+                sq->queue.head = FC_QUEUE_NEXT_PTR(&sq->queue,
+                        sq->queue.head);
+                while (sq->queue.head != NULL && sq->compare_func(
+                            sq->queue.head, less_equal) <= 0)
+                {
+                    qinfo->tail = sq->queue.head;
+                    sq->queue.head = FC_QUEUE_NEXT_PTR(
+                            &sq->queue, sq->queue.head);
                 }
 
                 if (sq->queue.head == NULL) {
                     sq->queue.tail = NULL;
                 } else {
-                    FC_QUEUE_NEXT_PTR(&sq->queue, chain.tail) = NULL;
+                    FC_QUEUE_NEXT_PTR(&sq->queue, qinfo->tail) = NULL;
                 }
             } else {
-                chain.head = NULL;
+                qinfo->head = qinfo->tail = NULL;
             }
         }
     } while (0);
 
     PTHREAD_MUTEX_UNLOCK(&sq->queue.lc_pair.lock);
-	return chain.head;
 }

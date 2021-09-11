@@ -264,6 +264,23 @@ int fast_mblock_batch_free(struct fast_mblock_man *mblock,
         struct fast_mblock_chain *chain);
 
 /**
+batch free objects
+parameters:
+	mblock: the mblock pointer
+	head: the head object
+	tail: the tail object
+return 0 for success, return none zero if fail
+*/
+static inline int fast_mblock_batch_free_objs(struct fast_mblock_man
+        *mblock, void *head, void *tail)
+{
+    struct fast_mblock_chain chain;
+    chain.head = fast_mblock_to_node_ptr(head);
+    chain.tail = fast_mblock_to_node_ptr(tail);
+    return fast_mblock_batch_free(mblock, &chain);
+}
+
+/**
 delay free a node (put a node to the mblock)
 parameters:
 	mblock: the mblock pointer
