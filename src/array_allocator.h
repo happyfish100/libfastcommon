@@ -39,7 +39,7 @@ typedef struct
     int32_t elts[0];
 } I32Array;
 
-typedef struct
+typedef struct array_allocator_context
 {
     struct fast_allocator_context allocator;
     int element_size;
@@ -57,6 +57,9 @@ extern "C" {
     VoidArray *array_allocator_alloc(ArrayAllocatorContext *ctx,
             const int target_count);
 
+    VoidArray *array_allocator_realloc(ArrayAllocatorContext *ctx,
+            VoidArray *old_array, const int target_count);
+
     static inline void array_allocator_free(ArrayAllocatorContext *ctx,
             VoidArray *array)
     {
@@ -64,12 +67,18 @@ extern "C" {
         fast_allocator_free(&ctx->allocator, array);
     }
 
+    int array_compare_element_int64(const int64_t *n1, const int64_t *n2);
+
+    int array_compare_element_int32(const int32_t *n1, const int32_t *n2);
 
 #define i64_array_allocator_init(ctx, min_bits, max_bits) \
     array_allocator_init(ctx, "i64", sizeof(int64_t), min_bits, max_bits)
 
 #define i64_array_allocator_alloc(ctx, target_count) \
     (I64Array *)array_allocator_alloc(ctx, target_count)
+
+#define i64_array_allocator_realloc(ctx, old_array, target_count) \
+    (I64Array *)array_allocator_realloc(ctx, (VoidArray *)old_array, target_count)
 
 #define i64_array_allocator_free(ctx, array) \
     array_allocator_free(ctx, (VoidArray *)array)

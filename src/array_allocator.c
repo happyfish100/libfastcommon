@@ -71,3 +71,46 @@ VoidArray *array_allocator_alloc(ArrayAllocatorContext *ctx,
     bytes = sizeof(VoidArray) + alloc * ctx->element_size;
     return (VoidArray *)fast_allocator_alloc(&ctx->allocator, bytes);
 }
+
+VoidArray *array_allocator_realloc(ArrayAllocatorContext *ctx,
+        VoidArray *old_array, const int target_count)
+{
+    VoidArray *new_array;
+
+    if (old_array == NULL) {
+        return array_allocator_alloc(ctx, target_count);
+    }
+
+    if (old_array->alloc >= target_count) {
+        return old_array;
+    }
+
+    if ((new_array=array_allocator_alloc(ctx, target_count)) != NULL) {
+        if (old_array->count > 0) {
+            memcpy(new_array->elts, old_array->elts, ctx->
+                    element_size * old_array->count);
+        }
+        new_array->count = old_array->count;
+    }
+
+    array_allocator_free(ctx, old_array);
+    return new_array;
+}
+
+int array_compare_element_int64(const int64_t *n1, const int64_t *n2)
+{
+    int64_t sub;
+    sub = *n1 - *n2;
+    if (sub < 0) {
+        return -1;
+    } else if (sub > 0) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+int array_compare_element_int32(const int32_t *n1, const int32_t *n2)
+{
+    return *n1 - *n2;
+}
