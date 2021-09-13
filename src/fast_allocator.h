@@ -40,6 +40,7 @@ struct fast_region_info
 	int step;
 	int alloc_elements_once;
 	int pad_mask;  //for internal use
+    int count;
 	struct fast_allocator_info *allocators;
 };
 

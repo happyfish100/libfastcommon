@@ -71,6 +71,7 @@ extern "C" {
 
     int array_compare_element_int32(const int32_t *n1, const int32_t *n2);
 
+
 #define i64_array_allocator_init(ctx, min_bits, max_bits) \
     array_allocator_init(ctx, "i64", sizeof(int64_t), min_bits, max_bits)
 
@@ -81,6 +82,19 @@ extern "C" {
     (I64Array *)array_allocator_realloc(ctx, (VoidArray *)old_array, target_count)
 
 #define i64_array_allocator_free(ctx, array) \
+    array_allocator_free(ctx, (VoidArray *)array)
+
+
+#define i32_array_allocator_init(ctx, min_bits, max_bits) \
+    array_allocator_init(ctx, "i32", sizeof(int32_t), min_bits, max_bits)
+
+#define i32_array_allocator_alloc(ctx, target_count) \
+    (I32Array *)array_allocator_alloc(ctx, target_count)
+
+#define i32_array_allocator_realloc(ctx, old_array, target_count) \
+    (I32Array *)array_allocator_realloc(ctx, (VoidArray *)old_array, target_count)
+
+#define i32_array_allocator_free(ctx, array) \
     array_allocator_free(ctx, (VoidArray *)array)
 
 

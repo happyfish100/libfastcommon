@@ -148,14 +148,13 @@ static int region_init(struct fast_allocator_context *acontext,
 	int result;
 	int bytes;
 	int element_size;
-	int allocator_count;
 	struct fast_allocator_info *allocator;
     char *name;
     char name_buff[FAST_MBLOCK_NAME_SIZE];
 
 	region->pad_mask = region->step - 1;
-	allocator_count = (region->end - region->start) / region->step;
-	bytes = sizeof(struct fast_allocator_info) * allocator_count;
+	region->count = (region->end - region->start) / region->step;
+	bytes = sizeof(struct fast_allocator_info) * region->count;
 	region->allocators = (struct fast_allocator_info *)fc_malloc(bytes);
 	if (region->allocators == NULL)
 	{
@@ -163,7 +162,7 @@ static int region_init(struct fast_allocator_context *acontext,
 	}
 	memset(region->allocators, 0, bytes);
 
-	if ((result=allocator_array_check_capacity(acontext, allocator_count)) != 0)
+	if ((result=allocator_array_check_capacity(acontext, region->count)) != 0)
 	{
 		return result;
 	}
@@ -171,9 +170,10 @@ static int region_init(struct fast_allocator_context *acontext,
     name = name_buff;
 	result = 0;
  	allocator = region->allocators;
-	for (element_size=region->start+region->step; element_size<=region->end;
-		element_size+=region->step,allocator++)
-	{
+	for (element_size = region->start + region->step;
+         element_size <= region->end;
+         element_size += region->step, allocator++)
+    {
         if (mblock_name_prefix != NULL)
         {
             snprintf(name, FAST_MBLOCK_NAME_SIZE, "%s-%d",
@@ -276,30 +276,42 @@ int fast_allocator_init_ex(struct fast_allocator_context *acontext,
 			result = EINVAL;
 			break;
 		}
-		if (pRegion->step <= 0 || !is_power2(pRegion->step))
+		if (pRegion->step <= 0)
 		{
 			logError("file: "__FILE__", line: %d, "
-				"invalid step: %d",
+				"invalid step: %d <= 0",
 				__LINE__, pRegion->step);
 			result = EINVAL;
 			break;
 		}
-		if (pRegion->start % pRegion->step != 0)
-		{
-			logError("file: "__FILE__", line: %d, "
-				"invalid start: %d, must multiple of step: %d",
-				__LINE__, pRegion->start, pRegion->step);
-			result = EINVAL;
-			break;
-		}
-		if (pRegion->end % pRegion->step != 0)
-		{
-			logError("file: "__FILE__", line: %d, "
-				"invalid end: %d, must multiple of step: %d",
-				__LINE__, pRegion->end, pRegion->step);
-			result = EINVAL;
-			break;
-		}
+
+        if ((pRegion->end - pRegion->start) / pRegion->step > 1)
+        {
+            if (!is_power2(pRegion->step))
+            {
+                logError("file: "__FILE__", line: %d, "
+                        "invalid step: %d, expect power of 2",
+                        __LINE__, pRegion->step);
+                result = EINVAL;
+                break;
+            }
+            if (pRegion->start % pRegion->step != 0)
+            {
+                logError("file: "__FILE__", line: %d, "
+                        "invalid start: %d, must multiple of step: %d",
+                        __LINE__, pRegion->start, pRegion->step);
+                result = EINVAL;
+                break;
+            }
+            if (pRegion->end % pRegion->step != 0)
+            {
+                logError("file: "__FILE__", line: %d, "
+                        "invalid end: %d, must multiple of step: %d",
+                        __LINE__, pRegion->end, pRegion->step);
+                result = EINVAL;
+                break;
+            }
+        }
 		previous_end = pRegion->end;
 
 		if ((result=region_init(acontext, mblock_name_prefix, pRegion)) != 0)
@@ -368,8 +380,8 @@ void fast_allocator_destroy(struct fast_allocator_context *acontext)
 	memset(acontext, 0, sizeof(*acontext));
 }
 
-static struct fast_allocator_info *get_allocator(struct fast_allocator_context *acontext,
-	int *alloc_bytes)
+static struct fast_allocator_info *get_allocator(struct fast_allocator_context
+        *acontext, int *alloc_bytes)
 {
 	struct fast_region_info *pRegion;
 	struct fast_region_info *region_end;
@@ -378,11 +390,16 @@ static struct fast_allocator_info *get_allocator(struct fast_allocator_context *
 	for (pRegion=acontext->regions; pRegion<region_end; pRegion++)
 	{
 		if (*alloc_bytes <= pRegion->end)
-		{
-			*alloc_bytes = BYTES_ALIGN(*alloc_bytes, pRegion->pad_mask);
-			return pRegion->allocators + ((*alloc_bytes -
-				pRegion->start) / pRegion->step) - 1;
-		}
+        {
+            if (pRegion->count == 1) {
+                *alloc_bytes = pRegion->allocators[0].mblock.info.element_size;
+                return pRegion->allocators + 0;
+            } else {
+                *alloc_bytes = BYTES_ALIGN(*alloc_bytes, pRegion->pad_mask);
+                return pRegion->allocators + ((*alloc_bytes -
+                            pRegion->start) / pRegion->step) - 1;
+            }
+        }
 	}
 
 	return &malloc_allocator;
@@ -513,7 +530,8 @@ void fast_allocator_free(struct fast_allocator_context *acontext, void *ptr)
 		return;
 	}
 
-	allocator_info = acontext->allocator_array.allocators[pWrapper->allocator_index];
+	allocator_info = acontext->allocator_array.
+        allocators[pWrapper->allocator_index];
 	if (pWrapper->magic_number != allocator_info->magic_number)
 	{
 		logError("file: "__FILE__", line: %d, "
@@ -531,10 +549,11 @@ void fast_allocator_free(struct fast_allocator_context *acontext, void *ptr)
 		fast_mblock_free_object(&allocator_info->mblock, obj);
 	}
 	else
-	{
-		fast_allocator_malloc_trunk_notify_func(-1 * pWrapper->alloc_bytes, acontext);
-		free(obj);
-	}
+    {
+        fast_allocator_malloc_trunk_notify_func(-1 *
+                pWrapper->alloc_bytes, acontext);
+        free(obj);
+    }
 }
 
 char *fast_allocator_memdup(struct fast_allocator_context *acontext,

@@ -25,25 +25,28 @@ void sorted_array_init(SortedArrayContext *ctx,
     ctx->compare_func = compare_func;
 }
 
-static void *sorted_array_bsearch(SortedArrayContext *ctx, void *base,
+static char *sorted_array_bsearch(SortedArrayContext *ctx, char *base,
         const int count, const void *element, int *insert_pos)
 {
     int low;
     int high;
     int mid;
     int compr;
+    char *current;
 
     *insert_pos = 0;
     low = 0;
     high = count - 1;
     while (low <= high) {
         mid = (low + high) / 2;
-        compr = ctx->compare_func(base + mid, element);
+        current = base + ctx->element_size * mid;
+        compr = ctx->compare_func(current, element);
         if (compr < 0) {
             low = mid + 1;
             *insert_pos = low;
         } else if (compr == 0) {
-            return base + mid;
+            *insert_pos = mid;
+            return current;
         } else {
             high = mid - 1;
             *insert_pos = mid;
@@ -58,8 +61,9 @@ int sorted_array_insert(SortedArrayContext *ctx,
 {
     int insert_pos;
     int move_count;
-    void *found;
-    void *end;
+    char *current;
+    char *found;
+    char *end;
 
     found = sorted_array_bsearch(ctx, base, *count, element, &insert_pos);
     if (found != NULL) {
@@ -67,20 +71,39 @@ int sorted_array_insert(SortedArrayContext *ctx,
             return EEXIST;
         }
 
-        found++;
-        end = base + *count;
+        found += ctx->element_size;
+        end = (char *)base + ctx->element_size * (*count);
         while (found < end && ctx->compare_func(found, element) == 0) {
-            found++;
+            insert_pos++;
+            found += ctx->element_size;
         }
-        insert_pos = found - base;
     }
 
+    current = (char *)base + ctx->element_size * insert_pos;
     move_count = *count - insert_pos;
     if (move_count > 0) {
-        memmove(base + insert_pos + 1, base + insert_pos,
-                ctx->element_size * move_count);
+        memmove((char *)base + ctx->element_size * (insert_pos + 1),
+                current, ctx->element_size * move_count);
     }
-    memcpy(base + insert_pos, element, ctx->element_size);
+
+    switch (ctx->element_size) {
+        case 1:
+            *current = *((char *)element);
+            break;
+        case 2:
+            *((short *)current) = *((short *)element);
+            break;
+        case 4:
+            *((int32_t *)current) = *((int32_t *)element);
+            break;
+        case 8:
+            *((int64_t *)current) = *((int64_t *)element);
+            break;
+        default:
+            memcpy(current, element, ctx->element_size);
+            break;
+    }
+
     (*count)++;
     return 0;
 }
@@ -90,11 +113,11 @@ int sorted_array_delete(SortedArrayContext *ctx,
 {
     int move_count;
     struct {
-        void *current;
-        void *start;
-        void *end;
+        char *current;
+        char *start;
+        char *end;
     } found;
-    void *array_end;
+    char *array_end;
 
     if ((found.current=bsearch(element, base, *count, ctx->element_size,
                     ctx->compare_func)) == NULL)
@@ -102,29 +125,29 @@ int sorted_array_delete(SortedArrayContext *ctx,
         return ENOENT;
     }
 
-    array_end = base + *count;
+    array_end = (char *)base + ctx->element_size * (*count);
     if (ctx->allow_duplicate) {
         found.start = found.current;
-        while (found.start > base && ctx->compare_func(
-                    found.start - 1, element) == 0)
+        while (found.start > (char *)base && ctx->compare_func(
+                    found.start - ctx->element_size, element) == 0)
         {
-            found.start--;
+            found.start -= ctx->element_size;
         }
 
-        found.end = ++found.current;
+        found.end = found.current + ctx->element_size;
         while (found.end < array_end && ctx->compare_func(
                     found.end, element) == 0)
         {
-            found.end++;
+            found.end += ctx->element_size;
         }
-        *count -= found.end - found.start;
+        *count -= (found.end - found.start) / ctx->element_size;
     } else {
         found.start = found.current;
-        found.end = found.start + 1;
+        found.end = found.start + ctx->element_size;
         (*count)--;
     }
 
-    move_count = array_end - found.end;
+    move_count = (array_end - found.end) / ctx->element_size;
     if (move_count > 0) {
         memmove(found.start, found.end, ctx->
                 element_size * move_count);
