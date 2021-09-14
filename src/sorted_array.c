@@ -17,16 +17,16 @@
 #include "sorted_array.h"
 
 void sorted_array_init(SortedArrayContext *ctx,
-        const int element_size, const bool allow_duplicate,
+        const int element_size, const bool allow_duplication,
         int (*compare_func)(const void *, const void *))
 {
     ctx->element_size = element_size;
-    ctx->allow_duplicate = allow_duplicate;
+    ctx->allow_duplication = allow_duplication;
     ctx->compare_func = compare_func;
 }
 
 static char *sorted_array_bsearch(SortedArrayContext *ctx, char *base,
-        const int count, const void *element, int *insert_pos)
+        const int count, const void *elt, int *insert_pos)
 {
     int low;
     int high;
@@ -40,7 +40,7 @@ static char *sorted_array_bsearch(SortedArrayContext *ctx, char *base,
     while (low <= high) {
         mid = (low + high) / 2;
         current = base + ctx->element_size * mid;
-        compr = ctx->compare_func(current, element);
+        compr = ctx->compare_func(current, elt);
         if (compr < 0) {
             low = mid + 1;
             *insert_pos = low;
@@ -57,7 +57,7 @@ static char *sorted_array_bsearch(SortedArrayContext *ctx, char *base,
 }
 
 int sorted_array_insert(SortedArrayContext *ctx,
-        void *base, int *count, const void *element)
+        void *base, int *count, const void *elt)
 {
     int insert_pos;
     int move_count;
@@ -65,15 +65,15 @@ int sorted_array_insert(SortedArrayContext *ctx,
     char *found;
     char *end;
 
-    found = sorted_array_bsearch(ctx, base, *count, element, &insert_pos);
+    found = sorted_array_bsearch(ctx, base, *count, elt, &insert_pos);
     if (found != NULL) {
-        if (!ctx->allow_duplicate) {
+        if (!ctx->allow_duplication) {
             return EEXIST;
         }
 
         found += ctx->element_size;
         end = (char *)base + ctx->element_size * (*count);
-        while (found < end && ctx->compare_func(found, element) == 0) {
+        while (found < end && ctx->compare_func(found, elt) == 0) {
             insert_pos++;
             found += ctx->element_size;
         }
@@ -88,19 +88,19 @@ int sorted_array_insert(SortedArrayContext *ctx,
 
     switch (ctx->element_size) {
         case 1:
-            *current = *((char *)element);
+            *current = *((char *)elt);
             break;
         case 2:
-            *((short *)current) = *((short *)element);
+            *((short *)current) = *((short *)elt);
             break;
         case 4:
-            *((int32_t *)current) = *((int32_t *)element);
+            *((int32_t *)current) = *((int32_t *)elt);
             break;
         case 8:
-            *((int64_t *)current) = *((int64_t *)element);
+            *((int64_t *)current) = *((int64_t *)elt);
             break;
         default:
-            memcpy(current, element, ctx->element_size);
+            memcpy(current, elt, ctx->element_size);
             break;
     }
 
@@ -109,7 +109,7 @@ int sorted_array_insert(SortedArrayContext *ctx,
 }
 
 int sorted_array_delete(SortedArrayContext *ctx,
-        void *base, int *count, const void *element)
+        void *base, int *count, const void *elt)
 {
     int move_count;
     struct {
@@ -119,24 +119,24 @@ int sorted_array_delete(SortedArrayContext *ctx,
     } found;
     char *array_end;
 
-    if ((found.current=bsearch(element, base, *count, ctx->element_size,
+    if ((found.current=bsearch(elt, base, *count, ctx->element_size,
                     ctx->compare_func)) == NULL)
     {
         return ENOENT;
     }
 
     array_end = (char *)base + ctx->element_size * (*count);
-    if (ctx->allow_duplicate) {
+    if (ctx->allow_duplication) {
         found.start = found.current;
         while (found.start > (char *)base && ctx->compare_func(
-                    found.start - ctx->element_size, element) == 0)
+                    found.start - ctx->element_size, elt) == 0)
         {
             found.start -= ctx->element_size;
         }
 
         found.end = found.current + ctx->element_size;
         while (found.end < array_end && ctx->compare_func(
-                    found.end, element) == 0)
+                    found.end, elt) == 0)
         {
             found.end += ctx->element_size;
         }

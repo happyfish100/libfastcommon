@@ -34,7 +34,7 @@ static int test_i64()
 {
     const int min_bits = 2;
     const int max_bits = 16;
-    const bool allow_duplicate = false;
+    const bool allow_duplication = false;
     int result;
     int i;
     int index;
@@ -48,7 +48,7 @@ static int test_i64()
 
     start_time = get_current_time_us();
 
-    sorted_i64_array_init(&sarray_ctx, allow_duplicate);
+    sorted_i64_array_init(&sarray_ctx, allow_duplication);
     if ((result=i64_array_allocator_init(&allocator_ctx,
                     min_bits, max_bits)) != 0)
     {
@@ -109,7 +109,7 @@ static int test_i32()
 {
     const int min_bits = 2;
     const int max_bits = 16;
-    const bool allow_duplicate = false;
+    const bool allow_duplication = false;
     int result;
     int i;
     int index;
@@ -123,7 +123,7 @@ static int test_i32()
 
     start_time = get_current_time_us();
 
-    sorted_i32_array_init(&sarray_ctx, allow_duplicate);
+    sorted_i32_array_init(&sarray_ctx, allow_duplication);
     if ((result=i32_array_allocator_init(&allocator_ctx,
                     min_bits, max_bits)) != 0)
     {
