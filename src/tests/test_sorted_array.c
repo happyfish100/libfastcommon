@@ -26,7 +26,7 @@
 #include "fastcommon/array_allocator.h"
 #include "fastcommon/sorted_array.h"
 
-#define  ELEMENT_COUNT  5 * 1000
+#define  ELEMENT_COUNT  1000
 
 static bool silence;
 

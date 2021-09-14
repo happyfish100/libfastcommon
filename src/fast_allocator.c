@@ -167,6 +167,15 @@ static int region_init(struct fast_allocator_context *acontext,
 		return result;
 	}
 
+    if (region->count == 1) {
+        if (region->start == 0) {
+            region->step += sizeof(struct allocator_wrapper);
+        } else {
+            region->start += sizeof(struct allocator_wrapper);
+        }
+        region->end += sizeof(struct allocator_wrapper);
+    }
+
     name = name_buff;
 	result = 0;
  	allocator = region->allocators;
