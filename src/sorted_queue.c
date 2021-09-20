@@ -45,9 +45,11 @@ void sorted_queue_push_ex(struct sorted_queue *sq, void *data, bool *notify)
             FC_QUEUE_NEXT_PTR(&sq->queue, data) = NULL;
             FC_QUEUE_NEXT_PTR(&sq->queue, sq->queue.tail) = data;
             sq->queue.tail = data;
+            *notify = false;
         } else if (sq->compare_func(data, sq->queue.head) < 0) {
             FC_QUEUE_NEXT_PTR(&sq->queue, data) = sq->queue.head;
             sq->queue.head = data;
+            *notify = true;
         } else {
             previous = sq->queue.head;
             current = FC_QUEUE_NEXT_PTR(&sq->queue, previous);
@@ -59,8 +61,8 @@ void sorted_queue_push_ex(struct sorted_queue *sq, void *data, bool *notify)
             FC_QUEUE_NEXT_PTR(&sq->queue, data) = FC_QUEUE_NEXT_PTR(
                     &sq->queue, previous);
             FC_QUEUE_NEXT_PTR(&sq->queue, previous) = data;
+            *notify = false;
         }
-        *notify = false;
     }
 
     PTHREAD_MUTEX_UNLOCK(&sq->queue.lc_pair.lock);

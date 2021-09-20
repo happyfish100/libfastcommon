@@ -1,6 +1,5 @@
 
 %define LibFastcommonDevel  libfastcommon-devel
-%define LibFastcommonDebuginfo  libfastcommon-debuginfo
 %define CommitVersion %(echo $COMMIT_VERSION)
 
 Name: libfastcommon
