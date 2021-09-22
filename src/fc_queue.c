@@ -206,6 +206,26 @@ void *fc_queue_timedpeek(struct fc_queue *queue,
     return data;
 }
 
+int fc_queue_alloc_chain(struct fc_queue *queue, struct fast_mblock_man
+        *mblock, const int count, struct fc_queue_info *chain)
+{
+    struct fast_mblock_node *node;
+
+    if ((node=fast_mblock_batch_alloc(mblock, count)) == NULL) {
+        chain->head = chain->tail = NULL;
+        return ENOMEM;
+    }
+
+    chain->head = chain->tail = node->data;
+    while ((node=node->next) != NULL) {
+        FC_QUEUE_NEXT_PTR(queue, chain->tail) = node->data;
+        chain->tail = node->data;
+    }
+    FC_QUEUE_NEXT_PTR(queue, chain->tail) = NULL;
+
+    return 0;
+}
+
 int fc_queue_free_chain(struct fc_queue *queue, struct fast_mblock_man
         *mblock, struct fc_queue_info *qinfo)
 {

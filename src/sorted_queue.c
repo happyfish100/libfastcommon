@@ -75,7 +75,9 @@ void *sorted_queue_pop_ex(struct sorted_queue *sq,
 
     PTHREAD_MUTEX_LOCK(&sq->queue.lc_pair.lock);
     do {
-        if (sq->queue.head == NULL) {
+        if (sq->queue.head == NULL || sq->compare_func(
+                    sq->queue.head, less_equal) > 0)
+        {
             if (!blocked) {
                 data = NULL;
                 break;

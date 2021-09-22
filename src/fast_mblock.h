@@ -24,7 +24,6 @@
 #include <pthread.h>
 #include "common_define.h"
 #include "fc_memory.h"
-#include "chain.h"
 #include "logger.h"
 
 #define FAST_MBLOCK_NAME_SIZE 32
@@ -304,6 +303,14 @@ static inline int fast_mblock_free_object(struct fast_mblock_man *mblock,
     return fast_mblock_free(mblock, fast_mblock_to_node_ptr(object));
 }
 
+/**
+free objects (put objects to the mblock)
+parameters:
+	mblock: the mblock pointer
+	objs:  the object array to free
+    count: the count of the object array
+return none
+*/
 void fast_mblock_free_objects(struct fast_mblock_man *mblock,
         void **objs, const int count);
 
