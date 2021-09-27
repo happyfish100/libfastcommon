@@ -197,6 +197,9 @@ int sched_start(ScheduleArray *pScheduleArray, pthread_t *ptid, \
 */
 void sched_print_all_entries();
 
+time_t sched_make_first_call_time(struct tm *tm_current,
+        const TimeInfo *time_base, const int interval);
+
 #ifdef __cplusplus
 }
 #endif

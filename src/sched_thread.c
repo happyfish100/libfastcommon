@@ -45,16 +45,63 @@ static int sched_cmp_by_next_call_time(const void *p1, const void *p2)
 			((ScheduleEntry *)p2)->next_call_time;
 }
 
+time_t sched_make_first_call_time(struct tm *tm_current,
+        const TimeInfo *time_base, const int interval)
+{
+    int remain;
+    struct {
+        time_t time;
+        struct tm tm;
+    } base;
+
+    if (time_base->hour == TIME_NONE)
+    {
+        return g_current_time + interval;
+    }
+
+    if (tm_current->tm_hour > time_base->hour ||
+            (tm_current->tm_hour == time_base->hour
+             && tm_current->tm_min >= time_base->minute))
+    {
+        base.tm = *tm_current;
+    }
+    else
+    {
+        base.time = g_current_time - 24 * 3600;
+        localtime_r(&base.time, &base.tm);
+    }
+
+    base.tm.tm_hour = time_base->hour;
+    base.tm.tm_min = time_base->minute;
+    if (time_base->second >= 0 && time_base->second <= 59)
+    {
+        base.tm.tm_sec = time_base->second;
+    }
+    else
+    {
+        base.tm.tm_sec = 0;
+    }
+    base.time = mktime(&base.tm);
+    remain = g_current_time - base.time;
+    if (remain > 0)
+    {
+        return g_current_time + interval - remain % interval;
+    }
+    else if (remain < 0)
+    {
+        return g_current_time + (-1 * remain) % interval;
+    }
+    else
+    {
+        return g_current_time;
+    }
+}
+
 static int sched_init_entries(ScheduleEntry *entries, const int count)
 {
 	ScheduleEntry *pEntry;
 	ScheduleEntry *pEnd;
-	time_t time_base;
 	struct tm tm_current;
-	struct tm tm_base;
-    time_t current_time;
-    int remain;
-    int interval;
 
 	if (count < 0)
 	{
@@ -68,8 +115,8 @@ static int sched_init_entries(ScheduleEntry *entries, const int count)
 		return 0;
 	}
 
-	current_time = time(NULL);
-	localtime_r((time_t *)&current_time, &tm_current);
+	g_current_time = time(NULL);
+	localtime_r((time_t *)&g_current_time, &tm_current);
 	pEnd = entries + count;
 	for (pEntry=entries; pEntry<pEnd; pEntry++)
 	{
@@ -86,59 +133,15 @@ static int sched_init_entries(ScheduleEntry *entries, const int count)
 			return EINVAL;
 		}
 
-		if (pEntry->time_base.hour == TIME_NONE)
-		{
-			pEntry->next_call_time = current_time +
-						pEntry->interval;
-		}
-		else
-		{
-			if (tm_current.tm_hour > pEntry->time_base.hour ||
-				(tm_current.tm_hour == pEntry->time_base.hour
-				&& tm_current.tm_min >= pEntry->time_base.minute))
-            {
-                tm_base = tm_current;
-            }
-			else
-			{
-				time_base = current_time - 24 * 3600;
-				localtime_r(&time_base, &tm_base);
-			}
-
-			tm_base.tm_hour = pEntry->time_base.hour;
-			tm_base.tm_min = pEntry->time_base.minute;
-            if (pEntry->time_base.second >= 0 && pEntry->time_base.second <= 59)
-            {
-                tm_base.tm_sec = pEntry->time_base.second;
-            }
-            else
-            {
-                tm_base.tm_sec = 0;
-            }
-			time_base = mktime(&tm_base);
-            remain = current_time - time_base;
-            if (remain > 0)
-            {
-                interval = pEntry->interval - remain % pEntry->interval;
-            }
-            else if (remain < 0)
-            {
-                interval = (-1 * remain) % pEntry->interval;
-            }
-            else
-            {
-                interval = 0;
-            }
-
-			pEntry->next_call_time = current_time + interval;
-		}
+        pEntry->next_call_time = sched_make_first_call_time(
+                &tm_current, &pEntry->time_base, pEntry->interval);
 
         /*
 		{
 			char buff1[32];
 			char buff2[32];
 			logInfo("id=%d, current time=%s, first call time=%s",
-				pEntry->id, formatDatetime(current_time,
+				pEntry->id, formatDatetime(g_current_time,
 				"%Y-%m-%d %H:%M:%S", buff1, sizeof(buff1)),
 				formatDatetime(pEntry->next_call_time,
 				"%Y-%m-%d %H:%M:%S", buff2, sizeof(buff2)));
