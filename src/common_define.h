@@ -291,6 +291,12 @@ typedef void* (*MallocFunc)(size_t size);
     (((x) + (align_size - 1)) & (~(align_size - 1)))
 #define MEM_ALIGN(x)  MEM_ALIGN_CEIL(x, 8)
 
+#define FC_INIT_CHAIN(chain) (chain).head = (chain).tail = NULL
+#define FC_IS_CHAIN_EMPTY(chain) ((chain).head == NULL)
+
+#define FC_SET_CHAIN_TAIL_NEXT(chain, type, ptr) \
+    ((type *)(chain).tail)->next = ptr
+
 #ifdef WIN32
 #define strcasecmp	_stricmp
 #endif
