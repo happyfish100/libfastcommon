@@ -280,6 +280,12 @@ typedef struct
     string_t s;
 } FilenameString;
 
+typedef struct {
+    char *filename;
+    char *tmp_filename;
+    int fd;
+} SafeWriteFileInfo;
+
 typedef void (*FreeDataFunc)(void *ptr);
 typedef int (*CompareFunc)(void *p1, void *p2);
 typedef void* (*MallocFunc)(size_t size);

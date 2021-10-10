@@ -3630,3 +3630,27 @@ bool is_digital_string(const char *str)
 
     return true;
 }
+
+int fc_safe_write_file_init(SafeWriteFileInfo *fi,
+        const char *file_path, const char *redo_filename,
+        const char *tmp_filename)
+{
+    char full_filename[PATH_MAX];
+
+    snprintf(full_filename, sizeof(full_filename), "%s/%s",
+            file_path, redo_filename);
+    if ((fi->filename=fc_strdup(full_filename)) == NULL)
+    {
+        return ENOMEM;
+    }
+
+    snprintf(full_filename, sizeof(full_filename), "%s/%s",
+            file_path, tmp_filename);
+    if ((fi->tmp_filename=fc_strdup(full_filename)) == NULL)
+    {
+        return ENOMEM;
+    }
+
+    fi->fd = -1;
+    return 0;
+}

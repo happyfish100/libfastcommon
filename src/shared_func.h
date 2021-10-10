@@ -1131,6 +1131,45 @@ int fc_check_filename(const string_t *filename, const char *caption);
  */
 bool is_digital_string(const char *str);
 
+int fc_safe_write_file_init(SafeWriteFileInfo *fi,
+        const char *file_path, const char *redo_filename,
+        const char *tmp_filename);
+
+static inline int fc_safe_write_file_open(SafeWriteFileInfo *fi)
+{
+    const int flags = O_WRONLY | O_CREAT | O_TRUNC;
+    int result;
+
+    if ((fi->fd=open(fi->tmp_filename, flags, 0644)) < 0) {
+        result = errno != 0 ? errno : EIO;
+        logError("file: "__FILE__", line: %d, "
+                "open file %s fail, errno: %d, error info: %s",
+                __LINE__, fi->tmp_filename, result, STRERROR(result));
+        return result;
+    } else {
+        return 0;
+    }
+}
+
+static inline int fc_safe_write_file_close(SafeWriteFileInfo *fi)
+{
+    int result;
+
+    close(fi->fd);
+    if (rename(fi->tmp_filename, fi->filename) != 0)
+    {
+        result = errno != 0 ? errno : EIO;
+        logError("file: "__FILE__", line: %d, "
+                "rename file \"%s\" to \"%s\" fail, "
+                "errno: %d, error info: %s", __LINE__,
+                fi->tmp_filename, fi->filename,
+                result, STRERROR(result));
+        return result;
+    } else {
+        return 0;
+    }
+}
+
 static inline int fc_check_realloc_iovec_array(
         iovec_array_t *array, const int target_size)
 {
