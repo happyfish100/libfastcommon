@@ -139,6 +139,24 @@ static inline int uniq_skiplist_init_pair_ex(UniqSkiplistPair *pair,
     return 0;
 }
 
+static inline UniqSkiplist *uniq_skiplist_new_by_pair(
+        UniqSkiplistPair *pair, const int level_count)
+{
+    if (pair->skiplist == NULL) {
+        pair->skiplist = uniq_skiplist_new(&pair->factory, level_count);
+    }
+
+    return pair->skiplist;
+}
+
+static inline void uniq_skiplist_free_by_pair(UniqSkiplistPair *pair)
+{
+    if (pair->skiplist != NULL) {
+        uniq_skiplist_free(pair->skiplist);
+        pair->skiplist = NULL;
+    }
+}
+
 int uniq_skiplist_insert(UniqSkiplist *sl, void *data);
 int uniq_skiplist_delete_ex(UniqSkiplist *sl, void *data,
         const bool need_free);

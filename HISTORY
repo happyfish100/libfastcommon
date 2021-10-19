@@ -1,5 +1,5 @@
 
-Version 1.54  2021-10-10
+Version 1.54  2021-10-19
   * fast_allocator.[hc]: correct reclaim_interval logic
   * shared_func.[hc]: add functions getFileContentEx1 and getFileContent1
   * fc_queue.[hc]: add function fc_queue_timedpeek
@@ -7,6 +7,7 @@ Version 1.54  2021-10-10
   * add files: sorted_queue.[hc]
   * add files: array_allocator.[hc]
   * add files: sorted_array.[hc]
+  * shared_func.[hc]: add function fc_read_lines
 
 Version 1.53  2021-06-30
   * process_action support action status

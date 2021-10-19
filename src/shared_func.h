@@ -880,6 +880,15 @@ ssize_t fc_lock_write(int fd, const char *buf, const size_t nbyte);
 */
 ssize_t fc_safe_read(int fd, char *buf, const size_t count);
 
+/** read integral lines from file
+ *  parameters:
+ *  	fd: the fd to read
+ *  	buf: the buffer to store the line
+ *  	size: max read bytes
+ *  return: error no , 0 success, != 0 fail
+*/
+ssize_t fc_read_lines(int fd, char *buf, const size_t size);
+
 /** ftok with hash code
  *  parameters:
  *  	path: the file path

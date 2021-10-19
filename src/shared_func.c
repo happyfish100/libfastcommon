@@ -1509,6 +1509,41 @@ int fd_gets(int fd, char *buff, const int size, int once_bytes)
 	return pDest - buff;
 }
 
+ssize_t fc_read_lines(int fd, char *buf, const size_t size)
+{
+    ssize_t count;
+    ssize_t old;
+    int remain;
+    char *last;
+
+    if ((count=fc_safe_read(fd, buf, size)) <= 0)
+    {
+        return count;
+    }
+
+    if ((last=(char *)fc_memrchr(buf, '\n', count)) == NULL)
+    {
+        last = buf;
+    }
+    else
+    {
+        last++;   //skip \n
+    }
+
+    old = count;
+    count = last - buf;
+    remain = old - count;
+    if (remain > 0)
+    {
+        if (lseek(fd, -1 * remain, SEEK_CUR) < 0)
+        {
+            return -1;
+        }
+    }
+
+    return count;
+}
+
 int set_rlimit(int resource, const rlim_t value)
 {
 	struct rlimit limit;
