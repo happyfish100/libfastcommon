@@ -36,6 +36,7 @@ extern "C" {
         old_value = __sync_add_and_fetch(&var, 0); \
     } while (new_value != old_value)
 
+
 #define FC_ATOMIC_SET(var, new_value) \
     do { \
         typeof(var) _old_value;  \
@@ -47,6 +48,27 @@ extern "C" {
             _old_value = __sync_add_and_fetch(&var, 0); \
         } while (new_value != _old_value);  \
     } while (0)
+
+
+#define FC_ATOMIC_SET_BY_CONDITION(var, value, skip_operator) \
+    do { \
+        typeof(var) old;  \
+        old = __sync_add_and_fetch(&var, 0); \
+        if (value skip_operator old) { \
+            break; \
+        } \
+        if (__sync_bool_compare_and_swap(&var, old, value)) { \
+            break; \
+        } \
+    } while (1)
+
+
+#define FC_ATOMIC_SET_LARGER(var, value) \
+    FC_ATOMIC_SET_BY_CONDITION(var, value, <=)
+
+#define FC_ATOMIC_SET_SMALLER(var, value) \
+    FC_ATOMIC_SET_BY_CONDITION(var, value, >=)
+
 
 #ifdef __cplusplus
 }
