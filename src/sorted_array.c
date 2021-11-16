@@ -172,3 +172,9 @@ int sorted_array_compare_int32(const int32_t *n1, const int32_t *n2)
 {
     return *n1 - *n2;
 }
+
+int sorted_array_compare_id_name_pair(const id_name_pair_t *pair1,
+        const id_name_pair_t *pair2)
+{
+    return fc_compare_int64(pair1->id, pair2->id);
+}

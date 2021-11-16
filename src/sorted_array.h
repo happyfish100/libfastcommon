@@ -66,11 +66,30 @@ extern "C" {
             void *base, int *count, const void *elt);
 
 
+    /** find element from the sorted array
+     *  parameters:
+     *      ctx: the context for sorted array
+     *      base: the pointer of the sorted array (the first array element)
+     *      count: the count of the sorted array
+     *      key: the element to find
+     *  return: 0 for success, != 0 for error
+     */
+    static inline void *sorted_array_find(SortedArrayContext *ctx,
+            void *base, const int count, const void *key)
+    {
+        return bsearch(key, base, count, ctx->
+                element_size, ctx->compare_func);
+    }
+
     /* comparator for 64 bits integer */
     int sorted_array_compare_int64(const int64_t *n1, const int64_t *n2);
 
     /* comparator for 32 bits integer */
     int sorted_array_compare_int32(const int32_t *n1, const int32_t *n2);
+
+    /* comparator for id name pair (sorted by id) */
+    int sorted_array_compare_id_name_pair(const id_name_pair_t *pair1,
+            const id_name_pair_t *pair2);
 
 
 #define sorted_i64_array_init(ctx, allow_duplication) \
@@ -80,6 +99,11 @@ extern "C" {
 #define sorted_i32_array_init(ctx, allow_duplication) \
     sorted_array_init(ctx, sizeof(int32_t), allow_duplication, \
             (int (*)(const void *, const void *))sorted_array_compare_int32)
+
+#define sorted_id_name_array_init(ctx, allow_duplication) \
+    sorted_array_init(ctx, sizeof(id_name_pair_t), allow_duplication, \
+            (int (*)(const void *, const void *)) \
+            sorted_array_compare_id_name_pair)
 
 
 #ifdef __cplusplus

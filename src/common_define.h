@@ -257,6 +257,12 @@ typedef struct
 
 typedef struct
 {
+    id_name_pair_t *elts;
+    int count;
+} id_name_array_t;
+
+typedef struct
+{
     void *elts;
     int count;
 } void_array_t;
