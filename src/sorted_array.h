@@ -65,6 +65,16 @@ extern "C" {
     int sorted_array_delete(SortedArrayContext *ctx,
             void *base, int *count, const void *elt);
 
+    /** delete an element by index
+     *  parameters:
+     *      ctx: the context for sorted array
+     *      base: the pointer of the sorted array (the first array element)
+     *      count: the count of the sorted array (for input and output)
+     *      index: the element index to delete
+     *  return: 0 for success, != 0 for error
+     */
+    void sorted_array_delete_by_index(SortedArrayContext *ctx,
+            void *base, int *count, const int index);
 
     /** find element from the sorted array
      *  parameters:

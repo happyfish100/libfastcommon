@@ -108,6 +108,21 @@ int sorted_array_insert(SortedArrayContext *ctx,
     return 0;
 }
 
+void sorted_array_delete_by_index(SortedArrayContext *ctx,
+        void *base, int *count, const int index)
+{
+    int move_count;
+    char *start;
+
+    start = (char *)base + ctx->element_size * index;
+    move_count = *count - (index + 1);
+    if (move_count > 0) {
+        memmove(start, start + ctx->element_size,
+                ctx->element_size * move_count);
+    }
+    (*count)--;
+}
+
 int sorted_array_delete(SortedArrayContext *ctx,
         void *base, int *count, const void *elt)
 {
