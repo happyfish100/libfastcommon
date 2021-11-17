@@ -39,6 +39,13 @@ typedef struct
     int32_t elts[0];
 } I32Array;
 
+typedef struct
+{
+    int alloc;
+    int count;
+    id_name_pair_t elts[0];
+} IdNameArray;
+
 typedef struct array_allocator_context
 {
     struct fast_allocator_context allocator;
@@ -67,10 +74,15 @@ extern "C" {
         fast_allocator_free(&ctx->allocator, array);
     }
 
+    /* comparator for 64 bits integer */
     int array_compare_element_int64(const int64_t *n1, const int64_t *n2);
 
+    /* comparator for 32 bits integer */
     int array_compare_element_int32(const int32_t *n1, const int32_t *n2);
 
+    /* comparator for id name pair (sorted by id) */
+    int array_compare_element_id_name(const id_name_pair_t *pair1,
+            const id_name_pair_t *pair2);
 
 #define i64_array_allocator_init(ctx, min_bits, max_bits) \
     array_allocator_init(ctx, "i64", sizeof(int64_t), min_bits, max_bits)
@@ -79,7 +91,8 @@ extern "C" {
     (I64Array *)array_allocator_alloc(ctx, target_count)
 
 #define i64_array_allocator_realloc(ctx, old_array, target_count) \
-    (I64Array *)array_allocator_realloc(ctx, (VoidArray *)old_array, target_count)
+    (I64Array *)array_allocator_realloc(ctx, \
+            (VoidArray *)old_array, target_count)
 
 #define i64_array_allocator_free(ctx, array) \
     array_allocator_free(ctx, (VoidArray *)array)
@@ -92,9 +105,25 @@ extern "C" {
     (I32Array *)array_allocator_alloc(ctx, target_count)
 
 #define i32_array_allocator_realloc(ctx, old_array, target_count) \
-    (I32Array *)array_allocator_realloc(ctx, (VoidArray *)old_array, target_count)
+    (I32Array *)array_allocator_realloc(ctx, \
+            (VoidArray *)old_array, target_count)
 
 #define i32_array_allocator_free(ctx, array) \
+    array_allocator_free(ctx, (VoidArray *)array)
+
+
+#define id_name_array_allocator_init(ctx, min_bits, max_bits) \
+    array_allocator_init(ctx, "id_name", sizeof(id_name_pair_t), \
+            min_bits, max_bits)
+
+#define id_name_array_allocator_alloc(ctx, target_count) \
+    (IdNameArray *)array_allocator_alloc(ctx, target_count)
+
+#define id_name_array_allocator_realloc(ctx, old_array, target_count) \
+    (IdNameArray *)array_allocator_realloc(ctx, \
+            (VoidArray *)old_array, target_count)
+
+#define id_name_array_allocator_free(ctx, array) \
     array_allocator_free(ctx, (VoidArray *)array)
 
 

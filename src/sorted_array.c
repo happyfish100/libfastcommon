@@ -154,27 +154,3 @@ int sorted_array_delete(SortedArrayContext *ctx,
     }
     return 0;
 }
-
-int sorted_array_compare_int64(const int64_t *n1, const int64_t *n2)
-{
-    int64_t sub;
-    sub = *n1 - *n2;
-    if (sub < 0) {
-        return -1;
-    } else if (sub > 0) {
-        return 1;
-    } else {
-        return 0;
-    }
-}
-
-int sorted_array_compare_int32(const int32_t *n1, const int32_t *n2)
-{
-    return *n1 - *n2;
-}
-
-int sorted_array_compare_id_name_pair(const id_name_pair_t *pair1,
-        const id_name_pair_t *pair2)
-{
-    return fc_compare_int64(pair1->id, pair2->id);
-}

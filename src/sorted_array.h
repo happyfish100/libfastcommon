@@ -16,7 +16,7 @@
 #ifndef SORTED_ARRAY_H
 #define SORTED_ARRAY_H
 
-#include "common_define.h"
+#include "array_allocator.h"
 
 typedef struct sorted_array_context
 {
@@ -81,29 +81,18 @@ extern "C" {
                 element_size, ctx->compare_func);
     }
 
-    /* comparator for 64 bits integer */
-    int sorted_array_compare_int64(const int64_t *n1, const int64_t *n2);
-
-    /* comparator for 32 bits integer */
-    int sorted_array_compare_int32(const int32_t *n1, const int32_t *n2);
-
-    /* comparator for id name pair (sorted by id) */
-    int sorted_array_compare_id_name_pair(const id_name_pair_t *pair1,
-            const id_name_pair_t *pair2);
-
-
 #define sorted_i64_array_init(ctx, allow_duplication) \
     sorted_array_init(ctx, sizeof(int64_t), allow_duplication, \
-            (int (*)(const void *, const void *))sorted_array_compare_int64)
+            (int (*)(const void *, const void *))array_compare_element_int64)
 
 #define sorted_i32_array_init(ctx, allow_duplication) \
     sorted_array_init(ctx, sizeof(int32_t), allow_duplication, \
-            (int (*)(const void *, const void *))sorted_array_compare_int32)
+            (int (*)(const void *, const void *))array_compare_element_int32)
 
 #define sorted_id_name_array_init(ctx, allow_duplication) \
     sorted_array_init(ctx, sizeof(id_name_pair_t), allow_duplication, \
             (int (*)(const void *, const void *)) \
-            sorted_array_compare_id_name_pair)
+            array_compare_element_id_name)
 
 
 #ifdef __cplusplus
