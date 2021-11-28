@@ -40,6 +40,7 @@ typedef void (*TaskCleanUpCallback) (struct fast_task_info *pTask);
 typedef int (*TaskInitCallback)(struct fast_task_info *pTask);
 
 typedef void (*IOEventCallback) (int sock, short event, void *arg);
+typedef int (*TaskContinueCallback)(struct fast_task_info *task);
 
 struct fast_task_info;
 
@@ -99,10 +100,10 @@ struct fast_task_info
         uint8_t current;
         volatile uint8_t notify;
     } nio_stages; //stages for network IO
-    int (*continue_callback)(struct fast_task_info *task);  //for continue stage
+    TaskContinueCallback continue_callback; //for continue stage
     volatile int8_t reffer_count;
-    volatile int8_t canceled;   //if task canceled
-    short connect_timeout; //for client side
+    volatile int8_t canceled;  //if task canceled
+    short connect_timeout;     //for client side
     short network_timeout;
 	int64_t req_count; //request count
 	TaskFinishCallback finish_callback;
