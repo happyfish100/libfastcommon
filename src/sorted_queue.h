@@ -23,7 +23,6 @@
 struct sorted_queue
 {
     struct fc_queue queue;
-    int next_ptr_offset;
     int (*compare_func)(const void *, const void *);
 };
 
