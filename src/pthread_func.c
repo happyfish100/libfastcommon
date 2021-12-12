@@ -73,10 +73,16 @@ int init_pthread_lock(pthread_mutex_t *pthread_lock)
 
 int init_pthread_rwlock(pthread_rwlock_t *rwlock)
 {
-	pthread_rwlockattr_t attr;
+    struct {
+        pthread_rwlockattr_t holder;
+        pthread_rwlockattr_t *ptr;
+    } attr;
 	int result;
 
-	if ((result=pthread_rwlockattr_init(&attr)) != 0) {
+
+#ifdef OS_LINUX
+    attr.ptr = &attr.holder;
+	if ((result=pthread_rwlockattr_init(attr.ptr)) != 0) {
 		logError("file: "__FILE__", line: %d, "
 			"call pthread_rwlockattr_init fail, "
 			"errno: %d, error info: %s",
@@ -84,8 +90,7 @@ int init_pthread_rwlock(pthread_rwlock_t *rwlock)
 		return result;
 	}
 
-#ifdef OS_LINUX
-	if ((result=pthread_rwlockattr_setkind_np(&attr,
+	if ((result=pthread_rwlockattr_setkind_np(attr.ptr,
 			PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP)) != 0)
     {
         logError("file: "__FILE__", line: %d, "
@@ -94,22 +99,26 @@ int init_pthread_rwlock(pthread_rwlock_t *rwlock)
                 __LINE__, result, STRERROR(result));
         return result;
     }
+#else
+    attr.ptr = NULL;
 #endif
 
-	if ((result=pthread_rwlock_init(rwlock, &attr)) != 0) {
+	if ((result=pthread_rwlock_init(rwlock, attr.ptr)) != 0) {
 		logError("file: "__FILE__", line: %d, "
 			"call pthread_rwlock_init fail, "
 			"errno: %d, error info: %s",
 			__LINE__, result, STRERROR(result));
 		return result;
 	}
-	if ((result=pthread_rwlockattr_destroy(&attr)) != 0) {
-		logError("file: "__FILE__", line: %d, "
-			"call thread_rwlockattr_destroy fail, "
-			"errno: %d, error info: %s",
-			__LINE__, result, STRERROR(result));
-		return result;
-	}
+    if (attr.ptr != NULL) {
+        if ((result=pthread_rwlockattr_destroy(attr.ptr)) != 0) {
+            logError("file: "__FILE__", line: %d, "
+                    "call thread_rwlockattr_destroy fail, "
+                    "errno: %d, error info: %s",
+                    __LINE__, result, STRERROR(result));
+            return result;
+        }
+    }
 
 	return 0;
 }
