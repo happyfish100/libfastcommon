@@ -374,7 +374,6 @@ int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
         void *malloc_trunk_args)
 {
 	int result;
-	int block_size;
 
 	if (element_size <= 0)
 	{
@@ -386,14 +385,14 @@ int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
 
 	mblock->info.element_size = MEM_ALIGN(element_size);
     mblock->alloc_elements.limit = alloc_elements_limit;
-	block_size = fast_mblock_get_block_size(mblock);
+	mblock->info.block_size = fast_mblock_get_block_size(mblock);
 	if (alloc_elements_once > 0)
 	{
 		mblock->alloc_elements.once = alloc_elements_once;
 	}
 	else
 	{
-		mblock->alloc_elements.once = (1024 * 1024) / block_size;
+		mblock->alloc_elements.once = (1024 * 1024) / mblock->info.block_size;
 	}
     if (mblock->alloc_elements.limit > 0 && mblock->alloc_elements.once >
             mblock->alloc_elements.limit)
@@ -422,7 +421,7 @@ int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
     mblock->info.element_used_count = 0;
     mblock->info.instance_count = 1;
     mblock->info.trunk_size = fast_mblock_get_trunk_size(mblock,
-            block_size, mblock->alloc_elements.once);
+            mblock->info.block_size, mblock->alloc_elements.once);
     mblock->need_lock = need_lock;
     mblock->alloc_elements.need_wait = false;
     mblock->alloc_elements.pcontinue_flag = NULL;
@@ -453,11 +452,9 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
 	char *p;
 	char *pLast;
 	int result;
-	int block_size;
     int trunk_size;
     int alloc_count;
 
-	block_size = fast_mblock_get_block_size(mblock);
     if (mblock->alloc_elements.limit > 0)
     {
         int64_t avail_count;
@@ -478,7 +475,7 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
         alloc_count = avail_count > mblock->alloc_elements.once ?
             mblock->alloc_elements.once : avail_count;
         trunk_size = fast_mblock_get_trunk_size(mblock,
-                block_size, alloc_count);
+                mblock->info.block_size, alloc_count);
     }
     else
     {
@@ -501,10 +498,9 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
 	memset(pNew, 0, trunk_size);
 
 	pMallocNode = (struct fast_mblock_malloc *)pNew;
-
 	pTrunkStart = pNew + sizeof(struct fast_mblock_malloc);
-	pLast = pNew + (trunk_size - block_size);
-	for (p=pTrunkStart; p<=pLast; p += block_size)
+	pLast = pNew + (trunk_size - mblock->info.block_size);
+	for (p=pTrunkStart; p<=pLast; p += mblock->info.block_size)
 	{
 		pNode = (struct fast_mblock_node *)p;
         if (mblock->alloc_init_func != NULL)
@@ -516,8 +512,14 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
                 return result;
             }
         }
+
         pNode->offset = (int)(p - pNew);
-		pNode->next = (struct fast_mblock_node *)(p + block_size);
+        pNode->next = (struct fast_mblock_node *)(p + mblock->info.block_size);
+
+#ifdef FAST_MBLOCK_MAGIC_CHECK
+        pNode->index = (p - pTrunkStart) / mblock->info.block_size;
+        pNode->magic = FAST_MBLOCK_MAGIC_NUMBER;
+#endif
 	}
 
     ((struct fast_mblock_node *)pLast)->next = NULL;
@@ -565,6 +567,24 @@ static inline void fast_mblock_ref_counter_op(struct fast_mblock_man *mblock,
         struct fast_mblock_node *pNode, const bool is_inc)
 {
 	struct fast_mblock_malloc *pMallocNode;
+
+#ifdef FAST_MBLOCK_MAGIC_CHECK
+    int calc_offset;
+
+    calc_offset = sizeof(struct fast_mblock_malloc) +
+        pNode->index * mblock->info.block_size;
+    if (pNode->magic != FAST_MBLOCK_MAGIC_NUMBER ||
+            pNode->offset != calc_offset)
+    {
+        logCrit("file: "__FILE__", line: %d, "
+                "magic check for %s %s fail, node: %p, index: %d, offset: %d, "
+                "offset by index: %d, magic number: %d, expect magic: %d",
+                __LINE__, (is_inc ? "alloc" : "free"), mblock->info.name,
+                pNode, pNode->index, pNode->offset, calc_offset,
+                pNode->magic, FAST_MBLOCK_MAGIC_NUMBER);
+        return;
+    }
+#endif
 
     pMallocNode = FAST_MBLOCK_GET_TRUNK(pNode);
     if (is_inc)

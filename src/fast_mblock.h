@@ -26,6 +26,13 @@
 #include "fc_memory.h"
 #include "logger.h"
 
+/* following two macros for debug only */
+/*
+#define FAST_MBLOCK_MAGIC_CHECK    1
+#define FAST_MBLOCK_MAGIC_NUMBER   1234567890
+*/
+
+
 #define FAST_MBLOCK_NAME_SIZE 32
 
 #define FAST_MBLOCK_ORDER_BY_ALLOC_BYTES    1
@@ -37,6 +44,10 @@ struct fast_mblock_node
     struct fast_mblock_node *next;
     int offset;    //trunk offset
     int recycle_timestamp;
+#ifdef FAST_MBLOCK_MAGIC_CHECK
+    int index;
+    int magic;   //magic number
+#endif
     char data[0];   //the data buffer
 };
 
@@ -69,6 +80,7 @@ struct fast_mblock_info
     int element_size;         //element size
     int trunk_size;           //trunk size
     int instance_count;       //instance count
+    int block_size;
     int64_t element_total_count;  //total element count
     int64_t element_used_count;   //used element count
     int64_t delay_free_elements;  //delay free element count
