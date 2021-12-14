@@ -57,9 +57,10 @@ typedef struct array_allocator_context
 extern "C" {
 #endif
 
-    int array_allocator_init(ArrayAllocatorContext *ctx,
+    int array_allocator_init_ex(ArrayAllocatorContext *ctx,
             const char *name_prefix, const int element_size,
-            const int min_bits, const int max_bits);
+            const int min_bits, const int max_bits,
+            const bool need_lock);
 
     VoidArray *array_allocator_alloc(ArrayAllocatorContext *ctx,
             const int target_count);
@@ -84,8 +85,17 @@ extern "C" {
     int array_compare_element_id_name(const id_name_pair_t *pair1,
             const id_name_pair_t *pair2);
 
+#define array_allocator_init(ctx, name_prefix, \
+        element_size, min_bits, max_bits)      \
+    array_allocator_init_ex(ctx, name_prefix,  \
+        element_size, min_bits, max_bits, true)
+
+#define i64_array_allocator_init_ex(ctx, min_bits, max_bits, need_lock) \
+    array_allocator_init_ex(ctx, "i64", sizeof(int64_t), \
+            min_bits, max_bits, need_lock)
+
 #define i64_array_allocator_init(ctx, min_bits, max_bits) \
-    array_allocator_init(ctx, "i64", sizeof(int64_t), min_bits, max_bits)
+        i64_array_allocator_init_ex(ctx, min_bits, max_bits, true)
 
 #define i64_array_allocator_alloc(ctx, target_count) \
     (I64Array *)array_allocator_alloc(ctx, target_count)
@@ -98,8 +108,12 @@ extern "C" {
     array_allocator_free(ctx, (VoidArray *)array)
 
 
+#define i32_array_allocator_init_ex(ctx, min_bits, max_bits, need_lock) \
+    array_allocator_init_ex(ctx, "i32", sizeof(int32_t), \
+            min_bits, max_bits, need_lock)
+
 #define i32_array_allocator_init(ctx, min_bits, max_bits) \
-    array_allocator_init(ctx, "i32", sizeof(int32_t), min_bits, max_bits)
+        i32_array_allocator_init_ex(ctx, min_bits, max_bits, true)
 
 #define i32_array_allocator_alloc(ctx, target_count) \
     (I32Array *)array_allocator_alloc(ctx, target_count)
@@ -112,9 +126,12 @@ extern "C" {
     array_allocator_free(ctx, (VoidArray *)array)
 
 
+#define id_name_array_allocator_init_ex(ctx, min_bits, max_bits, need_lock) \
+    array_allocator_init_ex(ctx, "id_name", sizeof(id_name_pair_t), \
+            min_bits, max_bits, need_lock)
+
 #define id_name_array_allocator_init(ctx, min_bits, max_bits) \
-    array_allocator_init(ctx, "id_name", sizeof(id_name_pair_t), \
-            min_bits, max_bits)
+    id_name_array_allocator_init_ex(ctx, min_bits, max_bits, true)
 
 #define id_name_array_allocator_alloc(ctx, target_count) \
     (IdNameArray *)array_allocator_alloc(ctx, target_count)

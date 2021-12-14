@@ -16,9 +16,10 @@
 #include "shared_func.h"
 #include "array_allocator.h"
 
-int array_allocator_init(ArrayAllocatorContext *ctx,
+int array_allocator_init_ex(ArrayAllocatorContext *ctx,
         const char *name_prefix, const int element_size,
-        const int min_bits, const int max_bits)
+        const int min_bits, const int max_bits,
+        const bool need_lock)
 {
     const int reclaim_interval = 0;
     char name[32];
@@ -48,7 +49,7 @@ int array_allocator_init(ArrayAllocatorContext *ctx,
     snprintf(name, sizeof(name), "%s-array", name_prefix);
     return fast_allocator_init_ex(&ctx->allocator,
             name, regions, region - regions, 0,
-            0.9999, reclaim_interval, true);
+            0.9999, reclaim_interval, need_lock);
 }
 
 VoidArray *array_allocator_alloc(ArrayAllocatorContext *ctx,
