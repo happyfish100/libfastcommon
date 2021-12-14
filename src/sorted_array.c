@@ -59,31 +59,38 @@ static char *sorted_array_bsearch(SortedArrayContext *ctx, char *base,
 int sorted_array_insert(SortedArrayContext *ctx,
         void *base, int *count, const void *elt)
 {
-    int insert_pos;
-    int move_count;
     char *current;
-    char *found;
-    char *end;
 
-    found = sorted_array_bsearch(ctx, base, *count, elt, &insert_pos);
-    if (found != NULL) {
-        if (!ctx->allow_duplication) {
-            return EEXIST;
-        }
+    if (*count == 0 || ctx->compare_func((char *)base +
+                ctx->element_size * (*count - 1), elt) < 0)
+    {  //fast path
+        current = (char *)base + ctx->element_size * (*count);
+    } else {
+        int insert_pos;
+        int move_count;
+        char *found;
+        char *end;
 
-        found += ctx->element_size;
-        end = (char *)base + ctx->element_size * (*count);
-        while (found < end && ctx->compare_func(found, elt) == 0) {
-            insert_pos++;
+        found = sorted_array_bsearch(ctx, base, *count, elt, &insert_pos);
+        if (found != NULL) {
+            if (!ctx->allow_duplication) {
+                return EEXIST;
+            }
+
             found += ctx->element_size;
+            end = (char *)base + ctx->element_size * (*count);
+            while (found < end && ctx->compare_func(found, elt) == 0) {
+                insert_pos++;
+                found += ctx->element_size;
+            }
         }
-    }
 
-    current = (char *)base + ctx->element_size * insert_pos;
-    move_count = *count - insert_pos;
-    if (move_count > 0) {
-        memmove((char *)base + ctx->element_size * (insert_pos + 1),
-                current, ctx->element_size * move_count);
+        current = (char *)base + ctx->element_size * insert_pos;
+        move_count = *count - insert_pos;
+        if (move_count > 0) {
+            memmove((char *)base + ctx->element_size * (insert_pos + 1),
+                    current, ctx->element_size * move_count);
+        }
     }
 
     switch (ctx->element_size) {
