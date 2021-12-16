@@ -261,6 +261,7 @@ static void test_reverse_iterator()
 
 int main(int argc, char *argv[])
 {
+    const bool allocator_use_lock = false;
     int result;
     int64_t start_time;
     int64_t end_time;
@@ -273,7 +274,7 @@ int main(int argc, char *argv[])
 
     fast_mblock_manager_init();
     result = uniq_skiplist_init_ex2(&factory, LEVEL_COUNT, compare_func,
-            free_test_func, 0, MIN_ALLOC_ONCE, 0, true);
+            free_test_func, 0, MIN_ALLOC_ONCE, 0, true, allocator_use_lock);
     if (result != 0) {
         return result;
     }
