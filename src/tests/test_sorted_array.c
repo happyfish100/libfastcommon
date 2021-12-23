@@ -26,7 +26,7 @@
 #include "fastcommon/array_allocator.h"
 #include "fastcommon/sorted_array.h"
 
-#define  ELEMENT_COUNT  1000
+#define  ELEMENT_COUNT  64 * 1024
 
 static bool silence;
 
@@ -72,7 +72,7 @@ static int test_i64()
     }
 
     last_index = ELEMENT_COUNT - 1;
-    for (i=0; i<input->count; i++) {
+    for (i=0; i<ELEMENT_COUNT / 10; i++) {
         index = (int64_t)rand() * last_index / (int64_t)RAND_MAX;
         tmp = input->elts[index];
         input->elts[index] = input->elts[last_index - index];

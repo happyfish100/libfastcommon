@@ -3031,8 +3031,12 @@ char *format_http_date(time_t t, BufferInfo *buffer)
 int normalize_path(const char *from, const char *filename,
         char *full_filename, const int size)
 {
+    const char *start;
     const char *last;
-    int len;
+    const char *end;
+    int up_count;
+    int path_len;
+    int i;
 
     if (IS_FILE_RESOURCE(from)) {
         from = from + FILE_RESOURCE_TAG_LEN;
@@ -3047,8 +3051,35 @@ int normalize_path(const char *from, const char *filename,
 
     last = strrchr(from, '/');
     if (last != NULL) {
-        len = last - from;
-        return snprintf(full_filename, size, "%.*s/%s", len, from, filename);
+        end = filename + strlen(filename);
+        if (memcmp(filename, "./", 2) == 0) {
+            start = filename + 2;
+        } else {
+            start = filename;
+        }
+        up_count = 0;
+        while (start + 3 < end) {
+            if (memcmp(start, "../", 3) != 0) {
+                break;
+            }
+
+            ++up_count;
+            start += 3;
+        }
+
+        path_len = last - from;
+        for (i=0; i<up_count; i++) {
+            last = fc_memrchr(from, '/', path_len);
+            if (last == NULL) {
+                logWarning("file: "__FILE__", line: %d, "
+                        "too many ../ in the path resolve filename: %s, "
+                        "from filename: %s", __LINE__, filename, from);
+                break;
+            }
+            path_len = last - from;
+        }
+        return snprintf(full_filename, size, "%.*s/%s",
+                path_len, from, start);
     } else {
         logWarning("file: "__FILE__", line: %d, "
                 "no \"/\" in the from filename: %s",
@@ -3077,8 +3108,12 @@ int normalize_uri(const string_t *from, const char *uri,
     }
 
     end = uri + strlen(uri);
+    if (memcmp(uri, "./", 2) == 0) {
+        start = uri + 2;
+    } else {
+        start = uri;
+    }
     up_count = 0;
-    start = uri;
     while (start + 3 < end) {
         if (memcmp(start, "../", 3) != 0) {
             break;
@@ -3098,7 +3133,7 @@ int normalize_uri(const string_t *from, const char *uri,
 
     if (up_count == 0) {
         return snprintf(dest, size, "%.*s/%s",
-                (int)(last - from->str), from->str, uri);
+                (int)(last - from->str), from->str, start);
     } else {
         fpath.str = (char *)from->str;
         fpath.len = last - from->str;
