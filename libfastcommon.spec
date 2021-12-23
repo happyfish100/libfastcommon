@@ -3,7 +3,7 @@
 %define CommitVersion %(echo $COMMIT_VERSION)
 
 Name: libfastcommon
-Version: 1.0.53
+Version: 1.0.54
 Release: 1%{?dist}
 Summary: c common functions library extracted from my open source projects FastDFS
 License: LGPL
@@ -11,7 +11,7 @@ Group: Arch/Tech
 URL:  http://github.com/happyfish100/libfastcommon/
 Source: http://github.com/happyfish100/libfastcommon/%{name}-%{version}.tar.gz
 
-BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n) 
+BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires: libcurl-devel
 Requires: libcurl
@@ -21,7 +21,7 @@ Requires: %__cp %__mv %__chmod %__grep %__mkdir %__install %__id
 c common functions library extracted from my open source projects FastDFS.
 this library is very simple and stable. functions including: string, logger,
 chain, hash, socket, ini file reader, base64 encode / decode,
-url encode / decode, fasttimer etc. 
+url encode / decode, fasttimer etc.
 commit version: %{CommitVersion}
 
 %package devel
