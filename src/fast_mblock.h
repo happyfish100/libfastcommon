@@ -37,6 +37,7 @@
 
 #define FAST_MBLOCK_ORDER_BY_ALLOC_BYTES    1
 #define FAST_MBLOCK_ORDER_BY_ELEMENT_SIZE   2
+#define FAST_MBLOCK_ORDER_BY_USED_RATIO     3
 
 /* free node chain */ 
 struct fast_mblock_node

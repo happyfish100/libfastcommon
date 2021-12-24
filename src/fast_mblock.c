@@ -35,6 +35,11 @@ struct _fast_mblock_manager
 #define INIT_HEAD(head) (head)->next = (head)->prev = head
 #define IS_EMPTY(head) ((head)->next == head)
 
+#define CALC_USED_RATIO(info) \
+    (info->element_total_count > 0 ? 100.00 * (double)  \
+                    info->element_used_count / (double) \
+                    info->element_total_count : 0.00)
+
 static struct _fast_mblock_manager mblock_manager = {false, 0};
 
 #define fast_mblock_get_trunk_size(mblock, block_size, element_count) \
@@ -232,6 +237,25 @@ static int fast_mblock_info_cmp_by_element_size(const void *p1, const void *p2)
 	return pStat2->element_size - pStat1->element_size;
 }
 
+//desc order
+static int fast_mblock_info_cmp_by_used_ratio(const void *p1, const void *p2)
+{
+    struct fast_mblock_info *pStat1;
+    struct fast_mblock_info *pStat2;
+    double sub;
+
+    pStat1 = (struct fast_mblock_info *)p1;
+    pStat2 = (struct fast_mblock_info *)p2;
+    sub = CALC_USED_RATIO(pStat2) - CALC_USED_RATIO(pStat1);
+    if (sub <= -0.00005) {
+        return -1;
+    } else if (sub >= 0.00005) {
+        return 1;
+    } else {
+        return fast_mblock_info_cmp_by_alloc_bytes(p1, p2);
+    }
+}
+
 int fast_mblock_manager_stat_print_ex(const bool hide_empty, const int order_by)
 {
     int result;
@@ -270,7 +294,13 @@ int fast_mblock_manager_stat_print_ex(const bool hide_empty, const int order_by)
         char used_mem_str[32];
         char delay_free_mem_str[32];
 
-        if (order_by == FAST_MBLOCK_ORDER_BY_ALLOC_BYTES)
+        if (order_by == FAST_MBLOCK_ORDER_BY_ELEMENT_SIZE)
+        {
+            size_caption = "el_size";
+            qsort(stats, count, sizeof(struct fast_mblock_info),
+                    fast_mblock_info_cmp_by_element_size);
+        }
+        else if (order_by == FAST_MBLOCK_ORDER_BY_ALLOC_BYTES)
         {
             size_caption = "tr_size";
             qsort(stats, count, sizeof(struct fast_mblock_info),
@@ -278,9 +308,9 @@ int fast_mblock_manager_stat_print_ex(const bool hide_empty, const int order_by)
         }
         else
         {
-            size_caption = "el_size";
+            size_caption = "tr_size";
             qsort(stats, count, sizeof(struct fast_mblock_info),
-                    fast_mblock_info_cmp_by_element_size);
+                    fast_mblock_info_cmp_by_used_ratio);
         }
 
         output_count = 0;
@@ -318,14 +348,12 @@ int fast_mblock_manager_stat_print_ex(const bool hide_empty, const int order_by)
             }
             logInfo("%20.*s %10d %8d %12"PRId64" %11"PRId64" %10"PRId64
                     " %10"PRId64" %10"PRId64" %10"PRId64" %11.2f%%", name_len,
-                    pStat->name, order_by == FAST_MBLOCK_ORDER_BY_ALLOC_BYTES ?
-                    pStat->trunk_size : pStat->element_size,
+                    pStat->name, order_by == FAST_MBLOCK_ORDER_BY_ELEMENT_SIZE ?
+                    pStat->element_size : pStat->trunk_size,
                     pStat->instance_count, amem, pStat->trunk_total_count,
                     pStat->trunk_used_count, pStat->element_total_count,
                     pStat->element_used_count, pStat->delay_free_elements,
-                    pStat->element_total_count > 0 ? 100.00 * (double)
-                    pStat->element_used_count / (double)
-                    pStat->element_total_count : 0.00);
+                    CALC_USED_RATIO(pStat));
             ++output_count;
         }
 
