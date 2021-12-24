@@ -59,13 +59,20 @@ int fast_mblock_manager_init()
 static int cmp_mblock_info(struct fast_mblock_man *mb1, struct fast_mblock_man *mb2)
 {
     int result;
+
     result = strcmp(mb1->info.name, mb2->info.name);
     if (result != 0)
     {
         return result;
     }
 
-    return mb1->info.element_size - mb2->info.element_size;
+    result = mb1->info.element_size - mb2->info.element_size;
+    if (result != 0)
+    {
+        return result;
+    }
+
+    return mb1->info.trunk_size - mb2->info.trunk_size;
 }
 
 static void add_to_mblock_list(struct fast_mblock_man *mblock)
@@ -122,6 +129,7 @@ static void delete_from_mblock_list(struct fast_mblock_man *mblock)
         if (copy_name) { \
             strcpy(pStat->name, current->info.name);          \
             pStat->trunk_size = current->info.trunk_size;     \
+            pStat->block_size = current->info.block_size;     \
             pStat->element_size = current->info.element_size; \
         } \
         pStat->element_total_count += current->info.element_total_count;  \
@@ -228,6 +236,7 @@ int fast_mblock_manager_stat_print_ex(const bool hide_empty, const int order_by)
 {
     int result;
     int count;
+    int output_count;
     int alloc_size;
     struct fast_mblock_info *stats;
     struct fast_mblock_info *pStat;
@@ -235,7 +244,7 @@ int fast_mblock_manager_stat_print_ex(const bool hide_empty, const int order_by)
 
     stats = NULL;
     count = 0;
-    alloc_size = 64;
+    alloc_size = 256;
     result = EOVERFLOW;
     while (result == EOVERFLOW)
     {
@@ -255,26 +264,31 @@ int fast_mblock_manager_stat_print_ex(const bool hide_empty, const int order_by)
         int64_t used_mem;
         int64_t amem;
         int64_t delay_free_mem;
+        int name_len;
+        char *size_caption;
         char alloc_mem_str[32];
         char used_mem_str[32];
         char delay_free_mem_str[32];
 
         if (order_by == FAST_MBLOCK_ORDER_BY_ALLOC_BYTES)
         {
+            size_caption = "tr_size";
             qsort(stats, count, sizeof(struct fast_mblock_info),
                     fast_mblock_info_cmp_by_alloc_bytes);
         }
         else
         {
+            size_caption = "el_size";
             qsort(stats, count, sizeof(struct fast_mblock_info),
                     fast_mblock_info_cmp_by_element_size);
         }
 
+        output_count = 0;
         alloc_mem = 0;
         used_mem = 0;
         delay_free_mem = 0;
-        logInfo("%20s %8s %8s %12s %11s %10s %10s %10s %10s %12s",
-                "name", "el_size", "instance", "alloc_bytes",
+        logInfo("%20s %10s %8s %12s %11s %10s %10s %10s %10s %12s",
+                "name", size_caption, "instance", "alloc_bytes",
                 "trunc_alloc", "trunk_used", "el_alloc",
                 "el_used", "delay_free", "used_ratio");
         stat_end = stats + count;
@@ -298,15 +312,21 @@ int fast_mblock_manager_stat_print_ex(const bool hide_empty, const int order_by)
                 }
             }
 
-            logInfo("%20s %8d %8d %12"PRId64" %11"PRId64" %10"PRId64
-                    " %10"PRId64" %10"PRId64" %10"PRId64" %11.2f%%",
-                    pStat->name, pStat->element_size, pStat->instance_count,
-                    amem, pStat->trunk_total_count, pStat->trunk_used_count,
-                    pStat->element_total_count, pStat->element_used_count,
-                    pStat->delay_free_elements,
+            name_len = strlen(pStat->name);
+            if (name_len > 20) {
+                name_len = 20;
+            }
+            logInfo("%20.*s %10d %8d %12"PRId64" %11"PRId64" %10"PRId64
+                    " %10"PRId64" %10"PRId64" %10"PRId64" %11.2f%%", name_len,
+                    pStat->name, order_by == FAST_MBLOCK_ORDER_BY_ALLOC_BYTES ?
+                    pStat->trunk_size : pStat->element_size,
+                    pStat->instance_count, amem, pStat->trunk_total_count,
+                    pStat->trunk_used_count, pStat->element_total_count,
+                    pStat->element_used_count, pStat->delay_free_elements,
                     pStat->element_total_count > 0 ? 100.00 * (double)
                     pStat->element_used_count / (double)
                     pStat->element_total_count : 0.00);
+            ++output_count;
         }
 
         if (alloc_mem < 1024)
@@ -341,10 +361,10 @@ int fast_mblock_manager_stat_print_ex(const bool hide_empty, const int order_by)
                     (double)delay_free_mem / (1024 * 1024 * 1024));
         }
 
-        logInfo("mblock entry count: %d, memory stat => { alloc : %s, "
-                "used: %s (%.2f%%), delay free: %s (%.2f%%) }",
-                count, alloc_mem_str, used_mem_str, alloc_mem > 0 ?
-                100.00 * (double)used_mem / alloc_mem : 0.00,
+        logInfo("mblock count: %d, output count: %d, memory stat => "
+                "{alloc : %s, used: %s (%.2f%%), delay free: %s (%.2f%%) }",
+                mblock_manager.count, output_count, alloc_mem_str, used_mem_str,
+                alloc_mem > 0 ?  100.00 * (double)used_mem / alloc_mem : 0.00,
                 delay_free_mem_str, alloc_mem > 0 ? 100.00 *
                     (double)delay_free_mem / alloc_mem : 0.00);
     }
@@ -535,7 +555,6 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
 
     mblock->info.trunk_total_count++;
     mblock->info.element_total_count += alloc_count;
-
     if (mblock->malloc_trunk_callback.notify_func != NULL)
     {
         mblock->malloc_trunk_callback.notify_func(trunk_size,
@@ -616,28 +635,25 @@ void fast_mblock_destroy(struct fast_mblock_man *mblock)
 	struct fast_mblock_malloc *pMallocNode;
 	struct fast_mblock_malloc *pMallocTmp;
 
-	if (IS_EMPTY(&mblock->trunks.head))
-	{
-        delete_from_mblock_list(mblock);
-		return;
-	}
+	if (!IS_EMPTY(&mblock->trunks.head))
+    {
+        pMallocNode = mblock->trunks.head.next;
+        while (pMallocNode != &mblock->trunks.head)
+        {
+            pMallocTmp = pMallocNode;
+            pMallocNode = pMallocNode->next;
 
-	pMallocNode = mblock->trunks.head.next;
-	while (pMallocNode != &mblock->trunks.head)
-	{
-		pMallocTmp = pMallocNode;
-		pMallocNode = pMallocNode->next;
+            free(pMallocTmp);
+        }
 
-		free(pMallocTmp);
-	}
-
-    INIT_HEAD(&mblock->trunks.head);
-    mblock->info.trunk_total_count = 0;
-    mblock->info.trunk_used_count = 0;
-    mblock->free_chain_head = NULL;
-    mblock->info.element_used_count = 0;
-    mblock->info.delay_free_elements = 0;
-    mblock->info.element_total_count = 0;
+        INIT_HEAD(&mblock->trunks.head);
+        mblock->info.trunk_total_count = 0;
+        mblock->info.trunk_used_count = 0;
+        mblock->free_chain_head = NULL;
+        mblock->info.element_used_count = 0;
+        mblock->info.delay_free_elements = 0;
+        mblock->info.element_total_count = 0;
+    }
 
     if (mblock->need_lock) destroy_pthread_lock_cond_pair(&(mblock->lcp));
     delete_from_mblock_list(mblock);
