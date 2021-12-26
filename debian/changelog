@@ -1,3 +1,9 @@
+libfastcommon (1.0.54-1) unstable; urgency=medium
+  
+  * upgrade version to 1.0.54
+
+ -- YuQing <384681@qq.com>  Sun, 26 Dec 2021 20:29:05 +0800
+
 libfastcommon (1.0.53-1) unstable; urgency=medium
   
   * open for write MUST have the third parameter: mode
