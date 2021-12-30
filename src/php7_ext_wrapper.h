@@ -34,6 +34,14 @@
 #include <SAPI.h>
 #include <php_ini.h>
 
+#ifndef TSRMLS_DC
+#define TSRMLS_DC
+#endif
+
+#ifndef TSRMLS_CC
+#define TSRMLS_CC
+#endif
+
 #if PHP_MAJOR_VERSION < 7
 typedef int zend_size_t;
 #define ZEND_RETURN_STRING(s, dup) RETURN_STRING(s, dup)
