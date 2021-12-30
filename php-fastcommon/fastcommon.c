@@ -94,26 +94,110 @@ const zend_fcall_info empty_fcall_info = { 0, NULL, NULL, NULL, NULL, 0, NULL, N
         { NULL, 0, NULL, 0, 0, 0, pass_rest_by_reference, return_reference, required_num_args },
 #endif
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_version, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_gethostaddrs, 0, 0, 0)
+ZEND_ARG_INFO(0, if_alias_prefix)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_time33_hash, 0, 0, 1)
+ZEND_ARG_INFO(0, str)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_simple_hash, 0, 0, 1)
+ZEND_ARG_INFO(0, str)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_get_line_distance_km, 0, 0, 4)
+ZEND_ARG_INFO(0, lat1)
+ZEND_ARG_INFO(0, lon1)
+ZEND_ARG_INFO(0, lat2)
+ZEND_ARG_INFO(0, lon2)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_get_first_local_ip, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_get_next_local_ip, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_is_private_ip, 0, 0, 1)
+ZEND_ARG_INFO(0, ip)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_id_generator_init, 0, 0, 0)
+ZEND_ARG_INFO(0, filename)
+ZEND_ARG_INFO(0, machine_id)
+ZEND_ARG_INFO(0, mid_bits)
+ZEND_ARG_INFO(0, extra_bits)
+ZEND_ARG_INFO(0, sn_bits)
+ZEND_ARG_INFO(0, mode)
+ZEND_ARG_INFO(0, flags)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_id_generator_next, 0, 0, 0)
+ZEND_ARG_INFO(0, extra)
+ZEND_ARG_INFO(0, handle)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_id_generator_get_extra, 0, 0, 1)
+ZEND_ARG_INFO(0, id)
+ZEND_ARG_INFO(0, handle)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_id_generator_get_timestamp, 0, 0, 1)
+ZEND_ARG_INFO(0, id)
+ZEND_ARG_INFO(0, handle)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_id_generator_destroy, 0, 0, 0)
+ZEND_ARG_INFO(0, handle)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_get_ifconfigs, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_get_cpu_count, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_get_sysinfo, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_error_log, 0, 0, 1)
+ZEND_ARG_INFO(0, message)
+ZEND_ARG_INFO(0, message_type)
+ZEND_ARG_INFO(0, destination)
+ZEND_ARG_INFO(0, headers)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_file_put_contents, 0, 0, 2)
+ZEND_ARG_INFO(0, filename)
+ZEND_ARG_INFO(0, data)
+ZEND_ARG_INFO(0, flags)
+ZEND_ARG_INFO(0, context)
+ZEND_END_ARG_INFO()
+
 // Every user visible function must have an entry in fastcommon_functions[].
 	zend_function_entry fastcommon_functions[] = {
-		ZEND_FE(fastcommon_version, NULL)
-		ZEND_FE(fastcommon_gethostaddrs, NULL)
-		ZEND_FE(fastcommon_time33_hash, NULL)
-		ZEND_FE(fastcommon_simple_hash, NULL)
-		ZEND_FE(fastcommon_get_line_distance_km, NULL)
-		ZEND_FE(fastcommon_get_first_local_ip, NULL)
-		ZEND_FE(fastcommon_get_next_local_ip, NULL)
-		ZEND_FE(fastcommon_is_private_ip, NULL)
-		ZEND_FE(fastcommon_id_generator_init, NULL)
-		ZEND_FE(fastcommon_id_generator_next, NULL)
-		ZEND_FE(fastcommon_id_generator_get_extra, NULL)
-		ZEND_FE(fastcommon_id_generator_get_timestamp, NULL)
-		ZEND_FE(fastcommon_id_generator_destroy, NULL)
-		ZEND_FE(fastcommon_get_ifconfigs, NULL)
-		ZEND_FE(fastcommon_get_cpu_count, NULL)
-		ZEND_FE(fastcommon_get_sysinfo, NULL)
-		ZEND_FE(fastcommon_error_log, NULL)
-		ZEND_FE(fastcommon_file_put_contents, NULL)
+		ZEND_FE(fastcommon_version, arginfo_version)
+		ZEND_FE(fastcommon_gethostaddrs, arginfo_gethostaddrs)
+		ZEND_FE(fastcommon_time33_hash, arginfo_time33_hash)
+		ZEND_FE(fastcommon_simple_hash, arginfo_simple_hash)
+		ZEND_FE(fastcommon_get_line_distance_km, arginfo_get_line_distance_km)
+		ZEND_FE(fastcommon_get_first_local_ip, arginfo_get_first_local_ip)
+		ZEND_FE(fastcommon_get_next_local_ip, arginfo_get_next_local_ip)
+		ZEND_FE(fastcommon_is_private_ip, arginfo_is_private_ip)
+		ZEND_FE(fastcommon_id_generator_init, arginfo_id_generator_init)
+		ZEND_FE(fastcommon_id_generator_next, arginfo_id_generator_next)
+		ZEND_FE(fastcommon_id_generator_get_extra, arginfo_id_generator_get_extra)
+		ZEND_FE(fastcommon_id_generator_get_timestamp, arginfo_id_generator_get_timestamp)
+		ZEND_FE(fastcommon_id_generator_destroy, arginfo_id_generator_destroy)
+		ZEND_FE(fastcommon_get_ifconfigs, arginfo_get_ifconfigs)
+		ZEND_FE(fastcommon_get_cpu_count, arginfo_get_cpu_count)
+		ZEND_FE(fastcommon_get_sysinfo, arginfo_get_sysinfo)
+		ZEND_FE(fastcommon_error_log, arginfo_error_log)
+		ZEND_FE(fastcommon_file_put_contents, arginfo_file_put_contents)
 		{NULL, NULL, NULL}  /* Must be the last line */
 	};
 

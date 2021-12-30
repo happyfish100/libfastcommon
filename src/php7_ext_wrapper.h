@@ -38,8 +38,16 @@
 #define TSRMLS_DC
 #endif
 
+#ifndef TSRMLS_C
+#define TSRMLS_C
+#endif
+
 #ifndef TSRMLS_CC
 #define TSRMLS_CC
+#endif
+
+#ifndef TSRMLS_FETCH
+#define TSRMLS_FETCH()
 #endif
 
 #if PHP_MAJOR_VERSION < 7
