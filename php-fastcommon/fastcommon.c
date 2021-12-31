@@ -12,7 +12,6 @@
  * You should have received a copy of the Lesser GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-
 #include "php7_ext_wrapper.h"
 #include "ext/standard/info.h"
 #include "ext/standard/file.h"
@@ -119,7 +118,8 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO_EX(arginfo_get_first_local_ip, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_get_next_local_ip, 0, 0, 0)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_get_next_local_ip, 0, 0, 1)
+ZEND_ARG_INFO(0, previous_ip)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_is_private_ip, 0, 0, 1)
