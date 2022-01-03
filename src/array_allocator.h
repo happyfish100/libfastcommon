@@ -46,6 +46,13 @@ typedef struct
     id_name_pair_t elts[0];
 } IdNameArray;
 
+typedef struct
+{
+    int alloc;
+    int count;
+    void *elts[0];
+} PointerArray;
+
 typedef struct array_allocator_context
 {
     struct fast_allocator_context allocator;
@@ -143,6 +150,23 @@ extern "C" {
 #define id_name_array_allocator_free(ctx, array) \
     array_allocator_free(ctx, (VoidArray *)array)
 
+
+#define ptr_array_allocator_init_ex(ctx, min_bits, max_bits, need_lock) \
+    array_allocator_init_ex(ctx, "ptr", sizeof(void *), \
+            min_bits, max_bits, need_lock)
+
+#define ptr_array_allocator_init(ctx, min_bits, max_bits) \
+        ptr_array_allocator_init_ex(ctx, min_bits, max_bits, true)
+
+#define ptr_array_allocator_alloc(ctx, target_count) \
+    (PointerArray *)array_allocator_alloc(ctx, target_count)
+
+#define ptr_array_allocator_realloc(ctx, old_array, target_count) \
+    (PointerArray *)array_allocator_realloc(ctx, \
+            (VoidArray *)old_array, target_count)
+
+#define ptr_array_allocator_free(ctx, array) \
+    array_allocator_free(ctx, (VoidArray *)array)
 
 #ifdef __cplusplus
 }
