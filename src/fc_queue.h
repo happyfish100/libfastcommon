@@ -61,6 +61,11 @@ static inline void fc_queue_terminate_all(
     }
 }
 
+#define fc_queue_notify(queue) fc_queue_terminate(queue)
+
+#define fc_queue_notify_all(queue, count) \
+    fc_queue_terminate_all(queue, count)
+
 //notify by the caller
 void fc_queue_push_ex(struct fc_queue *queue, void *data, bool *notify);
 

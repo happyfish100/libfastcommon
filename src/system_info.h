@@ -123,21 +123,21 @@ extern "C" {
 /** get system total memory size
  *  parameters:
  *  	mem_size: return the total memory size
- *  return: error no , 0 success, != 0 fail
+ *  return: error no, 0 success, != 0 fail
 */
 int get_sys_total_mem_size(int64_t *mem_size);
 
 
 /** get system CPU count
  *  parameters:
- *  return: error no , 0 success, != 0 fail
+ *  return: error no, 0 success, != 0 fail
 */
 int get_sys_cpu_count();
 
 /** get system boot time
  *  parameters:
  *      uptime: store the up time
- *  return: error no , 0 success, != 0 fail
+ *  return: error no, 0 success, != 0 fail
 */
 int get_boot_time(struct timeval *boot_time);
 
@@ -146,7 +146,7 @@ int get_boot_time(struct timeval *boot_time);
  *      stats: the stat array
  *      size:  max size of the array
  *      count: return the count of the array
- *  return: error no , 0 success, != 0 fail
+ *  return: error no, 0 success, != 0 fail
 */
 int get_mounted_filesystems(struct fast_statfs *stats,
         const int size, int *count);
@@ -156,7 +156,7 @@ int get_mounted_filesystems(struct fast_statfs *stats,
  *  parameters:
  *      processes: return the processes
  *      count: return the count of the processes
- *  return: error no , 0 success, != 0 fail
+ *  return: error no, 0 success, != 0 fail
 */
 int get_processes(struct fast_process_info **processes, int *count);
 
