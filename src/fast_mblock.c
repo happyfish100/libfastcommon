@@ -838,10 +838,9 @@ static inline void batch_free(struct fast_mblock_man *mblock,
     }
 }
 
-struct fast_mblock_node *fast_mblock_batch_alloc(
-        struct fast_mblock_man *mblock, const int count)
+int fast_mblock_batch_alloc(struct fast_mblock_man *mblock,
+        const int count, struct fast_mblock_chain *chain)
 {
-    struct fast_mblock_chain chain;
 	struct fast_mblock_node *pNode;
     int i;
 	int result;
@@ -853,28 +852,31 @@ struct fast_mblock_node *fast_mblock_batch_alloc(
 			"call pthread_mutex_lock fail, "
 			"errno: %d, error info: %s",
 			__LINE__, result, STRERROR(result));
-		return NULL;
+		return result;
 	}
 
-    if ((chain.head=alloc_node(mblock)) != NULL)
-    {
-        chain.tail = chain.head;
-        for (i=1; i<count; i++)
-        {
-            if ((pNode=alloc_node(mblock)) == NULL)
-            {
+    if ((chain->head=alloc_node(mblock)) != NULL) {
+        chain->tail = chain->head;
+        for (i=1; i<count; i++) {
+            if ((pNode=alloc_node(mblock)) == NULL) {
                 break;
             }
 
-            chain.tail->next = pNode;
-            chain.tail = pNode;
+            chain->tail->next = pNode;
+            chain->tail = pNode;
         }
-        chain.tail->next = NULL;
+        chain->tail->next = NULL;
 
-        if (i != count) {  //fail
-            batch_free(mblock, &chain);
-            chain.head = NULL;
+        if (i == count) {
+            result = 0;
+        } else { //fail
+            batch_free(mblock, chain);
+            chain->head = chain->tail = NULL;
+            result = ENOMEM;
         }
+    } else {
+        chain->head = chain->tail = NULL;
+        result = ENOMEM;
     }
 
 	if (mblock->need_lock && (result=pthread_mutex_unlock(
@@ -886,7 +888,7 @@ struct fast_mblock_node *fast_mblock_batch_alloc(
                 __LINE__, result, STRERROR(result));
     }
 
-	return chain.head;
+	return result;
 }
 
 int fast_mblock_batch_free(struct fast_mblock_man *mblock,

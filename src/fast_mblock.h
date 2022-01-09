@@ -260,10 +260,29 @@ batch alloc nodes from the mblock
 parameters:
 	mblock: the mblock pointer
     count: alloc count
+    chain: return the mblock node chain
+return 0 for success, return none zero if fail
+*/
+int fast_mblock_batch_alloc(struct fast_mblock_man *mblock,
+        const int count, struct fast_mblock_chain *chain);
+
+/**
+batch alloc nodes from the mblock
+parameters:
+	mblock: the mblock pointer
+    count: alloc count
 return the alloced node head, return NULL if fail
 */
-struct fast_mblock_node *fast_mblock_batch_alloc(
-        struct fast_mblock_man *mblock, const int count);
+static inline struct fast_mblock_node *fast_mblock_batch_alloc1(
+        struct fast_mblock_man *mblock, const int count)
+{
+    struct fast_mblock_chain chain;
+    if (fast_mblock_batch_alloc(mblock, count, &chain) == 0) {
+        return chain.head;
+    } else {
+        return NULL;
+    }
+}
 
 /**
 batch free nodes

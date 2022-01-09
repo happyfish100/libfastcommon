@@ -211,7 +211,7 @@ int fc_queue_alloc_chain(struct fc_queue *queue, struct fast_mblock_man
 {
     struct fast_mblock_node *node;
 
-    if ((node=fast_mblock_batch_alloc(mblock, count)) == NULL) {
+    if ((node=fast_mblock_batch_alloc1(mblock, count)) == NULL) {
         chain->head = chain->tail = NULL;
         return ENOMEM;
     }
