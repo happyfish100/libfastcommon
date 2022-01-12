@@ -168,6 +168,15 @@ int sched_add_delay_task(TaskFunc task_func, void *func_args,
         const int delay_seconds, const bool new_thread);
 
 
+/** delay free a pointer
+ *  parameters:
+ *  	     ptr: the ptr to free
+ *  	     delay_seconds: delay seconds to free the ptr
+ * return: error no, 0 for success, != 0 fail
+*/
+int sched_delay_free_ptr(void *ptr, const int delay_seconds);
+
+
 /** init the schedule context
  *  parameters:
  *  	     pContext: store the ScheduleContext pointer

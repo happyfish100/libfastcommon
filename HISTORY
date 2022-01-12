@@ -1,7 +1,8 @@
 
-Version 1.55  2022-01-09
+Version 1.55  2022-01-12
   * fastcommon php extension adapt to php 8
   * function fast_mblock_batch_alloc changed
+  * add function sched_delay_free_ptr
 
 Version 1.54  2021-12-23
   * fast_allocator.[hc]: correct reclaim_interval logic

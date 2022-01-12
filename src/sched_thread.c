@@ -963,3 +963,16 @@ uint32_t sched_generate_next_id()
 {
     return ++next_id;
 }
+
+static int sched_free_ptr_func(void *ptr)
+{
+    free(ptr);
+    return 0;
+}
+
+int sched_delay_free_ptr(void *ptr, const int delay_seconds)
+{
+    const bool new_thread = false;
+    return sched_add_delay_task_ex(schedule_context, sched_free_ptr_func,
+            ptr, delay_seconds, new_thread);
+}
