@@ -138,10 +138,29 @@ cat <<EOF > src/_os_define.h
 #endif
 EOF
 
-if [ -f /usr/lib/libpthread.so ] || [ -f /usr/local/lib/libpthread.so ] || [ -f /usr/lib64/libpthread.so ] || [ -f /usr/lib/libpthread.a ] || [ -f /usr/local/lib/libpthread.a ] || [ -f /usr/lib64/libpthread.a ]; then
+pthread_path=''
+for path in /lib /lib64 /usr/lib /usr/lib64 /usr/local/lib; do
+  if [ -d $path ]; then
+    pthread_path=$(find $path -name libpthread.so | head -n 1)
+    if [ -n "$pthread_path" ]; then
+      break
+    fi
+
+    pthread_path=$(find $path -name libpthread.a | head -n 1)
+    if [ -n "$pthread_path" ]; then
+      break
+    fi
+  fi
+done
+
+if [ -n "$pthread_path" ]; then
   LIBS="$LIBS -lpthread"
+  line=$(nm $pthread_path | fgrep pthread_rwlockattr_getkind_np | fgrep -w T)
+  if [ -n "$line" ]; then
+    CFLAGS="$CFLAGS -DWITH_PTHREAD_RWLOCKATTR_GETKIND_NP=1"
+  fi
 elif [ -f /usr/lib/libc_r.so ]; then
-  line=`nm -D /usr/lib/libc_r.so | grep pthread_create | grep -w T`
+  line=$(nm -D /usr/lib/libc_r.so | grep pthread_create | grep -w T)
   if [ -n "$line" ]; then
     LIBS="$LIBS -lc_r"
   fi
