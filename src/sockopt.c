@@ -37,7 +37,7 @@
 #include <ifaddrs.h>
 #endif
 
-#include <sys/poll.h>
+#include <poll.h>
 #include <sys/select.h>
 #include "shared_func.h"
 
