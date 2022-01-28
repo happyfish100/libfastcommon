@@ -80,7 +80,7 @@ int init_pthread_rwlock(pthread_rwlock_t *rwlock)
 	int result;
 
 
-#ifdef WITH_PTHREAD_RWLOCKATTR_GETKIND_NP
+#ifdef WITH_PTHREAD_RWLOCKATTR_SETKIND_NP
     attr.ptr = &attr.holder;
 	if ((result=pthread_rwlockattr_init(attr.ptr)) != 0) {
 		logError("file: "__FILE__", line: %d, "
