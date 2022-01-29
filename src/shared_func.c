@@ -3034,19 +3034,44 @@ int normalize_path(const char *from, const char *filename,
     const char *start;
     const char *last;
     const char *end;
+	char cwd[PATH_MAX];
     int up_count;
     int path_len;
     int i;
 
-    if (IS_FILE_RESOURCE(from)) {
-        from = from + FILE_RESOURCE_TAG_LEN;
-    }
     if (IS_FILE_RESOURCE(filename)) {
         filename = filename + FILE_RESOURCE_TAG_LEN;
     }
 
     if (*filename == '/') {
         return snprintf(full_filename, size, "%s", filename);
+    }
+
+    if (from == NULL) {
+        if (getcwd(cwd, sizeof(cwd)) == NULL) {
+            logError("file: "__FILE__", line: %d, "
+                    "call getcwd fail, errno: %d, error info: %s",
+                    __LINE__, errno, STRERROR(errno));
+            *full_filename = '\0';
+            return 0;
+        }
+
+        path_len = strlen(cwd);
+        if (cwd[path_len - 1] != '/') {
+            if ((path_len + 1) >= sizeof(cwd)) {
+                logError("file: "__FILE__", line: %d, "
+                        "cwd length is too long, exceeds %d",
+                        __LINE__, (int)sizeof(cwd));
+                *full_filename = '\0';
+                return 0;
+            }
+
+            cwd[path_len] = '/';
+            cwd[path_len + 1] = '\0';
+        }
+        from = cwd;
+    } else if (IS_FILE_RESOURCE(from)) {
+        from = from + FILE_RESOURCE_TAG_LEN;
     }
 
     last = strrchr(from, '/');
