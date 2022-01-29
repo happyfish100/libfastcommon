@@ -1,4 +1,7 @@
 
+Version 1.56  2022-01-29
+  * add function fc_gettid
+
 Version 1.55  2022-01-12
   * fastcommon php extension adapt to php 8
   * function fast_mblock_batch_alloc changed

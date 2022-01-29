@@ -19,11 +19,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include "common_define.h"
+#ifdef OS_LINUX
+#include <sys/syscall.h>
+#endif
 #include "fc_memory.h"
 #include "ini_file_reader.h"
 
@@ -1210,6 +1214,21 @@ static inline int fc_check_realloc_iovec_array(
     array->iovs = new_iovs;
     array->alloc = new_alloc;
     return 0;
+}
+
+static inline pid_t fc_gettid()
+{
+#ifdef OS_LINUX
+
+#ifdef SYS_gettid
+    return (pid_t)syscall(SYS_gettid);
+#else
+    return getpid();
+#endif
+
+#else
+    return getpid();
+#endif
 }
 
 #ifdef __cplusplus
