@@ -159,7 +159,7 @@ int tcprecvdata_ex(int sock, void *data, const int size, \
  *          count: store the bytes recveived
  *  return: error no, 0 success, != 0 fail
 */
-int tcprecvdata_nb_ex(int sock, void *data, const int size, \
+int tcprecvdata_nb_ex(int sock, void *data, const int size,
 		const int timeout, int *count);
 
 /** recv data (non-block mode) in ms
@@ -167,12 +167,44 @@ int tcprecvdata_nb_ex(int sock, void *data, const int size, \
  *          sock: the socket
  *          data: the buffer
  *          size: buffer size (max bytes can receive)
- *          timeout: read timeout in milliseconds
+ *          timeout_ms: read timeout in milliseconds
  *          count: store the bytes recveived
  *  return: error no, 0 success, != 0 fail
 */
-int tcprecvdata_nb_ms(int sock, void *data, const int size, \
+int tcprecvdata_nb_ms(int sock, void *data, const int size,
 		const int timeout_ms, int *count);
+
+/** recv data by readv (non-block mode) in ms
+ *  parameters:
+ *          sock: the socket
+ *          size: the expect size
+ *          iov: the iov to send
+ *          iovcnt: the iov count
+ *          timeout_ms: read timeout in milliseconds
+ *          total_bytes: store the bytes recveived
+ *  return: error no, 0 success, != 0 fail
+*/
+int tcpreadv_nb_ms(int sock, const int size, const struct iovec *iov,
+        int iovcnt, const int timeout_ms, int *total_bytes);
+
+
+/** recv data by readv (non-block mode)
+ *  parameters:
+ *          sock: the socket
+ *          size: the expect size
+ *          iov: the iov to send
+ *          iovcnt: the iov count
+ *          timeout: read timeout in seconds
+ *          total_bytes: store the bytes recveived
+ *  return: error no, 0 success, != 0 fail
+*/
+static inline int tcpreadv_nb_ex(int sock, const int size,
+        const struct iovec *iov, int iovcnt,
+        const int timeout, int *total_bytes)
+{
+    return tcpreadv_nb_ms(sock, size, iov, iovcnt,
+            timeout * 1000, total_bytes);
+}
 
 /** send data (block mode)
  *  parameters:
@@ -182,7 +214,7 @@ int tcprecvdata_nb_ms(int sock, void *data, const int size, \
  *          timeout: write timeout
  *  return: error no, 0 success, != 0 fail
 */
-int tcpsenddata(int sock, void* data, const int size, const int timeout);
+int tcpsenddata(int sock, void *data, const int size, const int timeout);
 
 /** send data (non-block mode)
  *  parameters:
@@ -192,7 +224,18 @@ int tcpsenddata(int sock, void* data, const int size, const int timeout);
  *          timeout: write timeout
  *  return: error no, 0 success, != 0 fail
 */
-int tcpsenddata_nb(int sock, void* data, const int size, const int timeout);
+int tcpsenddata_nb(int sock, void *data, const int size, const int timeout);
+
+/** send data by writev (non-block mode)
+ *  parameters:
+ *          sock: the socket
+ *          iov: the iov to send
+ *          iovcnt: the iov count
+ *          timeout: write timeout
+ *  return: error no, 0 success, != 0 fail
+*/
+int tcpwritev_nb(int sock, const struct iovec *iov,
+        int iovcnt, const int timeout);
 
 /** connect to server by block mode
  *  parameters:
@@ -543,6 +586,9 @@ static inline int socketClientIPv6(const char *server_ip,
 
 #define tcprecvdata_nb(sock, data, size, timeout) \
 	tcprecvdata_nb_ex(sock, data, size, timeout, NULL)
+
+#define tcpreadv_nb(sock, size, iov, iovcnt, timeout) \
+    tcpreadv_nb_ex(sock, size, iov, iovcnt, timeout, NULL)
 
 /** send a file
  *  parameters:
