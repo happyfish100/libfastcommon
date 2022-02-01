@@ -420,7 +420,7 @@ int tcprecvdata_nb_ms(int sock, void *data, const int size, \
 }
 
 int tcpreadv_nb_ms(int sock, const int size, const struct iovec *iov,
-        int iovcnt, const int timeout_ms, int *total_bytes)
+        const int iovcnt, const int timeout_ms, int *total_bytes)
 {
 	int left_bytes;
 	int read_bytes;
@@ -666,7 +666,7 @@ int tcpsenddata_nb(int sock, void *data, const int size, const int timeout)
 }
 
 int tcpwritev_nb(int sock, const struct iovec *iov,
-        int iovcnt, const int timeout)
+        const int iovcnt, const int timeout)
 {
 	int write_bytes;
 	int bytes;

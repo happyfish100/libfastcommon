@@ -107,13 +107,13 @@ extern "C" {
     extern bool g_tcp_quick_ack;
 #endif
 
-typedef int (*getnamefunc)(int socket, struct sockaddr *address, \
+typedef int (*getnamefunc)(int socket, struct sockaddr *address,
 		socklen_t *address_len);
 
-typedef int (*tcpsenddatafunc)(int sock, void* data, const int size, \
+typedef int (*tcpsenddatafunc)(int sock, void *data, const int size,
 		const int timeout);
 
-typedef int (*tcprecvdata_exfunc)(int sock, void *data, const int size, \
+typedef int (*tcprecvdata_exfunc)(int sock, void *data, const int size,
 		const int timeout, int *count);
 
 #define getSockIpaddr(sock, buff, bufferSize) \
@@ -144,7 +144,7 @@ int tcpgets(int sock, char *s, const int size, const int timeout);
  *          data: the buffer
  *          size: buffer size (max bytes can receive)
  *          timeout: read timeout
- *          count: store the bytes recveived
+ *          count: store the bytes received
  *  return: error no, 0 success, != 0 fail
 */
 int tcprecvdata_ex(int sock, void *data, const int size, \
@@ -156,7 +156,7 @@ int tcprecvdata_ex(int sock, void *data, const int size, \
  *          data: the buffer
  *          size: buffer size (max bytes can receive)
  *          timeout: read timeout in seconds
- *          count: store the bytes recveived
+ *          count: store the bytes received
  *  return: error no, 0 success, != 0 fail
 */
 int tcprecvdata_nb_ex(int sock, void *data, const int size,
@@ -168,7 +168,7 @@ int tcprecvdata_nb_ex(int sock, void *data, const int size,
  *          data: the buffer
  *          size: buffer size (max bytes can receive)
  *          timeout_ms: read timeout in milliseconds
- *          count: store the bytes recveived
+ *          count: store the bytes received
  *  return: error no, 0 success, != 0 fail
 */
 int tcprecvdata_nb_ms(int sock, void *data, const int size,
@@ -181,11 +181,11 @@ int tcprecvdata_nb_ms(int sock, void *data, const int size,
  *          iov: the iov to send
  *          iovcnt: the iov count
  *          timeout_ms: read timeout in milliseconds
- *          total_bytes: store the bytes recveived
+ *          total_bytes: store the bytes received
  *  return: error no, 0 success, != 0 fail
 */
 int tcpreadv_nb_ms(int sock, const int size, const struct iovec *iov,
-        int iovcnt, const int timeout_ms, int *total_bytes);
+        const int iovcnt, const int timeout_ms, int *total_bytes);
 
 
 /** recv data by readv (non-block mode)
@@ -195,11 +195,11 @@ int tcpreadv_nb_ms(int sock, const int size, const struct iovec *iov,
  *          iov: the iov to send
  *          iovcnt: the iov count
  *          timeout: read timeout in seconds
- *          total_bytes: store the bytes recveived
+ *          total_bytes: store the bytes received
  *  return: error no, 0 success, != 0 fail
 */
 static inline int tcpreadv_nb_ex(int sock, const int size,
-        const struct iovec *iov, int iovcnt,
+        const struct iovec *iov, const int iovcnt,
         const int timeout, int *total_bytes)
 {
     return tcpreadv_nb_ms(sock, size, iov, iovcnt,
@@ -235,7 +235,7 @@ int tcpsenddata_nb(int sock, void *data, const int size, const int timeout);
  *  return: error no, 0 success, != 0 fail
 */
 int tcpwritev_nb(int sock, const struct iovec *iov,
-        int iovcnt, const int timeout);
+        const int iovcnt, const int timeout);
 
 /** connect to server by block mode
  *  parameters:
