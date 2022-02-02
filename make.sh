@@ -1,3 +1,9 @@
+GCC_VERSION=$(gcc -dM -E -  < /dev/null | grep -w __GNUC__ | awk '{print $NF;}')
+if [ -z "$GCC_VERSION" ]; then
+  echo -e "gcc not found, please install gcc first\n" 1>&2
+  exit 2
+fi
+
 tmp_src_filename=fast_check_bits.c
 cat <<EOF > $tmp_src_filename
 #include <stdio.h>
@@ -12,12 +18,22 @@ int main()
 EOF
 
 gcc -D_FILE_OFFSET_BITS=64 -o a.out $tmp_src_filename
-output=`./a.out`
+output=$(./a.out)
+if [ $? -ne 0 ]; then
+  echo -e "Can't find a.out program\n" 1>&2
+  exit 2
+fi
 
 if [ -f /bin/expr ]; then
   EXPR=/bin/expr
-else
+elif [ -f /usr/bin/expr ]; then
   EXPR=/usr/bin/expr
+else
+  EXPR=$(which expr)
+  if [ $? -ne 0 ]; then
+    echo -e "Can't find expr program\n" 1>&2
+    exit 2
+  fi
 fi
 
 count=0
@@ -32,7 +48,7 @@ for col in $output; do
         off_bytes=$col
     fi
 
-    count=`$EXPR $count + 1`
+    count=$($EXPR $count + 1)
 done
 
 /bin/rm -f a.out $tmp_src_filename
@@ -56,7 +72,6 @@ DEBUG_FLAG=0
 
 export CC=gcc
 CFLAGS='-Wall'
-GCC_VERSION=$(gcc -dM -E -  < /dev/null | grep -w __GNUC__ | awk '{print $NF;}')
 if [ -n "$GCC_VERSION" ] && [ $GCC_VERSION -ge 7 ]; then
   CFLAGS="$CFLAGS -Wformat-truncation=0 -Wformat-overflow=0"
 fi
