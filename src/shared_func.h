@@ -1232,6 +1232,35 @@ static inline pid_t fc_gettid()
 #endif
 }
 
+static inline size_t fc_iov_get_bytes(const
+        struct iovec *iov, const int iovcnt)
+{
+    const struct iovec *iob;
+    const struct iovec *end;
+    size_t bytes;
+
+    switch (iovcnt) {
+        case 0:
+            return 0;
+        case 1:
+            return iov[0].iov_len;
+        case 2:
+            return iov[0].iov_len + iov[1].iov_len;
+        case 3:
+            return iov[0].iov_len + iov[1].iov_len + iov[2].iov_len;
+        case 4:
+            return iov[0].iov_len + iov[1].iov_len +
+                iov[2].iov_len + iov[3].iov_len;
+        default:
+            bytes = 0;
+            end = iov + iovcnt;
+            for (iob=iov; iob<end; iob++) {
+                bytes += iob->iov_len;
+            }
+            return bytes;
+    }
+}
+
 #ifdef __cplusplus
 }
 #endif
