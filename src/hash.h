@@ -93,16 +93,16 @@ typedef struct tagHashStat
  * parameters:
  *         index: item index based 0
  *         data: hash data, including key and value
- *         args: passed by hash_walk function
+ *         args: passed by fc_hash_walk function
  * return 0 for success, != 0 for error
 */
 typedef int (*HashWalkFunc)(const int index, const HashData *data, void *args);
 
-#define hash_init(pHash, hash_func, capacity, load_factor) \
-	hash_init_ex(pHash, hash_func, capacity, load_factor, 0, false)
+#define fc_hash_init(pHash, hash_func, capacity, load_factor) \
+	fc_hash_init_ex(pHash, hash_func, capacity, load_factor, 0, false)
 
-#define hash_insert(pHash, key, key_len, value) \
-	hash_insert_ex(pHash, key, key_len, value, 0, true)
+#define fc_hash_insert(pHash, key, key_len, value) \
+	fc_hash_insert_ex(pHash, key, key_len, value, 0, true)
 
 /**
  * hash init function
@@ -115,7 +115,7 @@ typedef int (*HashWalkFunc)(const int index, const HashData *data, void *args);
  *         bMallocValue: if need malloc value buffer
  * return 0 for success, != 0 for error
 */
-int hash_init_ex(HashArray *pHash, HashFunc hash_func, \
+int fc_hash_init_ex(HashArray *pHash, HashFunc hash_func, \
 		const unsigned int capacity, const double load_factor, \
 		const int64_t max_bytes, const bool bMallocValue);
 
@@ -125,7 +125,7 @@ int hash_init_ex(HashArray *pHash, HashFunc hash_func, \
  *         lock_count: the lock count
  * return 0 for success, != 0 for error
 */
-int hash_set_locks(HashArray *pHash, const int lock_count);
+int fc_hash_set_locks(HashArray *pHash, const int lock_count);
 
 /**
  * convert the value
@@ -137,12 +137,12 @@ int hash_set_locks(HashArray *pHash, const int lock_count);
  *         arg: the user data
  * return the number after increasement
 */
-int64_t hash_inc_value(const HashData *old_data, const int inc,
+int64_t fc_hash_inc_value(const HashData *old_data, const int inc,
 	char *new_value, int *new_value_len, void *arg);
 
-#define hash_inc(pHash, key, key_len, inc, value, value_len) \
-	hash_inc_ex(pHash, key, key_len, inc, value, value_len, \
-		hash_inc_value, NULL)
+#define fc_hash_inc(pHash, key, key_len, inc, value, value_len) \
+	fc_hash_inc_ex(pHash, key, key_len, inc, value, value_len, \
+		fc_hash_inc_value, NULL)
 
 /**
  * atomic increase value
@@ -158,7 +158,7 @@ int64_t hash_inc_value(const HashData *old_data, const int inc,
  * return  0 for success, != 0 for error (errno)
  *
 */
-int  hash_inc_ex(HashArray *pHash, const void *key, const int key_len,
+int  fc_hash_inc_ex(HashArray *pHash, const void *key, const int key_len,
 		const int inc, char *value, int *value_len,
 		ConvertValueFunc convert_func, void *arg);
 
@@ -168,7 +168,7 @@ int  hash_inc_ex(HashArray *pHash, const void *key, const int key_len,
  *         pHash: the hash table
  * return none
 */
-void hash_destroy(HashArray *pHash);
+void fc_hash_destroy(HashArray *pHash);
 
 /**
  * hash insert key
@@ -182,7 +182,7 @@ void hash_destroy(HashArray *pHash);
  * return >= 0 for success, 0 for key already exist (update), 
  *        1 for new key (insert), < 0 for error
 */
-int hash_insert_ex(HashArray *pHash, const void *key, const int key_len, \
+int fc_hash_insert_ex(HashArray *pHash, const void *key, const int key_len, \
 		void *value, const int value_len, const bool needLock);
 
 /**
@@ -193,7 +193,7 @@ int hash_insert_ex(HashArray *pHash, const void *key, const int key_len, \
  *         key_len: length of th key 
  * return user data, return NULL when the key not exist
 */
-void *hash_find(HashArray *pHash, const void *key, const int key_len);
+void *fc_hash_find(HashArray *pHash, const void *key, const int key_len);
 
 /**
  * hash find key
@@ -203,7 +203,7 @@ void *hash_find(HashArray *pHash, const void *key, const int key_len);
  *         key_len: length of th key 
  * return hash data, return NULL when the key not exist
 */
-HashData *hash_find_ex(HashArray *pHash, const void *key, const int key_len);
+HashData *fc_hash_find_ex(HashArray *pHash, const void *key, const int key_len);
 
 /**
  * hash find key
@@ -212,9 +212,9 @@ HashData *hash_find_ex(HashArray *pHash, const void *key, const int key_len);
  *         key: the key to find
  * return user data, return NULL when the key not exist
 */
-static inline void *hash_find1(HashArray *pHash, const string_t *key)
+static inline void *fc_hash_find1(HashArray *pHash, const string_t *key)
 {
-    return hash_find(pHash, key->str, key->len);
+    return fc_hash_find(pHash, key->str, key->len);
 }
 
 /**
@@ -225,7 +225,7 @@ static inline void *hash_find1(HashArray *pHash, const string_t *key)
  *         value: store the value
  * return 0 for success, != 0 fail (errno)
 */
-int hash_find2(HashArray *pHash, const string_t *key, string_t *value);
+int fc_hash_find2(HashArray *pHash, const string_t *key, string_t *value);
 
 /**
  * hash find key
@@ -234,7 +234,7 @@ int hash_find2(HashArray *pHash, const string_t *key, string_t *value);
  *         key: the key to find
  * return hash data, return NULL when the key not exist
 */
-HashData *hash_find1_ex(HashArray *pHash, const string_t *key);
+HashData *fc_hash_find1_ex(HashArray *pHash, const string_t *key);
 
 /**
  * hash get the value of the key
@@ -247,7 +247,7 @@ HashData *hash_find1_ex(HashArray *pHash, const string_t *key);
  *                    output for the length fo the value
  * return 0 for success, != 0 fail (errno)
 */
-int hash_get(HashArray *pHash, const void *key, const int key_len,
+int fc_hash_get(HashArray *pHash, const void *key, const int key_len,
 	void *value, int *value_len);
 
 
@@ -262,7 +262,7 @@ int hash_get(HashArray *pHash, const void *key, const int key_len,
  *         value_len: length of the value
  * return 0 for success, != 0 fail (errno)
 */
-int hash_partial_set(HashArray *pHash, const void *key, const int key_len,
+int fc_hash_partial_set(HashArray *pHash, const void *key, const int key_len,
 		const char *value, const int offset, const int value_len);
 
 /**
@@ -273,7 +273,7 @@ int hash_partial_set(HashArray *pHash, const void *key, const int key_len,
  *         key_len: length of th key 
  * return 0 for success, != 0 fail (errno)
 */
-int hash_delete(HashArray *pHash, const void *key, const int key_len);
+int fc_hash_delete(HashArray *pHash, const void *key, const int key_len);
 
 /**
  * hash walk (iterator)
@@ -283,7 +283,7 @@ int hash_delete(HashArray *pHash, const void *key, const int key_len);
  *         args: extra args which will be passed to walkFunc
  * return 0 for success, != 0 fail (errno)
 */
-int hash_walk(HashArray *pHash, HashWalkFunc walkFunc, void *args);
+int fc_hash_walk(HashArray *pHash, HashWalkFunc walkFunc, void *args);
 
 /**
  * get hash item count
@@ -291,7 +291,7 @@ int hash_walk(HashArray *pHash, HashWalkFunc walkFunc, void *args);
  *         pHash: the hash table
  * return item count
 */
-int hash_count(HashArray *pHash);
+int fc_hash_count(HashArray *pHash);
 
 /**
  * hash best optimize
@@ -300,7 +300,7 @@ int hash_count(HashArray *pHash);
  *         suggest_capacity: suggest init capacity for speed
  * return >0 for success, < 0 fail (errno)
 */
-int hash_best_op(HashArray *pHash, const int suggest_capacity);
+int fc_hash_best_op(HashArray *pHash, const int suggest_capacity);
 
 /**
  * hash stat
@@ -314,7 +314,7 @@ int hash_best_op(HashArray *pHash, const int suggest_capacity);
  *         stat_size: stats array size (contain max elments)
  * return 0 for success, != 0 fail (errno)
 */
-int hash_stat(HashArray *pHash, HashStat *pStat, \
+int fc_hash_stat(HashArray *pHash, HashStat *pStat, \
 		int *stat_by_lens, const int stat_size);
 
 /**
@@ -323,7 +323,7 @@ int hash_stat(HashArray *pHash, HashStat *pStat, \
  *         pHash: the hash table
  * return none
 */
-void hash_stat_print(HashArray *pHash);
+void fc_hash_stat_print(HashArray *pHash);
 
 /**
  * lock the bucket of hash table
@@ -332,7 +332,7 @@ void hash_stat_print(HashArray *pHash);
  *         bucket_index: the index of bucket
  * return 0 for success, != 0 fail (errno)
 */
-int hash_bucket_lock(HashArray *pHash, const unsigned int bucket_index);
+int fc_hash_bucket_lock(HashArray *pHash, const unsigned int bucket_index);
 
 /**
  * unlock the bucket of hash table
@@ -341,7 +341,7 @@ int hash_bucket_lock(HashArray *pHash, const unsigned int bucket_index);
  *         bucket_index: the index of bucket
  * return 0 for success, != 0 fail (errno)
 */
-int hash_bucket_unlock(HashArray *pHash, const unsigned int bucket_index);
+int fc_hash_bucket_unlock(HashArray *pHash, const unsigned int bucket_index);
 
 int RSHash(const void *key, const int key_len);
 
@@ -383,8 +383,8 @@ int calc_hashnr1(const void* key, const int key_len);
 int calc_hashnr1_ex(const void* key, const int key_len, \
 	const int init_value);
 
-int simple_hash(const void* key, const int key_len);
-int simple_hash_ex(const void* key, const int key_len, \
+int fc_simple_hash(const void* key, const int key_len);
+int fc_simple_hash_ex(const void* key, const int key_len, \
 	const int init_value);
 
 int CRC32(const void *key, const int key_len);
@@ -402,7 +402,7 @@ int64_t CRC32_ex(const void *key, const int key_len, \
 #define CALC_HASH_CODES4(buff, buff_len, hash_codes) \
 	hash_codes[0] = CRC32_ex(buff, buff_len, hash_codes[0]); \
 	hash_codes[1] = ELFHash_ex(buff, buff_len, hash_codes[1]); \
-	hash_codes[2] = simple_hash_ex(buff, buff_len, hash_codes[2]); \
+	hash_codes[2] = fc_simple_hash_ex(buff, buff_len, hash_codes[2]); \
 	hash_codes[3] = Time33Hash_ex(buff, buff_len, hash_codes[3]); \
 
 
@@ -410,7 +410,7 @@ int64_t CRC32_ex(const void *key, const int key_len, \
 	hash_codes[0] = CRC32_FINAL(hash_codes[0]); \
 
 
-unsigned int *hash_get_prime_capacity(const int capacity);
+unsigned int *fc_hash_get_prime_capacity(const int capacity);
 
 #ifdef __cplusplus
 }

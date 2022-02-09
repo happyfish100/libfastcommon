@@ -2848,7 +2848,7 @@ ssize_t fc_safe_read(int fd, char *buf, const size_t count)
 key_t fc_ftok(const char *path, const int proj_id)
 {
     int hash_code;
-    hash_code = simple_hash(path, strlen(path));
+    hash_code = fc_simple_hash(path, strlen(path));
     return (((proj_id & 0xFF) << 24) | (hash_code & 0xFFFFFF));
 }
 

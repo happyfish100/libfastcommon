@@ -362,7 +362,7 @@ static char *doReplaceVars(IniContext *pContext, const char *param,
             trim(name);
             name_len = strlen(name);
             if (name_len > 0) {
-                value = (char *)hash_find(set->vars, name, name_len);
+                value = (char *)fc_hash_find(set->vars, name, name_len);
             } else {
                 value = NULL;
             }
@@ -553,10 +553,10 @@ static int iniInitContext(IniContext *pContext, const char annotation_type,
 
 	memset(pContext, 0, sizeof(IniContext));
 	pContext->current_section = &pContext->global;
-	if ((result=hash_init(&pContext->sections, Time33Hash, 32, 0.75)) != 0)
+	if ((result=fc_hash_init(&pContext->sections, Time33Hash, 32, 0.75)) != 0)
 	{
 		logError("file: "__FILE__", line: %d, " \
-			"hash_init fail, errno: %d, error info: %s", \
+			"fc_hash_init fail, errno: %d, error info: %s", \
 			__LINE__, result, STRERROR(result));
 	}
 
@@ -586,7 +586,7 @@ static void iniSortItems(IniContext *pContext)
 			sizeof(IniItem), iniCompareByItemName);
 	}
 
-	hash_walk(&pContext->sections, iniSortHashData, NULL);
+	fc_hash_walk(&pContext->sections, iniSortHashData, NULL);
 }
 
 int iniLoadFromFile(const char *szFilename, IniContext *pContext)
@@ -1142,7 +1142,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 			}
 
 			section_len = strlen(section_name);
-			pSection = (IniSection *)hash_find(&pContext->sections,\
+			pSection = (IniSection *)fc_hash_find(&pContext->sections,\
 					section_name, section_len);
 			if (pSection == NULL)
 			{
@@ -1154,7 +1154,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 				}
 
 				memset(pSection, 0, sizeof(IniSection));
-				result = hash_insert(&pContext->sections, \
+				result = fc_hash_insert(&pContext->sections, \
 					  section_name, section_len, pSection);
 				if (result < 0)
 				{
@@ -1540,7 +1540,7 @@ static SetDirectiveVars *iniAllocVars(IniContext *pContext, const bool initVars)
         {
             return NULL;
         }
-        if (hash_init_ex(set->vars, simple_hash, 17, 0.75, 0, true) != 0)
+        if (fc_hash_init_ex(set->vars, fc_simple_hash, 17, 0.75, 0, true) != 0)
         {
             free(set->vars);
             set->vars = NULL;
@@ -2007,7 +2007,7 @@ static bool iniCalcCondition(char *condition, const int condition_len,
         set = iniGetVars(pContext);
         if (set != NULL && set->vars != NULL)
         {
-            value = (char *)hash_find(set->vars, varStr, varLen);
+            value = (char *)fc_hash_find(set->vars, varStr, varLen);
             if (value == NULL)
             {
                 logWarning("file: "__FILE__", line: %d, "
@@ -2164,7 +2164,7 @@ static int iniDoProccessSet(char *pSet, char **ppSetEnd,
         }
     }
 
-    result = hash_insert_ex(set->vars, key, strlen(key),
+    result = fc_hash_insert_ex(set->vars, key, strlen(key),
             new_value, value_len + 1, false);
     if (new_value != value) {
         free(new_value);
@@ -2786,13 +2786,13 @@ void iniFreeContext(IniContext *pContext)
 		memset(&pContext->global, 0, sizeof(IniSection));
 	}
 
-	hash_walk(&pContext->sections, iniFreeHashData, NULL);
-	hash_destroy(&pContext->sections);
+	fc_hash_walk(&pContext->sections, iniFreeHashData, NULL);
+	fc_hash_destroy(&pContext->sections);
 
     set = iniGetVars(pContext);
     if (set != NULL && set->vars != NULL)
     {
-        hash_destroy(set->vars);
+        fc_hash_destroy(set->vars);
         free(set->vars);
         set->vars = NULL;
         set->offset = 0;
@@ -2809,7 +2809,7 @@ do { \
     } \
     else \
     { \
-        pSection = (IniSection *)hash_find(&pContext->sections, \
+        pSection = (IniSection *)fc_hash_find(&pContext->sections, \
                 szSectionName, strlen(szSectionName)); \
         if (pSection == NULL) \
         { \
@@ -3182,7 +3182,7 @@ void iniPrintItems(IniContext *pContext)
 	}
 	printf("\n");
 
-	hash_walk(&pContext->sections, iniPrintHashData, NULL);
+	fc_hash_walk(&pContext->sections, iniPrintHashData, NULL);
 }
 
 struct section_name_walk_arg {
@@ -3246,7 +3246,7 @@ int iniGetSectionNamesEx(IniContext *pContext, IniSectionNameFilterFunc
     walk_arg.args = args;
     walk_arg.size = max_size;
     walk_arg.count = 0;
-	result = hash_walk(&pContext->sections, iniSectionNameWalkCallback,
+	result = fc_hash_walk(&pContext->sections, iniSectionNameWalkCallback,
             &walk_arg);
     *nCount = walk_arg.count;
     return result;
@@ -3317,7 +3317,7 @@ int iniGetSectionCountEx(IniContext *pContext, IniSectionNameFilterFunc
     walk_arg.filter_func = filter_func;
     walk_arg.args = args;
     walk_arg.count = 0;
-    hash_walk(&pContext->sections, iniSectionCountWalkCallback, &walk_arg);
+    fc_hash_walk(&pContext->sections, iniSectionCountWalkCallback, &walk_arg);
     return walk_arg.count;
 }
 
@@ -3340,7 +3340,7 @@ IniItem *iniGetSectionItems(const char *szSectionName, IniContext *pContext,
 	}
 	else
 	{
-		pSection = (IniSection *)hash_find(&pContext->sections,
+		pSection = (IniSection *)fc_hash_find(&pContext->sections,
 				szSectionName, strlen(szSectionName));
 		if (pSection == NULL)
 		{

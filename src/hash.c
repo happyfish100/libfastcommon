@@ -79,7 +79,7 @@ static int _hash_alloc_buckets(HashArray *pHash, const unsigned int old_capacity
 	return 0;
 }
 
-unsigned int *hash_get_prime_capacity(const int capacity)
+unsigned int *fc_hash_get_prime_capacity(const int capacity)
 {
 	unsigned int *pprime;
 	unsigned int *prime_end;
@@ -95,14 +95,14 @@ unsigned int *hash_get_prime_capacity(const int capacity)
     return NULL;
 }
 
-int hash_init_ex(HashArray *pHash, HashFunc hash_func, \
+int fc_hash_init_ex(HashArray *pHash, HashFunc hash_func, \
 		const unsigned int capacity, const double load_factor, \
 		const int64_t max_bytes, const bool bMallocValue)
 {
 	int result;
 
 	memset(pHash, 0, sizeof(HashArray));
-    pHash->capacity = hash_get_prime_capacity(capacity);
+    pHash->capacity = fc_hash_get_prime_capacity(capacity);
 	if (pHash->capacity == NULL)
 	{
 		return EINVAL;
@@ -129,7 +129,7 @@ int hash_init_ex(HashArray *pHash, HashFunc hash_func, \
 	return 0;
 }
 
-int hash_set_locks(HashArray *pHash, const int lock_count)
+int fc_hash_set_locks(HashArray *pHash, const int lock_count)
 {
 	size_t bytes;
 	pthread_mutex_t *lock;
@@ -168,7 +168,7 @@ int hash_set_locks(HashArray *pHash, const int lock_count)
 	return 0;
 }
 
-void hash_destroy(HashArray *pHash)
+void fc_hash_destroy(HashArray *pHash)
 {
 	HashData **ppBucket;
 	HashData **bucket_end;
@@ -238,7 +238,7 @@ void hash_destroy(HashArray *pHash)
 	}
 
 
-int hash_stat(HashArray *pHash, HashStat *pStat, \
+int fc_hash_stat(HashArray *pHash, HashStat *pStat, \
 		int *stat_by_lens, const int stat_size)
 {
 	HashData **ppBucket;
@@ -299,13 +299,13 @@ int hash_stat(HashArray *pHash, HashStat *pStat, \
 	return 0;
 }
 
-void hash_stat_print(HashArray *pHash)
+void fc_hash_stat_print(HashArray *pHash)
 {
 #define STAT_MAX_NUM  64
 	HashStat hs;
 	int stats[STAT_MAX_NUM];
 
-	if (hash_stat(pHash, &hs, stats, STAT_MAX_NUM) != 0)
+	if (fc_hash_stat(pHash, &hs, stats, STAT_MAX_NUM) != 0)
 	{
 		printf("hash max length exceeds %d!\n", STAT_MAX_NUM);
 		return;
@@ -381,7 +381,7 @@ static int _rehash(HashArray *pHash)
 	pOldCapacity = pHash->capacity;
 	if (pHash->is_malloc_capacity)
 	{
-        pHash->capacity = hash_get_prime_capacity(*pOldCapacity);
+        pHash->capacity = fc_hash_get_prime_capacity(*pOldCapacity);
 	}
 	else
 	{
@@ -456,7 +456,7 @@ static int _hash_conflict_count(HashArray *pHash)
 	return conflict_count;
 }
 
-int hash_best_op(HashArray *pHash, const int suggest_capacity)
+int fc_hash_best_op(HashArray *pHash, const int suggest_capacity)
 {
 	int old_capacity;
 	int conflict_count;
@@ -513,7 +513,7 @@ int hash_best_op(HashArray *pHash, const int suggest_capacity)
 
 	pHash->is_malloc_capacity = true;
 
-	//hash_stat_print(pHash);
+	//fc_hash_stat_print(pHash);
 	return 1;
 }
 
@@ -537,7 +537,7 @@ static HashData *_chain_find_entry(HashData **ppBucket, const void *key, \
 	return NULL;
 }
 
-HashData *hash_find_ex(HashArray *pHash, const void *key, const int key_len)
+HashData *fc_hash_find_ex(HashArray *pHash, const void *key, const int key_len)
 {
 	unsigned int hash_code;
 	HashData **ppBucket;
@@ -553,7 +553,7 @@ HashData *hash_find_ex(HashArray *pHash, const void *key, const int key_len)
 	return hash_data;
 }
 
-void *hash_find(HashArray *pHash, const void *key, const int key_len)
+void *fc_hash_find(HashArray *pHash, const void *key, const int key_len)
 {
 	unsigned int hash_code;
 	HashData **ppBucket;
@@ -576,10 +576,10 @@ void *hash_find(HashArray *pHash, const void *key, const int key_len)
 	}
 }
 
-int hash_find2(HashArray *pHash, const string_t *key, string_t *value)
+int fc_hash_find2(HashArray *pHash, const string_t *key, string_t *value)
 {
     HashData *hdata;
-    if ((hdata=hash_find1_ex(pHash, key)) == NULL)
+    if ((hdata=fc_hash_find1_ex(pHash, key)) == NULL)
     {
         return ENOENT;
     }
@@ -589,12 +589,12 @@ int hash_find2(HashArray *pHash, const string_t *key, string_t *value)
     return 0;
 }
 
-HashData *hash_find1_ex(HashArray *pHash, const string_t *key)
+HashData *fc_hash_find1_ex(HashArray *pHash, const string_t *key)
 {
-    return hash_find_ex(pHash, key->str, key->len);
+    return fc_hash_find_ex(pHash, key->str, key->len);
 }
 
-int hash_get(HashArray *pHash, const void *key, const int key_len,
+int fc_hash_get(HashArray *pHash, const void *key, const int key_len,
 	void *value, int *value_len)
 {
 	unsigned int hash_code;
@@ -628,7 +628,7 @@ int hash_get(HashArray *pHash, const void *key, const int key_len,
 	return result;
 }
 
-int hash_insert_ex(HashArray *pHash, const void *key, const int key_len, \
+int fc_hash_insert_ex(HashArray *pHash, const void *key, const int key_len,
 		void *value, const int value_len, const bool needLock)
 {
 	unsigned int hash_code;
@@ -760,7 +760,7 @@ int hash_insert_ex(HashArray *pHash, const void *key, const int key_len, \
 	return 1;
 }
 
-int64_t hash_inc_value(const HashData *old_data, const int inc,
+int64_t fc_hash_inc_value(const HashData *old_data, const int inc,
 	char *new_value, int *new_value_len, void *arg)
 {
 	int64_t n;
@@ -788,7 +788,7 @@ int64_t hash_inc_value(const HashData *old_data, const int inc,
 	return n;
 }
 
-int hash_inc_ex(HashArray *pHash, const void *key, const int key_len,
+int fc_hash_inc_ex(HashArray *pHash, const void *key, const int key_len,
 		const int inc, char *value, int *value_len,
 		ConvertValueFunc convert_func, void *arg)
 {
@@ -823,7 +823,7 @@ int hash_inc_ex(HashArray *pHash, const void *key, const int key_len,
 			}
 		}
 	}
-	result = hash_insert_ex(pHash, key, key_len, value, *value_len, false);
+	result = fc_hash_insert_ex(pHash, key, key_len, value, *value_len, false);
 	if (result < 0)
 	{
 		*value = '\0';
@@ -839,7 +839,7 @@ int hash_inc_ex(HashArray *pHash, const void *key, const int key_len,
 	return result;
 }
 
-int hash_partial_set(HashArray *pHash, const void *key, const int key_len,
+int fc_hash_partial_set(HashArray *pHash, const void *key, const int key_len,
 		const char *value, const int offset, const int value_len)
 {
 	unsigned int hash_code;
@@ -881,7 +881,7 @@ int hash_partial_set(HashArray *pHash, const void *key, const int key_len,
 				memcpy(pNewBuff, hash_data->value, offset);
 			}
 			memcpy(pNewBuff + offset, value, value_len);
-			result = hash_insert_ex(pHash, key, key_len, pNewBuff,
+			result = fc_hash_insert_ex(pHash, key, key_len, pNewBuff,
 				offset + value_len, false);
 			free(pNewBuff);
 		}
@@ -892,8 +892,8 @@ int hash_partial_set(HashArray *pHash, const void *key, const int key_len,
 				result = ENOENT;
 				break;
 			}
-			result = hash_insert_ex(pHash, key, key_len, (void *)value,
-				value_len, false);
+			result = fc_hash_insert_ex(pHash, key, key_len,
+                    (void *)value, value_len, false);
 		}
 
 		if (result < 0)
@@ -910,7 +910,7 @@ int hash_partial_set(HashArray *pHash, const void *key, const int key_len,
 	return result;
 }
 
-int hash_delete(HashArray *pHash, const void *key, const int key_len)
+int fc_hash_delete(HashArray *pHash, const void *key, const int key_len)
 {
 	HashData **ppBucket;
 	HashData *hash_data;
@@ -943,7 +943,7 @@ int hash_delete(HashArray *pHash, const void *key, const int key_len)
 	return result;
 }
 
-int hash_walk(HashArray *pHash, HashWalkFunc walkFunc, void *args)
+int fc_hash_walk(HashArray *pHash, HashWalkFunc walkFunc, void *args)
 {
 	HashData **ppBucket;
 	HashData **bucket_end;
@@ -972,12 +972,12 @@ int hash_walk(HashArray *pHash, HashWalkFunc walkFunc, void *args)
 	return 0;
 }
 
-int hash_count(HashArray *pHash)
+int fc_hash_count(HashArray *pHash)
 {
 	return pHash->item_count;
 }
 
-int hash_bucket_lock(HashArray *pHash, const unsigned int bucket_index)
+int fc_hash_bucket_lock(HashArray *pHash, const unsigned int bucket_index)
 {
 	if (pHash->lock_count <= 0)
 	{
@@ -988,7 +988,7 @@ int hash_bucket_lock(HashArray *pHash, const unsigned int bucket_index)
 			pHash->lock_count);
 }
 
-int hash_bucket_unlock(HashArray *pHash, const unsigned int bucket_index)
+int fc_hash_bucket_unlock(HashArray *pHash, const unsigned int bucket_index)
 {
 	if (pHash->lock_count <= 0)
 	{
@@ -1315,12 +1315,12 @@ int calc_hashnr1_ex(const void* key, const int key_len, \
  \
   return h; \
 
-int simple_hash(const void* key, const int key_len)
+int fc_simple_hash(const void* key, const int key_len)
 {
 	SIMPLE_HASH_FUNC(0)
 }
 
-int simple_hash_ex(const void* key, const int key_len, \
+int fc_simple_hash_ex(const void* key, const int key_len, \
 	const int init_value)
 {
 	SIMPLE_HASH_FUNC(init_value)

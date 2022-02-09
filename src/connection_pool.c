@@ -62,7 +62,7 @@ int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
         return result;
     }
 
-	return hash_init(&(cp->hash_array), simple_hash, init_capacity, 0.75);
+	return fc_hash_init(&(cp->hash_array), fc_simple_hash, init_capacity, 0.75);
 }
 
 static int coon_pool_close_connections(const int index,
@@ -97,8 +97,8 @@ static int coon_pool_close_connections(const int index,
 void conn_pool_destroy(ConnectionPool *cp)
 {
 	pthread_mutex_lock(&cp->lock);
-    hash_walk(&(cp->hash_array), coon_pool_close_connections, cp);
-	hash_destroy(&(cp->hash_array));
+    fc_hash_walk(&(cp->hash_array), coon_pool_close_connections, cp);
+	fc_hash_destroy(&(cp->hash_array));
 	pthread_mutex_unlock(&cp->lock);
 
 	pthread_mutex_destroy(&cp->lock);
@@ -198,7 +198,7 @@ ConnectionInfo *conn_pool_get_connection(ConnectionPool *cp,
 	conn_pool_get_key(conn, key, &key_len);
 
 	pthread_mutex_lock(&cp->lock);
-	cm = (ConnectionManager *)hash_find(&cp->hash_array, key, key_len);
+	cm = (ConnectionManager *)fc_hash_find(&cp->hash_array, key, key_len);
 	if (cm == NULL)
 	{
 		cm = (ConnectionManager *)fast_mblock_alloc_object(
@@ -221,7 +221,7 @@ ConnectionInfo *conn_pool_get_connection(ConnectionPool *cp,
 			pthread_mutex_unlock(&cp->lock);
 			return NULL;
 		}
-		hash_insert(&cp->hash_array, key, key_len, cm);
+		fc_hash_insert(&cp->hash_array, key, key_len, cm);
 	}
 	pthread_mutex_unlock(&cp->lock);
 
@@ -376,7 +376,7 @@ int conn_pool_close_connection_ex(ConnectionPool *cp, ConnectionInfo *conn,
 	conn_pool_get_key(conn, key, &key_len);
 
 	pthread_mutex_lock(&cp->lock);
-	cm = (ConnectionManager *)hash_find(&cp->hash_array, key, key_len);
+	cm = (ConnectionManager *)fc_hash_find(&cp->hash_array, key, key_len);
 	pthread_mutex_unlock(&cp->lock);
 	if (cm == NULL)
 	{
@@ -456,7 +456,7 @@ int conn_pool_get_connection_count(ConnectionPool *cp)
 {
 	int count;
 	count = 0;
-	hash_walk(&cp->hash_array, _conn_count_walk, &count);
+	fc_hash_walk(&cp->hash_array, _conn_count_walk, &count);
 	return count;
 }
 
