@@ -461,7 +461,7 @@ int tcpreadv_nb_ms(int sock, const int size, const struct iovec *iov,
 		{
             TCP_SET_QUICK_ACK(sock);
 			left_bytes -= read_bytes;
-            if (left_bytes == 0)
+            if (left_bytes <= 0)
             {
                 break;
             }

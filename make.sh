@@ -128,6 +128,36 @@ else
   IOEVENT_USE=IOEVENT_USE_NONE
 fi
 
+check_dirent_field()
+{
+    field_name=$1
+    upper_fname=$(echo $field_name | tr '[a-z]' '[A-Z]')
+
+tmp_src_filename=fast_check_dirent.c
+cat <<EOF > $tmp_src_filename
+#include <stdio.h>
+#include <dirent.h>
+
+int main(int argc, char *argv[])
+{
+    struct dirent dir;
+    dir.$field_name = 1;
+    printf("#define HAVE_DIRENT_$upper_fname  %d\n", dir.$field_name);
+    return 0;
+}
+EOF
+
+gcc -o a.out $tmp_src_filename 2>/dev/null && ./a.out
+/bin/rm -f a.out $tmp_src_filename
+
+}
+
+tmp_filename=fast_dirent_macros.txt
+check_dirent_field d_namlen > $tmp_filename
+check_dirent_field d_reclen >> $tmp_filename
+check_dirent_field d_off    >> $tmp_filename
+check_dirent_field d_type   >> $tmp_filename
+
 cat <<EOF > src/_os_define.h
 #ifndef _OS_DEFINE_H
 #define _OS_DEFINE_H
@@ -150,6 +180,9 @@ cat <<EOF > src/_os_define.h
 #ifndef HAVE_USER_H
 #define HAVE_USER_H $HAVE_USER_H
 #endif
+
+$(cat $tmp_filename && /bin/rm -f $tmp_filename)
+
 #endif
 EOF
 
