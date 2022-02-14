@@ -153,10 +153,10 @@ gcc -o a.out $tmp_src_filename 2>/dev/null && ./a.out
 }
 
 tmp_filename=fast_dirent_macros.txt
-check_dirent_field d_namlen > $tmp_filename
+check_dirent_field d_type   >  $tmp_filename
 check_dirent_field d_reclen >> $tmp_filename
+check_dirent_field d_namlen >> $tmp_filename
 check_dirent_field d_off    >> $tmp_filename
-check_dirent_field d_type   >> $tmp_filename
 
 cat <<EOF > src/_os_define.h
 #ifndef _OS_DEFINE_H

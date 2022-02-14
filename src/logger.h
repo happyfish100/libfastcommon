@@ -145,6 +145,7 @@ static inline int log_try_init()
 */
 int log_init2();
 
+
 #define log_reopen() log_reopen_ex(&g_log_context)
 
 #define log_set_prefix(base_path, filename_prefix) \
@@ -272,6 +273,24 @@ void log_take_over_stderr_ex(LogContext *pContext);
  *  return: none
 */
 void log_take_over_stdout_ex(LogContext *pContext);
+
+
+/** init function using global log context
+ *  do nothing when already inited
+ *  return: 0 for success, != 0 fail
+*/
+static inline int log_try_init2()
+{
+    int result;
+    if ((result=log_try_init()) != 0)
+    {
+        return result;
+    }
+
+    log_take_over_stderr();
+    log_take_over_stdout();
+    return 0;
+}
 
 /** set compress_log_flags to true
  *  parameters:
