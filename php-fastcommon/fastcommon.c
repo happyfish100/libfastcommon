@@ -252,7 +252,7 @@ PHP_MINIT_FUNCTION(fastcommon)
     log_try_init();
     le_consumer = zend_register_list_destructors_ex(id_generator_dtor, NULL,
             PHP_IDG_RESOURCE_NAME, module_number);
-    if (hash_init(&idg_htable, simple_hash, 64, 0.75) != 0) {
+    if (fc_hash_init(&idg_htable, fc_simple_hash, 64, 0.75) != 0) {
         return FAILURE;
     }
 
@@ -465,7 +465,7 @@ ZEND_FUNCTION(fastcommon_simple_hash)
 		RETURN_BOOL(false);
 	}
 
-    RETURN_LONG(simple_hash(str, str_len) & 0x7FFFFFFF);
+    RETURN_LONG(fc_simple_hash(str, str_len) & 0x7FFFFFFF);
 }
 
 /*
@@ -602,7 +602,7 @@ static struct idg_context *get_idg_context(const char *filename,
     key_info.extra_bits = extra_bits;
     key_info.sn_bits = sn_bits;
 
-    idg_context = (struct idg_context *)hash_find(&idg_htable,
+    idg_context = (struct idg_context *)fc_hash_find(&idg_htable,
             &key_info, sizeof(key_info));
     if (idg_context == NULL) {
         idg_context = (struct idg_context *)malloc(sizeof(struct idg_context));
@@ -618,7 +618,7 @@ static struct idg_context *get_idg_context(const char *filename,
         {
             return NULL;
         }
-        hash_insert_ex(&idg_htable, &key_info, sizeof(key_info),
+        fc_hash_insert_ex(&idg_htable, &key_info, sizeof(key_info),
                 idg_context, 0, false);
     }
 
