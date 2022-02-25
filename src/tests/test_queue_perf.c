@@ -47,7 +47,7 @@ void *producer_thread(void *arg)
     while (g_continue_flag && count < LOOP_COUNT) {
         qinfo.head = qinfo.tail = NULL;
 
-        node = fast_mblock_batch_alloc(
+        node = fast_mblock_batch_alloc1(
                 &record_allocator, BATCH_SIZE);
         if (node == NULL) {
             g_continue_flag = false;

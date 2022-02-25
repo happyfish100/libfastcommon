@@ -304,13 +304,6 @@ char *trim_right(char *pStr);
  *  	pStr: the string to trim
  *  return: trimed string porinter as pStr
 */
-char *trim(char *pStr);
-
-/** trim leading and tail spaces ( \t\r\n)
- *  parameters:
- *  	pStr: the string to trim
- *  return: trimed string porinter as pStr
-*/
 static inline char *fc_trim(char *pStr)
 {
 	trim_right(pStr);

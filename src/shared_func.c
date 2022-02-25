@@ -614,13 +614,6 @@ char *trim_right(char *pStr)
 	return pStr;
 }
 
-char *trim(char *pStr)
-{
-	trim_right(pStr);
-	trim_left(pStr);
-	return pStr;
-}
-
 void string_ltrim(string_t *s)
 {
 	char *p;

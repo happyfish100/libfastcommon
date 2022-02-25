@@ -115,13 +115,6 @@ static DynamicAnnotations *iniAllocAnnotations(IniContext *pContext,
 static AnnotationEntry *iniGetAnnotations(IniContext *pContext);
 static SetDirectiveVars *iniGetVars(IniContext *pContext);
 
-#define STR_TRIM(pStr) \
-    do { \
-        trim_right(pStr); \
-        trim_left(pStr);  \
-    } while (0)
-
-
 #define RETRY_FETCH_GLOBAL(szSectionName, bRetryGlobal) \
         ((szSectionName != NULL && *szSectionName != '\0') && bRetryGlobal)
 
@@ -359,7 +352,7 @@ static char *doReplaceVars(IniContext *pContext, const char *param,
                 memcpy(name, start, name_len);
             }
             *(name + name_len) = '\0';
-            trim(name);
+            fc_trim(name);
             name_len = strlen(name);
             if (name_len > 0) {
                 value = (char *)fc_hash_find(set->vars, name, name_len);
@@ -866,7 +859,7 @@ static int iniAddAnnotation(char *params)
     int count;
     int result;
 
-    trim(params);
+    fc_trim(params);
     count = fc_split_string(params, " \t", cols, MAX_PARAMS);
     if (count < 2)
     {
@@ -1015,14 +1008,14 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
             isAnnotation = 0;
         }
 
-		STR_TRIM(pLine);
+		fc_trim(pLine);
 		if (*pLine == '#' && \
 			strncasecmp(pLine+1, "include", 7) == 0 && \
 			(*(pLine+8) == ' ' || *(pLine+8) == '\t'))
 		{
             snprintf(pIncludeFilename, sizeof(pIncludeFilename),
                     "%s", pLine + 9);
-			STR_TRIM(pIncludeFilename);
+			fc_trim(pIncludeFilename);
 			if (IS_URL_RESOURCE(pIncludeFilename))
 			{
 				snprintf(full_filename, sizeof(full_filename),
@@ -1092,7 +1085,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
                 }
                 memcpy(pFuncName, pLine + 11, nNameLen);
                 pFuncName[nNameLen] = '\0';
-                STR_TRIM(pFuncName);
+                fc_trim(pFuncName);
                 if ((int)strlen(pFuncName) > 0)
                 {
                     isAnnotation = 1;
@@ -1132,7 +1125,7 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 			*(pLine + (nLineLen - 1)) = '\0';
 			section_name = pLine + 1; //skip [
 
-			STR_TRIM(section_name);
+			fc_trim(section_name);
 			if (*section_name == '\0') //global section
 			{
 				pContext->current_section = &pContext->global;
@@ -1225,8 +1218,8 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 		memcpy(pItem->name, pLine, nNameLen);
 		memcpy(pItem->value, pEqualChar + 1, nValueLen);
 
-		STR_TRIM(pItem->name);
-		STR_TRIM(pItem->value);
+		fc_trim(pItem->name);
+		fc_trim(pItem->value);
 
         if (isAnnotation)
         {

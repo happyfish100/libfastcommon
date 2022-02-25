@@ -26,7 +26,6 @@
 #include <stdlib.h>
 #include <time.h>
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <inttypes.h>
 #include <fcntl.h>
 #include "common_define.h"
