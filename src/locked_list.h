@@ -24,6 +24,11 @@ extern "C" {
         return 0;
     }
 
+    static inline void locked_list_destroy(FCLockedList *list)
+    {
+        pthread_mutex_destroy(&list->lock);
+    }
+
     static inline void locked_list_add(struct fc_list_head *_new,
             FCLockedList *list)
     {

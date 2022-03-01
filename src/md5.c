@@ -311,7 +311,7 @@ MD5_memset(POINTER         output, int             value, unsigned int    len)
 /*
  * Digests a string
  */
-int my_md5_string(char *string,unsigned char digest[16])
+int my_md5_string(char *string, unsigned char digest[16])
 {
 	MD5_CTX	context;
 	unsigned int len = strlen(string);
@@ -332,25 +332,22 @@ int my_md5_buffer(char *buffer, unsigned int len, unsigned char digest[16])
 	return 0;
 }
 
-int my_md5_file(char *filename,unsigned char digest[16])	
+int my_md5_file(char *filename, unsigned char digest[16])
 {
 	FILE           *file;
 	MD5_CTX         context;
 	int             len;
-	unsigned char   buffer[1024];
+	unsigned char   buff[16 * 1024];
 
-	if ((file = fopen(filename, "rb")) == NULL)
+	if ((file = fopen(filename, "rb")) == NULL) {
 		return -1;
-	else {
-		my_md5_init(&context);
-		while ((len = fread(buffer, 1, 1024, file)) > 0)
-		{
-			my_md5_update(&context, buffer, len);
-		}
-		my_md5_final(digest, &context);
+    }
 
-		fclose(file);
-	}
-	return 0;
+    my_md5_init(&context);
+    while ((len = fread(buff, 1, sizeof(buff), file)) > 0) {
+        my_md5_update(&context, buff, len);
+    }
+    my_md5_final(digest, &context);
+    fclose(file);
+    return 0;
 }
-
