@@ -222,7 +222,7 @@ int log_reopen_ex(LogContext *pContext)
     return log_open(pContext);
 }
 
-int log_set_prefix_ex(LogContext *pContext, const char *base_path, \
+int log_set_prefix_ex(LogContext *pContext, const char *base_path,
 		const char *filename_prefix)
 {
 	int result;
@@ -232,8 +232,8 @@ int log_set_prefix_ex(LogContext *pContext, const char *base_path, \
 		return result;
 	}
 
-	snprintf(pContext->log_filename, MAX_PATH_SIZE, "%s/logs/%s.log", \
-		base_path, filename_prefix);
+	snprintf(pContext->log_filename, MAX_PATH_SIZE,
+            "%s/logs/%s.log", base_path, filename_prefix);
 
 	return log_open(pContext);
 }
@@ -937,10 +937,10 @@ static int log_fsync(LogContext *pContext, const bool bNeedLock)
 	if (written != write_bytes)
 	{
 		result = errno != 0 ? errno : EIO;
-		fprintf(stderr, "file: "__FILE__", line: %d, " \
-			"call write fail, errno: %d, error info: %s\n",\
-			 __LINE__, result, STRERROR(result));
-	}
+        fprintf(stderr, "file: "__FILE__", line: %d, "
+                "pid: %d, call write fail, fd: %d, errno: %d, error info: %s\n",
+                __LINE__, getpid(), pContext->log_fd, result, STRERROR(result));
+    }
 
 	if (pContext->rotate_immediately)
 	{

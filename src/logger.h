@@ -201,7 +201,7 @@ int log_reopen_ex(LogContext *pContext);
  *           filename_prefix: log filename prefix
  *  return: 0 for success, != 0 fail
 */
-int log_set_prefix_ex(LogContext *pContext, const char *base_path, \
+int log_set_prefix_ex(LogContext *pContext, const char *base_path,
 		const char *filename_prefix);
 
 /** set log filename
