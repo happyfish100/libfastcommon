@@ -1,11 +1,12 @@
 
-Version 1.56  2022-02-25
+Version 1.56  2022-03-09
   * add function fc_gettid
   * function normalize_path: NULL from parameter for getcwd
   * sockopt.[hc] support tcpwritev and tcpreadv
   * add function fc_iov_get_bytes
   * rename hash_xxx to fc_hash_xxx
   * rename trim to fc_trim
+  * add function fc_check_rename_ex
 
 Version 1.55  2022-01-12
   * fastcommon php extension adapt to php 8

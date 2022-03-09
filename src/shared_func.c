@@ -1369,10 +1369,10 @@ int safeWriteToFile(const char *filename, const char *buff, \
 	if (rename(tmpFilename, filename) != 0)
 	{
 		result = errno != 0 ? errno : EIO;
-		logError("file: "__FILE__", line: %d, " \
-			"rename file \"%s\" to \"%s\" fail, " \
-			"errno: %d, error info: %s", \
-			__LINE__, tmpFilename, filename, \
+		logError("file: "__FILE__", line: %d, "
+			"rename file \"%s\" to \"%s\" fail, "
+			"errno: %d, error info: %s",
+			__LINE__, tmpFilename, filename,
 			result, STRERROR(result));
 		return result;
 	}
@@ -3441,6 +3441,52 @@ int fc_mkdirs_ex(const char *path, const mode_t mode, int *create_count)
         if (created) {
             (*create_count)++;
         }
+    }
+
+    return 0;
+}
+
+int fc_check_rename_ex(const char *oldpath, const char *newpath,
+        const bool overwritten)
+{
+    int result;
+
+    if (access(oldpath, F_OK) != 0) {
+        result = errno != 0 ? errno : EPERM;
+        if (result != ENOENT) {
+            logError("file: "__FILE__", line: %d, "
+                    "access %s fail, errno: %d, error info: %s",
+                    __LINE__, oldpath, result, STRERROR(result));
+            return result;
+        }
+        return 0;
+    }
+
+    if (!overwritten) {
+        if (access(newpath, F_OK) == 0) {
+            logError("file: "__FILE__", line: %d, "
+                    "dest path: %s already exist",
+                    __LINE__, newpath);
+            return EEXIST;
+        } else {
+            result = errno != 0 ? errno : EPERM;
+            if (result != ENOENT) {
+                logError("file: "__FILE__", line: %d, "
+                        "access %s fail, errno: %d, error info: %s",
+                        __LINE__, newpath, result, STRERROR(result));
+                return result;
+            }
+        }
+    }
+
+    if (rename(oldpath, newpath) != 0) {
+        result = errno != 0 ? errno : EIO;
+        logError("file: "__FILE__", line: %d, "
+                "rename file \"%s\" to \"%s\" fail, "
+                "errno: %d, error info: %s",
+                __LINE__, oldpath, newpath,
+                result, STRERROR(result));
+        return result;
     }
 
     return 0;

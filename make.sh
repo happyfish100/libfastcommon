@@ -203,12 +203,12 @@ done
 
 if [ -n "$pthread_path" ]; then
   LIBS="$LIBS -lpthread"
-  line=$(nm $pthread_path | fgrep pthread_rwlockattr_setkind_np | fgrep -w T)
+  line=$(nm $pthread_path 2>/dev/null | fgrep pthread_rwlockattr_setkind_np | fgrep -w T)
   if [ -n "$line" ]; then
     CFLAGS="$CFLAGS -DWITH_PTHREAD_RWLOCKATTR_SETKIND_NP=1"
   fi
 elif [ -f /usr/lib/libc_r.so ]; then
-  line=$(nm -D /usr/lib/libc_r.so | grep pthread_create | grep -w T)
+  line=$(nm -D /usr/lib/libc_r.so 2>/dev/null | grep pthread_create | grep -w T)
   if [ -n "$line" ]; then
     LIBS="$LIBS -lc_r"
   fi

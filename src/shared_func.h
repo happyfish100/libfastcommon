@@ -1089,6 +1089,15 @@ static inline int fc_mkdirs(const char *path, const mode_t mode)
     return fc_mkdirs_ex(path, mode, &create_count);
 }
 
+int fc_check_rename_ex(const char *oldpath, const char *newpath,
+        const bool overwritten);
+
+static inline int fc_check_rename(const char *oldpath, const char *newpath)
+{
+    const bool overwritten = true;
+    return fc_check_rename_ex(oldpath, newpath, overwritten);
+}
+
 int fc_get_first_line(const char *filename, char *buff,
         const int buff_size, string_t *line);
 
