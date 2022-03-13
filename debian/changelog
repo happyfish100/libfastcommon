@@ -1,4 +1,27 @@
-libfastcommon (1.0.55-1) UNRELEASED; urgency=medium
+libfastcommon (1.0.56-1) unstable; urgency=medium
+
+  * check pthread_rwlockattr_getkind_np for porting
+  * correct pthread_rwlockattr getkind_np to setkind_np
+  * change include <sys/poll.h> to #include <poll.h>
+  * add function fc_gettid
+  * NULL from parameter for getcwd
+  * sockopt.[hc] support tcpwritev and tcpreadv
+  * add const modifier for unification
+  * make.sh refined
+  * add function fc_iov_get_bytes
+  * make.sh: generate macros for dirent fields
+  * add function log_try_init2
+  * rename hash_xxx to fc_hash_xxx
+  * rename trim to fc_trim
+  * php-fastcommon compile OK
+  * add function locked_list_destroy
+  * upgrade version to 1.0.56
+  * add function fc_check_rename_ex
+  * small changes for logger.[hc]
+
+ -- YuQing <384681@qq.com>  Sun, 13 Mar 2022 16:43:08 +0800
+
+libfastcommon (1.0.55-1) unstable; urgency=medium
 
   * upgrade version to 1.0.55 
 
