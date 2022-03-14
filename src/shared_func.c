@@ -1136,6 +1136,67 @@ void chopPath(char *filePath)
     }
 }
 
+int fc_format_path(const string_t *src, string_t *dest, const int size)
+{
+#define MAX_SUBDIR_COUNT   128
+    const bool ignore_empty = true;
+    string_t input;
+    string_t subdirs[MAX_SUBDIR_COUNT];
+    char full_filename[PATH_MAX];
+    string_t *sub;
+    string_t *end;
+    char *p;
+    int count;
+
+    if (src->len == 0)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "input path is empty!", __LINE__);
+        return EINVAL;
+    }
+
+    if (src->str[0] == '/')
+    {
+        input = *src;
+    }
+    else
+    {
+        input.str = full_filename;
+        input.len = normalize_path(NULL, src->str,
+                full_filename, sizeof(full_filename));
+    }
+
+    if (size <= input.len)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "dest buffer is too small! buffer size: %d <= "
+                "expected: %d", __LINE__, size, input.len);
+        return EOVERFLOW;
+    }
+
+    p = dest->str;
+    count = split_string_ex(&input, '/', subdirs,
+            MAX_SUBDIR_COUNT, ignore_empty);
+    if (count == 0)
+    {
+        *p++ = '/';
+    }
+    else
+    {
+        end = subdirs + count;
+        for (sub=subdirs; sub<end; sub++)
+        {
+            *p++ = '/';
+            memcpy(p, sub->str, sub->len);
+            p += sub->len;
+        }
+    }
+
+    *p = '\0';
+    dest->len = p - dest->str;
+    return 0;
+}
+
 int getFileContent1(int fd, const char *filename,
         char **buff, int64_t *file_size)
 {

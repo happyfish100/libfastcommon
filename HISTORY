@@ -1,4 +1,7 @@
 
+Version 1.57  2022-03-14
+  * add function fc_format_path
+
 Version 1.56  2022-03-09
   * add function fc_gettid
   * function normalize_path: NULL from parameter for getcwd

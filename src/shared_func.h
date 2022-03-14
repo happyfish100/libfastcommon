@@ -589,6 +589,15 @@ int get_time_item_from_str(const char *pValue, const char *item_name,
 */
 void chopPath(char *filePath);
 
+/** format the path
+ *  parameters:
+ *      src: the input path
+ *      dest: the output path
+ *      size: the max size of dest path
+ *  return: error no , 0 success, != 0 fail
+*/
+int fc_format_path(const string_t *src, string_t *dest, const int size);
+
 /** get file content by fd
  *  parameters:
  *  	fd: the file descriptor
