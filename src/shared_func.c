@@ -1136,7 +1136,8 @@ void chopPath(char *filePath)
     }
 }
 
-int fc_format_path(const string_t *src, string_t *dest, const int size)
+int fc_remove_redundant_slashes(const string_t *src,
+        string_t *dest, const int size)
 {
 #define MAX_SUBDIR_COUNT   128
     const bool ignore_empty = true;

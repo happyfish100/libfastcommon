@@ -589,14 +589,35 @@ int get_time_item_from_str(const char *pValue, const char *item_name,
 */
 void chopPath(char *filePath);
 
-/** format the path
+/** remove redundant slashes
  *  parameters:
  *      src: the input path
  *      dest: the output path
  *      size: the max size of dest path
  *  return: error no , 0 success, != 0 fail
 */
-int fc_format_path(const string_t *src, string_t *dest, const int size);
+int fc_remove_redundant_slashes(const string_t *src,
+        string_t *dest, const int size);
+
+static inline int fc_remove_redundant_slashes1(const char *input,
+        string_t *dest, const int size)
+{
+    string_t src;
+
+    FC_SET_STRING(src, (char *)input);
+    return fc_remove_redundant_slashes(&src, dest, size);
+}
+
+static inline int fc_remove_redundant_slashes2(const char *input,
+        char *output, const int size)
+{
+    string_t src;
+    string_t dest;
+
+    FC_SET_STRING(src, (char *)input);
+    dest.str = output;
+    return fc_remove_redundant_slashes(&src, &dest, size);
+}
 
 /** get file content by fd
  *  parameters:
