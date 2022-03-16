@@ -1128,6 +1128,12 @@ static inline int fc_check_rename(const char *oldpath, const char *newpath)
     return fc_check_rename_ex(oldpath, newpath, overwritten);
 }
 
+int fc_get_path_child_count(const char *path);
+
+int fc_copy_file(const char *src_filename, const char *dest_filename);
+
+int fc_copy_to_path(const char *src_filename, const char *dest_path);
+
 int fc_get_first_line(const char *filename, char *buff,
         const int buff_size, string_t *line);
 

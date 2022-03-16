@@ -318,9 +318,9 @@ int getUserProcIds(const char *progName, const bool bAllOwners, \
 		strcpy(pTargetProg, ptr + 1);
 	}
 	
-	while( (dirp = readdir(dp)) != NULL )
+	while ((dirp=readdir(dp)) != NULL)
 	{
-		if (strcmp(dirp->d_name, ".")==0 || strcmp(dirp->d_name, "..")==0 )
+		if (strcmp(dirp->d_name, ".")==0 || strcmp(dirp->d_name, "..")==0)
 		{
 			continue;
 		}
@@ -411,6 +411,34 @@ int getExecResult(const char *command, char *output, const int buff_size)
 }
 
 #endif
+
+int fc_get_path_child_count(const char *path)
+{
+    int count;
+    struct dirent *ent;
+    DIR *dir;
+
+	if ((dir=opendir(path)) == NULL)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "open dir %s fail, errno: %d, error info: %s",
+                __LINE__, path, errno, STRERROR(errno));
+        return -1;
+    }
+
+    count = 0;
+	while ((ent=readdir(dir)) != NULL)
+    {
+        if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
+        {
+            continue;
+        }
+        ++count;
+    }
+
+	closedir(dir);
+	return count;
+}
 
 char *toLowercase(char *src)
 {
@@ -1440,6 +1468,94 @@ int safeWriteToFile(const char *filename, const char *buff, \
 	}
 
 	return 0;
+}
+
+int fc_copy_file(const char *src_filename, const char *dest_filename)
+{
+	int result;
+	int src_fd;
+	int dest_fd;
+    int bytes;
+    char buff[16 * 1024];
+
+	src_fd = open(src_filename, O_RDONLY);
+	if (src_fd < 0)
+    {
+        result = errno != 0 ? errno : ENOENT;
+        logError("file: "__FILE__", line: %d, "
+                "open file %s fail, errno: %d, error info: %s",
+                __LINE__, src_filename, result, STRERROR(result));
+        return result;
+    }
+
+	dest_fd = open(dest_filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	if (dest_fd < 0)
+    {
+        result = errno != 0 ? errno : EIO;
+        logError("file: "__FILE__", line: %d, "
+                "open file %s fail, errno: %d, error info: %s",
+                __LINE__, dest_filename, result, STRERROR(result));
+        close(src_fd);
+        return result;
+    }
+
+    result = 0;
+    while (1) {
+        bytes = fc_safe_read(src_fd, buff, sizeof(buff));
+        if (bytes < 0)
+        {
+            result = errno != 0 ? errno : EIO;
+            logError("file: "__FILE__", line: %d, "
+                    "read file %s fail, errno: %d, error info: %s",
+                    __LINE__, src_filename, result, STRERROR(result));
+            break;
+        }
+        else if (bytes == 0)
+        {
+            break;
+        }
+
+        if (fc_safe_write(dest_fd, buff, bytes) != bytes)
+        {
+            result = errno != 0 ? errno : EIO;
+            logError("file: "__FILE__", line: %d, "
+                    "write file %s fail, errno: %d, error info: %s",
+                    __LINE__, dest_filename, result, STRERROR(result));
+            break;
+        }
+    }
+
+    if (result == 0 && fsync(dest_fd) != 0)
+    {
+        result = errno != 0 ? errno : EIO;
+        logError("file: "__FILE__", line: %d, "
+                "fsync file %s fail, errno: %d, error info: %s",
+                __LINE__, dest_filename, result, STRERROR(result));
+    }
+
+    close(src_fd);
+    close(dest_fd);
+    return result;
+}
+
+int fc_copy_to_path(const char *src_filename, const char *dest_path)
+{
+    char dest_filename[PATH_MAX];
+    const char *fname;
+
+    fname = strrchr(src_filename, '/');
+    if (fname == NULL)
+    {
+        snprintf(dest_filename, sizeof(dest_filename),
+                "%s/%s", dest_path, src_filename);
+    }
+    else
+    {
+        snprintf(dest_filename, sizeof(dest_filename),
+                "%s%s", dest_path, fname);
+    }
+
+    return fc_copy_file(src_filename, dest_filename);
 }
 
 void short2buff(const short n, char *buff)
