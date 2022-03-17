@@ -148,6 +148,7 @@ static int region_init(struct fast_allocator_context *acontext,
 	int result;
 	int bytes;
 	int element_size;
+    struct fast_mblock_trunk_callbacks trunk_callbacks;
 	struct fast_allocator_info *allocator;
     char *name;
     char name_buff[FAST_MBLOCK_NAME_SIZE];
@@ -176,6 +177,8 @@ static int region_init(struct fast_allocator_context *acontext,
         region->end += sizeof(struct allocator_wrapper);
     }
 
+    trunk_callbacks.check_func = fast_allocator_malloc_trunk_check;
+    trunk_callbacks.notify_func = fast_allocator_malloc_trunk_notify_func;
     name = name_buff;
 	result = 0;
  	allocator = region->allocators;
@@ -192,10 +195,11 @@ static int region_init(struct fast_allocator_context *acontext,
         {
             name = NULL;
         }
+
+        trunk_callbacks.args = acontext;
 		result = fast_mblock_init_ex2(&allocator->mblock, name, element_size,
-			region->alloc_elements_once, alloc_elements_limit, NULL, NULL,
-            acontext->need_lock, fast_allocator_malloc_trunk_check,
-			fast_allocator_malloc_trunk_notify_func, acontext);
+                region->alloc_elements_once, alloc_elements_limit, NULL,
+                acontext->need_lock, &trunk_callbacks);
 		if (result != 0)
 		{
 			break;

@@ -1,7 +1,8 @@
 
-Version 1.57  2022-03-16
+Version 1.57  2022-03-17
   * add function fc_format_path
   * add functions: fc_get_path_child_count and fc_copy_file
+  * fast_mblock.[hc] support object destroy callback
 
 Version 1.56  2022-03-09
   * add function fc_gettid

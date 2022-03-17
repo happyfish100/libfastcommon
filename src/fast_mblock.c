@@ -401,25 +401,12 @@ int fast_mblock_manager_stat_print_ex(const bool hide_empty, const int order_by)
     return 0;
 }
 
-int fast_mblock_init_ex(struct fast_mblock_man *mblock,
-        const int element_size, const int alloc_elements_once,
-        const int64_t alloc_elements_limit,
-        fast_mblock_alloc_init_func init_func, void *init_args,
-        const bool need_lock)
-{
-    return fast_mblock_init_ex2(mblock, NULL, element_size,
-            alloc_elements_once, alloc_elements_limit, init_func,
-            init_args, need_lock, NULL, NULL, NULL);
-}
-
 int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
         const int element_size, const int alloc_elements_once,
         const int64_t alloc_elements_limit,
-        fast_mblock_alloc_init_func init_func,
-        void *init_args, const bool need_lock,
-        fast_mblock_malloc_trunk_check_func malloc_trunk_check,
-        fast_mblock_malloc_trunk_notify_func malloc_trunk_notify,
-        void *malloc_trunk_args)
+        struct fast_mblock_object_callbacks *object_callbacks,
+        const bool need_lock, struct fast_mblock_trunk_callbacks
+        *trunk_callbacks)
 {
 	int result;
 
@@ -456,8 +443,17 @@ int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
 		return result;
 	}
 
-    mblock->alloc_init_func = init_func;
-    mblock->init_args = init_args;
+    if (object_callbacks == NULL)
+    {
+        mblock->object_callbacks.init_func = NULL;
+        mblock->object_callbacks.destroy_func = NULL;
+        mblock->object_callbacks.args = NULL;
+    }
+    else
+    {
+        mblock->object_callbacks = *object_callbacks;
+    }
+
     INIT_HEAD(&mblock->trunks.head);
     mblock->info.trunk_total_count = 0;
     mblock->info.trunk_used_count = 0;
@@ -474,9 +470,17 @@ int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
     mblock->alloc_elements.need_wait = false;
     mblock->alloc_elements.pcontinue_flag = NULL;
     mblock->alloc_elements.exceed_log_level = LOG_ERR;
-    mblock->malloc_trunk_callback.check_func = malloc_trunk_check;
-    mblock->malloc_trunk_callback.notify_func = malloc_trunk_notify;
-    mblock->malloc_trunk_callback.args = malloc_trunk_args;
+
+    if (trunk_callbacks == NULL)
+    {
+        mblock->trunk_callbacks.check_func = NULL;
+        mblock->trunk_callbacks.notify_func = NULL;
+        mblock->trunk_callbacks.args = NULL;
+    }
+    else
+    {
+        mblock->trunk_callbacks = *trunk_callbacks;
+    }
 
     if (name != NULL)
     {
@@ -531,9 +535,9 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
         trunk_size = mblock->info.trunk_size;
     }
 
-	if (mblock->malloc_trunk_callback.check_func != NULL &&
-		mblock->malloc_trunk_callback.check_func(trunk_size,
-            mblock->malloc_trunk_callback.args) != 0)
+	if (mblock->trunk_callbacks.check_func != NULL &&
+		mblock->trunk_callbacks.check_func(trunk_size,
+            mblock->trunk_callbacks.args) != 0)
 	{
 		return ENOMEM;
 	}
@@ -551,10 +555,10 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
 	for (p=pTrunkStart; p<=pLast; p += mblock->info.block_size)
 	{
 		pNode = (struct fast_mblock_node *)p;
-        if (mblock->alloc_init_func != NULL)
+        if (mblock->object_callbacks.init_func != NULL)
         {
-            if ((result=mblock->alloc_init_func(pNode->data,
-                            mblock->init_args)) != 0)
+            if ((result=mblock->object_callbacks.init_func(pNode->data,
+                            mblock->object_callbacks.args)) != 0)
             {
                 free(pNew);
                 return result;
@@ -583,10 +587,10 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
 
     mblock->info.trunk_total_count++;
     mblock->info.element_total_count += alloc_count;
-    if (mblock->malloc_trunk_callback.notify_func != NULL)
+    if (mblock->trunk_callbacks.notify_func != NULL)
     {
-        mblock->malloc_trunk_callback.notify_func(trunk_size,
-                mblock->malloc_trunk_callback.args);
+        mblock->trunk_callbacks.notify_func(trunk_size,
+                mblock->trunk_callbacks.args);
     }
 
     return 0;
@@ -600,10 +604,10 @@ static inline void fast_mblock_remove_trunk(struct fast_mblock_man *mblock,
     mblock->info.trunk_total_count--;
     mblock->info.element_total_count -= pMallocNode->alloc_count;
 
-    if (mblock->malloc_trunk_callback.notify_func != NULL)
+    if (mblock->trunk_callbacks.notify_func != NULL)
     {
-	   mblock->malloc_trunk_callback.notify_func(-1 * pMallocNode->trunk_size,
-	   mblock->malloc_trunk_callback.args);
+	   mblock->trunk_callbacks.notify_func(-1 * pMallocNode->trunk_size,
+	   mblock->trunk_callbacks.args);
     }
 }
 
@@ -658,6 +662,28 @@ static inline void fast_mblock_ref_counter_op(struct fast_mblock_man *mblock,
 #define fast_mblock_ref_counter_dec(mblock, pNode) \
     fast_mblock_ref_counter_op(mblock, pNode, false)
 
+static void fast_mblock_free_trunk(struct fast_mblock_man *mblock,
+        struct fast_mblock_malloc *trunk)
+{
+	char *start;
+	char *p;
+	char *last;
+
+    if (mblock->object_callbacks.destroy_func != NULL)
+    {
+        start = (char *)(trunk + 1);
+        last = (char *)trunk + (trunk->trunk_size - mblock->info.block_size);
+        for (p = start; p <= last; p += mblock->info.block_size)
+        {
+            mblock->object_callbacks.destroy_func(
+                    ((struct fast_mblock_node *)p)->data,
+                    mblock->object_callbacks.args);
+        }
+    }
+
+    free(trunk);
+}
+
 void fast_mblock_destroy(struct fast_mblock_man *mblock)
 {
 	struct fast_mblock_malloc *pMallocNode;
@@ -671,7 +697,7 @@ void fast_mblock_destroy(struct fast_mblock_man *mblock)
             pMallocTmp = pMallocNode;
             pMallocNode = pMallocNode->next;
 
-            free(pMallocTmp);
+            fast_mblock_free_trunk(mblock, pMallocTmp);
         }
 
         INIT_HEAD(&mblock->trunks.head);
@@ -1152,7 +1178,8 @@ void fast_mblock_free_trunks(struct fast_mblock_man *mblock,
     {
         pDeleted = freelist;
         freelist = freelist->next;
-        free(pDeleted);
+
+        fast_mblock_free_trunk(mblock, pDeleted);
         count++;
     }
     logDebug("file: "__FILE__", line: %d, "
