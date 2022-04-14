@@ -748,7 +748,9 @@ int fc_get_file_line_count_ex(const char *filename,
         remain_bytes = until_offset;
     } else {
         remain_bytes = lseek(fd, 0, SEEK_END);
+        lseek(fd, 0, SEEK_SET);
     }
+
     while (remain_bytes > 0) {
         read_bytes = remain_bytes >= READ_BUFFER_SIZE ?
             (READ_BUFFER_SIZE - 1) : remain_bytes;
@@ -3527,7 +3529,6 @@ int64_t fc_ceil_prime(const int64_t n)
 }
 
 int fc_init_buffer(BufferInfo *buffer, const int buffer_size)
-
 {
     buffer->buff = (char *)fc_malloc(buffer_size);
     if (buffer->buff == NULL)
