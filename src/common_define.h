@@ -43,6 +43,11 @@ typedef DWORD (WINAPI *ThreadEntranceFunc)(LPVOID lpThreadParameter);
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+
+#ifdef OS_FREEBSD
+//#include <sys/syscall.h>
+#endif
+
 #define FILE_SEPERATOR	"/"
 typedef int SOCKET;
 #define closesocket     close
@@ -454,6 +459,22 @@ static inline int fc_compare_int64(const int64_t n1, const int64_t n2)
 #define fc_fallocate(fd, size)  fallocate(fd, 0, 0, size)
 #else
 #define fc_fallocate(fd, size)  ftruncate(fd, size)
+#define posix_fadvise(fd, offset, len, advice)  0
+
+#ifndef POSIX_FADV_NORMAL
+#define POSIX_FADV_NORMAL     0 /* No further special treatment.  */
+#define POSIX_FADV_RANDOM     1 /* Expect random page references.  */
+#define POSIX_FADV_SEQUENTIAL 2 /* Expect sequential page references.  */
+#define POSIX_FADV_WILLNEED   3 /* Will need these pages.  */
+#define POSIX_FADV_DONTNEED   4 /* Don't need these pages.  */
+#define POSIX_FADV_NOREUSE    5 /* Data will be accessed once.  */
+#endif
+
+#ifdef OS_FREEBSD
+//#define fdatasync(fd) syscall(SYS_fdatasync, fd)
+#define fdatasync(fd) fsync(fd)
+#endif
+
 #endif
 
 
