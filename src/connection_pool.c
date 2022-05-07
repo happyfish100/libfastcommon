@@ -113,9 +113,9 @@ void conn_pool_disconnect_server(ConnectionInfo *pConnection)
 	}
 }
 
-int conn_pool_connect_server_ex(ConnectionInfo *conn,
-		const int connect_timeout, const char *bind_ipaddr,
-        const bool log_connect_error)
+int conn_pool_connect_server_ex1(ConnectionInfo *conn,
+        const char *service_name, const int connect_timeout,
+        const char *bind_ipaddr, const bool log_connect_error)
 {
 	int result;
 
@@ -136,9 +136,10 @@ int conn_pool_connect_server_ex(ConnectionInfo *conn,
         if (log_connect_error)
         {
             logError("file: "__FILE__", line: %d, "
-                    "connect to server %s:%u fail, errno: %d, "
-                    "error info: %s", __LINE__, conn->ip_addr,
-                    conn->port, result, STRERROR(result));
+                    "connect to %s%sserver %s:%u fail, errno: %d, "
+                    "error info: %s", __LINE__, service_name != NULL ?
+                    service_name : "", service_name != NULL ?  " " : "",
+                    conn->ip_addr, conn->port, result, STRERROR(result));
         }
 
 		close(conn->sock);

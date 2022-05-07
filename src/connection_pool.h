@@ -204,15 +204,34 @@ void conn_pool_disconnect_server(ConnectionInfo *pConnection);
 *   connect to the server
 *   parameters:
 *      pConnection: the connection
+*      service_name: the service name to log
 *      connect_timeout: the connect timeout in seconds
 *      bind_ipaddr: the ip address to bind, NULL or empty for any
 *      log_connect_error: if log error info when connect fail
 *   NOTE: pConnection->sock will be closed when it >= 0 before connect
 *   return 0 for success, != 0 for error
 */
-int conn_pool_connect_server_ex(ConnectionInfo *pConnection,
+int conn_pool_connect_server_ex1(ConnectionInfo *conn,
+        const char *service_name, const int connect_timeout,
+        const char *bind_ipaddr, const bool log_connect_error);
+/**
+*   connect to the server
+*   parameters:
+*      pConnection: the connection
+*      connect_timeout: the connect timeout in seconds
+*      bind_ipaddr: the ip address to bind, NULL or empty for any
+*      log_connect_error: if log error info when connect fail
+*   NOTE: pConnection->sock will be closed when it >= 0 before connect
+*   return 0 for success, != 0 for error
+*/
+static inline int conn_pool_connect_server_ex(ConnectionInfo *pConnection,
 		const int connect_timeout, const char *bind_ipaddr,
-        const bool log_connect_error);
+        const bool log_connect_error)
+{
+    const char *service_name = NULL;
+    return conn_pool_connect_server_ex1(pConnection, service_name,
+            connect_timeout, bind_ipaddr, log_connect_error);
+}
 
 /**
 *   connect to the server
@@ -225,8 +244,9 @@ int conn_pool_connect_server_ex(ConnectionInfo *pConnection,
 static inline int conn_pool_connect_server(ConnectionInfo *pConnection,
 		const int connect_timeout)
 {
+    const char *service_name = NULL;
     const char *bind_ipaddr = NULL;
-    return conn_pool_connect_server_ex(pConnection,
+    return conn_pool_connect_server_ex1(pConnection, service_name,
             connect_timeout, bind_ipaddr, true);
 }
 
@@ -240,9 +260,10 @@ static inline int conn_pool_connect_server(ConnectionInfo *pConnection,
 static inline int conn_pool_connect_server_anyway(ConnectionInfo *pConnection,
 		const int connect_timeout)
 {
+    const char *service_name = NULL;
     const char *bind_ipaddr = NULL;
     pConnection->sock = -1;
-    return conn_pool_connect_server_ex(pConnection,
+    return conn_pool_connect_server_ex1(pConnection, service_name,
             connect_timeout, bind_ipaddr, true);
 }
 

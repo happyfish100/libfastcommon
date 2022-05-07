@@ -1496,8 +1496,8 @@ void fc_server_to_log(FCServerConfig *ctx)
 }
 
 ConnectionInfo *fc_server_check_connect_ex(FCAddressPtrArray *addr_array,
-        const int connect_timeout, const char *bind_ipaddr,
-        const bool log_connect_error, int *err_no)
+        const char *service_name, const int connect_timeout,
+        const char *bind_ipaddr, const bool log_connect_error, int *err_no)
 {
     FCAddressInfo **current;
     FCAddressInfo **addr;
@@ -1513,8 +1513,9 @@ ConnectionInfo *fc_server_check_connect_ex(FCAddressPtrArray *addr_array,
         return &(*current)->conn;
     }
 
-    if ((*err_no=conn_pool_connect_server_ex(&(*current)->conn,
-                    connect_timeout, bind_ipaddr, log_connect_error)) == 0)
+    if ((*err_no=conn_pool_connect_server_ex1(&(*current)->conn,
+                    service_name, connect_timeout, bind_ipaddr,
+                    log_connect_error)) == 0)
     {
         return &(*current)->conn;
     }
@@ -1528,8 +1529,8 @@ ConnectionInfo *fc_server_check_connect_ex(FCAddressPtrArray *addr_array,
         if (addr == current) {
             continue;
         }
-        if ((*err_no=conn_pool_connect_server_ex(&(*addr)->conn,
-                        connect_timeout, bind_ipaddr,
+        if ((*err_no=conn_pool_connect_server_ex1(&(*addr)->conn,
+                        service_name, connect_timeout, bind_ipaddr,
                         log_connect_error)) == 0)
         {
             addr_array->index = addr - addr_array->addrs;
@@ -1552,8 +1553,9 @@ void fc_server_disconnect(FCAddressPtrArray *addr_array)
 }
 
 int fc_server_make_connection_ex(FCAddressPtrArray *addr_array,
-        ConnectionInfo *conn, const int connect_timeout,
-        const char *bind_ipaddr, const bool log_connect_error)
+        ConnectionInfo *conn, const char *service_name,
+        const int connect_timeout, const char *bind_ipaddr,
+        const bool log_connect_error)
 {
     FCAddressInfo **current;
     FCAddressInfo **addr;
@@ -1567,7 +1569,8 @@ int fc_server_make_connection_ex(FCAddressPtrArray *addr_array,
     current = addr_array->addrs + addr_array->index;
     *conn = (*current)->conn;
     conn->sock = -1;
-    if ((result=conn_pool_connect_server_ex(conn, connect_timeout,
+    if ((result=conn_pool_connect_server_ex1(conn,
+                    service_name, connect_timeout,
                     bind_ipaddr, log_connect_error)) == 0)
     {
         return 0;
@@ -1585,7 +1588,8 @@ int fc_server_make_connection_ex(FCAddressPtrArray *addr_array,
 
         *conn = (*addr)->conn;
         conn->sock = -1;
-        if ((result=conn_pool_connect_server_ex(conn, connect_timeout,
+        if ((result=conn_pool_connect_server_ex1(conn,
+                        service_name, connect_timeout,
                         bind_ipaddr, log_connect_error)) == 0)
         {
             addr_array->index = addr - addr_array->addrs;
