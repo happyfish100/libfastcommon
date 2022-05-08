@@ -186,8 +186,8 @@ static inline void  conn_pool_get_key(const ConnectionInfo *conn, char *key, int
     *key_len = sprintf(key, "%s_%u", conn->ip_addr, conn->port);
 }
 
-ConnectionInfo *conn_pool_get_connection(ConnectionPool *cp, 
-	const ConnectionInfo *conn, int *err_no)
+ConnectionInfo *conn_pool_get_connection_ex(ConnectionPool *cp,
+	const ConnectionInfo *conn, const char *service_name, int *err_no)
 {
 	char key[INET6_ADDRSTRLEN + 8];
 	int key_len;
@@ -236,11 +236,11 @@ ConnectionInfo *conn_pool_get_connection(ConnectionPool *cp,
 				(cm->total_count >= cp->max_count_per_entry))
 			{
 				*err_no = ENOSPC;
-				logError("file: "__FILE__", line: %d, " \
-					"connections: %d of server %s:%u " \
-					"exceed limit: %d", __LINE__, \
-					cm->total_count, conn->ip_addr, \
-					conn->port, cp->max_count_per_entry);
+				logError("file: "__FILE__", line: %d, "
+					"connections: %d of %s%sserver %s:%u exceed limit: %d",
+                    __LINE__, cm->total_count, service_name != NULL ?
+                    service_name : "", service_name != NULL ? " " : "",
+                    conn->ip_addr, conn->port, cp->max_count_per_entry);
 				pthread_mutex_unlock(&cm->lock);
 				return NULL;
 			}
@@ -269,8 +269,8 @@ ConnectionInfo *conn_pool_get_connection(ConnectionPool *cp,
             node->conn->socket_domain = cp->socket_domain;
 			node->conn->sock = -1;
             node->conn->validate_flag = false;
-			*err_no = conn_pool_connect_server(node->conn,
-					cp->connect_timeout);
+			*err_no = conn_pool_connect_server_ex1(node->conn,
+                    service_name, cp->connect_timeout, NULL, true);
             if (*err_no == 0 && cp->connect_done_callback.func != NULL)
             {
                 *err_no = cp->connect_done_callback.func(node->conn,

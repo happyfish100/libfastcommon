@@ -172,11 +172,15 @@ void conn_pool_destroy(ConnectionPool *cp);
 *   parameters:
 *      cp: the ConnectionPool
 *      conn: the connection
+*      service_name: the service name to log
 *      err_no: return the the errno, 0 for success
 *   return != NULL for success, NULL for error
 */
-ConnectionInfo *conn_pool_get_connection(ConnectionPool *cp, 
-	const ConnectionInfo *conn, int *err_no);
+ConnectionInfo *conn_pool_get_connection_ex(ConnectionPool *cp,
+	const ConnectionInfo *conn, const char *service_name, int *err_no);
+
+#define conn_pool_get_connection(cp, conn, err_no) \
+    conn_pool_get_connection_ex(cp, conn, NULL, err_no)
 
 #define conn_pool_close_connection(cp, conn) \
 	conn_pool_close_connection_ex(cp, conn, false)
