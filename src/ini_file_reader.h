@@ -117,28 +117,32 @@ extern "C" {
 #define iniGetStrValue(szSectionName, szItemName, pContext) \
     iniGetStrValueEx(szSectionName, szItemName, pContext, false)
 
+#define iniGetCharValue(szSectionName, szItemName, pContext, cDefaultValue) \
+    iniGetCharValueEx(szSectionName, szItemName, \
+            pContext, cDefaultValue, false)
+
 #define iniGetIntValue(szSectionName, szItemName, pContext, nDefaultValue) \
-    iniGetIntValueEx(szSectionName, szItemName, pContext,  \
-    nDefaultValue, false)
+    iniGetIntValueEx(szSectionName, szItemName, \
+            pContext, nDefaultValue, false)
 
 #define iniGetInt64Value(szSectionName, szItemName, pContext, nDefaultValue) \
-    iniGetInt64ValueEx(szSectionName, szItemName, pContext, \
-    nDefaultValue, false)
+    iniGetInt64ValueEx(szSectionName, szItemName, \
+            pContext, nDefaultValue, false)
 
 #define iniGetDoubleValue(szSectionName, szItemName, pContext, dbDefaultValue) \
-    iniGetDoubleValueEx(szSectionName, szItemName, pContext, \
-    dbDefaultValue, false)
+    iniGetDoubleValueEx(szSectionName, szItemName, \
+            pContext, dbDefaultValue, false)
 
 #define iniGetBoolValue(szSectionName, szItemName, pContext, bDefaultValue) \
-    iniGetBoolValueEx(szSectionName, szItemName, pContext, \
-    bDefaultValue, false)
+    iniGetBoolValueEx(szSectionName, szItemName, \
+            pContext, bDefaultValue, false)
 
 #define iniGetPercentValue(ini_ctx, item_name, item_value, default_value) \
     iniGetPercentValueEx(ini_ctx, item_name, item_value, default_value, false)
 
 #define iniGetByteValue(szSectionName, szItemName, pContext, nDefaultValue) \
-    iniGetByteValueEx(szSectionName, szItemName, pContext, \
-            nDefaultValue, 1, false)
+    iniGetByteValueEx(szSectionName, szItemName, \
+            pContext, nDefaultValue, 1, false)
 
 #define iniGetIntCorrectValue(ini_ctx, item_name, \
         default_value, min_value, max_value)    \
@@ -233,7 +237,7 @@ void iniFreeContext(IniContext *pContext);
 
 /** get item string value
  *  parameters:
- *           szSectionName: the section name, NULL or empty string for 
+ *           szSectionName: the section name, NULL or empty string for
  *                          global section
  *           szItemName: the item name
  *           pContext:   the ini context
@@ -243,9 +247,23 @@ void iniFreeContext(IniContext *pContext);
 char *iniGetStrValueEx(const char *szSectionName, const char *szItemName,
 		IniContext *pContext, const bool bRetryGlobal);
 
+/** get the first charactor
+ *  parameters:
+ *           szSectionName: the section name, NULL or empty string for
+ *                          global section
+ *           szItemName: the item name
+ *           pContext:   the ini context
+ *           cDefaultValue: the default value
+ *           bRetryGlobal: if fetch from global section when the item not exist
+ *  return: item value, return default value when the item not exist
+*/
+char iniGetCharValueEx(const char *szSectionName, const char *szItemName,
+        IniContext *pContext, const char cDefaultValue,
+        const bool bRetryGlobal);
+
 /** get item string value
  *  parameters:
- *           szSectionName: the section name, NULL or empty string for 
+ *           szSectionName: the section name, NULL or empty string for
  *                          global section
  *           szItemName: the item name
  *           pContext:   the ini context
@@ -258,7 +276,7 @@ int iniGetValues(const char *szSectionName, const char *szItemName, \
 
 /** get item int value (32 bits)
  *  parameters:
- *           szSectionName: the section name, NULL or empty string for 
+ *           szSectionName: the section name, NULL or empty string for
  *                          global section
  *           szItemName: the item name
  *           pContext:   the ini context
@@ -299,7 +317,7 @@ int iniGetIntCorrectValueEx(IniFullContext *pIniContext,
 
 /** get item string value array
  *  parameters:
- *           szSectionName: the section name, NULL or empty string for 
+ *           szSectionName: the section name, NULL or empty string for
  *                          global section
  *           szItemName: the item name
  *           pContext:   the ini context
@@ -372,7 +390,7 @@ int64_t iniGetByteCorrectValueEx(IniFullContext *pIniContext,
 
 /** get item boolean value
  *  parameters:
- *           szSectionName: the section name, NULL or empty string for 
+ *           szSectionName: the section name, NULL or empty string for
  *                          global section
  *           szItemName: the item name
  *           pContext:   the ini context
@@ -386,7 +404,7 @@ bool iniGetBoolValueEx(const char *szSectionName,
 
 /** get item double value
  *  parameters:
- *           szSectionName: the section name, NULL or empty string for 
+ *           szSectionName: the section name, NULL or empty string for
  *                          global section
  *           szItemName: the item name
  *           pContext:   the ini context

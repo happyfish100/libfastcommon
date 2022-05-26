@@ -1,6 +1,8 @@
 
-Version 1.58  2022-05-07
+Version 1.58  2022-05-26
   * add function conn_pool_connect_server_ex1 to support service name
+  * add function conn_pool_get_connection_ex to support service name
+  * add function iniGetCharValueEx
 
 Version 1.57  2022-04-22
   * add function fc_format_path

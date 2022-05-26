@@ -2868,6 +2868,21 @@ char *iniGetStrValueEx(const char *szSectionName, const char *szItemName,
     return pFound->value;
 }
 
+char iniGetCharValueEx(const char *szSectionName, const char *szItemName,
+        IniContext *pContext, const char cDefaultValue,
+        const bool bRetryGlobal)
+{
+    char *value;
+
+    value = iniGetStrValueEx(szSectionName, szItemName,
+            pContext, bRetryGlobal);
+    if (value == NULL) {
+        return cDefaultValue;
+    } else {
+        return value[0];
+    }
+}
+
 #define INI_FILL_SECTION_PROMPT(prompt, size, section_name) \
     do { \
         if (section_name != NULL && *(section_name) != '\0') { \
