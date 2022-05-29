@@ -88,6 +88,10 @@ static int json_escape_string(fc_json_context_t *context,
                 *dest++ = '\\';
                 *dest++ = 'n';
                 break;
+            case '\b':
+                *dest++ = '\\';
+                *dest++ = 'b';
+                break;
             case '\f':
                 *dest++ = '\\';
                 *dest++ = 'f';
@@ -96,9 +100,13 @@ static int json_escape_string(fc_json_context_t *context,
                 *dest++ = '\\';
                 *dest++ = '\"';
                 break;
-            case '\'':
+            case '\0':
                 *dest++ = '\\';
-                *dest++ = '\'';
+                *dest++ = 'u';
+                *dest++ = '0';
+                *dest++ = '0';
+                *dest++ = '0';
+                *dest++ = '0';
                 break;
             default:
                 *dest++ = *src;
@@ -112,8 +120,11 @@ static int json_escape_string(fc_json_context_t *context,
 static int next_json_element(fc_json_context_t *context)
 {
     char *dest;
+    const char *start;
     char buff[128];
     char quote_ch;
+    int unicode;
+    int i;
 
     dest = context->element.str;
     quote_ch = *context->p;
@@ -127,6 +138,39 @@ static int next_json_element(fc_json_context_t *context)
                             &context->error_info, context->error_size);
                     return EINVAL;
                 }
+
+                if (*context->p == 'u') {  //unicode
+                    start = ++context->p;  //skip charator 'u'
+                    i = 0;
+                    while (i < 4 && context->p < context->end &&
+                            IS_HEX_CHAR(*context->p))
+                    {
+                        buff[i++] = *context->p;
+                        ++context->p;
+                    }
+                    if (i != 4) {
+                        set_parse_error(context->str, start,
+                                EXPECT_STR_LEN, "expect 4 hex characters "
+                                "after \\u", &context->error_info,
+                                context->error_size);
+                        return EINVAL;
+                    }
+
+                    buff[i] = '\0';
+                    unicode = strtol(buff, NULL, 16);
+                    if (unicode < 0x80) {
+                        *dest++ = unicode;
+                    } else if (unicode < 0x800) {
+                        *dest++ = 0xC0 | ((unicode >> 6) & 0x1F);
+                        *dest++ = 0x80 | (unicode & 0x3F);
+                    } else {
+                        *dest++ = 0xE0 | ((unicode >> 12) & 0x0F);
+                        *dest++ = 0x80 | ((unicode >> 6) & 0x3F);
+                        *dest++ = 0x80 | (unicode & 0x3F);
+                    }
+                    continue;
+                }
+
                 switch (*context->p) {
                     case '\\':
                         *dest++ = '\\';
@@ -146,11 +190,11 @@ static int next_json_element(fc_json_context_t *context)
                     case 'f':
                         *dest++ = '\f';
                         break;
+                    case 'b':
+                        *dest++ = '\b';
+                        break;
                     case '"':
                         *dest++ = '\"';
-                        break;
-                    case '\'':
-                        *dest++ = '\'';
                         break;
                     default:
                         sprintf(buff, "invalid escaped character: %c(0x%x)",
@@ -264,18 +308,18 @@ static inline void json_quote_string(fc_json_context_t
     *buff = p;
 }
 
-const BufferInfo *fc_encode_json_array(fc_json_context_t
-        *context, const fc_json_array_t *array)
+const BufferInfo *fc_encode_json_array(fc_json_context_t *context,
+        const string_t *elements, const int count)
 {
-    string_t *el;
-    string_t *end;
+    const string_t *el;
+    const string_t *end;
     char *p;
     int expect_size;
 
     expect_size = 3;
-    end = array->elements + array->count;
-    for (el=array->elements; el<end; el++) {
-        expect_size += 2 * el->len + 3;
+    end = elements + count;
+    for (el=elements; el<end; el++) {
+        expect_size += 6 * el->len + 3;
     }
 
     if (context->output.alloc_size < expect_size) {
@@ -290,8 +334,8 @@ const BufferInfo *fc_encode_json_array(fc_json_context_t
 
     p = context->output.buff;
     *p++ = '[';
-    for (el=array->elements; el<end; el++) {
-        if (el > array->elements) {
+    for (el=elements; el<end; el++) {
+        if (el > elements) {
             *p++ = ',';
         }
 
@@ -304,18 +348,18 @@ const BufferInfo *fc_encode_json_array(fc_json_context_t
     return &context->output;
 }
 
-const BufferInfo *fc_encode_json_map(fc_json_context_t
-        *context, const fc_json_map_t *map)
+const BufferInfo *fc_encode_json_map(fc_json_context_t *context,
+        const key_value_pair_t *elements, const int count)
 {
-    key_value_pair_t *pair;
-    key_value_pair_t *end;
+    const key_value_pair_t *pair;
+    const key_value_pair_t *end;
     char *p;
     int expect_size;
 
     expect_size = 3;
-    end = map->elements + map->count;
-    for (pair=map->elements; pair<end; pair++) {
-        expect_size += 2 * (pair->key.len + pair->value.len + 2) + 1;
+    end = elements + count;
+    for (pair=elements; pair<end; pair++) {
+        expect_size += 6 * (pair->key.len + pair->value.len) + 5;
     }
 
     if (context->output.alloc_size < expect_size) {
@@ -330,8 +374,8 @@ const BufferInfo *fc_encode_json_map(fc_json_context_t
 
     p = context->output.buff;
     *p++ = '{';
-    for (pair=map->elements; pair<end; pair++) {
-        if (pair > map->elements) {
+    for (pair=elements; pair<end; pair++) {
+        if (pair > elements) {
             *p++ = ',';
         }
 

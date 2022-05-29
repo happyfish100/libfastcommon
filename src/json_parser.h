@@ -161,11 +161,11 @@ extern "C" {
 
     int fc_detect_json_type(const string_t *input);
 
-    const BufferInfo *fc_encode_json_array(fc_json_context_t
-            *context, const fc_json_array_t *array);
+    const BufferInfo *fc_encode_json_array(fc_json_context_t *context,
+            const string_t *elements, const int count);
 
-    const BufferInfo *fc_encode_json_map(fc_json_context_t
-            *context, const fc_json_map_t *map);
+    const BufferInfo *fc_encode_json_map(fc_json_context_t *context,
+            const key_value_pair_t *elements, const int count);
 
     const fc_json_array_t *fc_decode_json_array(fc_json_context_t
             *context, const string_t *input);
