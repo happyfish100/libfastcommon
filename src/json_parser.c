@@ -29,7 +29,7 @@
      (ch >= '0' && ch <= '9') || (ch == '_' || ch == '-'  || \
          ch == '.'))
 
-int detect_json_type(const string_t *input)
+int fc_detect_json_type(const string_t *input)
 {
     if (input->len < 2) {
         return FC_JSON_TYPE_STRING;
@@ -45,18 +45,9 @@ int detect_json_type(const string_t *input)
     return FC_JSON_TYPE_STRING;
 }
 
-typedef struct {
-    const char *str;  //input string
-    const char *p;    //current
-    const char *end;
-    string_t element;
-    char *error_info;
-    int error_size;
-} ParseContext;
-
 static void set_parse_error(const char *str, const char *current,
         const int expect_len, const char *front,
-        char *error_info, const int error_size)
+        string_t *error_info, const int error_size)
 {
     const char *show_str;
     int show_len;
@@ -66,26 +57,18 @@ static void set_parse_error(const char *str, const char *current,
         show_len = expect_len;
     }
     show_str = current - show_len;
-    snprintf(error_info, error_size, "%s, input: %.*s",
-            front, show_len, show_str);
+    error_info->len = snprintf(error_info->str, error_size,
+            "%s, input: %.*s", front, show_len, show_str);
 }
 
-static int json_escape_string(const string_t *input, string_t *output,
-        char *error_info, const int error_size)
+static int json_escape_string(fc_json_context_t *context,
+        const string_t *input, char *output)
 {
     const char *src;
     const char *end;
     char *dest;
-    int size;
 
-    size = 2 * input->len + 1;
-    output->str = (char *)fc_malloc(size);
-    if (output->str == NULL) {
-        snprintf(error_info, error_size, "malloc %d bytes fail", size);
-        return ENOMEM;
-    }
-
-    dest = output->str;
+    dest = output;
     end = input->str + input->len;
     for (src=input->str; src<end; src++) {
         switch (*src) {
@@ -105,9 +88,9 @@ static int json_escape_string(const string_t *input, string_t *output,
                 *dest++ = '\\';
                 *dest++ = 'n';
                 break;
-            case '\b':
+            case '\f':
                 *dest++ = '\\';
-                *dest++ = 'b';
+                *dest++ = 'f';
                 break;
             case '\"':
                 *dest++ = '\\';
@@ -123,12 +106,10 @@ static int json_escape_string(const string_t *input, string_t *output,
         }
     }
 
-    *dest = '\0';
-    output->len = dest - output->str;
-    return 0;
+    return dest - output;
 }
 
-static int next_json_element(ParseContext *context)
+static int next_json_element(fc_json_context_t *context)
 {
     char *dest;
     char buff[128];
@@ -143,7 +124,7 @@ static int next_json_element(ParseContext *context)
                 if (++context->p == context->end) {
                     set_parse_error(context->str, context->p,
                             EXPECT_STR_LEN, "expect a character after \\",
-                            context->error_info, context->error_size);
+                            &context->error_info, context->error_size);
                     return EINVAL;
                 }
                 switch (*context->p) {
@@ -162,7 +143,7 @@ static int next_json_element(ParseContext *context)
                     case 'n':
                         *dest++ = '\n';
                         break;
-                    case 'b':
+                    case 'f':
                         *dest++ = '\f';
                         break;
                     case '"':
@@ -174,8 +155,9 @@ static int next_json_element(ParseContext *context)
                     default:
                         sprintf(buff, "invalid escaped character: %c(0x%x)",
                                 *context->p, (unsigned char)*context->p);
-                        set_parse_error(context->str, context->p + 1, EXPECT_STR_LEN,
-                                buff, context->error_info, context->error_size);
+                        set_parse_error(context->str, context->p + 1,
+                                EXPECT_STR_LEN, buff, &context->error_info,
+                                context->error_size);
                         return EINVAL;
                 }
                 context->p++;
@@ -187,7 +169,7 @@ static int next_json_element(ParseContext *context)
         if (context->p == context->end) {
             sprintf(buff, "expect closed character: %c", quote_ch);
             set_parse_error(context->str, context->p, EXPECT_STR_LEN,
-                    buff, context->error_info, context->error_size);
+                    buff, &context->error_info, context->error_size);
             return EINVAL;
         }
         context->p++; //skip quote char
@@ -202,8 +184,8 @@ static int next_json_element(ParseContext *context)
     return 0;
 }
 
-static int check_alloc_array(common_array_t *array,
-        char *error_info, const int error_size)
+static int check_alloc_array(fc_json_context_t *context,
+        fc_common_array_t *array)
 {
     int bytes;
     if (array->count < array->alloc) {
@@ -219,62 +201,50 @@ static int check_alloc_array(common_array_t *array,
     bytes = array->element_size * array->alloc;
     array->elements = fc_realloc(array->elements, bytes);
     if (array->elements == NULL) {
-        snprintf(error_info, error_size, "realloc %d bytes fail", bytes);
+        context->error_info.len = snprintf(context->error_info.str,
+                context->error_size, "realloc %d bytes fail", bytes);
         return ENOMEM;
     }
 
     return 0;
 }
 
-static inline int check_alloc_json_array(json_array_t *array,
-                char *error_info, const int error_size)
+static int prepare_json_parse(fc_json_context_t *context,
+        const string_t *input, const char lquote,
+        const char rquote)
 {
-    return check_alloc_array((common_array_t *)array, error_info, error_size);
-}
-
-static inline int check_alloc_json_map(json_map_t *array,
-                char *error_info, const int error_size)
-{
-    return check_alloc_array((common_array_t *)array, error_info, error_size);
-}
-
-static int prepare_json_parse(const string_t *input, common_array_t *array,
-        char *error_info, const int error_size,
-        const char lquote, const char rquote, ParseContext *context)
-{
-    int buff_len;
-
-    array->elements = NULL;
-    array->count = array->alloc = 0;
-    array->buff = NULL;
+    int expect_size;
+    int result;
 
     if (input->len < 2) {
-        snprintf(error_info, error_size, "json string is too short");
+        context->error_info.len = snprintf(context->error_info.str,
+                context->error_size, "json string is too short");
         return EINVAL;
     }
 
     if (input->str[0] != lquote) {
-        snprintf(error_info, error_size,
-                "json array must start with \"%c\"", lquote);
+        context->error_info.len = snprintf(context->error_info.str, context->
+                error_size, "json array must start with \"%c\"", lquote);
         return EINVAL;
     }
     if (input->str[input->len - 1] != rquote) {
-        snprintf(error_info, error_size,
-                "json array must end with \"%c\"", rquote);
+        context->error_info.len = snprintf(context->error_info.str, context->
+                error_size, "json array must end with \"%c\"", rquote);
         return EINVAL;
     }
 
-    buff_len = input->len - 2;
-    array->buff = (char *)fc_malloc(buff_len + 1);
-    if (array->buff == NULL) {
-        snprintf(error_info, error_size,
-                "malloc %d bytes fail", buff_len + 1);
-        return ENOMEM;
+    expect_size = input->len;
+    if (context->output.alloc_size < expect_size) {
+        if ((result=fc_realloc_buffer(&context->output, context->
+                        init_buff_size, expect_size)) != 0)
+        {
+            context->error_info.len = snprintf(context->error_info.str,
+                    context->error_size, "realloc buffer fail");
+            return result;
+        }
     }
 
-    context->error_info = error_info;
-    context->error_size = error_size;
-    context->element.str = array->buff;
+    context->element.str = context->output.buff;
     context->element.len = 0;
     context->str = input->str;
     context->p = input->str + 1;
@@ -282,281 +252,239 @@ static int prepare_json_parse(const string_t *input, common_array_t *array,
     return 0;
 }
 
-int decode_json_array(const string_t *input, json_array_t *array,
-        char *error_info, const int error_size)
+static inline void json_quote_string(fc_json_context_t
+        *context, const string_t *input, char **buff)
 {
-    ParseContext context;
-    int result;
-
-    array->element_size = sizeof(string_t);
-    if ((result=prepare_json_parse(input, (common_array_t *)array,
-                    error_info, error_size, '[', ']', &context)) != 0)
-    {
-        return result;
-    }
-
-    result = 0;
-    while (context.p < context.end) {
-        while (context.p < context.end && JSON_SPACE(*context.p)) {
-            context.p++;
-        }
-
-        if (context.p == context.end) {
-            break;
-        }
-
-        if (*context.p == ',') {
-            set_parse_error(input->str, context.p + 1,
-                    EXPECT_STR_LEN, "unexpect comma \",\"",
-                    error_info, error_size);
-            result = EINVAL;
-            break;
-        }
-
-        if ((result=next_json_element(&context)) != 0) {
-            break;
-        }
-
-        while (context.p < context.end && JSON_SPACE(*context.p)) {
-            context.p++;
-        }
-        if (context.p < context.end) {
-            if (*context.p == ',') {
-                context.p++;   //skip comma
-            } else {
-                set_parse_error(input->str, context.p,
-                        EXPECT_STR_LEN, "expect comma \",\"",
-                        error_info, error_size);
-                result = EINVAL;
-                break;
-            }
-        }
-
-        if ((result=check_alloc_json_array(array, error_info, error_size)) != 0) {
-            array->count = 0;
-            break;
-        }
-
-        array->elements[array->count++] = context.element;
-        context.element.str += context.element.len + 1;
-    }
-
-    if (result != 0) {
-        free_json_array(array);
-    }
-    return result;
-}
-
-void free_common_array(common_array_t *array)
-{
-    if (array->elements != NULL) {
-        free(array->elements);
-        array->elements = NULL;
-        array->count = 0;
-    }
-
-    if (array->buff != NULL) {
-        free(array->buff);
-        array->buff = NULL;
-    }
-}
-
-static int json_quote_string(const string_t *input, char **buff,
-        char *error_info, const int error_size)
-{
-    int result;
-    string_t escaped;
     char *p;
-
-    if ((result=json_escape_string(input, &escaped,
-                    error_info, error_size)) != 0)
-    {
-        return result;
-    }
 
     p = *buff;
     *p++ = '"';
-    memcpy(p, escaped.str, escaped.len);
-    p += escaped.len;
+    p += json_escape_string(context, input, p);
     *p++ = '"';
-
     *buff = p;
-    free(escaped.str);
-    return 0;
 }
 
-int encode_json_array(json_array_t *array, string_t *output,
-        char *error_info, const int error_size)
+const BufferInfo *fc_encode_json_array(fc_json_context_t
+        *context, const fc_json_array_t *array)
 {
     string_t *el;
     string_t *end;
     char *p;
-    int result;
-    int size;
+    int expect_size;
 
+    expect_size = 3;
     end = array->elements + array->count;
-    size = 3;
     for (el=array->elements; el<end; el++) {
-        size += 2 * el->len + 3;
+        expect_size += 2 * el->len + 3;
     }
 
-    output->str = (char *)fc_malloc(size);
-    if (output->str == NULL) {
-        snprintf(error_info, error_size, "malloc %d bytes fail", size);
-        return ENOMEM;
+    if (context->output.alloc_size < expect_size) {
+        if ((context->error_no=fc_realloc_buffer(&context->output,
+                        context->init_buff_size, expect_size)) != 0)
+        {
+            context->error_info.len = snprintf(context->error_info.str,
+                    context->error_size, "realloc buffer fail");
+            return NULL;
+        }
     }
 
-    p = output->str;
+    p = context->output.buff;
     *p++ = '[';
     for (el=array->elements; el<end; el++) {
         if (el > array->elements) {
             *p++ = ',';
         }
 
-        if ((result=json_quote_string(el, &p, error_info, error_size)) != 0) {
-            free_json_string(output);
-            return result;
-        }
+        json_quote_string(context, el, &p);
     }
 
     *p++ = ']';
     *p = '\0';
-    output->len = p - output->str;
-    return 0;
+    context->output.length = p - context->output.buff;
+    return &context->output;
 }
 
-int decode_json_map(const string_t *input, json_map_t *map,
-        char *error_info, const int error_size)
-{
-    ParseContext context;
-    key_value_pair_t kv_pair;
-    int result;
-
-    map->element_size = sizeof(key_value_pair_t);
-    if ((result=prepare_json_parse(input, (common_array_t *)map,
-                    error_info, error_size, '{', '}', &context)) != 0)
-    {
-        return result;
-    }
-
-    result = 0;
-    while (context.p < context.end) {
-        while (context.p < context.end && JSON_SPACE(*context.p)) {
-            context.p++;
-        }
-
-        if (context.p == context.end) {
-            break;
-        }
-
-        if (*context.p == ',') {
-            set_parse_error(input->str, context.p + 1,
-                    EXPECT_STR_LEN, "unexpect comma \",\"",
-                    error_info, error_size);
-            result = EINVAL;
-            break;
-        }
-
-        if ((result=next_json_element(&context)) != 0) {
-            break;
-        }
-        while (context.p < context.end && JSON_SPACE(*context.p)) {
-            context.p++;
-        }
-        if (!(context.p < context.end && *context.p == ':')) {
-            set_parse_error(input->str, context.p,
-                    EXPECT_STR_LEN, "expect colon \":\"",
-                    error_info, error_size);
-            result = EINVAL;
-            break;
-        }
-        context.p++;   //skip colon
-
-        kv_pair.key = context.element;
-        context.element.str += context.element.len + 1;
-
-        while (context.p < context.end && JSON_SPACE(*context.p)) {
-            context.p++;
-        }
-        if ((result=next_json_element(&context)) != 0) {
-            break;
-        }
-        while (context.p < context.end && JSON_SPACE(*context.p)) {
-            context.p++;
-        }
-        if (context.p < context.end) {
-            if (*context.p == ',') {
-                context.p++;  //skip comma
-            } else {
-                set_parse_error(input->str, context.p,
-                        EXPECT_STR_LEN, "expect comma \",\"",
-                        error_info, error_size);
-                result = EINVAL;
-                break;
-            }
-        }
-
-        kv_pair.value = context.element;
-        context.element.str += context.element.len + 1;
-
-        if ((result=check_alloc_json_map(map, error_info, error_size)) != 0) {
-            map->count = 0;
-            break;
-        }
-        map->elements[map->count++] = kv_pair;
-    }
-
-    if (result != 0) {
-        free_json_map(map);
-    }
-    return result;
-}
-
-int encode_json_map(json_map_t *map, string_t *output,
-        char *error_info, const int error_size)
+const BufferInfo *fc_encode_json_map(fc_json_context_t
+        *context, const fc_json_map_t *map)
 {
     key_value_pair_t *pair;
     key_value_pair_t *end;
     char *p;
-    int result;
-    int size;
+    int expect_size;
 
+    expect_size = 3;
     end = map->elements + map->count;
-    size = 3;
     for (pair=map->elements; pair<end; pair++) {
-        size += 2 * (pair->key.len + pair->value.len + 2) + 1;
+        expect_size += 2 * (pair->key.len + pair->value.len + 2) + 1;
     }
 
-    output->str = (char *)fc_malloc(size);
-    if (output->str == NULL) {
-        snprintf(error_info, error_size, "malloc %d bytes fail", size);
-        return ENOMEM;
+    if (context->output.alloc_size < expect_size) {
+        if ((context->error_no=fc_realloc_buffer(&context->output,
+                        context->init_buff_size, expect_size)) != 0)
+        {
+            context->error_info.len = snprintf(context->error_info.str,
+                    context->error_size, "realloc buffer fail");
+            return NULL;
+        }
     }
 
-    p = output->str;
+    p = context->output.buff;
     *p++ = '{';
     for (pair=map->elements; pair<end; pair++) {
         if (pair > map->elements) {
             *p++ = ',';
         }
 
-        if ((result=json_quote_string(&pair->key, &p,
-                        error_info, error_size)) != 0)
-        {
-            free_json_string(output);
-            return result;
-        }
+        json_quote_string(context, &pair->key, &p);
         *p++ = ':';
-        if ((result=json_quote_string(&pair->value, &p,
-                        error_info, error_size)) != 0)
-        {
-            free_json_string(output);
-            return result;
-        }
+        json_quote_string(context, &pair->value, &p);
     }
 
     *p++ = '}';
     *p = '\0';
-    output->len = p - output->str;
-    return 0;
+    context->output.length = p - context->output.buff;
+    return &context->output;
+}
+
+const fc_json_array_t *fc_decode_json_array(fc_json_context_t
+        *context, const string_t *input)
+{
+    if ((context->error_no=prepare_json_parse(context,
+                    input, '[', ']')) != 0)
+    {
+        return NULL;
+    }
+
+    context->jarray.count = 0;
+    while (context->p < context->end) {
+        while (context->p < context->end && JSON_SPACE(*context->p)) {
+            context->p++;
+        }
+
+        if (context->p == context->end) {
+            break;
+        }
+
+        if (*context->p == ',') {
+            set_parse_error(input->str, context->p + 1,
+                    EXPECT_STR_LEN, "unexpect comma \",\"",
+                    &context->error_info, context->error_size);
+            context->error_no = EINVAL;
+            return NULL;
+        }
+
+        if ((context->error_no=next_json_element(context)) != 0) {
+            return NULL;
+        }
+
+        while (context->p < context->end && JSON_SPACE(*context->p)) {
+            context->p++;
+        }
+        if (context->p < context->end) {
+            if (*context->p == ',') {
+                context->p++;   //skip comma
+            } else {
+                set_parse_error(input->str, context->p,
+                        EXPECT_STR_LEN, "expect comma \",\"",
+                        &context->error_info, context->error_size);
+                context->error_no = EINVAL;
+                return NULL;
+            }
+        }
+
+        if ((context->error_no=check_alloc_array(context,
+                        (fc_common_array_t *)
+                        &context->jarray)) != 0)
+        {
+            return NULL;
+        }
+
+        context->jarray.elements[context->jarray.count++] = context->element;
+        context->element.str += context->element.len + 1;
+    }
+
+    return &context->jarray;
+}
+
+const fc_json_map_t *fc_decode_json_map(fc_json_context_t
+        *context, const string_t *input)
+{
+    key_value_pair_t kv_pair;
+
+    if ((context->error_no=prepare_json_parse(context,
+                    input, '{', '}')) != 0)
+    {
+        return NULL;
+    }
+
+    context->jmap.count = 0;
+    while (context->p < context->end) {
+        while (context->p < context->end && JSON_SPACE(*context->p)) {
+            context->p++;
+        }
+
+        if (context->p == context->end) {
+            break;
+        }
+
+        if (*context->p == ',') {
+            set_parse_error(input->str, context->p + 1,
+                    EXPECT_STR_LEN, "unexpect comma \",\"",
+                    &context->error_info, context->error_size);
+            context->error_no = EINVAL;
+            return NULL;
+        }
+
+        if ((context->error_no=next_json_element(context)) != 0) {
+            return NULL;
+        }
+        while (context->p < context->end && JSON_SPACE(*context->p)) {
+            context->p++;
+        }
+        if (!(context->p < context->end && *context->p == ':')) {
+            set_parse_error(input->str, context->p,
+                    EXPECT_STR_LEN, "expect colon \":\"",
+                    &context->error_info, context->error_size);
+            context->error_no = EINVAL;
+            return NULL;
+        }
+        context->p++;   //skip colon
+
+        kv_pair.key = context->element;
+        context->element.str += context->element.len + 1;
+
+        while (context->p < context->end && JSON_SPACE(*context->p)) {
+            context->p++;
+        }
+        if ((context->error_no=next_json_element(context)) != 0) {
+            return NULL;
+        }
+        while (context->p < context->end && JSON_SPACE(*context->p)) {
+            context->p++;
+        }
+        if (context->p < context->end) {
+            if (*context->p == ',') {
+                context->p++;  //skip comma
+            } else {
+                set_parse_error(input->str, context->p,
+                        EXPECT_STR_LEN, "expect comma \",\"",
+                        &context->error_info, context->error_size);
+                context->error_no = EINVAL;
+                return NULL;
+            }
+        }
+
+        kv_pair.value = context->element;
+        context->element.str += context->element.len + 1;
+
+        if ((context->error_no=check_alloc_array(context,
+                        (fc_common_array_t *)
+                        &context->jmap)) != 0)
+        {
+            return NULL;
+        }
+        context->jmap.elements[context->jmap.count++] = kv_pair;
+    }
+
+    return &context->jmap;
 }

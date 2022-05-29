@@ -1093,6 +1093,15 @@ int fc_init_buffer(BufferInfo *buffer, const int buffer_size);
 */
 void fc_free_buffer(BufferInfo *buffer);
 
+/** realloc buffer
+ *  parameters:
+ *      buffer: the buffer to init
+ *      init_buff_size: the init buffer size
+ *      expect_size: the expect buffer size
+ *  return: error no, 0 success, != 0 fail
+*/
+int fc_realloc_buffer(BufferInfo *buffer, const int
+                init_buff_size, const int expect_size);
 
 static inline int fc_get_umask()
 {

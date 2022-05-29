@@ -15,8 +15,8 @@
 
 //json_parser.h
 
-#ifndef _JSON_PARSER_H
-#define _JSON_PARSER_H
+#ifndef _FC_JSON_PARSER_H
+#define _FC_JSON_PARSER_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,55 +36,145 @@
         /* for internal use */   \
         int element_size;  \
         int alloc;         \
-        char *buff;        \
     } ARRAY_TYPE
 
-DEFINE_ARRAY_STRUCT(void, common_array_t);
-DEFINE_ARRAY_STRUCT(string_t, json_array_t);
-DEFINE_ARRAY_STRUCT(key_value_pair_t, json_map_t);
+DEFINE_ARRAY_STRUCT(void, fc_common_array_t);
+DEFINE_ARRAY_STRUCT(string_t, fc_json_array_t);
+DEFINE_ARRAY_STRUCT(key_value_pair_t, fc_json_map_t);
+
+typedef struct {
+    BufferInfo output;  //for json encode
+    string_t element;   //string allocator use output buffer
+    int init_buff_size;
+    int error_no;
+    int error_size;
+    char error_holder[256];
+    string_t error_info;
+
+    fc_json_array_t jarray;
+    fc_json_map_t jmap;
+
+    /* for internal use */
+    const char *str;  //input string
+    const char *p;    //current
+    const char *end;
+} fc_json_context_t;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-    void free_common_array(common_array_t *array);
-
-    static inline void free_json_array(json_array_t *array)
+    static inline void fc_init_common_array(fc_common_array_t *array,
+            const int element_size)
     {
-        free_common_array((common_array_t *)array);
+        array->elements = NULL;
+        array->element_size = element_size;
+        array->count = array->alloc = 0;
     }
 
-    static inline void free_json_map(json_map_t *array)
+    static inline void fc_init_json_array(fc_json_array_t *array)
     {
-        free_common_array((common_array_t *)array);
+        fc_init_common_array((fc_common_array_t *)array, sizeof(string_t));
     }
 
-    static inline void free_json_string(string_t *buffer)
+    static inline void fc_init_json_map(fc_json_map_t *array)
     {
-        if (buffer->str != NULL) {
-            free(buffer->str);
-            buffer->str = NULL;
-            buffer->len = 0;
+        fc_init_common_array((fc_common_array_t *)array,
+                sizeof(key_value_pair_t));
+    }
+
+    static inline void fc_free_common_array(fc_common_array_t *array)
+    {
+        if (array->elements != NULL) {
+            free(array->elements);
+            array->elements = NULL;
+            array->count = array->alloc = 0;
         }
     }
 
-    int detect_json_type(const string_t *input);
+    static inline void fc_free_json_array(fc_json_array_t *array)
+    {
+        fc_free_common_array((fc_common_array_t *)array);
+    }
 
-    int decode_json_array(const string_t *input, json_array_t *array,
-            char *error_info, const int error_size);
+    static inline void fc_free_json_map(fc_json_map_t *array)
+    {
+        fc_free_common_array((fc_common_array_t *)array);
+    }
 
-    int encode_json_array(json_array_t *array, string_t *output,
-            char *error_info, const int error_size);
+    static inline void fc_set_json_error_buffer(fc_json_context_t *ctx,
+            char *error_info, const int error_size)
+    {
+        if (error_info != NULL && error_size > 0) {
+            ctx->error_info.str = error_info;
+            ctx->error_size = error_size;
+        } else {
+            ctx->error_info.str = ctx->error_holder;
+            ctx->error_size = sizeof(ctx->error_holder);
+        }
 
-    int decode_json_map(const string_t *input, json_map_t *map,
-            char *error_info, const int error_size);
+        ctx->error_info.len = 0;
+        *ctx->error_info.str = '\0';
+    }
 
-    int encode_json_map(json_map_t *map, string_t *output,
-            char *error_info, const int error_size);
+    static inline void fc_init_json_context_ex(fc_json_context_t *ctx,
+            const int init_buff_size, char *error_info, const int error_size)
+    {
+        ctx->output.buff = NULL;
+        ctx->output.alloc_size = ctx->output.length = 0;
+        FC_SET_STRING_NULL(ctx->element);
+        if (init_buff_size > 0) {
+            ctx->init_buff_size = init_buff_size;
+        } else {
+            ctx->init_buff_size = 1024;
+        }
+        fc_init_json_array(&ctx->jarray);
+        fc_init_json_map(&ctx->jmap);
+
+        ctx->error_no = 0;
+        fc_set_json_error_buffer(ctx, error_info, error_size);
+    }
+
+    static inline void fc_init_json_context(fc_json_context_t *ctx)
+    {
+        const int init_buff_size = 0;
+        fc_init_json_context_ex(ctx, init_buff_size, NULL, 0);
+    }
+
+    static inline void fc_destroy_json_context(fc_json_context_t *ctx)
+    {
+        fc_free_buffer(&ctx->output);
+        fc_free_json_array(&ctx->jarray);
+        fc_free_json_map(&ctx->jmap);
+    }
+
+    static inline int fc_json_parser_get_error_no(fc_json_context_t *ctx)
+    {
+        return ctx->error_no;
+    }
+
+    static inline const string_t *fc_json_parser_get_error_info(
+            fc_json_context_t *ctx)
+    {
+        return &ctx->error_info;
+    }
+
+    int fc_detect_json_type(const string_t *input);
+
+    const BufferInfo *fc_encode_json_array(fc_json_context_t
+            *context, const fc_json_array_t *array);
+
+    const BufferInfo *fc_encode_json_map(fc_json_context_t
+            *context, const fc_json_map_t *map);
+
+    const fc_json_array_t *fc_decode_json_array(fc_json_context_t
+            *context, const string_t *input);
+
+    const fc_json_map_t *fc_decode_json_map(fc_json_context_t
+            *context, const string_t *input);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif
-

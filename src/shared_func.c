@@ -3550,6 +3550,35 @@ void fc_free_buffer(BufferInfo *buffer)
     }
 }
 
+int fc_realloc_buffer(BufferInfo *buffer, const int
+                init_buff_size, const int expect_size)
+{
+    char *new_buff;
+    int new_size;
+
+    if (buffer->alloc_size == 0) {
+        new_size = (init_buff_size > 0 ?
+                init_buff_size : 256);
+    } else {
+        new_size = buffer->alloc_size;
+    }
+    while (new_size < expect_size) {
+        new_size *= 2;
+    }
+
+    new_buff = (char *)fc_malloc(new_size);
+    if (new_buff == NULL) {
+        return ENOMEM;
+    }
+
+    if (buffer->buff != NULL) {
+        free(buffer->buff);
+    }
+    buffer->buff = new_buff;
+    buffer->alloc_size = new_size;
+    return 0;
+}
+
 int fc_check_mkdir_ex(const char *path, const mode_t mode, bool *created)
 {
     int result;
