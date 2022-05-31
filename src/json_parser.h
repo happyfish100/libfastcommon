@@ -23,6 +23,7 @@
 #include <string.h>
 #include <time.h>
 #include "common_define.h"
+#include "shared_func.h"
 
 #define FC_JSON_TYPE_STRING   1
 #define FC_JSON_TYPE_ARRAY    2
@@ -117,7 +118,7 @@ extern "C" {
         *ctx->error_info.str = '\0';
     }
 
-    static inline void fc_init_json_context_ex(fc_json_context_t *ctx,
+    static inline int fc_init_json_context_ex(fc_json_context_t *ctx,
             const int init_buff_size, char *error_info, const int error_size)
     {
         ctx->output.buff = NULL;
@@ -133,12 +134,13 @@ extern "C" {
 
         ctx->error_no = 0;
         fc_set_json_error_buffer(ctx, error_info, error_size);
+        return 0;
     }
 
-    static inline void fc_init_json_context(fc_json_context_t *ctx)
+    static inline int fc_init_json_context(fc_json_context_t *ctx)
     {
         const int init_buff_size = 0;
-        fc_init_json_context_ex(ctx, init_buff_size, NULL, 0);
+        return fc_init_json_context_ex(ctx, init_buff_size, NULL, 0);
     }
 
     static inline void fc_destroy_json_context(fc_json_context_t *ctx)

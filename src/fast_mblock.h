@@ -250,6 +250,15 @@ static inline int fast_mblock_set_need_wait(struct fast_mblock_man *mblock,
     return 0;
 }
 
+static inline void fast_mblock_set_exceed_log_level(
+        struct fast_mblock_man *mblock, const int log_level)
+{
+    mblock->alloc_elements.exceed_log_level = log_level;
+}
+
+#define fast_mblock_set_exceed_silence(mblock)  \
+    fast_mblock_set_exceed_log_level(mblock, LOG_NOTHING)
+
 /**
 alloc a node from the mblock
 parameters:
