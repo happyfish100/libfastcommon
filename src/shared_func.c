@@ -711,7 +711,7 @@ int getOccurCount(const char *src, const char seperator)
 	p = strchr(src, seperator);
 	while (p != NULL)
 	{
-		count++;
+		++count;
 		p = strchr(p + 1, seperator);
 	}
 
@@ -721,7 +721,7 @@ int getOccurCount(const char *src, const char seperator)
 int fc_get_file_line_count_ex(const char *filename,
         const int64_t until_offset, int64_t *line_count)
 {
-#define READ_BUFFER_SIZE  (256 * 1024)
+#define READ_BUFFER_SIZE  (256 * 1024 * 1024)
     int fd;
     int result;
     int read_bytes;
@@ -752,8 +752,8 @@ int fc_get_file_line_count_ex(const char *filename,
     }
 
     while (remain_bytes > 0) {
-        read_bytes = remain_bytes >= READ_BUFFER_SIZE ?
-            (READ_BUFFER_SIZE - 1) : remain_bytes;
+        read_bytes = (remain_bytes >= READ_BUFFER_SIZE ?
+                (READ_BUFFER_SIZE - 1) : remain_bytes);
         read_bytes = read(fd, buff, read_bytes);
         if (read_bytes == 0) {
             break;

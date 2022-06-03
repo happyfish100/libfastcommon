@@ -95,6 +95,36 @@ void common_blocked_queue_return_nodes(struct common_blocked_queue *queue,
 void *common_blocked_queue_pop_ex(struct common_blocked_queue *queue,
         const bool blocked);
 
+static inline bool common_blocked_queue_empty(
+        struct common_blocked_queue *queue)
+{
+    bool empty;
+
+    pthread_mutex_lock(&queue->lc_pair.lock);
+    empty = (queue->head == NULL);
+    pthread_mutex_unlock(&queue->lc_pair.lock);
+    return empty;
+}
+
+static inline int common_blocked_queue_count(
+        struct common_blocked_queue *queue)
+{
+    int count;
+    struct common_blocked_node *node;
+
+    count = 0;
+    pthread_mutex_lock(&queue->lc_pair.lock);
+    node = queue->head;
+    while (node != NULL)
+    {
+        ++count;
+        node = node->next;
+    }
+    pthread_mutex_unlock(&queue->lc_pair.lock);
+    return count;
+}
+
+
 #define common_blocked_queue_pop(queue) \
     common_blocked_queue_pop_ex(queue, true)
 

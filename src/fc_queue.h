@@ -154,6 +154,23 @@ static inline bool fc_queue_empty(struct fc_queue *queue)
     return empty;
 }
 
+static inline int fc_queue_count(struct fc_queue *queue)
+{
+    int count;
+    void *data;
+
+    count = 0;
+    pthread_mutex_lock(&queue->lc_pair.lock);
+    data = queue->head;
+    while (data != NULL)
+    {
+        ++count;
+        data = FC_QUEUE_NEXT_PTR(queue, data);
+    }
+    pthread_mutex_unlock(&queue->lc_pair.lock);
+    return count;
+}
+
 void *fc_queue_timedpop(struct fc_queue *queue,
         const int timeout, const int time_unit);
 
