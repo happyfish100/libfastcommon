@@ -308,8 +308,9 @@ static inline void json_quote_string(fc_json_context_t
     *buff = p;
 }
 
-const BufferInfo *fc_encode_json_array(fc_json_context_t *context,
-        const string_t *elements, const int count)
+int fc_encode_json_array_ex(fc_json_context_t *context,
+        const string_t *elements, const int count,
+        BufferInfo *buffer)
 {
     const string_t *el;
     const string_t *end;
@@ -322,17 +323,17 @@ const BufferInfo *fc_encode_json_array(fc_json_context_t *context,
         expect_size += 6 * el->len + 3;
     }
 
-    if (context->output.alloc_size < expect_size) {
-        if ((context->error_no=fc_realloc_buffer(&context->output,
-                        context->init_buff_size, expect_size)) != 0)
+    if (buffer->alloc_size < expect_size) {
+        if ((context->error_no=fc_realloc_buffer(buffer, context->
+                        init_buff_size, expect_size)) != 0)
         {
             context->error_info.len = snprintf(context->error_info.str,
                     context->error_size, "realloc buffer fail");
-            return NULL;
+            return context->error_no;
         }
     }
 
-    p = context->output.buff;
+    p = buffer->buff;
     *p++ = '[';
     for (el=elements; el<end; el++) {
         if (el > elements) {
@@ -344,12 +345,13 @@ const BufferInfo *fc_encode_json_array(fc_json_context_t *context,
 
     *p++ = ']';
     *p = '\0';
-    context->output.length = p - context->output.buff;
-    return &context->output;
+    buffer->length = p - buffer->buff;
+    return 0;
 }
 
-const BufferInfo *fc_encode_json_map(fc_json_context_t *context,
-        const key_value_pair_t *elements, const int count)
+int fc_encode_json_map_ex(fc_json_context_t *context,
+        const key_value_pair_t *elements, const int count,
+        BufferInfo *buffer)
 {
     const key_value_pair_t *pair;
     const key_value_pair_t *end;
@@ -362,17 +364,17 @@ const BufferInfo *fc_encode_json_map(fc_json_context_t *context,
         expect_size += 6 * (pair->key.len + pair->value.len) + 5;
     }
 
-    if (context->output.alloc_size < expect_size) {
-        if ((context->error_no=fc_realloc_buffer(&context->output,
-                        context->init_buff_size, expect_size)) != 0)
+    if (buffer->alloc_size < expect_size) {
+        if ((context->error_no=fc_realloc_buffer(buffer, context->
+                        init_buff_size, expect_size)) != 0)
         {
             context->error_info.len = snprintf(context->error_info.str,
                     context->error_size, "realloc buffer fail");
-            return NULL;
+            return context->error_no;
         }
     }
 
-    p = context->output.buff;
+    p = buffer->buff;
     *p++ = '{';
     for (pair=elements; pair<end; pair++) {
         if (pair > elements) {
@@ -386,8 +388,8 @@ const BufferInfo *fc_encode_json_map(fc_json_context_t *context,
 
     *p++ = '}';
     *p = '\0';
-    context->output.length = p - context->output.buff;
-    return &context->output;
+    buffer->length = p - buffer->buff;
+    return 0;
 }
 
 const fc_json_array_t *fc_decode_json_array(fc_json_context_t

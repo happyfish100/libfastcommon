@@ -163,11 +163,37 @@ extern "C" {
 
     int fc_detect_json_type(const string_t *input);
 
-    const BufferInfo *fc_encode_json_array(fc_json_context_t *context,
-            const string_t *elements, const int count);
+    int fc_encode_json_array_ex(fc_json_context_t *context,
+            const string_t *elements, const int count,
+            BufferInfo *buffer);
 
-    const BufferInfo *fc_encode_json_map(fc_json_context_t *context,
-            const key_value_pair_t *elements, const int count);
+    int fc_encode_json_map_ex(fc_json_context_t *context,
+            const key_value_pair_t *elements, const int count,
+            BufferInfo *buffer);
+
+    static inline const BufferInfo *fc_encode_json_array(fc_json_context_t
+            *context, const string_t *elements, const int count)
+    {
+        if (fc_encode_json_array_ex(context, elements, count,
+                    &context->output) == 0)
+        {
+            return &context->output;
+        } else {
+            return NULL;
+        }
+    }
+
+    static inline const BufferInfo *fc_encode_json_map(fc_json_context_t
+            *context, const key_value_pair_t *elements, const int count)
+    {
+        if (fc_encode_json_map_ex(context, elements, count,
+                    &context->output) == 0)
+        {
+            return &context->output;
+        } else {
+            return NULL;
+        }
+    }
 
     const fc_json_array_t *fc_decode_json_array(fc_json_context_t
             *context, const string_t *input);
