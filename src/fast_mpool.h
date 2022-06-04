@@ -37,10 +37,16 @@ struct fast_mpool_malloc
 
 struct fast_mpool_man
 {
-	struct fast_mpool_malloc *malloc_chain_head; //malloc chain to be freed
-	struct fast_mpool_malloc *free_chain_head;   //free node chain
-	int alloc_size_once;  //alloc size once, default: 1MB
-	int discard_size;     //discard size, default: 64 bytes
+    struct fast_mpool_malloc *malloc_chain_head; //malloc chain to be freed
+    struct fast_mpool_malloc *free_chain_head;   //free node chain
+    int alloc_size_once;  //alloc size once, default: 1MB
+    int discard_size;     //discard size, default: 64 bytes
+    int64_t alloc_count;
+    int64_t alloc_bytes;
+    struct {
+        int64_t count;
+        int64_t last_alloc_count;
+    } reset;
 };
 
 struct fast_mpool_stats

@@ -48,6 +48,10 @@ int fast_mpool_init(struct fast_mpool_man *mpool,
 
 	mpool->malloc_chain_head = NULL;
 	mpool->free_chain_head = NULL;
+	mpool->alloc_count = 0;
+	mpool->alloc_bytes = 0;
+	mpool->reset.count = 0;
+	mpool->reset.last_alloc_count = 0;
 
 	return 0;
 }
@@ -138,6 +142,8 @@ static inline void *fast_mpool_do_alloc(struct fast_mpool_man *mpool,
             fast_mpool_remove_free_node(mpool, pMallocNode);
         }
 
+        mpool->alloc_count++;
+        mpool->alloc_bytes += size;
         return ptr;
     }
     return NULL;
@@ -196,19 +202,26 @@ void *fast_mpool_memdup(struct fast_mpool_man *mpool,
 
 void fast_mpool_reset(struct fast_mpool_man *mpool)
 {
-	struct fast_mpool_malloc *pMallocNode;
+    struct fast_mpool_malloc *pMallocNode;
 
-	mpool->free_chain_head = NULL;
-	pMallocNode = mpool->malloc_chain_head;
-	while (pMallocNode != NULL)
-	{
+    mpool->reset.count++;
+	if (mpool->reset.last_alloc_count == mpool->alloc_count)
+    {
+        return;
+    }
+
+    mpool->reset.last_alloc_count = mpool->alloc_count;
+    mpool->free_chain_head = NULL;
+    pMallocNode = mpool->malloc_chain_head;
+    while (pMallocNode != NULL)
+    {
         pMallocNode->free_ptr = pMallocNode->base_ptr;
 
         pMallocNode->free_next = mpool->free_chain_head;
         mpool->free_chain_head = pMallocNode;
 
-		pMallocNode = pMallocNode->malloc_next;
-	}
+        pMallocNode = pMallocNode->malloc_next;
+    }
 }
 
 void fast_mpool_stats(struct fast_mpool_man *mpool,
@@ -243,12 +256,22 @@ void fast_mpool_stats(struct fast_mpool_man *mpool,
 void fast_mpool_log_stats(struct fast_mpool_man *mpool)
 {
     struct fast_mpool_stats stats;
+    char sz_total_bytes[32];
+    char sz_free_bytes[32];
+    char sz_alloc_bytes[32];
 
     fast_mpool_stats(mpool, &stats);
+
+    long_to_comma_str(stats.total_bytes, sz_total_bytes);
+    long_to_comma_str(stats.free_bytes, sz_free_bytes);
+    long_to_comma_str(mpool->alloc_bytes, sz_alloc_bytes);
     logInfo("alloc_size_once: %d, discard_size: %d, "
-            "bytes: {total: %"PRId64", free: %"PRId64"}, "
-            "trunk_count: {total: %d, free: %d}",
-            mpool->alloc_size_once, mpool->discard_size,
-            stats.total_bytes, stats.free_bytes,
-            stats.total_trunk_count, stats.free_trunk_count);
+            "bytes: {total: %s, free: %s}, "
+            "trunk_count: {total: %d, free: %d}, "
+            "alloc_count: %"PRId64", alloc_bytes: %s, "
+            "reset_count: %"PRId64, mpool->alloc_size_once,
+            mpool->discard_size, sz_total_bytes,
+            sz_free_bytes, stats.total_trunk_count,
+            stats.free_trunk_count, mpool->alloc_count,
+            sz_alloc_bytes, mpool->reset.count);
 }
