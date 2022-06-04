@@ -24,6 +24,7 @@
 #include <time.h>
 #include "common_define.h"
 #include "shared_func.h"
+#include "fast_mpool.h"
 
 #define FC_JSON_TYPE_STRING   1
 #define FC_JSON_TYPE_ARRAY    2
@@ -44,8 +45,12 @@ DEFINE_ARRAY_STRUCT(string_t, fc_json_array_t);
 DEFINE_ARRAY_STRUCT(key_value_pair_t, fc_json_map_t);
 
 typedef struct {
-    BufferInfo output;  //for json encode
-    string_t element;   //string allocator use output buffer
+    BufferInfo output;  //for json encode/decode
+    struct {
+        struct fast_mpool_man mpool;
+        string_t element;   //string allocator use output buffer
+        bool use_mpool;
+    } decode;
     int init_buff_size;
     int error_no;
     int error_size;
@@ -119,11 +124,15 @@ extern "C" {
     }
 
     static inline int fc_init_json_context_ex(fc_json_context_t *ctx,
-            const int init_buff_size, char *error_info, const int error_size)
+            const bool decode_use_mpool, const int alloc_size_once,
+            const int init_buff_size, char *error_info,
+            const int error_size)
     {
+        const int discard_size = 0;
+
         ctx->output.buff = NULL;
         ctx->output.alloc_size = ctx->output.length = 0;
-        FC_SET_STRING_NULL(ctx->element);
+        FC_SET_STRING_NULL(ctx->decode.element);
         if (init_buff_size > 0) {
             ctx->init_buff_size = init_buff_size;
         } else {
@@ -134,13 +143,30 @@ extern "C" {
 
         ctx->error_no = 0;
         fc_set_json_error_buffer(ctx, error_info, error_size);
-        return 0;
+        ctx->decode.use_mpool = decode_use_mpool;
+        if (decode_use_mpool) {
+            return fast_mpool_init(&ctx->decode.mpool,
+                    alloc_size_once, discard_size);
+        } else {
+            return 0;
+        }
     }
 
     static inline int fc_init_json_context(fc_json_context_t *ctx)
     {
+        const bool decode_use_mpool = false;
+        const int alloc_size_once = 0;
         const int init_buff_size = 0;
-        return fc_init_json_context_ex(ctx, init_buff_size, NULL, 0);
+
+        return fc_init_json_context_ex(ctx, decode_use_mpool,
+                alloc_size_once, init_buff_size, NULL, 0);
+    }
+
+    static inline void fc_reset_json_context(fc_json_context_t *ctx)
+    {
+        if (ctx->decode.use_mpool) {
+            fast_mpool_reset(&ctx->decode.mpool);
+        }
     }
 
     static inline void fc_destroy_json_context(fc_json_context_t *ctx)
@@ -148,6 +174,9 @@ extern "C" {
         fc_free_buffer(&ctx->output);
         fc_free_json_array(&ctx->jarray);
         fc_free_json_map(&ctx->jmap);
+        if (ctx->decode.use_mpool) {
+            fast_mpool_destroy(&ctx->decode.mpool);
+        }
     }
 
     static inline int fc_json_parser_get_error_no(fc_json_context_t *ctx)

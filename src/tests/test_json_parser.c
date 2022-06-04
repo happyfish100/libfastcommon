@@ -28,12 +28,16 @@
 
 int main(int argc, char *argv[])
 {
+    const bool decode_use_mpool = false;
+    const int alloc_size_once = 1024;
+    const int init_buff_size = 1024;
     int result;
     int json_type;
     fc_json_context_t json_ctx;
     char error_info[256];
     string_t input;
-    BufferInfo output;
+    BufferInfo buffer;
+    const BufferInfo *output;
 
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <json_string | json_array | json_map>\n",
@@ -43,12 +47,13 @@ int main(int argc, char *argv[])
 	
 	log_init();
 
-    if ((result=fc_init_json_context_ex(&json_ctx, 1024,
-                    error_info, sizeof(error_info))) != 0)
+    if ((result=fc_init_json_context_ex(&json_ctx, decode_use_mpool,
+                    alloc_size_once, init_buff_size, error_info,
+                    sizeof(error_info))) != 0)
     {
         return result;
     }
-    memset(&output, 0, sizeof(output));
+    memset(&buffer, 0, sizeof(buffer));
 
     input.str = argv[1];
     input.len = strlen(input.str);
@@ -61,14 +66,23 @@ int main(int argc, char *argv[])
             return fc_json_parser_get_error_no(&json_ctx);
         }
 
-        if ((result=fc_encode_json_array_ex(&json_ctx, array->elements,
-                        array->count, &output)) != 0)
-        {
+        if (decode_use_mpool) {
+            output = fc_encode_json_array(&json_ctx,
+                    array->elements, array->count);
+            result = fc_json_parser_get_error_no(&json_ctx);
+        } else {
+            output = &buffer;
+            result = fc_encode_json_array_ex(&json_ctx,
+                    array->elements, array->count, &buffer);
+        }
+
+        if (result != 0) {
             fprintf(stderr, "encode json array fail, %s\n", error_info);
             return result;
         }
 
-        printf("%.*s\n", output.length, output.buff);
+        printf("%.*s\n", output->length, output->buff);
+        fc_free_buffer(&buffer);
     } else if (json_type == FC_JSON_TYPE_MAP) {
         const fc_json_map_t *map;
 
@@ -77,14 +91,22 @@ int main(int argc, char *argv[])
             return fc_json_parser_get_error_no(&json_ctx);
         }
 
-        if ((result=fc_encode_json_map_ex(&json_ctx, map->elements,
-                        map->count, &output)) != 0)
-        {
+        if (decode_use_mpool) {
+            output = fc_encode_json_map(&json_ctx,
+                    map->elements, map->count);
+            result = fc_json_parser_get_error_no(&json_ctx);
+        } else {
+            output = &buffer;
+            result = fc_encode_json_map_ex(&json_ctx,
+                    map->elements, map->count, &buffer);
+        }
+        if (result != 0) {
             fprintf(stderr, "encode json map fail, %s\n", error_info);
             return result;
         }
 
-        printf("%.*s\n", output.length, output.buff);
+        printf("%.*s\n", output->length, output->buff);
+        fc_free_buffer(&buffer);
     } else {
         fprintf(stderr, "string\n");
     }

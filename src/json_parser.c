@@ -126,7 +126,7 @@ static int next_json_element(fc_json_context_t *context)
     int unicode;
     int i;
 
-    dest = context->element.str;
+    dest = context->decode.element.str;
     quote_ch = *context->p;
     if (quote_ch == '\"' || quote_ch == '\'') {
         context->p++;
@@ -224,7 +224,7 @@ static int next_json_element(fc_json_context_t *context)
     }
 
     *dest = '\0';
-    context->element.len = dest - context->element.str;
+    context->decode.element.len = dest - context->decode.element.str;
     return 0;
 }
 
@@ -288,8 +288,8 @@ static int prepare_json_parse(fc_json_context_t *context,
         }
     }
 
-    context->element.str = context->output.buff;
-    context->element.len = 0;
+    context->decode.element.str = context->output.buff;
+    context->decode.element.len = 0;
     context->str = input->str;
     context->p = input->str + 1;
     context->end = input->str + input->len - 1;
@@ -392,6 +392,18 @@ int fc_encode_json_map_ex(fc_json_context_t *context,
     return 0;
 }
 
+#define JSON_DECODE_COPY_STRING(ctx, input, dest, src) \
+    do { \
+        if ((context->error_no=fast_mpool_alloc_string_ex2(   \
+                        &ctx->decode.mpool, dest, src)) != 0) \
+        { \
+            set_parse_error(input->str, ctx->p, EXPECT_STR_LEN, \
+                    "out of memory", &ctx->error_info, ctx->error_size); \
+            return NULL; \
+        } \
+    } while (0)
+
+
 const fc_json_array_t *fc_decode_json_array(fc_json_context_t
         *context, const string_t *input)
 {
@@ -445,8 +457,14 @@ const fc_json_array_t *fc_decode_json_array(fc_json_context_t
             return NULL;
         }
 
-        context->jarray.elements[context->jarray.count++] = context->element;
-        context->element.str += context->element.len + 1;
+        if (context->decode.use_mpool) {
+            JSON_DECODE_COPY_STRING(context, input, context->jarray.elements +
+                    context->jarray.count++, &context->decode.element);
+        } else {
+            context->jarray.elements[context->jarray.count++] =
+                context->decode.element;
+        }
+        context->decode.element.str += context->decode.element.len + 1;
     }
 
     return &context->jarray;
@@ -496,8 +514,8 @@ const fc_json_map_t *fc_decode_json_map(fc_json_context_t
         }
         context->p++;   //skip colon
 
-        kv_pair.key = context->element;
-        context->element.str += context->element.len + 1;
+        kv_pair.key = context->decode.element;
+        context->decode.element.str += context->decode.element.len + 1;
 
         while (context->p < context->end && JSON_SPACE(*context->p)) {
             context->p++;
@@ -520,8 +538,8 @@ const fc_json_map_t *fc_decode_json_map(fc_json_context_t
             }
         }
 
-        kv_pair.value = context->element;
-        context->element.str += context->element.len + 1;
+        kv_pair.value = context->decode.element;
+        context->decode.element.str += context->decode.element.len + 1;
 
         if ((context->error_no=check_alloc_array(context,
                         (fc_common_array_t *)
@@ -529,7 +547,17 @@ const fc_json_map_t *fc_decode_json_map(fc_json_context_t
         {
             return NULL;
         }
-        context->jmap.elements[context->jmap.count++] = kv_pair;
+
+        if (context->decode.use_mpool) {
+            key_value_pair_t *dest;
+            dest = context->jmap.elements + context->jmap.count++;
+            JSON_DECODE_COPY_STRING(context, input,
+                    &dest->key, &kv_pair.key);
+            JSON_DECODE_COPY_STRING(context, input,
+                    &dest->value, &kv_pair.value);
+        } else {
+            context->jmap.elements[context->jmap.count++] = kv_pair;
+        }
     }
 
     return &context->jmap;
