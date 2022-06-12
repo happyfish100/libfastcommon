@@ -297,6 +297,11 @@ typedef struct {
     int fd;
 } SafeWriteFileInfo;
 
+typedef struct {
+    char filename[PATH_MAX];
+    int fd;
+} FilenameFDPair;
+
 typedef void (*FreeDataFunc)(void *ptr);
 typedef int (*CompareFunc)(void *p1, void *p2);
 typedef void* (*MallocFunc)(size_t size);

@@ -776,7 +776,6 @@ int get_sysinfo(struct fast_sysinfo *info)
 		page_size = sysconf(_SC_PAGESIZE);
 		info->freeram = vm.t_free * page_size;
 		info->sharedram = vm.t_rmshr * page_size;
-		//info->bufferram = vm.   //TODO:
 	}
 #endif
 
