@@ -335,7 +335,7 @@ int getUserProcIds(const char *progName, const bool bAllOwners, \
 		if ((bAllOwners || (statbuf.st_uid == myuid)) && S_ISDIR(statbuf.st_mode))
 		{
 			sprintf(filepath, "%s/cmdline", fullpath);
-			if ((fd = open(filepath, O_RDONLY))<0)
+			if ((fd=open(filepath, O_RDONLY | O_CLOEXEC))<0)
 			{
 				continue;
 			}
@@ -734,7 +734,7 @@ int fc_get_file_line_count_ex(const char *filename,
         return ENOMEM;
     }
 
-    fd = open(filename, O_RDONLY);
+    fd = open(filename, O_RDONLY | O_CLOEXEC);
     if (fd < 0) {
         result = errno != 0 ? errno : EACCES;
         logError("file: "__FILE__", line: %d, "
@@ -1314,7 +1314,7 @@ int getFileContent(const char *filename, char **buff, int64_t *file_size)
         }
     }
 
-	fd = open(filename, O_RDONLY);
+	fd = open(filename, O_RDONLY | O_CLOEXEC);
 	if (fd < 0)
 	{
 		*buff = NULL;
@@ -1368,7 +1368,7 @@ int getFileContentEx(const char *filename, char *buff,
 		return EINVAL;
 	}
 	
-	fd = open(filename, O_RDONLY);
+	fd = open(filename, O_RDONLY | O_CLOEXEC);
 	if (fd < 0)
 	{
 		*size = 0;
@@ -1406,7 +1406,7 @@ int writeToFile(const char *filename, const char *buff, const int file_size)
 	int fd;
 	int result;
 
-	fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
 	if (fd < 0)
 	{
 		result = errno != 0 ? errno : EIO;
@@ -1480,7 +1480,7 @@ int fc_copy_file(const char *src_filename, const char *dest_filename)
     int bytes;
     char buff[16 * 1024];
 
-	src_fd = open(src_filename, O_RDONLY);
+	src_fd = open(src_filename, O_RDONLY | O_CLOEXEC);
 	if (src_fd < 0)
     {
         result = errno != 0 ? errno : ENOENT;
@@ -1490,7 +1490,8 @@ int fc_copy_file(const char *src_filename, const char *dest_filename)
         return result;
     }
 
-	dest_fd = open(dest_filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	dest_fd = open(dest_filename, O_WRONLY | O_CREAT |
+            O_TRUNC | O_CLOEXEC, 0644);
 	if (dest_fd < 0)
     {
         result = errno != 0 ? errno : EIO;

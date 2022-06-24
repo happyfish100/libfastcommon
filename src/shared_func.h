@@ -1198,7 +1198,7 @@ int fc_safe_write_file_init(SafeWriteFileInfo *fi,
 
 static inline int fc_safe_write_file_open(SafeWriteFileInfo *fi)
 {
-    const int flags = O_WRONLY | O_CREAT | O_TRUNC;
+    const int flags = O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC;
     int result;
 
     if ((fi->fd=open(fi->tmp_filename, flags, 0644)) < 0) {

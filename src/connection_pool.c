@@ -125,7 +125,7 @@ int conn_pool_connect_server_ex1(ConnectionInfo *conn,
 	}
 
     if ((conn->sock=socketCreateEx2(conn->socket_domain, conn->ip_addr,
-                    O_NONBLOCK, bind_ipaddr, &result)) < 0)
+                    O_NONBLOCK | O_CLOEXEC, bind_ipaddr, &result)) < 0)
     {
         return result;
     }
@@ -160,8 +160,8 @@ int conn_pool_async_connect_server_ex(ConnectionInfo *conn,
         close(conn->sock);
     }
 
-    if ((conn->sock=socketCreateEx2(conn->socket_domain,
-                    conn->ip_addr, O_NONBLOCK, bind_ipaddr,
+    if ((conn->sock=socketCreateEx2(conn->socket_domain, conn->ip_addr,
+                    O_NONBLOCK | O_CLOEXEC, bind_ipaddr,
                     &result)) < 0)
     {
         return result;
@@ -181,7 +181,8 @@ int conn_pool_async_connect_server_ex(ConnectionInfo *conn,
     return result;
 }
 
-static inline void  conn_pool_get_key(const ConnectionInfo *conn, char *key, int *key_len)
+static inline void  conn_pool_get_key(const ConnectionInfo *conn,
+        char *key, int *key_len)
 {
     *key_len = sprintf(key, "%s_%u", conn->ip_addr, conn->port);
 }

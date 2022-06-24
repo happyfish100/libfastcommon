@@ -127,9 +127,9 @@ static int sched_init_entries(ScheduleEntry *entries, const int count)
 
 		if (pEntry->interval <= 0)
 		{
-			logError("file: "__FILE__", line: %d, " \
-				"shedule interval %d <= 0",  \
-				__LINE__, pEntry->interval);
+			logError("file: "__FILE__", line: %d, "
+				"shedule id: %d, interval %d <= 0",
+				__LINE__, pEntry->id, pEntry->interval);
 			return EINVAL;
 		}
 

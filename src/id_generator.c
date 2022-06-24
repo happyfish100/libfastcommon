@@ -123,13 +123,14 @@ int id_generator_init_extra_ex(struct idg_context *context, const char *filename
 		mid = ntohl(ip_addr.s_addr) & ((1 << mid_bits) - 1);
 	}
 
-	if ((context->fd = open(filename, O_RDWR)) < 0)
+	if ((context->fd = open(filename, O_RDWR | O_CLOEXEC)) < 0)
 	{
         if (errno == ENOENT)
         {
             mode_t old_mode;
             old_mode = umask(0);
-            if ((context->fd=open(filename, O_RDWR | O_CREAT, mode)) < 0)
+            if ((context->fd=open(filename, O_RDWR | O_CREAT |
+                            O_CLOEXEC, mode)) < 0)
             {
 		        result = errno != 0 ? errno : EACCES;
             }

@@ -1237,8 +1237,8 @@ static PHPFileContext *fetch_file_context(const char *filename)
 
 static int fc_open_file(PHPFileContext *ctx)
 {
-	if ((ctx->fd = open(ctx->filename, O_WRONLY |
-				O_CREAT | O_APPEND, 0644)) < 0)
+	if ((ctx->fd = open(ctx->filename, O_WRONLY | O_CREAT |
+                    O_APPEND | O_CLOEXEC, 0644)) < 0)
     {
         logError("file: "__FILE__", line: %d, "
                 "open file \"%s\" to write fail, "

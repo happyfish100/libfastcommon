@@ -1476,7 +1476,8 @@ int tcprecvfile(int sock, const char *filename, const int64_t file_bytes, \
 		recv_func = tcprecvdata_ex;
 	}
 
-	write_fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	write_fd = open(filename, O_WRONLY | O_CREAT |
+            O_TRUNC | O_CLOEXEC, 0644);
 	if (write_fd < 0)
 	{
 		return errno != 0 ? errno : EACCES;
@@ -1544,7 +1545,7 @@ int tcprecvfile(int sock, const char *filename, const int64_t file_bytes, \
 					break;
 				}
 
-				read_fd = open(filename, O_RDONLY);
+				read_fd = open(filename, O_RDONLY | O_CLOEXEC);
 				if (read_fd < 0)
 				{
 					return errno != 0 ? errno : EACCES;
@@ -1627,7 +1628,8 @@ int tcprecvfile_ex(int sock, const char *filename, const int64_t file_bytes, \
 		recv_func = tcprecvdata_ex;
 	}
 
-	fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	fd = open(filename, O_WRONLY | O_CREAT |
+            O_TRUNC | O_CLOEXEC, 0644);
 	if (fd < 0)
 	{
 		return errno != 0 ? errno : EACCES;
@@ -1761,7 +1763,7 @@ int tcpsendfile_ex(int sock, const char *filename, const int64_t file_offset, \
 	int64_t remain_bytes;
 #endif
 
-	fd = open(filename, O_RDONLY);
+	fd = open(filename, O_RDONLY | O_CLOEXEC);
 	if (fd < 0)
 	{
 		*total_send_bytes = 0;
@@ -1779,7 +1781,7 @@ int tcpsendfile_ex(int sock, const char *filename, const int64_t file_offset, \
 
 	if (flags & O_NONBLOCK)
 	{
-		if (fcntl(sock, F_SETFL, flags & ~O_NONBLOCK) == -1)
+		if (fcntl(sock, F_SETFL, flags & ~O_NONBLOCK) < 0)
 		{
 			*total_send_bytes = 0;
 			return errno != 0 ? errno : EACCES;
@@ -1873,7 +1875,7 @@ int tcpsendfile_ex(int sock, const char *filename, const int64_t file_offset, \
 
 	if (flags & O_NONBLOCK)  //restore
 	{
-		if (fcntl(sock, F_SETFL, flags) == -1)
+		if (fcntl(sock, F_SETFL, flags) < 0)
 		{
 			result = errno != 0 ? errno : EACCES;
 		}
@@ -2124,7 +2126,7 @@ int tcpsetnonblockopt(int fd)
 		return errno != 0 ? errno : EACCES;
 	}
 
-	if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
+	if (fcntl(fd, F_SETFL, flags | (O_NONBLOCK | O_CLOEXEC)) < 0)
 	{
 		logError("file: "__FILE__", line: %d, " \
 			"fcntl failed, errno: %d, error info: %s.", \
