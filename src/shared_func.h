@@ -730,7 +730,7 @@ int fd_add_flags(int fd, int adding_flags);
  *  	fd: the fd to set
  *  return: error no , 0 success, != 0 fail
 */
-#define set_nonblock(fd) fd_add_flags(fd, O_NONBLOCK)
+#define set_nonblock(fd) fd_add_flags(fd, O_NONBLOCK | FD_CLOEXEC)
 
 /** set fd FD_CLOEXEC flags
  *  parameters:

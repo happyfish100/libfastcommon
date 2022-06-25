@@ -2126,7 +2126,7 @@ int tcpsetnonblockopt(int fd)
 		return errno != 0 ? errno : EACCES;
 	}
 
-	if (fcntl(fd, F_SETFL, flags | (O_NONBLOCK | O_CLOEXEC)) < 0)
+	if (fcntl(fd, F_SETFL, flags | (O_NONBLOCK | FD_CLOEXEC)) < 0)
 	{
 		logError("file: "__FILE__", line: %d, " \
 			"fcntl failed, errno: %d, error info: %s.", \
