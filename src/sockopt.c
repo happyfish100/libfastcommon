@@ -1012,6 +1012,7 @@ int socketCreateEx2(int af, const char *server_ip,
         return -1;
     }
 
+    FC_SET_CLOEXEC(sock);
     SET_SOCKOPT_NOSIGPIPE(sock);
     if (flags != 0)
     {
@@ -1402,6 +1403,7 @@ int socketServer2(int af, const char *bind_ipaddr, const int port, int *err_no)
 		return -1;
 	}
 
+    FC_SET_CLOEXEC(sock);
     SET_SOCKOPT_NOSIGPIPE(sock);
 
 	result = 1;
@@ -2126,7 +2128,7 @@ int tcpsetnonblockopt(int fd)
 		return errno != 0 ? errno : EACCES;
 	}
 
-	if (fcntl(fd, F_SETFL, flags | (O_NONBLOCK | FD_CLOEXEC)) < 0)
+	if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
 	{
 		logError("file: "__FILE__", line: %d, " \
 			"fcntl failed, errno: %d, error info: %s.", \

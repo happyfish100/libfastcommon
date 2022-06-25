@@ -41,9 +41,19 @@
     normalize_path_ex(from, filename, full_filename, size, \
             NORMALIZE_FLAGS_URL_ENABLED_AND_APPEND_PARAMS)
 
+#define FC_SET_CLOEXEC(fd) \
+    if (g_set_cloexec) fd_set_cloexec(fd)
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+    extern bool g_set_cloexec;
+
+static inline void fc_enable_fd_cloexec(const bool cloexec)
+{
+    g_set_cloexec = cloexec;
+}
 
 /** lowercase the string
  *  parameters:
@@ -730,7 +740,7 @@ int fd_add_flags(int fd, int adding_flags);
  *  	fd: the fd to set
  *  return: error no , 0 success, != 0 fail
 */
-#define set_nonblock(fd) fd_add_flags(fd, O_NONBLOCK | FD_CLOEXEC)
+#define set_nonblock(fd) fd_add_flags(fd, O_NONBLOCK)
 
 /** set fd FD_CLOEXEC flags
  *  parameters:

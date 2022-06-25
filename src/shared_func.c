@@ -45,6 +45,8 @@
 #endif
 #endif
 
+bool g_set_cloexec = false;
+
 char *formatDatetime(const time_t nTime, \
 	const char *szDateFormat, \
 	char *buff, const int buff_size)
