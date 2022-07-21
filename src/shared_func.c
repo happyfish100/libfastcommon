@@ -3712,9 +3712,11 @@ int fc_get_first_line(const char *filename, char *buff,
 
     read_bytes = buff_size - 1;
     if ((result=getFileContentEx(filename, buff, 0, &read_bytes)) != 0) {
+        line->len = 0;
         return result;
     }
     if (read_bytes == 0) {
+        line->len = 0;
         return ENOENT;
     }
 
@@ -3724,11 +3726,60 @@ int fc_get_first_line(const char *filename, char *buff,
                 "file: %s, line no: 1, "
                 "expect new line char \"\\n\"",
                 __LINE__, filename);
+        line->len = 0;
         return EINVAL;
     }
     line->str = buff;
     line->len = line_end - buff + 1;
     return 0;
+}
+
+int fc_get_first_lines(const char *filename, char *buff,
+        const int buff_size, string_t *lines, int *count)
+{
+    int result;
+    int target_count;
+    int64_t read_bytes;
+    char *p;
+    char *end;
+    char *line_end;
+
+    if (*count <= 0) {
+        lines->len = 0;
+        return EINVAL;
+    }
+
+    read_bytes = buff_size - 1;
+    if ((result=getFileContentEx(filename, buff, 0, &read_bytes)) != 0) {
+        *count = 0;
+        lines->len = 0;
+        return result;
+    }
+    if (read_bytes == 0) {
+        *count = 0;
+        lines->len = 0;
+        return ENOENT;
+    }
+
+    target_count = *count;
+    *count = 0;
+    p = buff;
+    end = buff + read_bytes;
+    while (p < end) {
+        line_end = (char *)memchr(p, '\n', end - p);
+        if (line_end == NULL) {
+            break;
+        }
+
+        p = line_end + 1;
+        if (++(*count) == target_count) {
+            break;
+        }
+    }
+
+    lines->str = buff;
+    lines->len = p - buff;
+    return (*count > 0 ? 0 : ENOENT);
 }
 
 int fc_get_last_line(const char *filename, char *buff,
@@ -3739,10 +3790,12 @@ int fc_get_last_line(const char *filename, char *buff,
     int result;
 
     if ((result=getFileSize(filename, file_size)) != 0) {
+        line->len = 0;
         return result;
     }
 
     if (*file_size == 0) {
+        line->len = 0;
         return ENOENT;
     }
 
@@ -3755,9 +3808,11 @@ int fc_get_last_line(const char *filename, char *buff,
     if ((result=getFileContentEx(filename, buff,
                     offset, &read_bytes)) != 0)
     {
+        line->len = 0;
         return result;
     }
     if (read_bytes == 0) {
+        line->len = 0;
         return ENOENT;
     }
 
@@ -3782,16 +3837,19 @@ int fc_get_last_lines(const char *filename, char *buff,
     int result;
 
     if (*count <= 0) {
+        lines->len = 0;
         return EINVAL;
     }
 
     if ((result=getFileSize(filename, &file_size)) != 0) {
         *count = 0;
+        lines->len = 0;
         return result;
     }
 
     if (file_size == 0) {
         *count = 0;
+        lines->len = 0;
         return ENOENT;
     }
 
@@ -3804,10 +3862,13 @@ int fc_get_last_lines(const char *filename, char *buff,
     if ((result=getFileContentEx(filename, buff,
                     offset, &read_bytes)) != 0)
     {
+        *count = 0;
+        lines->len = 0;
         return result;
     }
     if (read_bytes == 0) {
         *count = 0;
+        lines->len = 0;
         return ENOENT;
     }
 
