@@ -45,6 +45,8 @@
 #endif
 #endif
 
+bool g_set_cloexec = false;
+
 char *formatDatetime(const time_t nTime, \
 	const char *szDateFormat, \
 	char *buff, const int buff_size)
@@ -335,7 +337,7 @@ int getUserProcIds(const char *progName, const bool bAllOwners, \
 		if ((bAllOwners || (statbuf.st_uid == myuid)) && S_ISDIR(statbuf.st_mode))
 		{
 			sprintf(filepath, "%s/cmdline", fullpath);
-			if ((fd = open(filepath, O_RDONLY))<0)
+			if ((fd=open(filepath, O_RDONLY | O_CLOEXEC))<0)
 			{
 				continue;
 			}
@@ -734,7 +736,7 @@ int fc_get_file_line_count_ex(const char *filename,
         return ENOMEM;
     }
 
-    fd = open(filename, O_RDONLY);
+    fd = open(filename, O_RDONLY | O_CLOEXEC);
     if (fd < 0) {
         result = errno != 0 ? errno : EACCES;
         logError("file: "__FILE__", line: %d, "
@@ -1314,7 +1316,7 @@ int getFileContent(const char *filename, char **buff, int64_t *file_size)
         }
     }
 
-	fd = open(filename, O_RDONLY);
+	fd = open(filename, O_RDONLY | O_CLOEXEC);
 	if (fd < 0)
 	{
 		*buff = NULL;
@@ -1368,7 +1370,7 @@ int getFileContentEx(const char *filename, char *buff,
 		return EINVAL;
 	}
 	
-	fd = open(filename, O_RDONLY);
+	fd = open(filename, O_RDONLY | O_CLOEXEC);
 	if (fd < 0)
 	{
 		*size = 0;
@@ -1406,7 +1408,7 @@ int writeToFile(const char *filename, const char *buff, const int file_size)
 	int fd;
 	int result;
 
-	fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
 	if (fd < 0)
 	{
 		result = errno != 0 ? errno : EIO;
@@ -1480,7 +1482,7 @@ int fc_copy_file(const char *src_filename, const char *dest_filename)
     int bytes;
     char buff[16 * 1024];
 
-	src_fd = open(src_filename, O_RDONLY);
+	src_fd = open(src_filename, O_RDONLY | O_CLOEXEC);
 	if (src_fd < 0)
     {
         result = errno != 0 ? errno : ENOENT;
@@ -1490,7 +1492,8 @@ int fc_copy_file(const char *src_filename, const char *dest_filename)
         return result;
     }
 
-	dest_fd = open(dest_filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	dest_fd = open(dest_filename, O_WRONLY | O_CREAT |
+            O_TRUNC | O_CLOEXEC, 0644);
 	if (dest_fd < 0)
     {
         result = errno != 0 ? errno : EIO;
@@ -3709,9 +3712,11 @@ int fc_get_first_line(const char *filename, char *buff,
 
     read_bytes = buff_size - 1;
     if ((result=getFileContentEx(filename, buff, 0, &read_bytes)) != 0) {
+        line->len = 0;
         return result;
     }
     if (read_bytes == 0) {
+        line->len = 0;
         return ENOENT;
     }
 
@@ -3721,11 +3726,60 @@ int fc_get_first_line(const char *filename, char *buff,
                 "file: %s, line no: 1, "
                 "expect new line char \"\\n\"",
                 __LINE__, filename);
+        line->len = 0;
         return EINVAL;
     }
     line->str = buff;
     line->len = line_end - buff + 1;
     return 0;
+}
+
+int fc_get_first_lines(const char *filename, char *buff,
+        const int buff_size, string_t *lines, int *count)
+{
+    int result;
+    int target_count;
+    int64_t read_bytes;
+    char *p;
+    char *end;
+    char *line_end;
+
+    if (*count <= 0) {
+        lines->len = 0;
+        return EINVAL;
+    }
+
+    read_bytes = buff_size - 1;
+    if ((result=getFileContentEx(filename, buff, 0, &read_bytes)) != 0) {
+        *count = 0;
+        lines->len = 0;
+        return result;
+    }
+    if (read_bytes == 0) {
+        *count = 0;
+        lines->len = 0;
+        return ENOENT;
+    }
+
+    target_count = *count;
+    *count = 0;
+    p = buff;
+    end = buff + read_bytes;
+    while (p < end) {
+        line_end = (char *)memchr(p, '\n', end - p);
+        if (line_end == NULL) {
+            break;
+        }
+
+        p = line_end + 1;
+        if (++(*count) == target_count) {
+            break;
+        }
+    }
+
+    lines->str = buff;
+    lines->len = p - buff;
+    return (*count > 0 ? 0 : ENOENT);
 }
 
 int fc_get_last_line(const char *filename, char *buff,
@@ -3736,10 +3790,12 @@ int fc_get_last_line(const char *filename, char *buff,
     int result;
 
     if ((result=getFileSize(filename, file_size)) != 0) {
+        line->len = 0;
         return result;
     }
 
     if (*file_size == 0) {
+        line->len = 0;
         return ENOENT;
     }
 
@@ -3752,9 +3808,11 @@ int fc_get_last_line(const char *filename, char *buff,
     if ((result=getFileContentEx(filename, buff,
                     offset, &read_bytes)) != 0)
     {
+        line->len = 0;
         return result;
     }
     if (read_bytes == 0) {
+        line->len = 0;
         return ENOENT;
     }
 
@@ -3779,16 +3837,19 @@ int fc_get_last_lines(const char *filename, char *buff,
     int result;
 
     if (*count <= 0) {
+        lines->len = 0;
         return EINVAL;
     }
 
     if ((result=getFileSize(filename, &file_size)) != 0) {
         *count = 0;
+        lines->len = 0;
         return result;
     }
 
     if (file_size == 0) {
         *count = 0;
+        lines->len = 0;
         return ENOENT;
     }
 
@@ -3801,10 +3862,13 @@ int fc_get_last_lines(const char *filename, char *buff,
     if ((result=getFileContentEx(filename, buff,
                     offset, &read_bytes)) != 0)
     {
+        *count = 0;
+        lines->len = 0;
         return result;
     }
     if (read_bytes == 0) {
         *count = 0;
+        lines->len = 0;
         return ENOENT;
     }
 

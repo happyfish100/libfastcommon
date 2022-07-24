@@ -41,9 +41,19 @@
     normalize_path_ex(from, filename, full_filename, size, \
             NORMALIZE_FLAGS_URL_ENABLED_AND_APPEND_PARAMS)
 
+#define FC_SET_CLOEXEC(fd) \
+    if (g_set_cloexec) fd_set_cloexec(fd)
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+    extern bool g_set_cloexec;
+
+static inline void fc_enable_fd_cloexec(const bool cloexec)
+{
+    g_set_cloexec = cloexec;
+}
 
 /** lowercase the string
  *  parameters:
@@ -1146,6 +1156,9 @@ int fc_copy_to_path(const char *src_filename, const char *dest_path);
 int fc_get_first_line(const char *filename, char *buff,
         const int buff_size, string_t *line);
 
+int fc_get_first_lines(const char *filename, char *buff,
+        const int buff_size, string_t *lines, int *count);
+
 int fc_get_last_line(const char *filename, char *buff,
         const int buff_size, int64_t *file_size, string_t *line);
 
@@ -1198,7 +1211,7 @@ int fc_safe_write_file_init(SafeWriteFileInfo *fi,
 
 static inline int fc_safe_write_file_open(SafeWriteFileInfo *fi)
 {
-    const int flags = O_WRONLY | O_CREAT | O_TRUNC;
+    const int flags = O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC;
     int result;
 
     if ((fi->fd=open(fi->tmp_filename, flags, 0644)) < 0) {

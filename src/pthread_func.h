@@ -114,9 +114,9 @@ static inline void fc_timedwait_sec(pthread_mutex_t *lock,
 {
     struct timespec ts;
 
-    PTHREAD_MUTEX_LOCK(lock);
     ts.tv_sec = get_current_time() + timeout;
     ts.tv_nsec = 0;
+    PTHREAD_MUTEX_LOCK(lock);
     pthread_cond_timedwait(cond, lock, &ts);
     PTHREAD_MUTEX_UNLOCK(lock);
 }
@@ -128,9 +128,9 @@ static inline void fc_timedwait_ms(pthread_mutex_t *lock,
     struct timespec ts;
 
     expires_ms = get_current_time_ms() + timeout_ms;
-    PTHREAD_MUTEX_LOCK(lock);
     ts.tv_sec =  expires_ms / 1000;
     ts.tv_nsec = (expires_ms % 1000) * (1000 * 1000);
+    PTHREAD_MUTEX_LOCK(lock);
     pthread_cond_timedwait(cond, lock, &ts);
     PTHREAD_MUTEX_UNLOCK(lock);
 }

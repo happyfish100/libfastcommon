@@ -49,7 +49,8 @@ int buffered_file_writer_open_ex(BufferedFileWriter *writer,
     }
 
     snprintf(writer->filename, sizeof(writer->filename), "%s", filename);
-    writer->fd = open(writer->filename, O_WRONLY | O_CREAT | O_TRUNC, mode);
+    writer->fd = open(writer->filename, O_WRONLY |
+            O_CREAT | O_TRUNC | O_CLOEXEC, mode);
     if (writer->fd < 0)
     {
         result = errno != 0 ? errno : EIO;

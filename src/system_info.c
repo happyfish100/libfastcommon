@@ -843,7 +843,7 @@ int get_device_block_size(const char *device, int *block_size)
     int fd;
     size_t bs;
 
-    if ((fd=open(device, O_RDONLY)) < 0) {
+    if ((fd=open(device, O_RDONLY | O_CLOEXEC)) < 0) {
         result = errno != 0 ? errno : ENOENT;
         logError("file: "__FILE__", line: %d, "
                 "open device %s fail, errno: %d, error info: %s",
@@ -885,7 +885,9 @@ static int get_block_size_by_write(const char *path, int *block_size)
 
     snprintf(tmp_filename, sizeof(tmp_filename),
             "%s/.blksize-test.tmp", path);
-    if ((fd=open(tmp_filename, O_WRONLY | O_CREAT | O_DIRECT, 0755)) < 0) {
+    if ((fd=open(tmp_filename, O_WRONLY | O_CREAT |
+                    O_DIRECT | O_CLOEXEC, 0755)) < 0)
+    {
         result = errno != 0 ? errno : ENOENT;
         logError("file: "__FILE__", line: %d, "
                 "open file %s fail, errno: %d, error info: %s",

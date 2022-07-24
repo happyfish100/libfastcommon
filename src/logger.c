@@ -158,8 +158,8 @@ static int log_print_header(LogContext *pContext)
 static int log_open(LogContext *pContext)
 {
     int result;
-	if ((pContext->log_fd = open(pContext->log_filename, O_WRONLY | \
-				O_CREAT | O_APPEND | pContext->fd_flags, 0644)) < 0)
+	if ((pContext->log_fd = open(pContext->log_filename, O_WRONLY | O_CREAT |
+                    O_APPEND | O_CLOEXEC | pContext->fd_flags, 0644)) < 0)
 	{
 		fprintf(stderr, "open log file \"%s\" to write fail, " \
 			"errno: %d, error info: %s\n", \
