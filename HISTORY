@@ -1,4 +1,7 @@
 
+Version 1.60  2022-08-19
+  * normalize_path for base_path
+
 Version 1.59  2022-07-21
   * open file with flag O_CLOEXEC
   * add global var g_set_cloexec and macro FC_SET_CLOEXEC

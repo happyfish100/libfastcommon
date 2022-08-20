@@ -294,7 +294,7 @@ int get_base_path_from_conf_file(const char *filename, char *base_path,
 	do
 	{
 		pBasePath = iniGetStrValue(NULL, "base_path", &iniContext);
-		if (pBasePath == NULL)
+		if (pBasePath == NULL || *pBasePath == '\0')
 		{
 			logError("file: "__FILE__", line: %d, " \
 				"conf file \"%s\" must have item " \
@@ -303,7 +303,7 @@ int get_base_path_from_conf_file(const char *filename, char *base_path,
 			break;
 		}
 
-		snprintf(base_path, path_size, "%s", pBasePath);
+        normalize_path(NULL, pBasePath, base_path, path_size);
 		chopPath(base_path);
 		if (!fileExists(base_path))
 		{
