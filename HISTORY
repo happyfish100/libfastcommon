@@ -1,6 +1,7 @@
 
-Version 1.60  2022-08-19
+Version 1.60  2022-08-25
   * normalize_path for base_path
+  * struct fast_task_info add field recv_body for dynamic recv buffer
 
 Version 1.59  2022-07-21
   * open file with flag O_CLOEXEC
