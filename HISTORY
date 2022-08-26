@@ -1,7 +1,8 @@
 
-Version 1.60  2022-08-25
+Version 1.60  2022-08-26
   * normalize_path for base_path
   * struct fast_task_info add field recv_body for dynamic recv buffer
+  * add functions: iniGetDoubleCorrectValueEx and iniGetPercentCorrectValueEx
 
 Version 1.59  2022-07-21
   * open file with flag O_CLOEXEC

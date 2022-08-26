@@ -159,6 +159,16 @@ extern "C" {
     iniGetByteCorrectValueEx(ini_ctx, item_name, \
             default_value, 1, min_value, max_value, false)
 
+#define iniGetDoubleCorrectValue(ini_ctx, item_name, \
+        default_value, min_value, max_value)       \
+    iniGetDoubleCorrectValueEx(ini_ctx, item_name, \
+            default_value, 1, min_value, max_value, false)
+
+#define iniGetPercentCorrectValue(ini_ctx, item_name,    \
+        item_value, default_value, min_value, max_value) \
+    iniGetPercentCorrectValueEx(ini_ctx, item_name, item_value, \
+        default_value, min_value, max_value, false)
+
 int iniSetAnnotationCallBack(AnnotationEntry *annotations, int count);
 void iniDestroyAnnotationCallBack();
 
@@ -288,7 +298,7 @@ int iniGetIntValueEx(const char *szSectionName,
         const char *szItemName, IniContext *pContext,
         const int nDefaultValue, const bool bRetryGlobal);
 
-/** check and correct item value
+/** check and correct int value
  *  parameters:
  *           pIniContext: the full ini context
  *           szItemName:  the item name
@@ -300,6 +310,32 @@ int iniGetIntValueEx(const char *szSectionName,
 int64_t iniCheckAndCorrectIntValue(IniFullContext *pIniContext,
         const char *szItemName, const int64_t nValue,
         const int64_t nMinValue, const int64_t nMaxValue);
+
+/** check and correct double value
+ *  parameters:
+ *           pIniContext: the full ini context
+ *           szItemName:  the item name
+ *           dValue: the item value
+ *           dMinValue: the min value to check (including)
+ *           dMaxValue: the max value to check (including)
+ *  return: corrected value
+*/
+double iniCheckAndCorrectDoubleValue(IniFullContext *pIniContext,
+        const char *szItemName, const double dValue,
+        const double dMinValue, const double dMaxValue);
+
+/** check and correct double value (show as percentage)
+ *  parameters:
+ *           pIniContext: the full ini context
+ *           szItemName:  the item name
+ *           dValue: the item value
+ *           dMinValue: the min value to check (including)
+ *           dMaxValue: the max value to check (including)
+ *  return: corrected value
+*/
+double iniCheckAndCorrectPercentValue(IniFullContext *pIniContext,
+        const char *szItemName, const double dValue,
+        const double dMinValue, const double dMaxValue);
 
 /** get item correct value (32 bits integer)
  *  parameters:
@@ -416,6 +452,20 @@ double iniGetDoubleValueEx(const char *szSectionName,
         const char *szItemName, IniContext *pContext,
         const double dbDefaultValue, const bool bRetryGlobal);
 
+/** get item correct double value
+ *  parameters:
+ *           pIniContext: the full ini context
+ *           szItemName:  the item name
+ *           dbDefaultValue: the default value
+ *           dbMinValue: the min value to check (including)
+ *           dbMaxValue: the max value to check (including)
+ *           bRetryGlobal: if fetch from global section when the item not exist
+ *  return: double value, return dbDefaultValue when the item not exist
+*/
+double iniGetDoubleCorrectValueEx(IniFullContext *pIniContext,
+        const char *szItemName, const double dbDefaultValue,
+        const double dbMinValue, const double dbMaxValue,
+        const bool bRetryGlobal);
 
 /** get item percent double value
  *  parameters:
@@ -429,6 +479,22 @@ double iniGetDoubleValueEx(const char *szSectionName,
 int iniGetPercentValueEx(IniFullContext *ini_ctx,
         const char *item_name, double *item_value,
         const double default_value, const bool retry_global);
+
+/** get item correct double value (show as percentage)
+ *  parameters:
+ *           pIniContext: the full ini context
+ *           szItemName:  the item name
+ *           dbItemValue: store the item value
+ *           dbDefaultValue: the default value
+ *           dbMinValue: the min value to check (including)
+ *           dbMaxValue: the max value to check (including)
+ *           bRetryGlobal: if fetch from global section when the item not exist
+ *  return: error no, 0 for success, != 0 for fail
+*/
+int iniGetPercentCorrectValueEx(IniFullContext *pIniContext,
+        const char *szItemName, double *dbItemValue,
+        const double dbDefaultValue, const double dbMinValue,
+        const double dbMaxValue, const bool bRetryGlobal);
 
 /** print all items
  *  parameters:

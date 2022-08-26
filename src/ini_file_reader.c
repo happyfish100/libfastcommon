@@ -2921,6 +2921,64 @@ int64_t iniCheckAndCorrectIntValue(IniFullContext *pIniContext,
     return nValue;
 }
 
+double iniCheckAndCorrectDoubleValue(IniFullContext *pIniContext,
+        const char *szItemName, const double dValue,
+        const double dMinValue, const double dMaxValue)
+{
+    char section_prompt[128];
+    if (dValue < dMinValue) {
+        INI_FILL_SECTION_PROMPT(section_prompt, sizeof(section_prompt),
+                pIniContext->section_name);
+        logWarning("file: "__FILE__", line: %d, "
+                "config file: %s, %sitem name: %s, item value: %.2f"
+                " < min value: %.2f, set to min value: %.2f",
+                __LINE__, pIniContext->filename, section_prompt,
+                szItemName, dValue, dMinValue, dMinValue);
+
+        return dMinValue;
+    } else if (dValue > dMaxValue) {
+        INI_FILL_SECTION_PROMPT(section_prompt, sizeof(section_prompt),
+                pIniContext->section_name);
+        logWarning("file: "__FILE__", line: %d, "
+                "config file: %s, %sitem name: %s, item value: %.2f"
+                " > max value: %.2f, set to max value: %.2f",
+                __LINE__, pIniContext->filename, section_prompt,
+                szItemName, dValue, dMaxValue, dMaxValue);
+        return dMaxValue;
+    }
+
+    return dValue;
+}
+
+double iniCheckAndCorrectPercentValue(IniFullContext *pIniContext,
+        const char *szItemName, const double dValue,
+        const double dMinValue, const double dMaxValue)
+{
+    char section_prompt[128];
+    if (dValue < dMinValue) {
+        INI_FILL_SECTION_PROMPT(section_prompt, sizeof(section_prompt),
+                pIniContext->section_name);
+        logWarning("file: "__FILE__", line: %d, "
+                "config file: %s, %sitem name: %s, item value: %.2f%%"
+                " < min value: %.2f%%, set to min value: %.2f%%",
+                __LINE__, pIniContext->filename, section_prompt,
+                szItemName, dValue * 100, dMinValue * 100, dMinValue * 100);
+
+        return dMinValue;
+    } else if (dValue > dMaxValue) {
+        INI_FILL_SECTION_PROMPT(section_prompt, sizeof(section_prompt),
+                pIniContext->section_name);
+        logWarning("file: "__FILE__", line: %d, "
+                "config file: %s, %sitem name: %s, item value: %.2f%%"
+                " > max value: %.2f%%, set to max value: %.2f%%",
+                __LINE__, pIniContext->filename, section_prompt,
+                szItemName, dValue * 100, dMaxValue * 100, dMaxValue * 100);
+        return dMaxValue;
+    }
+
+    return dValue;
+}
+
 int64_t iniGetInt64ValueEx(const char *szSectionName,
         const char *szItemName, IniContext *pContext,
         const int64_t nDefaultValue, const bool bRetryGlobal)
@@ -2950,6 +3008,36 @@ int64_t iniGetInt64CorrectValueEx(IniFullContext *pIniContext,
             pIniContext->context, nDefaultValue, bRetryGlobal);
     return iniCheckAndCorrectIntValue(pIniContext, szItemName,
             value, nMinValue, nMaxValue);
+}
+
+double iniGetDoubleCorrectValueEx(IniFullContext *pIniContext,
+        const char *szItemName, const double dbDefaultValue,
+        const double dbMinValue, const double dbMaxValue,
+        const bool bRetryGlobal)
+{
+    double value;
+
+    value = iniGetDoubleValueEx(pIniContext->section_name, szItemName,
+            pIniContext->context, dbDefaultValue, bRetryGlobal);
+    return iniCheckAndCorrectDoubleValue(pIniContext, szItemName,
+            value, dbMinValue, dbMaxValue);
+}
+
+int iniGetPercentCorrectValueEx(IniFullContext *pIniContext,
+        const char *szItemName, double *dbItemValue,
+        const double dbDefaultValue, const double dbMinValue,
+        const double dbMaxValue, const bool bRetryGlobal)
+{
+    int result;
+
+    if ((result=iniGetPercentValueEx(pIniContext, szItemName, dbItemValue,
+                    dbDefaultValue, bRetryGlobal)) == 0)
+    {
+        *dbItemValue = iniCheckAndCorrectPercentValue(pIniContext,
+                szItemName, *dbItemValue, dbMinValue, dbMaxValue);
+    }
+
+    return result;
 }
 
 int64_t iniGetByteValueEx(const char *szSectionName,
