@@ -142,7 +142,8 @@ static int allocator_array_check_capacity(struct fast_allocator_context *acontex
 }
 
 static int region_init(struct fast_allocator_context *acontext,
-        const char *mblock_name_prefix, struct fast_region_info *region)
+        const char *mblock_name_prefix, struct fast_mblock_object_callbacks
+        *object_callbacks, struct fast_region_info *region)
 {
     const int64_t alloc_elements_limit = 0;
 	int result;
@@ -198,8 +199,8 @@ static int region_init(struct fast_allocator_context *acontext,
 
         trunk_callbacks.args = acontext;
 		result = fast_mblock_init_ex2(&allocator->mblock, name, element_size,
-                region->alloc_elements_once, alloc_elements_limit, NULL,
-                acontext->need_lock, &trunk_callbacks);
+                region->alloc_elements_once, alloc_elements_limit,
+                object_callbacks, acontext->need_lock, &trunk_callbacks);
 		if (result != 0)
 		{
 			break;
@@ -229,7 +230,8 @@ static void region_destroy(struct fast_allocator_context *acontext,
 }
 
 int fast_allocator_init_ex(struct fast_allocator_context *acontext,
-        const char *mblock_name_prefix, struct fast_region_info *regions,
+        const char *mblock_name_prefix, struct fast_mblock_object_callbacks
+        *object_callbacks, struct fast_region_info *regions,
         const int region_count, const int64_t alloc_bytes_limit,
         const double expect_usage_ratio, const int reclaim_interval,
         const bool need_lock)
@@ -327,7 +329,8 @@ int fast_allocator_init_ex(struct fast_allocator_context *acontext,
         }
 		previous_end = pRegion->end;
 
-		if ((result=region_init(acontext, mblock_name_prefix, pRegion)) != 0)
+		if ((result=region_init(acontext, mblock_name_prefix,
+                        object_callbacks, pRegion)) != 0)
 		{
 			break;
 		}
@@ -366,7 +369,7 @@ int fast_allocator_init(struct fast_allocator_context *acontext,
     FAST_ALLOCATOR_INIT_REGION(regions[3],  4096, 16384,  256,   64);
     FAST_ALLOCATOR_INIT_REGION(regions[4], 16384, 65536, 1024,   16);
 
-    return fast_allocator_init_ex(acontext, mblock_name_prefix, regions,
+    return fast_allocator_init_ex(acontext, mblock_name_prefix, NULL, regions,
             DEFAULT_REGION_COUNT, alloc_bytes_limit, expect_usage_ratio,
             reclaim_interval, need_lock);
 }
@@ -467,6 +470,7 @@ void *fast_allocator_alloc(struct fast_allocator_context *acontext,
 	int64_t total_reclaim_bytes;
 	struct fast_allocator_info *allocator_info;
 	void *ptr;
+	void *obj;
 
 	if (bytes < 0)
 	{
@@ -499,6 +503,7 @@ void *fast_allocator_alloc(struct fast_allocator_context *acontext,
 				return NULL;
 			}
 		}
+        obj = (char *)ptr + sizeof(struct allocator_wrapper);
 	}
 	else
 	{
@@ -512,28 +517,40 @@ void *fast_allocator_alloc(struct fast_allocator_context *acontext,
 			return NULL;
 		}
 		fast_allocator_malloc_trunk_notify_func(alloc_bytes, acontext);
+
+        obj = (char *)ptr + sizeof(struct allocator_wrapper);
+        if (acontext->allocator_array.allocators[0]->mblock.
+                object_callbacks.init_func != NULL)
+        {
+            struct fast_mblock_man *mblock;
+            mblock = &acontext->allocator_array.allocators[0]->mblock;
+            mblock->object_callbacks.init_func(obj,
+                    mblock->object_callbacks.args);
+        }
 	}
 
-	((struct allocator_wrapper *)ptr)->allocator_index = allocator_info->index;
-	((struct allocator_wrapper *)ptr)->magic_number = allocator_info->magic_number;
+	((struct allocator_wrapper *)ptr)->allocator_index =
+        allocator_info->index;
+	((struct allocator_wrapper *)ptr)->magic_number =
+        allocator_info->magic_number;
 	((struct allocator_wrapper *)ptr)->alloc_bytes = alloc_bytes;
-
 	__sync_add_and_fetch(&acontext->alloc_bytes, alloc_bytes);
-	return (char *)ptr + sizeof(struct allocator_wrapper);
+	return obj;
 }
 
-void fast_allocator_free(struct fast_allocator_context *acontext, void *ptr)
+void fast_allocator_free(struct fast_allocator_context *acontext, void *obj)
 {
 	struct allocator_wrapper *pWrapper;
 	struct fast_allocator_info *allocator_info;
-	void *obj;
-	if (ptr == NULL)
+	void *ptr;
+
+	if (obj == NULL)
 	{
 		return;
 	}
 
-	obj = (char *)ptr - sizeof(struct allocator_wrapper);
-	pWrapper = (struct allocator_wrapper *)obj;
+	ptr = (char *)obj - sizeof(struct allocator_wrapper);
+	pWrapper = (struct allocator_wrapper *)ptr;
 	if (pWrapper->allocator_index < 0 || pWrapper->allocator_index >=
 		acontext->allocator_array.count)
 	{
@@ -559,13 +576,22 @@ void fast_allocator_free(struct fast_allocator_context *acontext, void *ptr)
 	pWrapper->magic_number = 0;
 	if (allocator_info->pooled)
 	{
-		fast_mblock_free_object(&allocator_info->mblock, obj);
+		fast_mblock_free_object(&allocator_info->mblock, ptr);
 	}
 	else
     {
         fast_allocator_malloc_trunk_notify_func(-1 *
                 pWrapper->alloc_bytes, acontext);
-        free(obj);
+
+        if (acontext->allocator_array.allocators[0]->mblock.
+                object_callbacks.destroy_func != NULL)
+        {
+            struct fast_mblock_man *mblock;
+            mblock = &acontext->allocator_array.allocators[0]->mblock;
+            mblock->object_callbacks.destroy_func(obj,
+                    mblock->object_callbacks.args);
+        }
+        free(ptr);
     }
 }
 

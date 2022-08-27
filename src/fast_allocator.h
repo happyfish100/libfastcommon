@@ -100,16 +100,19 @@ int fast_allocator_init(struct fast_allocator_context *acontext,
 allocator init
 parameters:
 	acontext: the context pointer
+    mblock_name_prefix: name prefix of object alloctors
+    object_callbacks: object init and destroy callbacks
 	regions: the region array
 	region_count: the region count
-        alloc_bytes_limit: the alloc limit, 0 for no limit
+    alloc_bytes_limit: the alloc limit, 0 for no limit
 	expect_usage_ratio: the trunk usage ratio
 	reclaim_interval: reclaim interval in second, < 0 for never reclaim
 	need_lock: if need lock
 return error no, 0 for success, != 0 fail
 */
 int fast_allocator_init_ex(struct fast_allocator_context *acontext,
-        const char *mblock_name_prefix, struct fast_region_info *regions,
+        const char *mblock_name_prefix, struct fast_mblock_object_callbacks
+        *object_callbacks, struct fast_region_info *regions,
         const int region_count, const int64_t alloc_bytes_limit,
         const double expect_usage_ratio, const int reclaim_interval,
         const bool need_lock);
@@ -135,10 +138,10 @@ void* fast_allocator_alloc(struct fast_allocator_context *acontext,
 free a node (put a node to the context)
 parameters:
 	acontext: the context pointer
-	ptr: the pointer to free
+	obj: the object ptr to free
 return none
 */
-void fast_allocator_free(struct fast_allocator_context *acontext, void *ptr);
+void fast_allocator_free(struct fast_allocator_context *acontext, void *obj);
 
 /**
 retry reclaim free trunks

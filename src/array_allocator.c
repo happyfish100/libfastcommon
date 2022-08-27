@@ -47,8 +47,8 @@ int array_allocator_init_ex(ArrayAllocatorContext *ctx,
     }
 
     snprintf(name, sizeof(name), "%s-array", name_prefix);
-    return fast_allocator_init_ex(&ctx->allocator,
-            name, regions, region - regions, 0,
+    return fast_allocator_init_ex(&ctx->allocator, name,
+            NULL, regions, region - regions, 0,
             0.9999, reclaim_interval, need_lock);
 }
 
