@@ -60,6 +60,7 @@ struct fast_allocator_context
 {
 	struct fast_region_info *regions;
 	int region_count;
+    int extra_size;
 
 	struct fast_allocator_array allocator_array;
 
@@ -101,6 +102,7 @@ allocator init
 parameters:
 	acontext: the context pointer
     mblock_name_prefix: name prefix of object alloctors
+    obj_size: element size of object as sizeof(obj)
     object_callbacks: object init and destroy callbacks
 	regions: the region array
 	region_count: the region count
@@ -111,11 +113,11 @@ parameters:
 return error no, 0 for success, != 0 fail
 */
 int fast_allocator_init_ex(struct fast_allocator_context *acontext,
-        const char *mblock_name_prefix, struct fast_mblock_object_callbacks
-        *object_callbacks, struct fast_region_info *regions,
-        const int region_count, const int64_t alloc_bytes_limit,
-        const double expect_usage_ratio, const int reclaim_interval,
-        const bool need_lock);
+        const char *mblock_name_prefix, const int obj_size,
+        struct fast_mblock_object_callbacks *object_callbacks,
+        struct fast_region_info *regions, const int region_count,
+        const int64_t alloc_bytes_limit, const double expect_usage_ratio,
+        const int reclaim_interval, const bool need_lock);
 
 /**
 allocator destroy

@@ -171,11 +171,11 @@ static int region_init(struct fast_allocator_context *acontext,
 
     if (region->count == 1) {
         if (region->start == 0) {
-            region->step += sizeof(struct allocator_wrapper);
+            region->step += acontext->extra_size;
         } else {
-            region->start += sizeof(struct allocator_wrapper);
+            region->start += acontext->extra_size;
         }
-        region->end += sizeof(struct allocator_wrapper);
+        region->end += acontext->extra_size;
     }
 
     trunk_callbacks.check_func = fast_allocator_malloc_trunk_check;
@@ -230,11 +230,11 @@ static void region_destroy(struct fast_allocator_context *acontext,
 }
 
 int fast_allocator_init_ex(struct fast_allocator_context *acontext,
-        const char *mblock_name_prefix, struct fast_mblock_object_callbacks
-        *object_callbacks, struct fast_region_info *regions,
-        const int region_count, const int64_t alloc_bytes_limit,
-        const double expect_usage_ratio, const int reclaim_interval,
-        const bool need_lock)
+        const char *mblock_name_prefix, const int obj_size,
+        struct fast_mblock_object_callbacks *object_callbacks,
+        struct fast_region_info *regions, const int region_count,
+        const int64_t alloc_bytes_limit, const double expect_usage_ratio,
+        const int reclaim_interval, const bool need_lock)
 {
 	int result;
 	int bytes;
@@ -269,6 +269,7 @@ int fast_allocator_init_ex(struct fast_allocator_context *acontext,
 	acontext->allocator_array.malloc_bytes_limit = alloc_bytes_limit /
 		acontext->allocator_array.expect_usage_ratio;
 	acontext->allocator_array.reclaim_interval = reclaim_interval;
+	acontext->extra_size = sizeof(struct allocator_wrapper) + obj_size;
 	acontext->need_lock = need_lock;
 	result = 0;
 	previous_end = 0;
@@ -361,6 +362,7 @@ int fast_allocator_init(struct fast_allocator_context *acontext,
 {
 #define DEFAULT_REGION_COUNT 5
 
+    const int obj_size = 0;
     struct fast_region_info regions[DEFAULT_REGION_COUNT];
 
     FAST_ALLOCATOR_INIT_REGION(regions[0],     0,   256,    8, 4096);
@@ -369,9 +371,9 @@ int fast_allocator_init(struct fast_allocator_context *acontext,
     FAST_ALLOCATOR_INIT_REGION(regions[3],  4096, 16384,  256,   64);
     FAST_ALLOCATOR_INIT_REGION(regions[4], 16384, 65536, 1024,   16);
 
-    return fast_allocator_init_ex(acontext, mblock_name_prefix, NULL, regions,
-            DEFAULT_REGION_COUNT, alloc_bytes_limit, expect_usage_ratio,
-            reclaim_interval, need_lock);
+    return fast_allocator_init_ex(acontext, mblock_name_prefix, obj_size,
+            NULL, regions, DEFAULT_REGION_COUNT, alloc_bytes_limit,
+            expect_usage_ratio, reclaim_interval, need_lock);
 }
 
 void fast_allocator_destroy(struct fast_allocator_context *acontext)
@@ -477,7 +479,7 @@ void *fast_allocator_alloc(struct fast_allocator_context *acontext,
 		return NULL;
 	}
 
-	alloc_bytes = sizeof(struct allocator_wrapper) + bytes;
+	alloc_bytes = acontext->extra_size + bytes;
 	allocator_info = get_allocator(acontext, &alloc_bytes);
 	if (allocator_info->pooled)
 	{
