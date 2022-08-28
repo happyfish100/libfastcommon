@@ -86,7 +86,7 @@ struct fast_task_info
     };
 	void *arg;  //extra argument pointer
 	char *data; //buffer for write or read
-    char *recv_body;
+    char *recv_body;  //for extra (dynamic) recv buffer
 
     struct {
         struct iovec *iovs;

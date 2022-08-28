@@ -56,6 +56,12 @@ struct fast_allocator_array
 	struct fast_allocator_info **allocators;
 };
 
+struct fast_allocator_wrapper {
+	int alloc_bytes;
+	short allocator_index;
+	short magic_number;
+};
+
 struct fast_allocator_context
 {
 	struct fast_region_info *regions;

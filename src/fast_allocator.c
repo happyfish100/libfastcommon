@@ -25,12 +25,6 @@
 
 #define BYTES_ALIGN(x, pad_mask)  (((x) + pad_mask) & (~pad_mask))
 
-struct allocator_wrapper {
-	int alloc_bytes;
-	short allocator_index;
-	short magic_number;
-};
-
 static struct fast_allocator_info malloc_allocator;
 
 #define ADD_ALLOCATOR_TO_ARRAY(acontext, allocator, _pooled) \
@@ -269,7 +263,7 @@ int fast_allocator_init_ex(struct fast_allocator_context *acontext,
 	acontext->allocator_array.malloc_bytes_limit = alloc_bytes_limit /
 		acontext->allocator_array.expect_usage_ratio;
 	acontext->allocator_array.reclaim_interval = reclaim_interval;
-	acontext->extra_size = sizeof(struct allocator_wrapper) + obj_size;
+	acontext->extra_size = sizeof(struct fast_allocator_wrapper) + obj_size;
 	acontext->need_lock = need_lock;
 	result = 0;
 	previous_end = 0;
@@ -349,8 +343,8 @@ int fast_allocator_init_ex(struct fast_allocator_context *acontext,
 
 	ADD_ALLOCATOR_TO_ARRAY(acontext, &malloc_allocator, false);
 	/*
-	logInfo("sizeof(struct allocator_wrapper): %d, allocator_array count: %d",
-		(int)sizeof(struct allocator_wrapper), acontext->allocator_array.count);
+	logInfo("sizeof(struct fast_allocator_wrapper): %d, allocator_array count: %d",
+		(int)sizeof(struct fast_allocator_wrapper), acontext->allocator_array.count);
 	*/
 	return result;
 }
@@ -505,7 +499,7 @@ void *fast_allocator_alloc(struct fast_allocator_context *acontext,
 				return NULL;
 			}
 		}
-        obj = (char *)ptr + sizeof(struct allocator_wrapper);
+        obj = (char *)ptr + sizeof(struct fast_allocator_wrapper);
 	}
 	else
 	{
@@ -520,7 +514,7 @@ void *fast_allocator_alloc(struct fast_allocator_context *acontext,
 		}
 		fast_allocator_malloc_trunk_notify_func(alloc_bytes, acontext);
 
-        obj = (char *)ptr + sizeof(struct allocator_wrapper);
+        obj = (char *)ptr + sizeof(struct fast_allocator_wrapper);
         if (acontext->allocator_array.allocators[0]->mblock.
                 object_callbacks.init_func != NULL)
         {
@@ -531,18 +525,18 @@ void *fast_allocator_alloc(struct fast_allocator_context *acontext,
         }
 	}
 
-	((struct allocator_wrapper *)ptr)->allocator_index =
+	((struct fast_allocator_wrapper *)ptr)->allocator_index =
         allocator_info->index;
-	((struct allocator_wrapper *)ptr)->magic_number =
+	((struct fast_allocator_wrapper *)ptr)->magic_number =
         allocator_info->magic_number;
-	((struct allocator_wrapper *)ptr)->alloc_bytes = alloc_bytes;
+	((struct fast_allocator_wrapper *)ptr)->alloc_bytes = alloc_bytes;
 	__sync_add_and_fetch(&acontext->alloc_bytes, alloc_bytes);
 	return obj;
 }
 
 void fast_allocator_free(struct fast_allocator_context *acontext, void *obj)
 {
-	struct allocator_wrapper *pWrapper;
+	struct fast_allocator_wrapper *pWrapper;
 	struct fast_allocator_info *allocator_info;
 	void *ptr;
 
@@ -551,8 +545,8 @@ void fast_allocator_free(struct fast_allocator_context *acontext, void *obj)
 		return;
 	}
 
-	ptr = (char *)obj - sizeof(struct allocator_wrapper);
-	pWrapper = (struct allocator_wrapper *)ptr;
+	ptr = (char *)obj - sizeof(struct fast_allocator_wrapper);
+	pWrapper = (struct fast_allocator_wrapper *)ptr;
 	if (pWrapper->allocator_index < 0 || pWrapper->allocator_index >=
 		acontext->allocator_array.count)
 	{
