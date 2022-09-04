@@ -463,6 +463,7 @@ static int _realloc_buffer(struct fast_task_info *pTask, const int new_size,
         const bool copy_data)
 {
 	char *new_buff;
+
     new_buff = (char *)fc_malloc(new_size);
     if (new_buff == NULL)
     {

@@ -1277,6 +1277,15 @@ static inline int fc_check_realloc_iovec_array(
     return 0;
 }
 
+static inline void fc_free_iovec_array(iovec_array_t *array)
+{
+    if (array->iovs != NULL) {
+        free(array->iovs);
+        array->iovs = NULL;
+        array->alloc = 0;
+    }
+}
+
 static inline pid_t fc_gettid()
 {
 #ifdef OS_LINUX
