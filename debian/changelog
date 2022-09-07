@@ -1,3 +1,9 @@
+libfastcommon (1.0.60-1) unstable; urgency=medium
+
+  * upgrade to 1.0.60-1
+
+ -- YuQing <384681@qq.com>  Wed, 07 Sep 2022 13:36:01 +0000
+
 libfastcommon (1.0.59-1) unstable; urgency=medium
 
   * upgrade to 1.0.59-1
