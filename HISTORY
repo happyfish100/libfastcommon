@@ -1,4 +1,7 @@
 
+Version 1.61  2022-09-21
+  * get_base_path_from_conf_file_ex support parameter: noent_log_level
+
 Version 1.60  2022-08-27
   * normalize_path for base_path
   * struct fast_task_info add field recv_body for dynamic recv buffer

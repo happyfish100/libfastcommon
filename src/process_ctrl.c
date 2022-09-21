@@ -274,8 +274,8 @@ int process_exist(const char *pidFilename, pid_t *pid)
   }
 }
 
-int get_base_path_from_conf_file(const char *filename, char *base_path,
-	const int path_size) 
+int get_base_path_from_conf_file_ex(const char *filename, char *base_path,
+	const int path_size, const int noent_log_level)
 {
 	char *pBasePath;
 	IniContext iniContext;
@@ -306,13 +306,14 @@ int get_base_path_from_conf_file(const char *filename, char *base_path,
         normalize_path(NULL, pBasePath, base_path, path_size);
 		chopPath(base_path);
 		if (!fileExists(base_path))
-		{
-			logError("file: "__FILE__", line: %d, " \
-				"\"%s\" can't be accessed, error info: %s", \
-				__LINE__, base_path, STRERROR(errno));
-			result = errno != 0 ? errno : ENOENT;
-			break;
-		}
+        {
+            result = errno != 0 ? errno : ENOENT;
+            log_it_ex(&g_log_context, noent_log_level,
+                    "file: "__FILE__", line: %d, "
+                    "\"%s\" can't be accessed, error info: %s",
+                    __LINE__, base_path, STRERROR(result));
+            break;
+        }
 		if (!isDir(base_path))
 		{
 			logError("file: "__FILE__", line: %d, " \

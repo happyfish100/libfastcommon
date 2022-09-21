@@ -27,8 +27,11 @@
 extern "C" {
 #endif
 
-int get_base_path_from_conf_file(const char *filename, char *base_path,
-	const int path_size);
+int get_base_path_from_conf_file_ex(const char *filename, char *base_path,
+	const int path_size, const int noent_log_level);
+
+#define get_base_path_from_conf_file(filename, base_path, path_size) \
+    get_base_path_from_conf_file_ex(filename, base_path, path_size, LOG_ERR)
 
 int get_pid_from_file(const char *pidFilename, pid_t *pid);
 
