@@ -102,6 +102,29 @@ int common_blocked_queue_push_ex(struct common_blocked_queue *queue,
 	return 0;
 }
 
+void common_blocked_queue_push_chain_ex(struct common_blocked_queue *queue,
+        struct common_blocked_chain *chain, bool *notify)
+{
+    if (chain->head == NULL)
+    {
+        return;
+    }
+
+    pthread_mutex_lock(&(queue->lc_pair.lock));
+    if (queue->head == NULL)
+    {
+        queue->head = chain->head;
+        *notify = true;
+    }
+    else
+    {
+        queue->tail->next = chain->head;
+        *notify = false;
+    }
+    queue->tail = chain->tail;
+    pthread_mutex_unlock(&(queue->lc_pair.lock));
+}
+
 void common_blocked_queue_return_nodes(struct common_blocked_queue *queue,
         struct common_blocked_node *node)
 {

@@ -31,6 +31,12 @@ struct common_blocked_node
     struct common_blocked_node *next;
 };
 
+struct common_blocked_chain
+{
+    struct common_blocked_node *head;
+    struct common_blocked_node *tail;
+};
+
 struct common_blocked_queue
 {
 	struct common_blocked_node *head;
@@ -88,6 +94,34 @@ static inline int common_blocked_queue_push(struct common_blocked_queue
     return result;
 }
 
+static inline struct common_blocked_node *common_blocked_queue_alloc_node(
+        struct common_blocked_queue *queue)
+{
+    return fast_mblock_alloc_object(&queue->mblock);
+}
+
+static inline void common_blocked_queue_free_node(
+        struct common_blocked_queue *queue,
+        struct common_blocked_node *node)
+{
+    fast_mblock_free_object(&queue->mblock, node);
+}
+
+void common_blocked_queue_push_chain_ex(struct common_blocked_queue *queue,
+        struct common_blocked_chain *chain, bool *notify);
+
+static inline void common_blocked_queue_push_chain(
+        struct common_blocked_queue *queue,
+        struct common_blocked_chain *chain)
+{
+    bool notify;
+
+    common_blocked_queue_push_chain_ex(queue, chain, &notify);
+    if (notify)
+    {
+        pthread_cond_signal(&(queue->lc_pair.cond));
+    }
+}
 
 void common_blocked_queue_return_nodes(struct common_blocked_queue *queue,
         struct common_blocked_node *node);
