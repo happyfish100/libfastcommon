@@ -1176,6 +1176,23 @@ bool fc_path_contains(const string_t *path, const string_t *needle,
         int *result);
 
 
+/** sleep in microseconds
+ *  parameters:
+ *      microseconds: microseconds to sleep
+ *  return: 0 for success, != 0 for fail
+*/
+static inline int fc_sleep_us(const int microseconds)
+{
+    struct timespec ts;
+    ts.tv_sec = microseconds / (1000 * 1000);
+    ts.tv_nsec = (microseconds % (1000 * 1000)) * 1000;
+    if (nanosleep(&ts, NULL) == 0) {
+        return 0;
+    } else {
+        return errno != 0 ? errno : EINVAL;
+    }
+}
+
 /** sleep in milliseconds
  *  parameters:
  *      milliseconds: milliseconds to sleep
