@@ -1175,6 +1175,13 @@ int fc_get_last_lines(const char *filename, char *buff,
 bool fc_path_contains(const string_t *path, const string_t *needle,
         int *result);
 
+/** itoa output as decimal number
+ *  parameters:
+ *      n: the number to convert
+ *      buff: store the converted string
+ *  return: string length
+*/
+int fc_itoa(int64_t n, char *buff);
 
 /** sleep in microseconds
  *  parameters:

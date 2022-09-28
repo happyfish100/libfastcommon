@@ -4060,3 +4060,106 @@ int fc_safe_write_file_init(SafeWriteFileInfo *fi,
     fi->fd = -1;
     return 0;
 }
+
+int fc_itoa(int64_t n, char *buff)
+{
+    char *p;
+    int start;
+    int len;
+    int i;
+
+    if (n < 0) {
+        n *= -1;
+        *buff = '-';
+        start = 1;
+    } else {
+        start = 0;
+    }
+
+    if (n < FC_1E16) {
+        if (n < FC_1E08) {
+            if (n < FC_1E04) {
+                p = buff + start;
+                if (n < FC_1E02) {
+                    if (n < FC_1E01) {
+                        *p++ = '0' + n;
+                    } else {
+                        *p++ = '0' + n / 10;
+                        *p++ = '0' + n % 10;
+                    }
+                } else {
+                    if (n < FC_1E03) {
+                        *p++ = '0' + n / 100;
+                    } else {
+                        *p++ = '0' + n / 1000;
+                        *p++ = '0' + (n % 1000) / 100;
+                    }
+                    *p++ = '0' + (n % 100) / 10;
+                    *p++ = '0' + n % 10;
+                }
+                return p - buff;
+            } else {
+                if (n < FC_1E06) {
+                    if (n < FC_1E05) {
+                        len = 5;
+                    } else {
+                        len = 6;
+                    }
+                } else {
+                    if (n < FC_1E07) {
+                        len = 7;
+                    } else {
+                        len = 8;
+                    }
+                }
+            }
+        } else {
+            if (n < FC_1E12) {
+                if (n < FC_1E10) {
+                    if (n < FC_1E09) {
+                        len = 9;
+                    } else {
+                        len = 10;
+                    }
+                } else {
+                    if (n < FC_1E11) {
+                        len = 11;
+                    } else {
+                        len = 12;
+                    }
+                }
+            } else {
+                if (n < FC_1E14) {
+                    if (n < FC_1E13) {
+                        len = 13;
+                    } else {
+                        len = 14;
+                    }
+                } else {
+                    if (n < FC_1E15) {
+                        len = 15;
+                    } else {
+                        len = 16;
+                    }
+                }
+            }
+        }
+    } else {
+        if (n < FC_1E18) {
+            if (n < FC_1E17) {
+                len = 17;
+            } else {
+                len = 18;
+            }
+        } else {
+            len = 19;
+        }
+    }
+
+    p = buff + start + len - 1;
+    for (i=0; i<len; i++) {
+        *p-- = '0' + n % 10;
+        n /= 10;
+    }
+    return start + len;
+}

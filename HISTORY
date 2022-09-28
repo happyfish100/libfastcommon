@@ -1,6 +1,7 @@
 
-Version 1.62  2022-09-27
+Version 1.62  2022-09-28
   * add function fc_sleep_us
+  * add function fc_itoa
 
 Version 1.61  2022-09-21
   * get_base_path_from_conf_file_ex support parameter: noent_log_level

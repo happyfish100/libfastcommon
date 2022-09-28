@@ -159,6 +159,25 @@ extern int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int kind);
 #define FC_TIME_UNIT_USECOND  'u'  //microsecond
 #define FC_TIME_UNIT_NSECOND  'n'  //nanosecond
 
+#define FC_1E01                     10LL
+#define FC_1E02                    100LL
+#define FC_1E03                   1000LL
+#define FC_1E04                  10000LL
+#define FC_1E05                 100000LL
+#define FC_1E06                1000000LL
+#define FC_1E07               10000000LL
+#define FC_1E08              100000000LL
+#define FC_1E09             1000000000LL
+#define FC_1E10            10000000000LL
+#define FC_1E11           100000000000LL
+#define FC_1E12          1000000000000LL
+#define FC_1E13         10000000000000LL
+#define FC_1E14        100000000000000LL
+#define FC_1E15       1000000000000000LL
+#define FC_1E16      10000000000000000LL
+#define FC_1E17     100000000000000000LL
+#define FC_1E18    1000000000000000000LL
+
 #define STRERROR(no) (strerror(no) != NULL ? strerror(no) : "Unkown error")
 
 #if defined(OS_LINUX)
