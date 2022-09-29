@@ -4064,22 +4064,21 @@ int fc_safe_write_file_init(SafeWriteFileInfo *fi,
 int fc_itoa(int64_t n, char *buff)
 {
     char *p;
-    int start;
+    char *start;
     int len;
-    int i;
 
     if (n < 0) {
         n *= -1;
         *buff = '-';
-        start = 1;
+        start = buff + 1;
     } else {
-        start = 0;
+        start = buff;
     }
 
     if (n < FC_1E16) {
         if (n < FC_1E08) {
             if (n < FC_1E04) {
-                p = buff + start;
+                p = start;
                 if (n < FC_1E02) {
                     if (n < FC_1E01) {
                         *p++ = '0' + n;
@@ -4100,66 +4099,37 @@ int fc_itoa(int64_t n, char *buff)
                 return p - buff;
             } else {
                 if (n < FC_1E06) {
-                    if (n < FC_1E05) {
-                        len = 5;
-                    } else {
-                        len = 6;
-                    }
+                    len = (n < FC_1E05) ? 5 : 6;
                 } else {
-                    if (n < FC_1E07) {
-                        len = 7;
-                    } else {
-                        len = 8;
-                    }
+                    len = (n < FC_1E07) ? 7 : 8;
                 }
             }
         } else {
             if (n < FC_1E12) {
                 if (n < FC_1E10) {
-                    if (n < FC_1E09) {
-                        len = 9;
-                    } else {
-                        len = 10;
-                    }
+                    len = (n < FC_1E09) ? 9 : 10;
                 } else {
-                    if (n < FC_1E11) {
-                        len = 11;
-                    } else {
-                        len = 12;
-                    }
+                    len = (n < FC_1E11) ? 11 : 12;
                 }
             } else {
                 if (n < FC_1E14) {
-                    if (n < FC_1E13) {
-                        len = 13;
-                    } else {
-                        len = 14;
-                    }
+                    len = (n < FC_1E13) ? 13 : 14;
                 } else {
-                    if (n < FC_1E15) {
-                        len = 15;
-                    } else {
-                        len = 16;
-                    }
+                    len = (n < FC_1E15) ? 15 : 16;
                 }
             }
         }
     } else {
         if (n < FC_1E18) {
-            if (n < FC_1E17) {
-                len = 17;
-            } else {
-                len = 18;
-            }
+            len = (n < FC_1E17) ? 17 : 18;
         } else {
             len = 19;
         }
     }
 
-    p = buff + start + len - 1;
-    for (i=0; i<len; i++) {
-        *p-- = '0' + n % 10;
+    for (p=start + len - 1; p>=start; p--) {
+        *p = '0' + n % 10;
         n /= 10;
     }
-    return start + len;
+    return (start - buff) + len;
 }
