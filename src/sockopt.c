@@ -1069,7 +1069,7 @@ int socketClientEx2(int af, const char *server_ip,
     return sock;
 }
 
-const char * fc_inet_ntop(const struct sockaddr *addr,
+const char *fc_inet_ntop(const struct sockaddr *addr,
         char *buff, const int bufferSize)
 {
     void *sin_addr;
@@ -1101,58 +1101,54 @@ const char * fc_inet_ntop(const struct sockaddr *addr,
 in_addr_t getIpaddr(getnamefunc getname, int sock, \
 		char *buff, const int bufferSize)
 {
-	struct sockaddr addr;
-	socklen_t addrlen;
+    sockaddr_convert_t convert;
 
-	memset(&addr, 0, sizeof(addr));
-	addrlen = sizeof(addr);
-	
-	if (getname(sock, &addr, &addrlen) != 0)
+	memset(&convert, 0, sizeof(convert));
+	convert.len = sizeof(convert.sa);
+	if (getname(sock, &convert.sa.addr, &convert.len) != 0)
 	{
 		*buff = '\0';
 		return INADDR_NONE;
 	}
 	
-	if (addrlen > 0)
+	if (convert.len > 0)
 	{
-        fc_inet_ntop(&addr, buff, bufferSize);
+        fc_inet_ntop(&convert.sa.addr, buff, bufferSize);
 	}
 	else
 	{
 		*buff = '\0';
 	}
-	
-	return ((struct sockaddr_in *)&addr)->sin_addr.s_addr;  //DO NOT support IPv6
+
+    return convert.sa.addr4.sin_addr.s_addr;  //DO NOT support IPv6
 }
 
 int getIpAndPort(getnamefunc getname, int sock,
 		char *buff, const int bufferSize, int *port)
 {
-	struct sockaddr addr;
-	socklen_t addrlen;
+    sockaddr_convert_t convert;
 
-	memset(&addr, 0, sizeof(addr));
-	addrlen = sizeof(addr);
-
-	if (getname(sock, &addr, &addrlen) != 0)
+	memset(&convert, 0, sizeof(convert));
+	convert.len = sizeof(convert.sa);
+	if (getname(sock, &convert.sa.addr, &convert.len) != 0)
 	{
 		*buff = '\0';
 		return errno != 0 ? errno : EINVAL;
 	}
 
-	if (addrlen > 0)
+	if (convert.len > 0)
 	{
-        fc_inet_ntop(&addr, buff, bufferSize);
+        fc_inet_ntop(&convert.sa.addr, buff, bufferSize);
 	}
 	else
 	{
 		*buff = '\0';
 	}
 
-    if (addr.sa_family == AF_INET) {
-        *port = ntohs(((struct sockaddr_in *)&addr)->sin_port);
+    if (convert.sa.addr.sa_family == AF_INET) {
+        *port = ntohs(convert.sa.addr4.sin_port);
     } else {
-        *port = ntohs(((struct sockaddr_in6 *)&addr)->sin6_port);
+        *port = ntohs(convert.sa.addr6.sin6_port);
     }
 	return 0;
 }

@@ -1,4 +1,7 @@
 
+Version 1.63  2022-10-16
+  * sockopt.[hc]: getIpAndPort support ipv6
+
 Version 1.62  2022-09-28
   * add function fc_sleep_us
   * add function fc_itoa
