@@ -37,10 +37,6 @@
 #define NORMALIZE_FLAGS_URL_ENABLED_AND_APPEND_PARAMS  \
     (NORMALIZE_FLAGS_URL_ENABLED | NORMALIZE_FLAGS_URL_APPEND_PARAMS)
 
-#define resolve_path(from, filename, full_filename, size)  \
-    normalize_path_ex(from, filename, full_filename, size, \
-            NORMALIZE_FLAGS_URL_ENABLED_AND_APPEND_PARAMS)
-
 #define FC_SET_CLOEXEC(fd) \
     if (g_set_cloexec) fd_set_cloexec(fd)
 
@@ -1019,19 +1015,19 @@ char *format_http_date(time_t t, BufferInfo *buffer);
  *      size: the max size of full_filename
  *  return: length of the resolved full path
 */
-int normalize_path(const char *from, const char *filename,
+int normalize_path(const string_t *from, const string_t *filename,
         char *full_filename, const int size);
 
-/** return absolute uri (the second parameter)
- *  parameters:
- *  	from: the input uri to get base path
- *      uri: the uri to resolve
- *      dest: store the resolved absolute uri
- *      size: the max size of dest
- *  return: length of the resolved uri
-*/
-int normalize_uri(const string_t *from, const char *uri,
-        char *dest, const int size);
+static inline int normalize_path1(const char *from, const char *filename,
+        char *full_filename, const int size)
+{
+    string_t from_string;
+    string_t filename_string;
+
+    FC_SET_STRING(from_string, (char *)from);
+    FC_SET_STRING(filename_string, (char *)filename);
+    return normalize_path(&from_string, &filename_string, full_filename, size);
+}
 
 /** return full path for the filename (the second parameter)
  *  parameters:
@@ -1044,9 +1040,20 @@ int normalize_uri(const string_t *from, const char *uri,
  *           NORMALIZE_FLAGS_URL_APPEND_PARAMS: append params of from
  *  return: length of the resolved full path
 */
-int normalize_path_ex(const char *from, const char *filename,
+int normalize_path_ex(const string_t *from, const string_t *filename,
         char *full_filename, const int size, const int flags);
 
+static inline int resolve_path(const char *from, const char *filename,
+        char *full_filename, const int size)
+{
+    string_t from_string;
+    string_t filename_string;
+
+    FC_SET_STRING(from_string, (char *)from);
+    FC_SET_STRING(filename_string, (char *)filename);
+    return normalize_path_ex(&from_string, &filename_string, full_filename,
+            size, NORMALIZE_FLAGS_URL_ENABLED_AND_APPEND_PARAMS);
+}
 
 /** get gzip command full filename
  *  return: the gzip command full filename

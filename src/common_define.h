@@ -119,6 +119,11 @@ extern int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int kind);
     (strncasecmp(filename, FILE_RESOURCE_TAG_STR,  \
                  FILE_RESOURCE_TAG_LEN) == 0)
 
+#define IS_FILE_RESOURCE_EX(filename) \
+    ((filename)->len >= FILE_RESOURCE_TAG_LEN &&     \
+     memcmp((filename)->str, FILE_RESOURCE_TAG_STR,  \
+         FILE_RESOURCE_TAG_LEN) == 0)
+
 #ifndef byte
 #define byte signed char
 #endif

@@ -27,6 +27,10 @@
     ((strncasecmp(str, "http://", 7) == 0) || \
      (strncasecmp(str, "https://", 8) == 0))
 
+#define IS_URL_RESOURCE_EX(s)  \
+    ((s)->len >= 8 && ((memcmp((s)->str, "http://", 7) == 0) || \
+        (memcmp((s)->str, "https://", 8) == 0)))
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -1195,8 +1195,8 @@ int fc_remove_redundant_slashes(const string_t *src,
     else
     {
         input.str = full_filename;
-        input.len = normalize_path(NULL, src->str,
-                full_filename, sizeof(full_filename));
+        input.len = normalize_path(NULL, src, full_filename,
+                sizeof(full_filename));
     }
 
     if (size <= input.len)
@@ -3204,27 +3204,32 @@ char *format_http_date(time_t t, BufferInfo *buffer)
     return buffer->buff;
 }
 
-int normalize_path(const char *from, const char *filename,
+int normalize_path(const string_t *from, const string_t *filename,
         char *full_filename, const int size)
 {
     const char *start;
     const char *last;
     const char *end;
-	char cwd[PATH_MAX];
+	char buff[PATH_MAX];
+    string_t true_from;
+    string_t true_filename;
     int up_count;
     int path_len;
     int i;
 
-    if (IS_FILE_RESOURCE(filename)) {
-        filename = filename + FILE_RESOURCE_TAG_LEN;
+    if (IS_FILE_RESOURCE_EX(filename)) {
+        true_filename.str = filename->str + FILE_RESOURCE_TAG_LEN;
+        true_filename.len = filename->len - FILE_RESOURCE_TAG_LEN;
+        filename = &true_filename;
     }
 
-    if (*filename == '/') {
-        return snprintf(full_filename, size, "%s", filename);
+    if (*filename->str == '/') {
+        return snprintf(full_filename, size, "%.*s",
+                filename->len, filename->str);
     }
 
     if (from == NULL) {
-        if (getcwd(cwd, sizeof(cwd)) == NULL) {
+        if (getcwd(buff, sizeof(buff)) == NULL) {
             logError("file: "__FILE__", line: %d, "
                     "call getcwd fail, errno: %d, error info: %s",
                     __LINE__, errno, STRERROR(errno));
@@ -3232,32 +3237,35 @@ int normalize_path(const char *from, const char *filename,
             return 0;
         }
 
-        path_len = strlen(cwd);
-        if (cwd[path_len - 1] != '/') {
-            if ((path_len + 1) >= sizeof(cwd)) {
+        true_from.str = buff;
+        true_from.len = strlen(buff);
+        if (true_from.str[true_from.len - 1] != '/') {
+            if ((true_from.len + 1) > sizeof(buff)) {
                 logError("file: "__FILE__", line: %d, "
                         "cwd length is too long, exceeds %d",
-                        __LINE__, (int)sizeof(cwd));
+                        __LINE__, (int)sizeof(buff));
                 *full_filename = '\0';
                 return 0;
             }
 
-            cwd[path_len] = '/';
-            cwd[path_len + 1] = '\0';
+            true_from.str[true_from.len++] = '/';
         }
-        from = cwd;
-    } else if (IS_FILE_RESOURCE(from)) {
-        from = from + FILE_RESOURCE_TAG_LEN;
+        from = &true_from;
+    } else if (IS_FILE_RESOURCE_EX(from)) {
+        true_from.str = from->str + FILE_RESOURCE_TAG_LEN;
+        true_from.len = from->len - FILE_RESOURCE_TAG_LEN;
+        from = &true_from;
     }
 
-    last = strrchr(from, '/');
+    last = fc_memrchr(from->str, '/', from->len);
     if (last != NULL) {
-        end = filename + strlen(filename);
-        if (memcmp(filename, "./", 2) == 0) {
-            start = filename + 2;
+        end = filename->str + filename->len;
+        if (filename->len >= 2 && memcmp(filename->str, "./", 2) == 0) {
+            start = filename->str + 2;
         } else {
-            start = filename;
+            start = filename->str;
         }
+
         up_count = 0;
         while (start + 3 < end) {
             if (memcmp(start, "../", 3) != 0) {
@@ -3268,97 +3276,30 @@ int normalize_path(const char *from, const char *filename,
             start += 3;
         }
 
-        path_len = last - from;
+        path_len = last - from->str;
         for (i=0; i<up_count; i++) {
-            last = fc_memrchr(from, '/', path_len);
+            last = fc_memrchr(from->str, '/', path_len);
             if (last == NULL) {
                 logWarning("file: "__FILE__", line: %d, "
-                        "too many ../ in the path resolve filename: %s, "
-                        "from filename: %s", __LINE__, filename, from);
+                        "too many ../ in the path resolve filename: %.*s, "
+                        "from filename: %.*s", __LINE__, filename->len,
+                        filename->str, from->len, from->str);
                 break;
             }
-            path_len = last - from;
+            path_len = last - from->str;
         }
-        return snprintf(full_filename, size, "%.*s/%s",
-                path_len, from, start);
+        return snprintf(full_filename, size, "%.*s/%.*s",
+                path_len, from->str, (int)(end - start), start);
     } else {
         logWarning("file: "__FILE__", line: %d, "
-                "no \"/\" in the from filename: %s",
-                __LINE__, from);
-        return snprintf(full_filename, size, "%s", filename);
+                "no \"/\" in the from filename: %.*s",
+                __LINE__, from->len, from->str);
+        return snprintf(full_filename, size, "%.*s",
+                filename->len, filename->str);
     }
 }
 
-int normalize_uri(const string_t *from, const char *uri,
-        char *dest, const int size)
-{
-#define MAX_UP_PATH_COUNT  8
-    const char *start;
-    const char *end;
-    const char *last;
-    string_t fpath;
-    string_t parts[MAX_UP_PATH_COUNT];
-    int up_count;
-    int path_count;
-    int keep_count;
-    int len;
-    int i;
-
-    if (*uri == '/') {
-        return snprintf(dest, size, "%s", uri);
-    }
-
-    end = uri + strlen(uri);
-    if (memcmp(uri, "./", 2) == 0) {
-        start = uri + 2;
-    } else {
-        start = uri;
-    }
-    up_count = 0;
-    while (start + 3 < end) {
-        if (memcmp(start, "../", 3) != 0) {
-            break;
-        }
-
-        ++up_count;
-        start += 3;
-    }
-
-    last = fc_memrchr(from->str, '/', from->len);
-    if (last == NULL) {
-        logWarning("file: "__FILE__", line: %d, "
-                "no \"/\" in the from uri: %s",
-                __LINE__, from->str);
-        return snprintf(dest, size, "/%s", start);
-    }
-
-    if (up_count == 0) {
-        return snprintf(dest, size, "%.*s/%s",
-                (int)(last - from->str), from->str, start);
-    } else {
-        fpath.str = (char *)from->str;
-        fpath.len = last - from->str;
-        path_count = split_string_ex(&fpath, '/',
-                parts, MAX_UP_PATH_COUNT, true);
-        keep_count = path_count - up_count;
-        if (keep_count < 0) {
-            logWarning("file: "__FILE__", line: %d, "
-                    "uri: %s, contails too many \"../\"",
-                    __LINE__, uri);
-        }
-
-        len = 0;
-        for (i=0; i<keep_count; i++) {
-            len += snprintf(dest + len, size - len,
-                    "/%.*s", parts[i].len, parts[i].str);
-        }
-
-        len += snprintf(dest + len, size - len, "/%s", start);
-        return len;
-    }
-}
-
-int normalize_path_ex(const char *from, const char *filename,
+int normalize_path_ex(const string_t *from, const string_t *filename,
         char *full_filename, const int size, const int flags)
 {
     bool is_url_from;
@@ -3374,54 +3315,59 @@ int normalize_path_ex(const char *from, const char *filename,
         return normalize_path(from, filename, full_filename, size);
     }
 
-    is_url_from = IS_URL_RESOURCE(from);
-    is_url_filename = IS_URL_RESOURCE(filename);
+    is_url_from = IS_URL_RESOURCE_EX(from);
+    is_url_filename = IS_URL_RESOURCE_EX(filename);
     if (!(is_url_from || is_url_filename)) {
         return normalize_path(from, filename, full_filename, size);
     }
 
-    if (IS_FILE_RESOURCE(filename)) {
-        return snprintf(full_filename, size, "%s",
-                filename + FILE_RESOURCE_TAG_LEN);
+    if (IS_FILE_RESOURCE_EX(filename)) {
+        return snprintf(full_filename, size, "%.*s",
+                (int)(filename->len - FILE_RESOURCE_TAG_LEN),
+                filename->str + FILE_RESOURCE_TAG_LEN);
     }
 
     if (!is_url_from) {
-        return snprintf(full_filename, size, "%s", filename);
+        return snprintf(full_filename, size, "%.*s",
+                filename->len, filename->str);
     }
 
     if (is_url_filename) {
-        full_len = snprintf(full_filename, size, "%s", filename);
+        full_len = snprintf(full_filename, size, "%.*s",
+                filename->len, filename->str);
         if ((flags & NORMALIZE_FLAGS_URL_APPEND_PARAMS) == 0) {
             return full_len;
         }
-        from_ask = strchr(from + 8, '?');
+        from_ask = memchr(from->str + 8, '?', from->len);
     } else {
-        base_end = strchr(from + 8, '/');
+        base_end = memchr(from->str + 8, '/', from->len);
         if (base_end == NULL) {
-            return snprintf(full_filename, size, "%s%s%s",
-                    from, (*filename == '/' ? "" : "/"), filename);
+            return snprintf(full_filename, size, "%.*s%s%.*s",
+                    from->len, from->str, (*filename->str == '/' ?
+                        "" : "/"), filename->len, filename->str);
         }
 
-        base_len = base_end - from;
-        from_ask = strchr(base_end + 1, '?');
+        base_len = base_end - from->str;
+        from_ask = memchr(base_end + 1, '?', from->len - (base_len + 1));
         from_uri.str = (char *)base_end;
         if (from_ask == NULL) {
-            from_uri.len = strlen(from_uri.str);
+            from_uri.len = from->len - base_len;
         } else {
             from_uri.len = from_ask - from_uri.str;
         }
 
-        full_len = snprintf(full_filename, size, "%.*s", base_len, from);
-        full_len = normalize_uri(&from_uri, filename,
+        full_len = snprintf(full_filename, size, "%.*s", base_len, from->str);
+        full_len += normalize_path(&from_uri, filename,
                 full_filename + full_len, size - full_len);
     }
 
     if ((flags & NORMALIZE_FLAGS_URL_APPEND_PARAMS) != 0) {
         if (from_ask != NULL) {
-            dest_ask = strchr(filename, '?');
+            dest_ask = memchr(filename->str, '?', filename->len);
             full_len += snprintf(full_filename + full_len,
-                    size - full_len, "%c%s", (dest_ask == NULL ?
-                        '?' : '&'), from_ask + 1);
+                    size - full_len, "%c%.*s", (dest_ask == NULL ?
+                        '?' : '&'), (int)((from->str + from->len) -
+                            (from_ask + 1)), from_ask + 1);
         }
     }
 

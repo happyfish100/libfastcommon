@@ -278,6 +278,7 @@ int get_base_path_from_conf_file_ex(const char *filename, char *base_path,
 	const int path_size, const int noent_log_level)
 {
 	char *pBasePath;
+    string_t path_string;
 	IniContext iniContext;
 	int result;
 
@@ -303,7 +304,8 @@ int get_base_path_from_conf_file_ex(const char *filename, char *base_path,
 			break;
 		}
 
-        normalize_path(NULL, pBasePath, base_path, path_size);
+        FC_SET_STRING(path_string, pBasePath);
+        normalize_path(NULL, &path_string, base_path, path_size);
 		chopPath(base_path);
 		if (!fileExists(base_path))
         {

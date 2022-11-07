@@ -1,4 +1,7 @@
 
+Version 1.64  2022-11-07
+  * shared_func.[hc]: normalize_path use type string_t for general purpose
+
 Version 1.63  2022-10-16
   * sockopt.[hc]: getIpAndPort support ipv6
 

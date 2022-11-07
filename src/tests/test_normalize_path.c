@@ -27,8 +27,8 @@
 int main(int argc, char *argv[])
 {
     char full_filename[PATH_MAX];
-    const char *from;
-    const char *filename;
+    string_t from;
+    string_t filename;
     int filename_len;
     int result;
 
@@ -38,12 +38,14 @@ int main(int argc, char *argv[])
     }
 
     log_init();
-    from = argv[1];
-    filename = argv[2];
-    filename_len = normalize_path_ex(from, filename,
+
+    FC_SET_STRING(from, argv[1]);
+    FC_SET_STRING(filename, argv[2]);
+    filename_len = normalize_path_ex(&from, &filename,
             full_filename, sizeof(full_filename),
             NORMALIZE_FLAGS_URL_ENABLED_AND_APPEND_PARAMS);
-    printf("%s\n", full_filename);
+    printf("%s => {len1: %d, len2: %d}\n", full_filename,
+            (int)strlen(full_filename), filename_len);
 
     if (IS_URL_RESOURCE(full_filename)) {
         const int connect_timeout = 2;
