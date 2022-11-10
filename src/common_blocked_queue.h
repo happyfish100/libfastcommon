@@ -97,14 +97,21 @@ static inline int common_blocked_queue_push(struct common_blocked_queue
 static inline struct common_blocked_node *common_blocked_queue_alloc_node(
         struct common_blocked_queue *queue)
 {
-    return fast_mblock_alloc_object(&queue->mblock);
+    struct common_blocked_node *node;
+
+    pthread_mutex_lock(&(queue->lc_pair.lock));
+    node = fast_mblock_alloc_object(&queue->mblock);
+    pthread_mutex_unlock(&(queue->lc_pair.lock));
+    return node;
 }
 
 static inline void common_blocked_queue_free_node(
         struct common_blocked_queue *queue,
         struct common_blocked_node *node)
 {
+    pthread_mutex_lock(&(queue->lc_pair.lock));
     fast_mblock_free_object(&queue->mblock, node);
+    pthread_mutex_unlock(&(queue->lc_pair.lock));
 }
 
 void common_blocked_queue_push_chain_ex(struct common_blocked_queue *queue,
@@ -175,7 +182,7 @@ struct common_blocked_node *common_blocked_queue_pop_all_nodes_ex(
     common_blocked_queue_pop_all_nodes_ex(queue, false)
 
 #define common_blocked_queue_free_one_node(queue, node) \
-    fast_mblock_free_object(&queue->mblock, node)
+    common_blocked_queue_free_node(&queue->mblock, node)
 
 void common_blocked_queue_free_all_nodes(struct common_blocked_queue *queue,
         struct common_blocked_node *node);

@@ -1,6 +1,7 @@
 
-Version 1.64  2022-11-07
+Version 1.64  2022-11-10
   * shared_func.[hc]: normalize_path use type string_t for general purpose
+  * bugfixed: common_blocked_queue_[alloc|free]_node must use lock
 
 Version 1.63  2022-10-16
   * sockopt.[hc]: getIpAndPort support ipv6
