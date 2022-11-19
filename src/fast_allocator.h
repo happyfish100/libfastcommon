@@ -46,14 +46,15 @@ struct fast_region_info
 
 struct fast_allocator_array
 {
-	int count;
-	int alloc;
-	int reclaim_interval;   //< 0 for never reclaim
-	int last_reclaim_time;
-	volatile int64_t malloc_bytes;   //total alloc bytes
-	int64_t malloc_bytes_limit;      //water mark bytes for malloc
-	double expect_usage_ratio;
-	struct fast_allocator_info **allocators;
+    int count;
+    int alloc;
+    int reclaim_interval;   //< 0 for never reclaim
+    int last_reclaim_time;
+    volatile int64_t malloc_bytes;   //total alloc bytes
+    int64_t malloc_bytes_limit;      //water mark bytes for malloc
+    double expect_usage_ratio;
+    struct fast_allocator_info malloc_allocator;
+    struct fast_allocator_info **allocators;
 };
 
 struct fast_allocator_wrapper {

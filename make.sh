@@ -53,19 +53,30 @@ done
 
 /bin/rm -f a.out $tmp_src_filename
 
+uname=$(uname)
 TARGET_PREFIX=$DESTDIR/usr
 if [ "$int_bytes" -eq 8 ]; then
- OS_BITS=64
- LIB_VERSION=lib64
+  OS_BITS=64
+  if [ $uname = 'Linux' ]; then
+    osname=$(cat /etc/os-release | grep -w NAME | awk -F '=' '{print $2;}' | \
+            awk -F '"' '{if (NF==3) {print $2} else {print $1}}' | awk '{print $1}')
+    if [ $osname = 'Ubuntu' -o $osname = 'Debian' ]; then
+      LIB_VERSION=lib
+    else
+      LIB_VERSION=lib64
+    fi
+  else
+    LIB_VERSION=lib
+  fi
 else
- OS_BITS=32
- LIB_VERSION=lib
+  OS_BITS=32
+  LIB_VERSION=lib
 fi
 
 if [ "$off_bytes" -eq 8 ]; then
- OFF_BITS=64
+  OFF_BITS=64
 else
- OFF_BITS=32
+  OFF_BITS=32
 fi
 
 DEBUG_FLAG=0
@@ -101,7 +112,6 @@ elif [ "$uname" = "FreeBSD" ] || [ "$uname" = "Darwin" ]; then
   if [ "$uname" = "Darwin" ]; then
     CFLAGS="$CFLAGS -DDARWIN"
     TARGET_PREFIX=$TARGET_PREFIX/local
-    LIB_VERSION=lib
   fi
 
   if [ -f /usr/include/sys/vmmeter.h ]; then

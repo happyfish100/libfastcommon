@@ -25,8 +25,6 @@
 
 #define BYTES_ALIGN(x, pad_mask)  (((x) + pad_mask) & (~pad_mask))
 
-static struct fast_allocator_info malloc_allocator;
-
 #define ADD_ALLOCATOR_TO_ARRAY(acontext, allocator, _pooled) \
 	do { \
 		(allocator)->index = acontext->allocator_array.count; \
@@ -341,7 +339,9 @@ int fast_allocator_init_ex(struct fast_allocator_context *acontext,
 		return result;
 	}
 
-	ADD_ALLOCATOR_TO_ARRAY(acontext, &malloc_allocator, false);
+	ADD_ALLOCATOR_TO_ARRAY(acontext, &acontext->
+            allocator_array.malloc_allocator, false);
+
 	/*
 	logInfo("sizeof(struct fast_allocator_wrapper): %d, allocator_array count: %d",
 		(int)sizeof(struct fast_allocator_wrapper), acontext->allocator_array.count);
@@ -414,7 +414,7 @@ static struct fast_allocator_info *get_allocator(struct fast_allocator_context
         }
 	}
 
-	return &malloc_allocator;
+	return &acontext->allocator_array.malloc_allocator;
 }
 
 int fast_allocator_retry_reclaim(struct fast_allocator_context *acontext,
