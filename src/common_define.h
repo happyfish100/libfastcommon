@@ -485,7 +485,18 @@ static inline int fc_compare_int64(const int64_t n1, const int64_t n2)
 }
 
 #ifdef OS_LINUX
-#define fc_fallocate(fd, size)  fallocate(fd, 0, 0, size)
+static inline int fc_fallocate(int fd, const int64_t size)
+{
+    if (fallocate(fd, 0, 0, size) < 0) {
+        if (errno == EOPNOTSUPP) {
+            return ftruncate(fd, size);
+        }
+        return -1;
+    }
+
+    return 0;
+}
+
 #else
 #define fc_fallocate(fd, size)  ftruncate(fd, size)
 #define posix_fadvise(fd, offset, len, advice)  0
