@@ -1,4 +1,7 @@
 
+Version 1.65  2022-12-20
+  * locked_list.h: add functions locked_list_move and locked_list_move_tail
+
 Version 1.64  2022-11-19
   * shared_func.[hc]: normalize_path use type string_t for general purpose
   * bugfixed: common_blocked_queue_[alloc|free]_node must use lock

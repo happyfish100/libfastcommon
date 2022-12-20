@@ -45,6 +45,22 @@ extern "C" {
         PTHREAD_MUTEX_UNLOCK(&list->lock);
     }
 
+    static inline void locked_list_move(struct fc_list_head *obj,
+            FCLockedList *list)
+    {
+        PTHREAD_MUTEX_LOCK(&list->lock);
+        fc_list_move(obj, &list->head);
+        PTHREAD_MUTEX_UNLOCK(&list->lock);
+    }
+
+    static inline void locked_list_move_tail(struct fc_list_head *obj,
+            FCLockedList *list)
+    {
+        PTHREAD_MUTEX_LOCK(&list->lock);
+        fc_list_move_tail(obj, &list->head);
+        PTHREAD_MUTEX_UNLOCK(&list->lock);
+    }
+
     static inline void locked_list_del(struct fc_list_head *old,
             FCLockedList *list)
     {
