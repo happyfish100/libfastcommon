@@ -702,6 +702,8 @@ static inline void tcp_dont_try_again_when_interrupt()
 
 void tcp_set_quick_ack(const bool value);
 
+bool tcp_socket_connected(int sock);
+
 int fc_get_net_type_by_name(const char *net_type);
 
 int fc_get_net_type_by_ip(const char *ip);

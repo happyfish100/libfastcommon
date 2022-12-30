@@ -2690,3 +2690,36 @@ int fc_get_net_type_by_name(const char *net_type)
     }
 }
 
+bool tcp_socket_connected(int sock)
+{
+    socklen_t len;
+#if defined(OS_LINUX) || defined(OS_FREEBSD)
+
+#ifdef OS_LINUX
+    struct tcp_info info;
+#else
+#include <netinet/tcp_fsm.h>
+#define TCP_INFO         TCP_CONNECTION_INFO
+#define TCP_ESTABLISHED  TCPS_ESTABLISHED
+    struct tcp_connection_info info;
+#endif
+
+    len = sizeof(info);
+    if (getsockopt(sock, IPPROTO_TCP, TCP_INFO, &info, &len) < 0) {
+        return false;
+    }
+    if (info.tcpi_state == TCP_ESTABLISHED) {
+        return true;
+    } else {
+        return false;
+    }
+#else
+	int result;
+    len = sizeof(result);
+    if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &result, &len) < 0) {
+        return false;
+    } else {
+        return (result == 0);
+    }
+#endif
+}

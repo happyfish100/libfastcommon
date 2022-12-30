@@ -13,6 +13,9 @@ typedef struct fc_locked_list {
 extern "C" {
 #endif
 
+#define LOCKED_LIST_LOCK(list) PTHREAD_MUTEX_LOCK(&(list)->lock)
+#define LOCKED_LIST_UNLOCK(list) PTHREAD_MUTEX_UNLOCK(&(list)->lock)
+
     static inline int locked_list_init(FCLockedList *list)
     {
         int result;
