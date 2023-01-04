@@ -2393,7 +2393,7 @@ int parse_bytes(const char *pStr, const int default_unit_bytes, int64_t *bytes)
     int result;
 
 	pReservedEnd = NULL;
-	*bytes = strtol(pStr, &pReservedEnd, 10);
+	*bytes = strtoll(pStr, &pReservedEnd, 10);
 	if (*bytes < 0)
     {
         logError("file: "__FILE__", line: %d, " \
@@ -2407,6 +2407,19 @@ int parse_bytes(const char *pStr, const int default_unit_bytes, int64_t *bytes)
 		*bytes *= default_unit_bytes;
         return 0;
 	}
+
+	if (*pReservedEnd == ' ' || *pReservedEnd == '\t')
+    {
+        do {
+            ++pReservedEnd;
+        } while (*pReservedEnd == ' ' || *pReservedEnd == '\t');
+
+        if (*pReservedEnd == '\0')
+        {
+            *bytes *= default_unit_bytes;
+            return 0;
+        }
+    }
 
 	if (*pReservedEnd == 'T' || *pReservedEnd == 't')
 	{
@@ -2439,16 +2452,34 @@ int parse_bytes(const char *pStr, const int default_unit_bytes, int64_t *bytes)
         {
             return 0;
         }
-        if ((*(pReservedEnd + 1) == 'B' || *(pReservedEnd + 1) == 'b') &&
-                (*(pReservedEnd + 2) == '\0'))
+
+        ++pReservedEnd;
+        if (*pReservedEnd == 'B' || *pReservedEnd == 'b')
         {
-            return 0;
+            if (*(pReservedEnd + 1) == '\0')
+            {
+                return 0;
+            }
+            ++pReservedEnd;
         }
+
+        if (*pReservedEnd == ' ' || *pReservedEnd == '\t')
+        {
+            do {
+                ++pReservedEnd;
+            } while (*pReservedEnd == ' ' || *pReservedEnd == '\t');
+
+            if (*pReservedEnd == '\0')
+            {
+                return 0;
+            }
+        }
+
         result = EINVAL;
     }
 
     logError("file: "__FILE__", line: %d, "
-            "unkown byte unit: %s, input string: %s",
+            "unkown byte unit: \"%s\", input string: \"%s\"",
             __LINE__, pReservedEnd, pStr);
     return result;
 }
