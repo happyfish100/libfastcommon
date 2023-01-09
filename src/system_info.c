@@ -957,4 +957,94 @@ int get_path_block_size(const char *path, int *block_size)
 
     return get_block_size_by_write(path, block_size);
 }
+
+int get_groups(const pid_t pid, const gid_t gid, const int size, gid_t *list)
+{
+#define GROUPS_TAG_STR   "\nGroups:"
+#define GROUPS_TAG_LEN   (sizeof(GROUPS_TAG_STR) - 1)
+
+    char filename[64];
+    char buff[1024];
+    char *p;
+    char *end;
+    int fd;
+    int len;
+    gid_t val;
+    int count;
+
+    sprintf(filename, "/proc/%d/status", pid);
+    fd = open(filename, O_RDONLY);
+    if (fd < 0) {
+        return 0;
+    }
+
+    len = read(fd, buff, sizeof(buff));
+    close(fd);
+    if (len <= 0) {
+        return 0;
+    }
+
+    buff[len - 1] = '\0';
+    if ((p=strstr(buff, GROUPS_TAG_STR)) == NULL) {
+        return 0;
+    }
+
+    p += GROUPS_TAG_LEN;
+    count = 0;
+    while (count < size) {
+        val = strtoul(p, &end, 10);
+        if (end == p) {
+            break;
+        }
+
+        if (val != gid) {
+            list[count++] = val;
+        }
+        p = end;
+    }
+
+    return count;
+}
+
+#elif defined(OS_FREEBSD)
+
+int get_groups(const pid_t pid, const gid_t gid, const int size, gid_t *list)
+{
+    int mibpath[4];
+    struct kinfo_proc kp;
+    size_t kplen;
+    int count;
+    int i;
+
+#if defined(CTL_KERN) && defined(KERN_PROC) && defined(KERN_PROC_PID)
+    mibpath[0] = CTL_KERN;
+    mibpath[1] = KERN_PROC;
+    mibpath[2] = KERN_PROC_PID;
+#else
+    kplen = 4;
+    sysctlnametomib("kern.proc.pid", mibpath, &kplen);
+#endif
+    mibpath[3] = pid;
+
+    kplen = sizeof(kp);
+    memset(&kp,0,sizeof(kp));
+    if (sysctl(mibpath, 4, &kp, &kplen, NULL, 0) != 0) {
+        return 0;
+    }
+
+#if defined(DARWIN)
+#define ki_ngroups kp_eproc.e_ucred.cr_ngroups
+#define ki_groups  kp_eproc.e_ucred.cr_groups
+#endif
+
+    count = 0;
+    for (i=0; i<kp.ki_ngroups && count<size; i++) {
+        if (kp.ki_groups[i] != gid) {
+            list[count++] = kp.ki_groups[i];
+        }
+    }
+
+    return count;
+}
+
 #endif

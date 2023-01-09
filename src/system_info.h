@@ -164,6 +164,8 @@ int get_sysinfo(struct fast_sysinfo *info);
 
 int get_kernel_version(Version *version);
 
+int get_groups(const pid_t pid, const gid_t gid, const int size, gid_t *list);
+
 #ifdef OS_LINUX
 int get_device_block_size(const char *device, int *block_size);
 int get_path_block_size(const char *path, int *block_size);

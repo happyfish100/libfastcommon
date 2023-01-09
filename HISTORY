@@ -1,8 +1,9 @@
 
-Version 1.65  2023-01-04
+Version 1.65  2023-01-09
   * locked_list.h: add functions locked_list_move and locked_list_move_tail
   * add function tcp_socket_connected
   * parse_bytes support space charactors (before and after the unit)
+  * add function get_groups
 
 Version 1.64  2022-11-19
   * shared_func.[hc]: normalize_path use type string_t for general purpose
