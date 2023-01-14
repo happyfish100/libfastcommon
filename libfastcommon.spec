@@ -3,7 +3,7 @@
 %define CommitVersion %(echo $COMMIT_VERSION)
 
 Name: libfastcommon
-Version: 1.0.64
+Version: 1.0.65
 Release: 1%{?dist}
 Summary: c common functions library extracted from my open source projects FastDFS
 License: LGPL
