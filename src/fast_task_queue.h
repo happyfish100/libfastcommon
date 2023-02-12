@@ -111,7 +111,8 @@ struct fast_task_info
 	TaskFinishCallback finish_callback;
 	struct nio_thread_data *thread_data;
 	void *ctx;  //context pointer for libserverframe nio
-	struct fast_task_info *next;
+    struct fast_task_info *next;  //for free queue and deleted list
+    struct fast_task_info *notify_next;  //for nio notify queue
 };
 
 struct fast_task_queue
