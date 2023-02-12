@@ -100,23 +100,26 @@ int ioevent_loop(struct nio_thread_data *pThreadData,
 	FastTimerEntry head;
 	struct fast_task_info *task;
 	time_t last_check_time;
+    int save_extra_events;
 	int count;
 
 	memset(&ev_notify, 0, sizeof(ev_notify));
 	ev_notify.event.fd = FC_NOTIFY_READ_FD(pThreadData);
 	ev_notify.event.callback = recv_notify_callback;
 	ev_notify.thread_data = pThreadData;
-	if (ioevent_attach(&pThreadData->ev_puller,
-		pThreadData->pipe_fds[0], IOEVENT_READ,
-		&ev_notify) != 0)
+
+    save_extra_events = pThreadData->ev_puller.extra_events;
+    pThreadData->ev_puller.extra_events = 0; //disable edge trigger temporarily
+	if (ioevent_attach(&pThreadData->ev_puller, ev_notify.
+                event.fd, IOEVENT_READ, &ev_notify) != 0)
 	{
 		result = errno != 0 ? errno : ENOMEM;
-		logCrit("file: "__FILE__", line: %d, " \
-			"ioevent_attach fail, " \
-			"errno: %d, error info: %s", \
+		logCrit("file: "__FILE__", line: %d, "
+			"ioevent_attach fail, errno: %d, error info: %s",
 			__LINE__, result, STRERROR(result));
 		return result;
 	}
+    pThreadData->ev_puller.extra_events = save_extra_events; //restore
 
     pThreadData->deleted_list = NULL;
 	last_check_time = g_current_time;

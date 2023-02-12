@@ -100,13 +100,14 @@ struct fast_task_info
     struct {
         uint8_t current;
         volatile uint8_t notify;
+        volatile uint8_t next;
     } nio_stages; //stages for network IO
-    TaskContinueCallback continue_callback; //for continue stage
     volatile int8_t reffer_count;
     volatile int8_t canceled;  //if task canceled
     short connect_timeout;     //for client side
     short network_timeout;
 	int64_t req_count; //request count
+    TaskContinueCallback continue_callback; //for continue stage
 	TaskFinishCallback finish_callback;
 	struct nio_thread_data *thread_data;
 	void *ctx;  //context pointer for libserverframe nio
