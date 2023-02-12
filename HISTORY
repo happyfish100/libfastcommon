@@ -1,6 +1,5 @@
 
 Version 1.66  2023-02-12
-  * struct fast_task_info add field: nio_stages.next for epoll edge trigger
   * struct fast_task_info add field: notify_next for nio notify queue
 
 Version 1.65  2023-01-09

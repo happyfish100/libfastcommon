@@ -100,7 +100,6 @@ struct fast_task_info
     struct {
         uint8_t current;
         volatile uint8_t notify;
-        volatile uint8_t next;
     } nio_stages; //stages for network IO
     volatile int8_t reffer_count;
     volatile int8_t canceled;  //if task canceled
