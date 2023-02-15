@@ -246,4 +246,3 @@ make $1 $2 $3
 if [ "$1" = "clean" ]; then
   /bin/rm -f Makefile _os_define.h
 fi
-
