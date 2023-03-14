@@ -13,6 +13,9 @@ int main()
 {
 	printf("%d\n", (int)sizeof(void*));
 	printf("%d\n", (int)sizeof(off_t));
+#ifdef __GLIBC_MINOR__
+	printf("%d\n", __GLIBC_MINOR__);
+#endif
 	return 0;
 }
 EOF
@@ -39,13 +42,16 @@ fi
 count=0
 int_bytes=4
 off_bytes=8
+glibc_minor=0
 LIB_VERSION=lib64
 
 for col in $output; do
     if [ $count -eq 0 ]; then
         int_bytes=$col
-    else
+    elif [ $count -eq 1 ]; then
         off_bytes=$col
+    else
+        glibc_minor=$col
     fi
 
     count=$($EXPR $count + 1)
@@ -106,6 +112,9 @@ HAVE_USER_H=0
 if [ "$uname" = "Linux" ]; then
   OS_NAME=OS_LINUX
   IOEVENT_USE=IOEVENT_USE_EPOLL
+  if [ $glibc_minor -lt 17 ]; then
+    LIBS="$LIBS -lrt"
+  fi
 elif [ "$uname" = "FreeBSD" ] || [ "$uname" = "Darwin" ]; then
   OS_NAME=OS_FREEBSD 
   IOEVENT_USE=IOEVENT_USE_KQUEUE
