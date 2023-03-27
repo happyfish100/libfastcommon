@@ -31,7 +31,7 @@ struct fc_queue
 {
 	void *head;
 	void *tail;
-    pthread_lock_cond_pair_t lc_pair;
+    pthread_lock_cond_pair_t lcp;
     int next_ptr_offset;
 };
 
@@ -49,7 +49,7 @@ void fc_queue_destroy(struct fc_queue *queue);
 
 static inline void fc_queue_terminate(struct fc_queue *queue)
 {
-    pthread_cond_signal(&queue->lc_pair.cond);
+    pthread_cond_signal(&queue->lcp.cond);
 }
 
 static inline void fc_queue_terminate_all(
@@ -57,7 +57,7 @@ static inline void fc_queue_terminate_all(
 {
     int i;
     for (i=0; i<count; i++) {
-        pthread_cond_signal(&(queue->lc_pair.cond));
+        pthread_cond_signal(&(queue->lcp.cond));
     }
 }
 
@@ -75,7 +75,7 @@ static inline void fc_queue_push(struct fc_queue *queue, void *data)
 
     fc_queue_push_ex(queue, data, &notify);
     if (notify) {
-        pthread_cond_signal(&(queue->lc_pair.cond));
+        pthread_cond_signal(&(queue->lcp.cond));
     }
 }
 
@@ -95,7 +95,7 @@ static inline void fc_queue_push_queue_to_head(struct fc_queue *queue,
 
     fc_queue_push_queue_to_head_ex(queue, qinfo, &notify);
     if (notify) {
-        pthread_cond_signal(&(queue->lc_pair.cond));
+        pthread_cond_signal(&(queue->lcp.cond));
     }
 }
 
@@ -116,7 +116,7 @@ static inline void fc_queue_push_queue_to_tail(struct fc_queue *queue,
 
     fc_queue_push_queue_to_tail_ex(queue, qinfo, &notify);
     if (notify) {
-        pthread_cond_signal(&(queue->lc_pair.cond));
+        pthread_cond_signal(&(queue->lcp.cond));
     }
 }
 
@@ -148,9 +148,9 @@ static inline bool fc_queue_empty(struct fc_queue *queue)
 {
     bool empty;
 
-    pthread_mutex_lock(&queue->lc_pair.lock);
+    pthread_mutex_lock(&queue->lcp.lock);
     empty = (queue->head == NULL);
-    pthread_mutex_unlock(&queue->lc_pair.lock);
+    pthread_mutex_unlock(&queue->lcp.lock);
     return empty;
 }
 
@@ -160,14 +160,14 @@ static inline int fc_queue_count(struct fc_queue *queue)
     void *data;
 
     count = 0;
-    pthread_mutex_lock(&queue->lc_pair.lock);
+    pthread_mutex_lock(&queue->lcp.lock);
     data = queue->head;
     while (data != NULL)
     {
         ++count;
         data = FC_QUEUE_NEXT_PTR(queue, data);
     }
-    pthread_mutex_unlock(&queue->lc_pair.lock);
+    pthread_mutex_unlock(&queue->lcp.lock);
     return count;
 }
 

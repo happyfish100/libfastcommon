@@ -22,7 +22,7 @@ int fc_queue_init(struct fc_queue *queue, const int next_ptr_offset)
 {
 	int result;
 
-	if ((result=init_pthread_lock_cond_pair(&queue->lc_pair)) != 0)
+	if ((result=init_pthread_lock_cond_pair(&queue->lcp)) != 0)
 	{
 		return result;
 	}
@@ -35,12 +35,12 @@ int fc_queue_init(struct fc_queue *queue, const int next_ptr_offset)
 
 void fc_queue_destroy(struct fc_queue *queue)
 {
-    destroy_pthread_lock_cond_pair(&queue->lc_pair);
+    destroy_pthread_lock_cond_pair(&queue->lcp);
 }
 
 void fc_queue_push_ex(struct fc_queue *queue, void *data, bool *notify)
 {
-    PTHREAD_MUTEX_LOCK(&queue->lc_pair.lock);
+    PTHREAD_MUTEX_LOCK(&queue->lcp.lock);
 	FC_QUEUE_NEXT_PTR(queue, data) = NULL;
 	if (queue->tail == NULL) {
 		queue->head = data;
@@ -51,14 +51,14 @@ void fc_queue_push_ex(struct fc_queue *queue, void *data, bool *notify)
 	}
 	queue->tail = data;
 
-    PTHREAD_MUTEX_UNLOCK(&queue->lc_pair.lock);
+    PTHREAD_MUTEX_UNLOCK(&queue->lcp.lock);
 }
 
 void *fc_queue_pop_ex(struct fc_queue *queue, const bool blocked)
 {
 	void *data;
 
-    PTHREAD_MUTEX_LOCK(&queue->lc_pair.lock);
+    PTHREAD_MUTEX_LOCK(&queue->lcp.lock);
     do {
         data = queue->head;
         if (data == NULL) {
@@ -66,7 +66,7 @@ void *fc_queue_pop_ex(struct fc_queue *queue, const bool blocked)
                 break;
             }
 
-            pthread_cond_wait(&queue->lc_pair.cond, &queue->lc_pair.lock);
+            pthread_cond_wait(&queue->lcp.cond, &queue->lcp.lock);
             data = queue->head;
         }
 
@@ -78,7 +78,7 @@ void *fc_queue_pop_ex(struct fc_queue *queue, const bool blocked)
         }
     } while (0);
 
-    PTHREAD_MUTEX_UNLOCK(&queue->lc_pair.lock);
+    PTHREAD_MUTEX_UNLOCK(&queue->lcp.lock);
 	return data;
 }
 
@@ -86,7 +86,7 @@ void *fc_queue_pop_all_ex(struct fc_queue *queue, const bool blocked)
 {
 	void *data;
 
-    PTHREAD_MUTEX_LOCK(&queue->lc_pair.lock);
+    PTHREAD_MUTEX_LOCK(&queue->lcp.lock);
     do {
         data = queue->head;
         if (data == NULL) {
@@ -94,7 +94,7 @@ void *fc_queue_pop_all_ex(struct fc_queue *queue, const bool blocked)
                 break;
             }
 
-            pthread_cond_wait(&queue->lc_pair.cond, &queue->lc_pair.lock);
+            pthread_cond_wait(&queue->lcp.cond, &queue->lcp.lock);
             data = queue->head;
         }
 
@@ -103,7 +103,7 @@ void *fc_queue_pop_all_ex(struct fc_queue *queue, const bool blocked)
         }
     } while (0);
 
-    PTHREAD_MUTEX_UNLOCK(&queue->lc_pair.lock);
+    PTHREAD_MUTEX_UNLOCK(&queue->lcp.lock);
 	return data;
 }
 
@@ -115,7 +115,7 @@ void fc_queue_push_queue_to_head_ex(struct fc_queue *queue,
         return;
     }
 
-    PTHREAD_MUTEX_LOCK(&queue->lc_pair.lock);
+    PTHREAD_MUTEX_LOCK(&queue->lcp.lock);
     FC_QUEUE_NEXT_PTR(queue, qinfo->tail) = queue->head;
     queue->head = qinfo->head;
     if (queue->tail == NULL) {
@@ -124,7 +124,7 @@ void fc_queue_push_queue_to_head_ex(struct fc_queue *queue,
     } else {
         *notify = false;
     }
-    PTHREAD_MUTEX_UNLOCK(&queue->lc_pair.lock);
+    PTHREAD_MUTEX_UNLOCK(&queue->lcp.lock);
 }
 
 void fc_queue_push_queue_to_tail_ex(struct fc_queue *queue,
@@ -135,7 +135,7 @@ void fc_queue_push_queue_to_tail_ex(struct fc_queue *queue,
         return;
     }
 
-    PTHREAD_MUTEX_LOCK(&queue->lc_pair.lock);
+    PTHREAD_MUTEX_LOCK(&queue->lcp.lock);
     if (queue->head == NULL) {
         queue->head = qinfo->head;
         *notify = true;
@@ -144,16 +144,16 @@ void fc_queue_push_queue_to_tail_ex(struct fc_queue *queue,
         *notify = false;
     }
     queue->tail = qinfo->tail;
-    PTHREAD_MUTEX_UNLOCK(&queue->lc_pair.lock);
+    PTHREAD_MUTEX_UNLOCK(&queue->lcp.lock);
 }
 
 void fc_queue_pop_to_queue_ex(struct fc_queue *queue,
         struct fc_queue_info *qinfo, const bool blocked)
 {
-    PTHREAD_MUTEX_LOCK(&queue->lc_pair.lock);
+    PTHREAD_MUTEX_LOCK(&queue->lcp.lock);
     if (queue->head == NULL) {
         if (blocked) {
-            pthread_cond_wait(&queue->lc_pair.cond, &queue->lc_pair.lock);
+            pthread_cond_wait(&queue->lcp.cond, &queue->lcp.lock);
         }
     }
 
@@ -164,7 +164,7 @@ void fc_queue_pop_to_queue_ex(struct fc_queue *queue,
     } else {
         qinfo->head = qinfo->tail = NULL;
     }
-    PTHREAD_MUTEX_UNLOCK(&queue->lc_pair.lock);
+    PTHREAD_MUTEX_UNLOCK(&queue->lcp.lock);
 }
 
 void *fc_queue_timedpop(struct fc_queue *queue,
@@ -172,10 +172,10 @@ void *fc_queue_timedpop(struct fc_queue *queue,
 {
 	void *data;
 
-    PTHREAD_MUTEX_LOCK(&queue->lc_pair.lock);
+    PTHREAD_MUTEX_LOCK(&queue->lcp.lock);
     data = queue->head;
     if (data == NULL) {
-        fc_cond_timedwait(&queue->lc_pair, timeout, time_unit);
+        fc_cond_timedwait(&queue->lcp, timeout, time_unit);
         data = queue->head;
     }
 
@@ -185,7 +185,7 @@ void *fc_queue_timedpop(struct fc_queue *queue,
             queue->tail = NULL;
         }
     }
-    PTHREAD_MUTEX_UNLOCK(&queue->lc_pair.lock);
+    PTHREAD_MUTEX_UNLOCK(&queue->lcp.lock);
 
 	return data;
 }
@@ -195,13 +195,13 @@ void *fc_queue_timedpeek(struct fc_queue *queue,
 {
     void *data;
 
-    PTHREAD_MUTEX_LOCK(&queue->lc_pair.lock);
+    PTHREAD_MUTEX_LOCK(&queue->lcp.lock);
     data = queue->head;
     if (data == NULL) {
-        fc_cond_timedwait(&queue->lc_pair, timeout, time_unit);
+        fc_cond_timedwait(&queue->lcp, timeout, time_unit);
         data = queue->head;
     }
-    PTHREAD_MUTEX_UNLOCK(&queue->lc_pair.lock);
+    PTHREAD_MUTEX_UNLOCK(&queue->lcp.lock);
 
     return data;
 }

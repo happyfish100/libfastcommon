@@ -55,7 +55,7 @@ static inline void sorted_queue_push(struct sorted_queue *sq, void *data)
 
     sorted_queue_push_ex(sq, data, &notify);
     if (notify) {
-        pthread_cond_signal(&(sq->queue.lc_pair.cond));
+        pthread_cond_signal(&(sq->queue.lcp.cond));
     }
 }
 

@@ -35,7 +35,7 @@ void sorted_queue_push_ex(struct sorted_queue *sq, void *data, bool *notify)
     void *previous;
     void *current;
 
-    PTHREAD_MUTEX_LOCK(&sq->queue.lc_pair.lock);
+    PTHREAD_MUTEX_LOCK(&sq->queue.lcp.lock);
     if (sq->queue.tail == NULL) {
         FC_QUEUE_NEXT_PTR(&sq->queue, data) = NULL;
         sq->queue.head = sq->queue.tail = data;
@@ -65,7 +65,7 @@ void sorted_queue_push_ex(struct sorted_queue *sq, void *data, bool *notify)
         }
     }
 
-    PTHREAD_MUTEX_UNLOCK(&sq->queue.lc_pair.lock);
+    PTHREAD_MUTEX_UNLOCK(&sq->queue.lcp.lock);
 }
 
 void *sorted_queue_pop_ex(struct sorted_queue *sq,
@@ -73,7 +73,7 @@ void *sorted_queue_pop_ex(struct sorted_queue *sq,
 {
 	void *data;
 
-    PTHREAD_MUTEX_LOCK(&sq->queue.lc_pair.lock);
+    PTHREAD_MUTEX_LOCK(&sq->queue.lcp.lock);
     do {
         if (sq->queue.head == NULL || sq->compare_func(
                     sq->queue.head, less_equal) > 0)
@@ -83,8 +83,8 @@ void *sorted_queue_pop_ex(struct sorted_queue *sq,
                 break;
             }
 
-            pthread_cond_wait(&sq->queue.lc_pair.cond,
-                    &sq->queue.lc_pair.lock);
+            pthread_cond_wait(&sq->queue.lcp.cond,
+                    &sq->queue.lcp.lock);
         }
 
         if (sq->queue.head == NULL) {
@@ -102,7 +102,7 @@ void *sorted_queue_pop_ex(struct sorted_queue *sq,
         }
     } while (0);
 
-    PTHREAD_MUTEX_UNLOCK(&sq->queue.lc_pair.lock);
+    PTHREAD_MUTEX_UNLOCK(&sq->queue.lcp.lock);
 	return data;
 }
 
@@ -110,7 +110,7 @@ void sorted_queue_pop_to_queue_ex(struct sorted_queue *sq,
         void *less_equal, struct fc_queue_info *qinfo,
         const bool blocked)
 {
-    PTHREAD_MUTEX_LOCK(&sq->queue.lc_pair.lock);
+    PTHREAD_MUTEX_LOCK(&sq->queue.lcp.lock);
     do {
         if (sq->queue.head == NULL) {
             if (!blocked) {
@@ -118,8 +118,8 @@ void sorted_queue_pop_to_queue_ex(struct sorted_queue *sq,
                 break;
             }
 
-            pthread_cond_wait(&sq->queue.lc_pair.cond,
-                    &sq->queue.lc_pair.lock);
+            pthread_cond_wait(&sq->queue.lcp.cond,
+                    &sq->queue.lcp.lock);
         }
 
         if (sq->queue.head == NULL) {
@@ -148,5 +148,5 @@ void sorted_queue_pop_to_queue_ex(struct sorted_queue *sq,
         }
     } while (0);
 
-    PTHREAD_MUTEX_UNLOCK(&sq->queue.lc_pair.lock);
+    PTHREAD_MUTEX_UNLOCK(&sq->queue.lcp.lock);
 }
