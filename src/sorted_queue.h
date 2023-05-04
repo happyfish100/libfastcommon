@@ -78,14 +78,23 @@ static inline void sorted_queue_push_silence(
     sorted_queue_push_ex(sq, data, &notify);
 }
 
-void sorted_queue_pop_ex(struct sorted_queue *sq, void *less_equal,
+void *sorted_queue_pop_ex(struct sorted_queue *sq,
+        void *less_equal, const bool blocked);
+
+#define sorted_queue_pop(sq, less_equal) \
+    sorted_queue_pop_ex(sq, less_equal, true)
+
+#define sorted_queue_try_pop(sq, less_equal) \
+    sorted_queue_pop_ex(sq, less_equal, false)
+
+void sorted_queue_pop_all_ex(struct sorted_queue *sq, void *less_equal,
         struct fc_list_head *head, const bool blocked);
 
-#define sorted_queue_pop(sq, less_equal, head) \
-    sorted_queue_pop_ex(sq, less_equal, head, true)
+#define sorted_queue_pop_all(sq, less_equal, head) \
+    sorted_queue_pop_all_ex(sq, less_equal, head, true)
 
-#define sorted_queue_try_pop(sq, less_equal, head) \
-    sorted_queue_pop_ex(sq, less_equal, head, false)
+#define sorted_queue_try_pop_all(sq, less_equal, head) \
+    sorted_queue_pop_all_ex(sq, less_equal, head, false)
 
 static inline bool sorted_queue_empty(struct sorted_queue *sq)
 {

@@ -70,17 +70,48 @@ void sorted_queue_push_ex(struct sorted_queue *sq, void *data, bool *notify)
             }
             fc_list_add_after(dlink, current);
             *notify = false;
-
-            if (count >= 10) {
-                logInfo("================== compare count: %d ==========", count);
-            }
         }
     }
 
     PTHREAD_MUTEX_UNLOCK(&sq->lcp.lock);
 }
 
-void sorted_queue_pop_ex(struct sorted_queue *sq, void *less_equal,
+void *sorted_queue_pop_ex(struct sorted_queue *sq,
+        void *less_equal, const bool blocked)
+{
+    void *data;
+    struct fc_list_head *current;
+
+    PTHREAD_MUTEX_LOCK(&sq->lcp.lock);
+    do {
+        if (fc_list_empty(&sq->head)) {
+            if (!blocked) {
+                data = NULL;
+                break;
+            }
+
+            pthread_cond_wait(&sq->lcp.cond,
+                    &sq->lcp.lock);
+            if (fc_list_empty(&sq->head)) {
+                data = NULL;
+                break;
+            }
+        }
+
+        current = sq->head.next;
+        data = FC_SORTED_QUEUE_DATA_PTR(sq, current);
+        if (sq->compare_func(data, less_equal) <= 0) {
+            fc_list_del_init(current);
+        } else {
+            data = NULL;
+        }
+    } while (0);
+    PTHREAD_MUTEX_UNLOCK(&sq->lcp.lock);
+
+    return data;
+}
+
+void sorted_queue_pop_all_ex(struct sorted_queue *sq, void *less_equal,
         struct fc_list_head *head, const bool blocked)
 {
     struct fc_list_head *current;

@@ -72,13 +72,12 @@ static void test1()
     struct fc_list_head head;
 
     set_rand_numbers(1);
-
     for (i=0; i<COUNT; i++) {
         sorted_queue_push_silence(&sq, numbers + i);
     }
 
     less_equal.n = COUNT;
-    sorted_queue_try_pop(&sq, &less_equal, &head);
+    sorted_queue_try_pop_all(&sq, &less_equal, &head);
     assert(sorted_queue_empty(&sq));
 
     i = 0;
@@ -91,7 +90,7 @@ static void test1()
     }
     assert(i == COUNT);
 
-    sorted_queue_try_pop(&sq, &less_equal, &head);
+    sorted_queue_try_pop_all(&sq, &less_equal, &head);
     assert(fc_list_empty(&head));
 }
 
@@ -105,17 +104,16 @@ static void test2()
     struct fc_list_head head;
 
     set_rand_numbers(MULTIPLE);
-
     for (i=0; i<COUNT; i++) {
         sorted_queue_push_silence(&sq, numbers + i);
     }
 
     less_equal.n = 0;
-    sorted_queue_try_pop(&sq, &less_equal, &head);
+    sorted_queue_try_pop_all(&sq, &less_equal, &head);
     assert(fc_list_empty(&head));
 
     less_equal.n = COUNT;
-    sorted_queue_try_pop(&sq, &less_equal, &head);
+    sorted_queue_try_pop_all(&sq, &less_equal, &head);
     assert(!sorted_queue_empty(&sq));
 
     i = 0;
@@ -128,7 +126,7 @@ static void test2()
     }
 
     less_equal.n = 2 * COUNT + 1;
-    sorted_queue_try_pop(&sq, &less_equal, &head);
+    sorted_queue_try_pop_all(&sq, &less_equal, &head);
     assert(sorted_queue_empty(&sq));
     fc_list_for_each_entry (number, &head, dlink) {
         n = i++ * MULTIPLE + 1;
@@ -138,6 +136,30 @@ static void test2()
         }
     }
     assert(i == COUNT);
+}
+
+static void test3()
+{
+    int i;
+    DoubleLinkNumber less_equal;
+    DoubleLinkNumber *number;
+
+    set_rand_numbers(1);
+    for (i=0; i<COUNT; i++) {
+        sorted_queue_push_silence(&sq, numbers + i);
+    }
+
+    less_equal.n = COUNT;
+    for (i=1; i<=COUNT; i++) {
+        number = sorted_queue_try_pop(&sq, &less_equal);
+        assert(number != NULL);
+        if (i != number->n) {
+            fprintf(stderr, "i: %d != value: %d\n", i, number->n);
+            break;
+        }
+    }
+
+    assert(sorted_queue_try_pop(&sq, &less_equal) == NULL);
 }
 
 int main(int argc, char *argv[])
@@ -160,9 +182,9 @@ int main(int argc, char *argv[])
 
     test1();
     test2();
+    test3();
 
     end_time = get_current_time_ms();
     printf("pass OK, time used: %"PRId64" ms\n", end_time - start_time);
     return 0;
 }
-
