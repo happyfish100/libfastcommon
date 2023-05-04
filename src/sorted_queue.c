@@ -18,135 +18,143 @@
 #include "pthread_func.h"
 #include "sorted_queue.h"
 
-int sorted_queue_init(struct sorted_queue *sq, const int next_ptr_offset,
+int sorted_queue_init(struct sorted_queue *sq, const int dlink_offset,
         int (*compare_func)(const void *, const void *))
 {
+	int result;
+
+	if ((result=init_pthread_lock_cond_pair(&sq->lcp)) != 0) {
+		return result;
+	}
+
+    FC_INIT_LIST_HEAD(&sq->head);
+    sq->dlink_offset = dlink_offset;
     sq->compare_func = compare_func;
-	return fc_queue_init(&sq->queue, next_ptr_offset);
+	return 0;
 }
 
 void sorted_queue_destroy(struct sorted_queue *sq)
 {
-    fc_queue_destroy(&sq->queue);
+    destroy_pthread_lock_cond_pair(&sq->lcp);
 }
 
 void sorted_queue_push_ex(struct sorted_queue *sq, void *data, bool *notify)
 {
-    void *previous;
-    void *current;
+    struct fc_list_head *dlink;
+    struct fc_list_head *current;
+    int count = 0;
 
-    PTHREAD_MUTEX_LOCK(&sq->queue.lcp.lock);
-    if (sq->queue.tail == NULL) {
-        FC_QUEUE_NEXT_PTR(&sq->queue, data) = NULL;
-        sq->queue.head = sq->queue.tail = data;
+    dlink = FC_SORTED_QUEUE_DLINK_PTR(sq, data);
+    PTHREAD_MUTEX_LOCK(&sq->lcp.lock);
+    if (fc_list_empty(&sq->head)) {
+        fc_list_add(dlink, &sq->head);
         *notify = true;
     } else {
-        if (sq->compare_func(data, sq->queue.tail) >= 0) {
-            FC_QUEUE_NEXT_PTR(&sq->queue, data) = NULL;
-            FC_QUEUE_NEXT_PTR(&sq->queue, sq->queue.tail) = data;
-            sq->queue.tail = data;
+        if (sq->compare_func(data, FC_SORTED_QUEUE_DATA_PTR(
+                        sq, sq->head.prev)) >= 0)
+        {
+            fc_list_add_tail(dlink, &sq->head);
             *notify = false;
-        } else if (sq->compare_func(data, sq->queue.head) < 0) {
-            FC_QUEUE_NEXT_PTR(&sq->queue, data) = sq->queue.head;
-            sq->queue.head = data;
+        } else if (sq->compare_func(data, FC_SORTED_QUEUE_DATA_PTR(
+                        sq, sq->head.next)) < 0)
+        {
+            fc_list_add(dlink, &sq->head);
             *notify = true;
         } else {
-            previous = sq->queue.head;
-            current = FC_QUEUE_NEXT_PTR(&sq->queue, previous);
-            while (sq->compare_func(data, current) >= 0) {
-                previous = current;
-                current = FC_QUEUE_NEXT_PTR(&sq->queue, previous);
+            current = sq->head.prev->prev;
+            while (sq->compare_func(data, FC_SORTED_QUEUE_DATA_PTR(
+                        sq, current)) < 0)
+            {
+                current = current->prev;
+                ++count;
             }
-
-            FC_QUEUE_NEXT_PTR(&sq->queue, data) = FC_QUEUE_NEXT_PTR(
-                    &sq->queue, previous);
-            FC_QUEUE_NEXT_PTR(&sq->queue, previous) = data;
+            fc_list_add_after(dlink, current);
             *notify = false;
+
+            if (count >= 10) {
+                logInfo("================== compare count: %d ==========", count);
+            }
         }
     }
 
-    PTHREAD_MUTEX_UNLOCK(&sq->queue.lcp.lock);
+    PTHREAD_MUTEX_UNLOCK(&sq->lcp.lock);
 }
 
-void *sorted_queue_pop_ex(struct sorted_queue *sq,
-        void *less_equal, const bool blocked)
+void sorted_queue_pop_ex(struct sorted_queue *sq, void *less_equal,
+        struct fc_list_head *head, const bool blocked)
 {
-	void *data;
+    struct fc_list_head *current;
 
-    PTHREAD_MUTEX_LOCK(&sq->queue.lcp.lock);
+    PTHREAD_MUTEX_LOCK(&sq->lcp.lock);
     do {
-        if (sq->queue.head == NULL || sq->compare_func(
-                    sq->queue.head, less_equal) > 0)
-        {
+        if (fc_list_empty(&sq->head)) {
             if (!blocked) {
-                data = NULL;
+                FC_INIT_LIST_HEAD(head);
                 break;
             }
 
-            pthread_cond_wait(&sq->queue.lcp.cond,
-                    &sq->queue.lcp.lock);
+            pthread_cond_wait(&sq->lcp.cond,
+                    &sq->lcp.lock);
         }
 
-        if (sq->queue.head == NULL) {
-            data = NULL;
+        if (fc_list_empty(&sq->head)) {
+            FC_INIT_LIST_HEAD(head);
         } else {
-            if (sq->compare_func(sq->queue.head, less_equal) <= 0) {
-                data = sq->queue.head;
-                sq->queue.head = FC_QUEUE_NEXT_PTR(&sq->queue, data);
-                if (sq->queue.head == NULL) {
-                    sq->queue.tail = NULL;
-                }
-            } else {
-                data = NULL;
-            }
-        }
-    } while (0);
-
-    PTHREAD_MUTEX_UNLOCK(&sq->queue.lcp.lock);
-	return data;
-}
-
-void sorted_queue_pop_to_queue_ex(struct sorted_queue *sq,
-        void *less_equal, struct fc_queue_info *qinfo,
-        const bool blocked)
-{
-    PTHREAD_MUTEX_LOCK(&sq->queue.lcp.lock);
-    do {
-        if (sq->queue.head == NULL) {
-            if (!blocked) {
-                qinfo->head = qinfo->tail = NULL;
-                break;
-            }
-
-            pthread_cond_wait(&sq->queue.lcp.cond,
-                    &sq->queue.lcp.lock);
-        }
-
-        if (sq->queue.head == NULL) {
-            qinfo->head = qinfo->tail = NULL;
-        } else {
-            if (sq->compare_func(sq->queue.head, less_equal) <= 0) {
-                qinfo->head = qinfo->tail = sq->queue.head;
-                sq->queue.head = FC_QUEUE_NEXT_PTR(&sq->queue,
-                        sq->queue.head);
-                while (sq->queue.head != NULL && sq->compare_func(
-                            sq->queue.head, less_equal) <= 0)
+            current = sq->head.next;
+            if (sq->compare_func(FC_SORTED_QUEUE_DATA_PTR(
+                        sq, current), less_equal) <= 0)
+            {
+                head->next = current;
+                current->prev = head;
+                current = current->next;
+                while (current != &sq->head && sq->compare_func(
+                            FC_SORTED_QUEUE_DATA_PTR(sq, current),
+                            less_equal) <= 0)
                 {
-                    qinfo->tail = sq->queue.head;
-                    sq->queue.head = FC_QUEUE_NEXT_PTR(
-                            &sq->queue, sq->queue.head);
+                    current = current->next;
                 }
 
-                if (sq->queue.head == NULL) {
-                    sq->queue.tail = NULL;
+                head->prev = current->prev;
+                current->prev->next = head;
+                if (current == &sq->head) {
+                    FC_INIT_LIST_HEAD(&sq->head);
                 } else {
-                    FC_QUEUE_NEXT_PTR(&sq->queue, qinfo->tail) = NULL;
+                    sq->head.next = current;
+                    current->prev = &sq->head;
                 }
             } else {
-                qinfo->head = qinfo->tail = NULL;
+                FC_INIT_LIST_HEAD(head);
             }
         }
     } while (0);
 
-    PTHREAD_MUTEX_UNLOCK(&sq->queue.lcp.lock);
+    PTHREAD_MUTEX_UNLOCK(&sq->lcp.lock);
+}
+
+int sorted_queue_free_chain(struct sorted_queue *sq,
+        struct fast_mblock_man *mblock, struct fc_list_head *head)
+{
+    struct fast_mblock_node *previous;
+    struct fast_mblock_node *current;
+    struct fast_mblock_chain chain;
+    struct fc_list_head *node;
+
+    if (fc_list_empty(&sq->head)) {
+        return 0;
+    }
+
+    node = head->next;
+    chain.head = previous = fast_mblock_to_node_ptr(
+            FC_SORTED_QUEUE_DATA_PTR(sq, node));
+    node = node->next;
+    while (node != head) {
+        current = fast_mblock_to_node_ptr(FC_SORTED_QUEUE_DATA_PTR(sq, node));
+        previous->next = current;
+        previous = current;
+        node = node->next;
+    }
+
+    previous->next = NULL;
+    chain.tail = previous;
+    return fast_mblock_batch_free(mblock, &chain);
 }

@@ -46,6 +46,16 @@ fc_list_add_before (struct fc_list_head *_new, struct fc_list_head *current)
 }
 
 static inline void
+fc_list_add_after (struct fc_list_head *_new, struct fc_list_head *current)
+{
+    _new->prev = current;
+    _new->next = current->next;
+
+    current->next->prev = _new;
+    current->next = _new;
+}
+
+static inline void
 fc_list_add_internal (struct fc_list_head *_new, struct fc_list_head *prev,
         struct fc_list_head *next)
 {

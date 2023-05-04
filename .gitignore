@@ -59,6 +59,7 @@ src/tests/test_mutex_lock_perf
 src/tests/test_queue_perf
 src/tests/test_normalize_path
 src/tests/test_sorted_array
+src/tests/test_sorted_queue
 
 # other
 *.swp

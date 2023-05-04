@@ -18,32 +18,44 @@
 #ifndef _FC_SORTED_QUEUE_H
 #define _FC_SORTED_QUEUE_H
 
-#include "fc_queue.h"
+#include "fast_mblock.h"
+#include "fc_list.h"
 
 struct sorted_queue
 {
-    struct fc_queue queue;
+    struct fc_list_head head;
+    pthread_lock_cond_pair_t lcp;
+    int dlink_offset;
     int (*compare_func)(const void *, const void *);
 };
+
+#define FC_SORTED_QUEUE_DLINK_PTR(sq, data) \
+    ((void *)(((char *)data) + (sq)->dlink_offset))
+
+#define FC_SORTED_QUEUE_DATA_PTR(sq, dlink) \
+    ((void *)((char *)(dlink) - (sq)->dlink_offset))
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-int sorted_queue_init(struct sorted_queue *sq, const int next_ptr_offset,
+int sorted_queue_init(struct sorted_queue *sq, const int dlink_offset,
         int (*compare_func)(const void *, const void *));
 
 void sorted_queue_destroy(struct sorted_queue *sq);
 
 static inline void sorted_queue_terminate(struct sorted_queue *sq)
 {
-    fc_queue_terminate(&sq->queue);
+    pthread_cond_signal(&sq->lcp.cond);
 }
 
 static inline void sorted_queue_terminate_all(
         struct sorted_queue *sq, const int count)
 {
-    fc_queue_terminate_all(&sq->queue, count);
+    int i;
+    for (i=0; i<count; i++) {
+        pthread_cond_signal(&(sq->lcp.cond));
+    }
 }
 
 //notify by the caller
@@ -55,76 +67,33 @@ static inline void sorted_queue_push(struct sorted_queue *sq, void *data)
 
     sorted_queue_push_ex(sq, data, &notify);
     if (notify) {
-        pthread_cond_signal(&(sq->queue.lcp.cond));
+        pthread_cond_signal(&(sq->lcp.cond));
     }
 }
 
-static inline void sorted_queue_push_silence(struct sorted_queue *sq, void *data)
+static inline void sorted_queue_push_silence(
+        struct sorted_queue *sq, void *data)
 {
     bool notify;
     sorted_queue_push_ex(sq, data, &notify);
 }
 
-void *sorted_queue_pop_ex(struct sorted_queue *sq,
-        void *less_equal, const bool blocked);
+void sorted_queue_pop_ex(struct sorted_queue *sq, void *less_equal,
+        struct fc_list_head *head, const bool blocked);
 
-#define sorted_queue_pop(sq, less_equal)  \
-    sorted_queue_pop_ex(sq, less_equal, true)
+#define sorted_queue_pop(sq, less_equal, head) \
+    sorted_queue_pop_ex(sq, less_equal, head, true)
 
-#define sorted_queue_try_pop(sq, less_equal) \
-    sorted_queue_pop_ex(sq, less_equal, false)
-
-
-void sorted_queue_pop_to_queue_ex(struct sorted_queue *sq,
-        void *less_equal, struct fc_queue_info *qinfo,
-        const bool blocked);
-
-#define sorted_queue_pop_to_queue(sq, less_equal, qinfo) \
-    sorted_queue_pop_to_queue_ex(sq, less_equal, qinfo, true)
-
-#define sorted_queue_try_pop_to_queue(sq, less_equal, qinfo) \
-    sorted_queue_pop_to_queue_ex(sq, less_equal, qinfo, false)
-
-
-static inline void *sorted_queue_pop_all_ex(struct sorted_queue *sq,
-        void *less_equal, const bool blocked)
-{
-    struct fc_queue_info chain;
-    sorted_queue_pop_to_queue_ex(sq, less_equal, &chain, blocked);
-    return chain.head;
-}
-
-#define sorted_queue_pop_all(sq, less_equal)  \
-    sorted_queue_pop_all_ex(sq, less_equal, true)
-
-#define sorted_queue_try_pop_all(sq, less_equal) \
-    sorted_queue_pop_all_ex(sq, less_equal, false)
+#define sorted_queue_try_pop(sq, less_equal, head) \
+    sorted_queue_pop_ex(sq, less_equal, head, false)
 
 static inline bool sorted_queue_empty(struct sorted_queue *sq)
 {
-    return fc_queue_empty(&sq->queue);
+    return fc_list_empty(&sq->head);
 }
 
-static inline void *sorted_queue_timedpeek(struct sorted_queue *sq,
-        const int timeout, const int time_unit)
-{
-    return fc_queue_timedpeek(&sq->queue, timeout, time_unit);
-}
-
-#define sorted_queue_timedpeek_sec(sq, timeout) \
-    sorted_queue_timedpeek(sq, timeout, FC_TIME_UNIT_SECOND)
-
-#define sorted_queue_timedpeek_ms(sq, timeout_ms) \
-    sorted_queue_timedpeek(sq, timeout_ms, FC_TIME_UNIT_MSECOND)
-
-#define sorted_queue_timedpeek_us(sq, timeout_us) \
-    sorted_queue_timedpeek(sq, timeout_us, FC_TIME_UNIT_USECOND)
-
-static inline int sorted_queue_free_chain(struct sorted_queue *sq,
-        struct fast_mblock_man *mblock, struct fc_queue_info *qinfo)
-{
-    return fc_queue_free_chain(&sq->queue, mblock, qinfo);
-}
+int sorted_queue_free_chain(struct sorted_queue *sq,
+        struct fast_mblock_man *mblock, struct fc_list_head *head);
 
 #ifdef __cplusplus
 }
