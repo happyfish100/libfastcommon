@@ -77,7 +77,7 @@ static void test1()
     }
 
     less_equal.n = COUNT;
-    sorted_queue_try_pop_all(&sq, &less_equal, &head);
+    sorted_queue_try_pop_to_chain(&sq, &less_equal, &head);
     assert(sorted_queue_empty(&sq));
 
     i = 0;
@@ -90,7 +90,7 @@ static void test1()
     }
     assert(i == COUNT);
 
-    sorted_queue_try_pop_all(&sq, &less_equal, &head);
+    sorted_queue_try_pop_to_chain(&sq, &less_equal, &head);
     assert(fc_list_empty(&head));
 }
 
@@ -109,11 +109,11 @@ static void test2()
     }
 
     less_equal.n = 0;
-    sorted_queue_try_pop_all(&sq, &less_equal, &head);
+    sorted_queue_try_pop_to_chain(&sq, &less_equal, &head);
     assert(fc_list_empty(&head));
 
     less_equal.n = COUNT;
-    sorted_queue_try_pop_all(&sq, &less_equal, &head);
+    sorted_queue_try_pop_to_chain(&sq, &less_equal, &head);
     assert(!sorted_queue_empty(&sq));
 
     i = 0;
@@ -126,7 +126,7 @@ static void test2()
     }
 
     less_equal.n = 2 * COUNT + 1;
-    sorted_queue_try_pop_all(&sq, &less_equal, &head);
+    sorted_queue_try_pop_to_chain(&sq, &less_equal, &head);
     assert(sorted_queue_empty(&sq));
     fc_list_for_each_entry (number, &head, dlink) {
         n = i++ * MULTIPLE + 1;

@@ -111,8 +111,9 @@ void *sorted_queue_pop_ex(struct sorted_queue *sq,
     return data;
 }
 
-void sorted_queue_pop_all_ex(struct sorted_queue *sq, void *less_equal,
-        struct fc_list_head *head, const bool blocked)
+void sorted_queue_pop_to_chain_ex(struct sorted_queue *sq,
+        void *less_equal, struct fc_list_head *head,
+        const bool blocked)
 {
     struct fc_list_head *current;
 
