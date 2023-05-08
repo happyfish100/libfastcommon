@@ -312,13 +312,17 @@ int main(int argc, char *argv[])
     test_delete();
     printf("\n");
 
+    test_clear();
+    printf("\n");
+
     test_insert();
     printf("\n");
 
     test_clear();
     printf("\n");
 
-    printf("skiplist level_count: %d\n", sl->top_level_index + 1);
+    test_insert();
+    printf("\n");
 
     uniq_skiplist_free(sl);
     fast_mblock_manager_stat_print(false);

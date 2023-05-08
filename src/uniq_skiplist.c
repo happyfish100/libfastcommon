@@ -161,12 +161,24 @@ void uniq_skiplist_destroy(UniqSkiplistFactory *factory)
     factory->node_allocators = NULL;
 }
 
+static inline void init_chain(UniqSkiplist *sl)
+{
+    int i;
+
+    if (sl->factory->bidirection) {
+        LEVEL0_DOUBLE_CHAIN_TAIL(sl) = sl->top;
+    }
+
+    for (i=0; i<=sl->top_level_index; i++) {
+        sl->top->links[i] = sl->factory->tail;
+    }
+}
+
 UniqSkiplist *uniq_skiplist_new(UniqSkiplistFactory *factory,
         const int level_count)
 {
     UniqSkiplist *sl;
     struct fast_mblock_man *top_mblock;
-    int i;
 
     if (level_count <= 0) {
         logError("file: "__FILE__", line: %d, "
@@ -199,13 +211,7 @@ UniqSkiplist *uniq_skiplist_new(UniqSkiplistFactory *factory,
     }
     memset(sl->top, 0, top_mblock->info.element_size);
     sl->top->level_index = sl->top_level_index;
-    if (sl->factory->bidirection) {
-        LEVEL0_DOUBLE_CHAIN_TAIL(sl) = sl->top;
-    }
-
-    for (i=0; i<level_count; i++) {
-        sl->top->links[i] = sl->factory->tail;
-    }
+    init_chain(sl);
 
     return sl;
 }
@@ -257,14 +263,10 @@ static int uniq_skiplist_grow(UniqSkiplist *sl)
     return 0;
 }
 
-void uniq_skiplist_free(UniqSkiplist *sl)
+static void do_clear(UniqSkiplist *sl)
 {
     volatile UniqSkiplistNode *node;
     volatile UniqSkiplistNode *deleted;
-
-    if (sl->top == NULL) {
-        return;
-    }
 
     node = sl->top->links[0];
     if (sl->factory->free_func != NULL) {
@@ -286,11 +288,30 @@ void uniq_skiplist_free(UniqSkiplist *sl)
         }
     }
 
+    sl->element_count = 0;
+}
+
+void uniq_skiplist_clear(UniqSkiplist *sl)
+{
+    if (!uniq_skiplist_empty(sl)) {
+        do_clear(sl);
+        init_chain(sl);
+    }
+}
+
+void uniq_skiplist_free(UniqSkiplist *sl)
+{
+    if (sl->top == NULL) {
+        return;
+    }
+
+    if (!uniq_skiplist_empty(sl)) {
+        do_clear(sl);
+    }
+
     fast_mblock_free_object(sl->factory->node_allocators +
             sl->top_level_index, sl->top);
-
     sl->top = NULL;
-    sl->element_count = 0;
     sl->top_level_index = 0;
     fast_mblock_free_object(&sl->factory->skiplist_allocator, sl);
 }
