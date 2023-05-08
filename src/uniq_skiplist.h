@@ -253,6 +253,19 @@ static inline bool uniq_skiplist_empty(UniqSkiplist *sl)
     return sl->top->links[0] == sl->factory->tail;
 }
 
+static inline void uniq_skiplist_clear(UniqSkiplist *sl)
+{
+    volatile UniqSkiplistNode *current;
+    volatile UniqSkiplistNode *deleted;
+
+    current = sl->top->links[0];
+    while (current != sl->factory->tail) {
+        deleted = current;
+        current = current->links[0];
+        uniq_skiplist_delete(sl, deleted->data);
+    }
+}
+
 #define LEVEL0_DOUBLE_CHAIN_NEXT_LINK(node)  node->links[0]
 #define LEVEL0_DOUBLE_CHAIN_PREV_LINK(node)  node->links[node->level_index + 1]
 #define LEVEL0_DOUBLE_CHAIN_TAIL(sl)  LEVEL0_DOUBLE_CHAIN_PREV_LINK(sl->top)

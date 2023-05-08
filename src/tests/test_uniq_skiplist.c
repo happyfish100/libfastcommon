@@ -149,6 +149,19 @@ static void test_delete()
     assert(i==0);
 }
 
+static void test_clear()
+{
+    int64_t start_time;
+    int64_t end_time;
+
+    start_time = get_current_time_ms();
+    uniq_skiplist_clear(sl);
+    assert(uniq_skiplist_empty(sl));
+    assert(instance_count == 0);
+    end_time = get_current_time_ms();
+    printf("clear time used: %"PRId64" ms\n", end_time - start_time);
+}
+
 static void test_find_range()
 {
     int n_start;
@@ -302,10 +315,8 @@ int main(int argc, char *argv[])
     test_insert();
     printf("\n");
 
-    /*
-    test_delete();
+    test_clear();
     printf("\n");
-    */
 
     printf("skiplist level_count: %d\n", sl->top_level_index + 1);
 
