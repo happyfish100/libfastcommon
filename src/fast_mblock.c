@@ -589,8 +589,8 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
     mblock->info.element_total_count += alloc_count;
     if (mblock->trunk_callbacks.notify_func != NULL)
     {
-        mblock->trunk_callbacks.notify_func(trunk_size,
-                mblock->trunk_callbacks.args);
+        mblock->trunk_callbacks.notify_func(fast_mblock_notify_type_alloc,
+                pMallocNode, mblock->trunk_callbacks.args);
     }
 
     return 0;
@@ -606,8 +606,8 @@ static inline void fast_mblock_remove_trunk(struct fast_mblock_man *mblock,
 
     if (mblock->trunk_callbacks.notify_func != NULL)
     {
-	   mblock->trunk_callbacks.notify_func(-1 * pMallocNode->trunk_size,
-	   mblock->trunk_callbacks.args);
+	   mblock->trunk_callbacks.notify_func(fast_mblock_notify_type_reclaim,
+               pMallocNode, mblock->trunk_callbacks.args);
     }
 }
 

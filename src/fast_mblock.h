@@ -39,6 +39,11 @@
 #define FAST_MBLOCK_ORDER_BY_ELEMENT_SIZE   2
 #define FAST_MBLOCK_ORDER_BY_USED_RATIO     3
 
+enum fast_mblock_notify_type {
+    fast_mblock_notify_type_alloc,
+    fast_mblock_notify_type_reclaim,
+};
+
 /* free node chain */ 
 struct fast_mblock_node
 {
@@ -77,7 +82,8 @@ typedef int (*fast_mblock_malloc_trunk_check_func)(
 	const int alloc_bytes, void *args);
 
 typedef void (*fast_mblock_malloc_trunk_notify_func)(
-	const int alloc_bytes, void *args);
+	const enum fast_mblock_notify_type type,
+    const struct fast_mblock_malloc *node, void *args);
 
 struct fast_mblock_info
 {
