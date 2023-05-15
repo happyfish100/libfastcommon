@@ -55,17 +55,19 @@ static int fast_allocator_malloc_trunk_check(const int alloc_bytes, void *args)
 		acontext->allocator_array.malloc_bytes_limit ? 0 : EOVERFLOW;
 }
 
-static void fast_allocator_malloc_trunk_notify_func(const int alloc_bytes, void *args)
+static void fast_allocator_malloc_trunk_notify_func(
+        const enum fast_mblock_notify_type type,
+        const struct fast_mblock_malloc *node, void *args)
 {
-	if (alloc_bytes > 0)
+	if (type == fast_mblock_notify_type_alloc)
 	{
 		__sync_add_and_fetch(&((struct fast_allocator_context *)args)->
-			allocator_array.malloc_bytes, alloc_bytes);
+			allocator_array.malloc_bytes, node->trunk_size);
 	}
 	else
 	{
 		__sync_sub_and_fetch(&((struct fast_allocator_context *)args)->
-			allocator_array.malloc_bytes, -1 * alloc_bytes);
+			allocator_array.malloc_bytes, node->trunk_size);
 	}
 }
 
@@ -459,6 +461,15 @@ int fast_allocator_retry_reclaim(struct fast_allocator_context *acontext,
 	return *total_reclaim_bytes > 0 ? 0 : EAGAIN;
 }
 
+static inline void malloc_trunk_notify(
+        const enum fast_mblock_notify_type type,
+        const int alloc_bytes, void *args)
+{
+    struct fast_mblock_malloc node;
+    node.trunk_size = alloc_bytes;
+    fast_allocator_malloc_trunk_notify_func(type, &node, args);
+}
+
 void *fast_allocator_alloc(struct fast_allocator_context *acontext,
 	const int bytes)
 {
@@ -512,7 +523,8 @@ void *fast_allocator_alloc(struct fast_allocator_context *acontext,
 		{
 			return NULL;
 		}
-		fast_allocator_malloc_trunk_notify_func(alloc_bytes, acontext);
+		malloc_trunk_notify(fast_mblock_notify_type_alloc,
+                alloc_bytes, acontext);
 
         obj = (char *)ptr + sizeof(struct fast_allocator_wrapper);
         if (acontext->allocator_array.allocators[0]->mblock.
@@ -576,7 +588,7 @@ void fast_allocator_free(struct fast_allocator_context *acontext, void *obj)
 	}
 	else
     {
-        fast_allocator_malloc_trunk_notify_func(-1 *
+        malloc_trunk_notify(fast_mblock_notify_type_reclaim,
                 pWrapper->alloc_bytes, acontext);
 
         if (acontext->allocator_array.allocators[0]->mblock.
