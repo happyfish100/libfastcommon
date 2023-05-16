@@ -1,10 +1,12 @@
 
-Version 1.66  2023-05-15
-  * struct fast_task_info add field: notify_next for nio notify queue
+Version 1.67  2023-05-15
   * lc_pair in struct fc_queue change to lcp
   * sorted queue use double link chain for quick push
   * add function uniq_skiplist_clear
   * fast_mblock_malloc_trunk_notify_func prototype changed
+
+Version 1.66  2023-02-12
+  * struct fast_task_info add field: notify_next for nio notify queue
 
 Version 1.65  2023-01-09
   * locked_list.h: add functions locked_list_move and locked_list_move_tail
