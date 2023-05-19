@@ -140,6 +140,7 @@ static int region_init(struct fast_allocator_context *acontext,
         *object_callbacks, struct fast_region_info *region)
 {
     const int64_t alloc_elements_limit = 0;
+    const int prealloc_trunk_count = 0;
 	int result;
 	int bytes;
 	int element_size;
@@ -194,7 +195,8 @@ static int region_init(struct fast_allocator_context *acontext,
         trunk_callbacks.args = acontext;
 		result = fast_mblock_init_ex2(&allocator->mblock, name, element_size,
                 region->alloc_elements_once, alloc_elements_limit,
-                object_callbacks, acontext->need_lock, &trunk_callbacks);
+                prealloc_trunk_count, object_callbacks,
+                acontext->need_lock, &trunk_callbacks);
 		if (result != 0)
 		{
 			break;

@@ -42,9 +42,6 @@ struct _fast_mblock_manager
 
 static struct _fast_mblock_manager mblock_manager = {false, 0};
 
-#define fast_mblock_get_trunk_size(mblock, block_size, element_count) \
-    (sizeof(struct fast_mblock_malloc) + block_size * element_count)
-
 int fast_mblock_manager_init()
 {
     int result;
@@ -328,10 +325,10 @@ int fast_mblock_manager_stat_print_ex(const bool hide_empty, const int order_by)
             {
                 amem = (int64_t)pStat->trunk_size * pStat->trunk_total_count;
                 alloc_mem += amem;
-                used_mem += GET_BLOCK_SIZE(*pStat) *
-                    pStat->element_used_count;
-                delay_free_mem += GET_BLOCK_SIZE(*pStat) *
-                    pStat->delay_free_elements;
+                used_mem += fast_mblock_get_block_size(pStat->
+                        element_size) * pStat->element_used_count;
+                delay_free_mem += fast_mblock_get_block_size(pStat->
+                        element_size) * pStat->delay_free_elements;
             }
             else
             {
@@ -401,100 +398,6 @@ int fast_mblock_manager_stat_print_ex(const bool hide_empty, const int order_by)
     return 0;
 }
 
-int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
-        const int element_size, const int alloc_elements_once,
-        const int64_t alloc_elements_limit,
-        struct fast_mblock_object_callbacks *object_callbacks,
-        const bool need_lock, struct fast_mblock_trunk_callbacks
-        *trunk_callbacks)
-{
-	int result;
-
-	if (element_size <= 0)
-	{
-		logError("file: "__FILE__", line: %d, " \
-			"invalid block size: %d", \
-			__LINE__, element_size);
-		return EINVAL;
-	}
-
-	mblock->info.element_size = MEM_ALIGN(element_size);
-    mblock->alloc_elements.limit = alloc_elements_limit;
-	mblock->info.block_size = fast_mblock_get_block_size(mblock);
-	if (alloc_elements_once > 0)
-	{
-		mblock->alloc_elements.once = alloc_elements_once;
-	}
-	else
-	{
-		mblock->alloc_elements.once = (1024 * 1024) / mblock->info.block_size;
-	}
-    if (mblock->alloc_elements.limit > 0 && mblock->alloc_elements.once >
-            mblock->alloc_elements.limit)
-    {
-        mblock->alloc_elements.once = mblock->alloc_elements.limit;
-    }
-
-	if (need_lock && (result=init_pthread_lock_cond_pair(&(mblock->lcp))) != 0)
-	{
-		logError("file: "__FILE__", line: %d, " \
-			"init_pthread_lock fail, errno: %d, error info: %s", \
-			__LINE__, result, STRERROR(result));
-		return result;
-	}
-
-    if (object_callbacks == NULL)
-    {
-        mblock->object_callbacks.init_func = NULL;
-        mblock->object_callbacks.destroy_func = NULL;
-        mblock->object_callbacks.args = NULL;
-    }
-    else
-    {
-        mblock->object_callbacks = *object_callbacks;
-    }
-
-    INIT_HEAD(&mblock->trunks.head);
-    mblock->info.trunk_total_count = 0;
-    mblock->info.trunk_used_count = 0;
-    mblock->info.delay_free_elements = 0;
-    mblock->free_chain_head = NULL;
-    mblock->delay_free_chain.head = NULL;
-    mblock->delay_free_chain.tail = NULL;
-    mblock->info.element_total_count = 0;
-    mblock->info.element_used_count = 0;
-    mblock->info.instance_count = 1;
-    mblock->info.trunk_size = fast_mblock_get_trunk_size(mblock,
-            mblock->info.block_size, mblock->alloc_elements.once);
-    mblock->need_lock = need_lock;
-    mblock->alloc_elements.need_wait = false;
-    mblock->alloc_elements.pcontinue_flag = NULL;
-    mblock->alloc_elements.exceed_log_level = LOG_ERR;
-
-    if (trunk_callbacks == NULL)
-    {
-        mblock->trunk_callbacks.check_func = NULL;
-        mblock->trunk_callbacks.notify_func = NULL;
-        mblock->trunk_callbacks.args = NULL;
-    }
-    else
-    {
-        mblock->trunk_callbacks = *trunk_callbacks;
-    }
-
-    if (name != NULL)
-    {
-        snprintf(mblock->info.name, sizeof(mblock->info.name), "%s", name);
-    }
-    else
-    {
-        *mblock->info.name = '\0';
-    }
-    add_to_mblock_list(mblock);
-
-    return 0;
-}
-
 static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
 {
 	struct fast_mblock_node *pNode;
@@ -526,7 +429,7 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
 
         alloc_count = avail_count > mblock->alloc_elements.once ?
             mblock->alloc_elements.once : avail_count;
-        trunk_size = fast_mblock_get_trunk_size(mblock,
+        trunk_size = fast_mblock_get_trunk_size(
                 mblock->info.block_size, alloc_count);
     }
     else
@@ -591,6 +494,112 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
     {
         mblock->trunk_callbacks.notify_func(fast_mblock_notify_type_alloc,
                 pMallocNode, mblock->trunk_callbacks.args);
+    }
+
+    return 0;
+}
+
+int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
+        const int element_size, const int alloc_elements_once,
+        const int64_t alloc_elements_limit, const int prealloc_trunk_count,
+        struct fast_mblock_object_callbacks *object_callbacks,
+        const bool need_lock, struct fast_mblock_trunk_callbacks
+        *trunk_callbacks)
+{
+	int result;
+    int i;
+
+	if (element_size <= 0)
+	{
+		logError("file: "__FILE__", line: %d, " \
+			"invalid block size: %d", \
+			__LINE__, element_size);
+		return EINVAL;
+	}
+
+	mblock->info.element_size = MEM_ALIGN(element_size);
+    mblock->alloc_elements.limit = alloc_elements_limit;
+	mblock->info.block_size = fast_mblock_get_block_size(
+            mblock->info.element_size);
+	if (alloc_elements_once > 0)
+	{
+		mblock->alloc_elements.once = alloc_elements_once;
+	}
+	else
+	{
+		mblock->alloc_elements.once = (1024 * 1024) / mblock->info.block_size;
+	}
+    if (mblock->alloc_elements.limit > 0 && mblock->alloc_elements.once >
+            mblock->alloc_elements.limit)
+    {
+        mblock->alloc_elements.once = mblock->alloc_elements.limit;
+    }
+
+	if (need_lock && (result=init_pthread_lock_cond_pair(&(mblock->lcp))) != 0)
+	{
+		logError("file: "__FILE__", line: %d, " \
+			"init_pthread_lock fail, errno: %d, error info: %s", \
+			__LINE__, result, STRERROR(result));
+		return result;
+	}
+
+    if (object_callbacks == NULL)
+    {
+        mblock->object_callbacks.init_func = NULL;
+        mblock->object_callbacks.destroy_func = NULL;
+        mblock->object_callbacks.args = NULL;
+    }
+    else
+    {
+        mblock->object_callbacks = *object_callbacks;
+    }
+
+    INIT_HEAD(&mblock->trunks.head);
+    mblock->info.trunk_total_count = 0;
+    mblock->info.trunk_used_count = 0;
+    mblock->info.delay_free_elements = 0;
+    mblock->free_chain_head = NULL;
+    mblock->delay_free_chain.head = NULL;
+    mblock->delay_free_chain.tail = NULL;
+    mblock->info.element_total_count = 0;
+    mblock->info.element_used_count = 0;
+    mblock->info.instance_count = 1;
+    mblock->info.trunk_size = fast_mblock_get_trunk_size(
+            mblock->info.block_size, mblock->alloc_elements.once);
+    mblock->need_lock = need_lock;
+    mblock->alloc_elements.need_wait = false;
+    mblock->alloc_elements.pcontinue_flag = NULL;
+    mblock->alloc_elements.exceed_log_level = LOG_ERR;
+
+    if (trunk_callbacks == NULL)
+    {
+        mblock->trunk_callbacks.check_func = NULL;
+        mblock->trunk_callbacks.notify_func = NULL;
+        mblock->trunk_callbacks.args = NULL;
+    }
+    else
+    {
+        mblock->trunk_callbacks = *trunk_callbacks;
+    }
+
+    if (name != NULL)
+    {
+        snprintf(mblock->info.name, sizeof(mblock->info.name), "%s", name);
+    }
+    else
+    {
+        *mblock->info.name = '\0';
+    }
+    add_to_mblock_list(mblock);
+
+
+    for (i=0; i<prealloc_trunk_count; i++)
+    {
+        if ((result=fast_mblock_prealloc(mblock)) != 0)
+        {
+            fast_mblock_destroy(mblock);
+            return result;
+        }
     }
 
     return 0;

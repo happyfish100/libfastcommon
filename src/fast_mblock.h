@@ -140,10 +140,11 @@ struct fast_mblock_man
     struct fast_mblock_man *next;  //for stat manager
 };
 
-#define  GET_BLOCK_SIZE(info) \
-	(MEM_ALIGN(sizeof(struct fast_mblock_node) + (info).element_size))
+#define  fast_mblock_get_block_size(element_size) \
+	(MEM_ALIGN(sizeof(struct fast_mblock_node) + element_size))
 
-#define fast_mblock_get_block_size(mblock) GET_BLOCK_SIZE(mblock->info)
+#define fast_mblock_get_trunk_size(block_size, element_count) \
+    (sizeof(struct fast_mblock_malloc) + block_size * element_count)
 
 #define fast_mblock_to_node_ptr(data_ptr) \
         (struct fast_mblock_node *)((char *)data_ptr - ((size_t)(char *) \
@@ -165,6 +166,7 @@ parameters:
     element_size: element size, such as sizeof(struct xxx)
     alloc_elements_once: malloc elements once, 0 for malloc 1MB memory once
     alloc_elements_limit: malloc elements limit, <= 0 for no limit
+    prealloc_trunk_count: prealloc trunk node count
     object_callbacks: the object callback functions and args
     need_lock: if need lock
     trunk_callbacks: the trunk callback functions and args
@@ -172,7 +174,7 @@ return error no, 0 for success, != 0 fail
 */
 int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
         const int element_size, const int alloc_elements_once,
-        const int64_t alloc_elements_limit,
+        const int64_t alloc_elements_limit, const int prealloc_trunk_count,
         struct fast_mblock_object_callbacks *object_callbacks,
         const bool need_lock, struct fast_mblock_trunk_callbacks
         *trunk_callbacks);
@@ -196,6 +198,7 @@ static inline int fast_mblock_init_ex1(struct fast_mblock_man *mblock,
         fast_mblock_object_init_func init_func, void *init_args,
         const bool need_lock)
 {
+    const int prealloc_trunk_count = 0;
     struct fast_mblock_object_callbacks object_callbacks;
 
     object_callbacks.init_func = init_func;
@@ -203,7 +206,8 @@ static inline int fast_mblock_init_ex1(struct fast_mblock_man *mblock,
     object_callbacks.args = init_args;
     return fast_mblock_init_ex2(mblock, name, element_size,
             alloc_elements_once, alloc_elements_limit,
-            &object_callbacks, need_lock, NULL);
+            prealloc_trunk_count, &object_callbacks,
+            need_lock, NULL);
 }
 
 /**
@@ -219,9 +223,8 @@ return error no, 0 for success, != 0 fail
 */
 static inline int fast_mblock_init_ex(struct fast_mblock_man *mblock,
         const int element_size, const int alloc_elements_once,
-        const int64_t alloc_elements_limit,
-        fast_mblock_object_init_func init_func, void *init_args,
-        const bool need_lock)
+        const int64_t alloc_elements_limit, fast_mblock_object_init_func
+        init_func, void *init_args, const bool need_lock)
 {
     return fast_mblock_init_ex1(mblock, NULL, element_size,
             alloc_elements_once, alloc_elements_limit,
