@@ -477,7 +477,7 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
 #endif
 	}
 
-    ((struct fast_mblock_node *)pLast)->next = NULL;
+    ((struct fast_mblock_node *)pLast)->next = mblock->free_chain_head;
 	mblock->free_chain_head = (struct fast_mblock_node *)pTrunkStart;
 
     pMallocNode->ref_count = 0;
