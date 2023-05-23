@@ -1,10 +1,11 @@
 
-Version 1.67  2023-05-19
+Version 1.67  2023-05-23
   * lc_pair in struct fc_queue change to lcp
   * sorted queue use double link chain for quick push
   * add function uniq_skiplist_clear
   * fast_mblock_malloc_trunk_notify_func prototype changed
   * fast_mblock_init_ex2 add parameter prealloc_trunk_count
+  * sorted_queue.[hc] support pop_compare_func
 
 Version 1.66  2023-02-12
   * struct fast_task_info add field: notify_next for nio notify queue

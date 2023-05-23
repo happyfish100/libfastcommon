@@ -18,8 +18,9 @@
 #include "pthread_func.h"
 #include "sorted_queue.h"
 
-int sorted_queue_init(struct sorted_queue *sq, const int dlink_offset,
-        int (*compare_func)(const void *, const void *))
+int sorted_queue_init_ex(struct sorted_queue *sq, const int dlink_offset,
+        int (*push_compare_func)(const void *data1, const void *data2),
+        int (*pop_compare_func)(const void *data, const void *less_equal))
 {
 	int result;
 
@@ -29,7 +30,8 @@ int sorted_queue_init(struct sorted_queue *sq, const int dlink_offset,
 
     FC_INIT_LIST_HEAD(&sq->head);
     sq->dlink_offset = dlink_offset;
-    sq->compare_func = compare_func;
+    sq->push_compare_func = push_compare_func;
+    sq->pop_compare_func = pop_compare_func;
 	return 0;
 }
 
@@ -50,19 +52,19 @@ void sorted_queue_push_ex(struct sorted_queue *sq, void *data, bool *notify)
         fc_list_add(dlink, &sq->head);
         *notify = true;
     } else {
-        if (sq->compare_func(data, FC_SORTED_QUEUE_DATA_PTR(
+        if (sq->push_compare_func(data, FC_SORTED_QUEUE_DATA_PTR(
                         sq, sq->head.prev)) >= 0)
         {
             fc_list_add_tail(dlink, &sq->head);
             *notify = false;
-        } else if (sq->compare_func(data, FC_SORTED_QUEUE_DATA_PTR(
+        } else if (sq->push_compare_func(data, FC_SORTED_QUEUE_DATA_PTR(
                         sq, sq->head.next)) < 0)
         {
             fc_list_add(dlink, &sq->head);
             *notify = true;
         } else {
             current = sq->head.prev->prev;
-            while (sq->compare_func(data, FC_SORTED_QUEUE_DATA_PTR(
+            while (sq->push_compare_func(data, FC_SORTED_QUEUE_DATA_PTR(
                         sq, current)) < 0)
             {
                 current = current->prev;
@@ -100,7 +102,7 @@ void *sorted_queue_pop_ex(struct sorted_queue *sq,
 
         current = sq->head.next;
         data = FC_SORTED_QUEUE_DATA_PTR(sq, current);
-        if (sq->compare_func(data, less_equal) <= 0) {
+        if (sq->pop_compare_func(data, less_equal) <= 0) {
             fc_list_del_init(current);
         } else {
             data = NULL;
@@ -133,13 +135,13 @@ void sorted_queue_pop_to_chain_ex(struct sorted_queue *sq,
             FC_INIT_LIST_HEAD(head);
         } else {
             current = sq->head.next;
-            if (sq->compare_func(FC_SORTED_QUEUE_DATA_PTR(
+            if (sq->pop_compare_func(FC_SORTED_QUEUE_DATA_PTR(
                         sq, current), less_equal) <= 0)
             {
                 head->next = current;
                 current->prev = head;
                 current = current->next;
-                while (current != &sq->head && sq->compare_func(
+                while (current != &sq->head && sq->pop_compare_func(
                             FC_SORTED_QUEUE_DATA_PTR(sq, current),
                             less_equal) <= 0)
                 {
