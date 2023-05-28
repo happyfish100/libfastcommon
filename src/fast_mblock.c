@@ -878,16 +878,17 @@ int fast_mblock_batch_alloc(struct fast_mblock_man *mblock,
 {
 	struct fast_mblock_node *pNode;
     int i;
+    int lr;
 	int result;
 
-	if (mblock->need_lock && (result=pthread_mutex_lock(
+	if (mblock->need_lock && (lr=pthread_mutex_lock(
                     &mblock->lcp.lock)) != 0)
 	{
 		logError("file: "__FILE__", line: %d, "
 			"call pthread_mutex_lock fail, "
 			"errno: %d, error info: %s",
-			__LINE__, result, STRERROR(result));
-		return result;
+			__LINE__, lr, STRERROR(lr));
+		return lr;
 	}
 
     if ((chain->head=alloc_node(mblock)) != NULL) {
@@ -914,13 +915,13 @@ int fast_mblock_batch_alloc(struct fast_mblock_man *mblock,
         result = ENOMEM;
     }
 
-	if (mblock->need_lock && (result=pthread_mutex_unlock(
+	if (mblock->need_lock && (lr=pthread_mutex_unlock(
                     &mblock->lcp.lock)) != 0)
     {
-        logError("file: "__FILE__", line: %d, " \
-                "call pthread_mutex_unlock fail, " \
-                "errno: %d, error info: %s", \
-                __LINE__, result, STRERROR(result));
+        logError("file: "__FILE__", line: %d, "
+                "call pthread_mutex_unlock fail, "
+                "errno: %d, error info: %s",
+                __LINE__, lr, STRERROR(lr));
     }
 
 	return result;
