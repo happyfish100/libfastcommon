@@ -109,6 +109,12 @@ extern int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int kind);
 #define SYNC_LOG_BUFF_DEF_INTERVAL      10
 #define TIME_NONE                       -1
 
+#if defined(IOV_MAX) && IOV_MAX > 256
+#define FC_IOV_BATCH_SIZE  256
+#else
+#define FC_IOV_BATCH_SIZE  IOV_MAX
+#endif
+
 #define IP_ADDRESS_SIZE	16
 #define INFINITE_FILE_SIZE (256 * 1024LL * 1024 * 1024 * 1024 * 1024LL)
 

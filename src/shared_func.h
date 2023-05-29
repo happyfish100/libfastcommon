@@ -24,6 +24,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <sys/uio.h>
 #include "common_define.h"
 #ifdef OS_LINUX
 #include <sys/syscall.h>
@@ -886,7 +887,7 @@ bool isLeadingSpacesLine(const char *content, const char *current);
 */
 bool isTrailingSpacesLine(const char *tail, const char *end);
 
-/** write to file
+/** safe write wrapper
  *  parameters:
  *  	fd: the fd to write
  *  	buf: the buffer
@@ -894,6 +895,15 @@ bool isTrailingSpacesLine(const char *tail, const char *end);
  *  return: written bytes for success, -1 when fail
 */
 ssize_t fc_safe_write(int fd, const char *buf, const size_t nbyte);
+
+/** safe writev wrapper
+ *  parameters:
+ *  	fd: the fd to write
+ *  	iov: the iov array
+ *  	iovcnt: the iov count
+ *  return: written bytes for success, -1 when fail
+*/
+ssize_t fc_safe_writev(int fd, const struct iovec *iov, int iovcnt);
 
 /** lock and write to file
  *  parameters:

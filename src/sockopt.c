@@ -33,12 +33,6 @@
 #define SUB_NET_TYPE_INNER_172_STR3 "inner172"
 #define SUB_NET_TYPE_INNER_192_STR3 "inner192"
 
-#if defined(IOV_MAX) && IOV_MAX > 256
-#define FC_IOV_BATCH_SIZE  256
-#else
-#define FC_IOV_BATCH_SIZE  IOV_MAX
-#endif
-
 #if defined(OS_LINUX) || defined(OS_FREEBSD)
 #include <ifaddrs.h>
 #endif

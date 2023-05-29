@@ -2986,6 +2986,96 @@ ssize_t fc_safe_write(int fd, const char *buf, const size_t nbyte)
     return nbyte;
 }
 
+ssize_t fc_safe_writev(int fd, const struct iovec *iov, int iovcnt)
+{
+	int write_bytes;
+	int bytes;
+    ssize_t total_written;
+    int remain_count;
+    int current_count;
+    int current_done;
+    int remain_len;
+    struct iovec *iob;
+    struct iovec iov_array[FC_IOV_BATCH_SIZE];
+    struct iovec *iovp;
+
+    iovp = (struct iovec *)iov;
+    remain_count = current_count = iovcnt;
+    total_written = 0;
+	while (remain_count > 0)
+	{
+		write_bytes = writev(fd, iovp, current_count);
+		if (write_bytes < 0)
+        {
+            if (errno == EINTR)
+            {
+                continue;
+            }
+            return total_written > 0 ? total_written : -1;
+        } else if (write_bytes == 0) {
+            return total_written;
+        }
+        total_written += write_bytes;
+
+        iob = iovp;
+        bytes = iob->iov_len;
+        while (bytes < write_bytes)
+        {
+            ++iob;
+            bytes += iob->iov_len;
+        }
+        if (bytes == write_bytes)
+        {
+            ++iob;
+            if (iob < iovp + current_count) {
+                bytes += iob->iov_len;
+            }
+        }
+
+        current_done = iob - iovp;
+        remain_count -= current_done;
+        if (remain_count == 0) {
+            break;
+        }
+
+        if (current_done == current_count)  //full done
+        {
+            current_count = ((remain_count <= FC_IOV_BATCH_SIZE) ?
+                    remain_count : FC_IOV_BATCH_SIZE);
+            memcpy(iov_array, iov + (iovcnt - remain_count),
+                    current_count * sizeof(struct iovec));
+            iovp = iov_array;
+        }
+        else  //partial done
+        {
+            if (iovp == (struct iovec *)iov)
+            {
+                current_count = ((remain_count <= FC_IOV_BATCH_SIZE) ?
+                        remain_count : FC_IOV_BATCH_SIZE);
+                memcpy(iov_array, iob, current_count *
+                        sizeof(struct iovec));
+                iovp = iov_array;
+            }
+            else
+            {
+                current_count -= current_done;
+                iovp = iob;
+            }
+
+            /* adjust the first element */
+            remain_len = bytes - write_bytes;
+            if (remain_len < iovp->iov_len)
+            {
+                iovp->iov_base = (char *)iovp->iov_base +
+                    (iovp->iov_len - remain_len);
+                iovp->iov_len = remain_len;
+            }
+        }
+    }
+
+    return total_written;
+}
+
 ssize_t fc_lock_write(int fd, const char *buf, const size_t nbyte)
 {
     int lock_result;
