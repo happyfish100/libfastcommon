@@ -20,6 +20,7 @@
 
 #include "fast_mblock.h"
 #include "fc_list.h"
+#include "pthread_func.h"
 
 struct sorted_queue
 {
@@ -114,6 +115,16 @@ static inline bool sorted_queue_empty(struct sorted_queue *sq)
 
 int sorted_queue_free_chain(struct sorted_queue *sq,
         struct fast_mblock_man *mblock, struct fc_list_head *head);
+
+static inline void sorted_queue_lock(struct sorted_queue *sq)
+{
+    PTHREAD_MUTEX_LOCK(&sq->lcp.lock);
+}
+
+static inline void sorted_queue_unlock(struct sorted_queue *sq)
+{
+    PTHREAD_MUTEX_UNLOCK(&sq->lcp.lock);
+}
 
 #ifdef __cplusplus
 }
