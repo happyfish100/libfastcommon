@@ -27,8 +27,10 @@ struct sorted_queue
     struct fc_list_head head;
     pthread_lock_cond_pair_t lcp;
     int dlink_offset;
+    void *arg;
     int (*push_compare_func)(const void *data1, const void *data2);
-    int (*pop_compare_func)(const void *data, const void *less_equal);
+    int (*pop_compare_func)(const void *data,
+            const void *less_equal, void *arg);
 };
 
 #define FC_SORTED_QUEUE_DLINK_PTR(sq, data) \
@@ -41,17 +43,10 @@ struct sorted_queue
 extern "C" {
 #endif
 
-int sorted_queue_init_ex(struct sorted_queue *sq, const int dlink_offset,
+int sorted_queue_init(struct sorted_queue *sq, const int dlink_offset,
         int (*push_compare_func)(const void *data1, const void *data2),
-        int (*pop_compare_func)(const void *data, const void *less_equal));
-
-static inline int sorted_queue_init(struct sorted_queue *sq,
-        const int dlink_offset, int (*compare_func)
-        (const void *data1, const void *data2))
-{
-    return sorted_queue_init_ex(sq, dlink_offset,
-            compare_func, compare_func);
-}
+        int (*pop_compare_func)(const void *data, const
+            void *less_equal, void *arg), void *arg);
 
 void sorted_queue_destroy(struct sorted_queue *sq);
 

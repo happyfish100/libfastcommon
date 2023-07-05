@@ -36,9 +36,16 @@ typedef struct {
 static DoubleLinkNumber *numbers;
 static struct sorted_queue sq;
 
-static int compare_func(const void *p1, const void *p2)
+static int push_compare_func(const void *p1, const void *p2)
 {
     return ((DoubleLinkNumber *)p1)->n - ((DoubleLinkNumber *)p2)->n;
+}
+
+static int pop_compare_func(const void *data,
+        const void *less_equal, void *arg)
+{
+    return ((DoubleLinkNumber *)data)->n -
+        ((DoubleLinkNumber *)less_equal)->n;
 }
 
 void set_rand_numbers(const int multiple)
@@ -175,7 +182,8 @@ int main(int argc, char *argv[])
     srand(time(NULL));
 
     if ((result=sorted_queue_init(&sq, (long)(&((DoubleLinkNumber *)
-                            NULL)->dlink), compare_func)) != 0)
+                            NULL)->dlink), push_compare_func,
+                    pop_compare_func, NULL)) != 0)
     {
         return result;
     }

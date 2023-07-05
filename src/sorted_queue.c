@@ -18,21 +18,23 @@
 #include "pthread_func.h"
 #include "sorted_queue.h"
 
-int sorted_queue_init_ex(struct sorted_queue *sq, const int dlink_offset,
+int sorted_queue_init(struct sorted_queue *sq, const int dlink_offset,
         int (*push_compare_func)(const void *data1, const void *data2),
-        int (*pop_compare_func)(const void *data, const void *less_equal))
+        int (*pop_compare_func)(const void *data, const
+            void *less_equal, void *arg), void *arg)
 {
-	int result;
+    int result;
 
-	if ((result=init_pthread_lock_cond_pair(&sq->lcp)) != 0) {
-		return result;
-	}
+    if ((result=init_pthread_lock_cond_pair(&sq->lcp)) != 0) {
+        return result;
+    }
 
     FC_INIT_LIST_HEAD(&sq->head);
     sq->dlink_offset = dlink_offset;
+    sq->arg = arg;
     sq->push_compare_func = push_compare_func;
     sq->pop_compare_func = pop_compare_func;
-	return 0;
+    return 0;
 }
 
 void sorted_queue_destroy(struct sorted_queue *sq)
@@ -102,7 +104,7 @@ void *sorted_queue_pop_ex(struct sorted_queue *sq,
 
         current = sq->head.next;
         data = FC_SORTED_QUEUE_DATA_PTR(sq, current);
-        if (sq->pop_compare_func(data, less_equal) <= 0) {
+        if (sq->pop_compare_func(data, less_equal, sq->arg) <= 0) {
             fc_list_del_init(current);
         } else {
             data = NULL;
@@ -136,14 +138,14 @@ void sorted_queue_pop_to_chain_ex(struct sorted_queue *sq,
         } else {
             current = sq->head.next;
             if (sq->pop_compare_func(FC_SORTED_QUEUE_DATA_PTR(
-                        sq, current), less_equal) <= 0)
+                        sq, current), less_equal, sq->arg) <= 0)
             {
                 head->next = current;
                 current->prev = head;
                 current = current->next;
                 while (current != &sq->head && sq->pop_compare_func(
                             FC_SORTED_QUEUE_DATA_PTR(sq, current),
-                            less_equal) <= 0)
+                            less_equal, sq->arg) <= 0)
                 {
                     current = current->next;
                 }
