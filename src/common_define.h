@@ -338,10 +338,14 @@ typedef void* (*MallocFunc)(size_t size);
 
 #define TO_UPPERCASE(c)  (((c) >= 'a' && (c) <= 'z') ? (c) - 32 : c)
 
-#define MEM_ALIGN_FLOOR(x, align_size) ((x) & (~(align_size - 1)))
+#define MEM_ALIGN_FLOOR(x, align_size)  ((x) & (~(align_size - 1)))
 #define MEM_ALIGN_CEIL(x, align_size) \
     (((x) + (align_size - 1)) & (~(align_size - 1)))
 #define MEM_ALIGN(x)  MEM_ALIGN_CEIL(x, 8)
+
+#define MEM_ALIGN_FLOOR_BY_MASK(x, align_mask)  ((x) & (~align_mask))
+#define MEM_ALIGN_CEIL_BY_MASK(x, align_mask)  \
+    (((x) + align_mask) & (~align_mask))
 
 #define FC_INIT_CHAIN(chain) (chain).head = (chain).tail = NULL
 #define FC_IS_CHAIN_EMPTY(chain) ((chain).head == NULL)
