@@ -58,6 +58,7 @@ VoidArray *array_allocator_alloc(ArrayAllocatorContext *ctx,
 {
     int alloc;
     int bytes;
+    VoidArray *array;
 
     if (target_count <= ctx->min_count) {
         alloc = ctx->min_count;
@@ -71,7 +72,11 @@ VoidArray *array_allocator_alloc(ArrayAllocatorContext *ctx,
     }
 
     bytes = sizeof(VoidArray) + alloc * ctx->element_size;
-    return (VoidArray *)fast_allocator_alloc(&ctx->allocator, bytes);
+    if ((array=fast_allocator_alloc(&ctx->allocator, bytes)) != NULL) {
+        array->alloc = alloc;
+        array->count = 0;
+    }
+    return array;
 }
 
 VoidArray *array_allocator_realloc(ArrayAllocatorContext *ctx,

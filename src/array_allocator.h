@@ -78,7 +78,6 @@ extern "C" {
     static inline void array_allocator_free(ArrayAllocatorContext *ctx,
             VoidArray *array)
     {
-        array->count = 0;
         fast_allocator_free(&ctx->allocator, array);
     }
 

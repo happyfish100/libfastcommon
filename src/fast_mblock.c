@@ -1163,6 +1163,7 @@ OUTER:
     }
 
 
+    /*
     {
         bool old_need_lock;
         old_need_lock = mblock->need_lock;
@@ -1173,6 +1174,7 @@ OUTER:
                 mblock, *reclaim_count, fast_mblock_free_count(mblock));
         mblock->need_lock = old_need_lock;
     }
+    */
 
     *ppFreelist = freelist;
     return (freelist != NULL ? 0 : ENOENT);

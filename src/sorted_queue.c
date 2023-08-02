@@ -46,7 +46,6 @@ void sorted_queue_push_ex(struct sorted_queue *sq, void *data, bool *notify)
 {
     struct fc_list_head *dlink;
     struct fc_list_head *current;
-    int count = 0;
 
     dlink = FC_SORTED_QUEUE_DLINK_PTR(sq, data);
     PTHREAD_MUTEX_LOCK(&sq->lcp.lock);
@@ -70,7 +69,6 @@ void sorted_queue_push_ex(struct sorted_queue *sq, void *data, bool *notify)
                         sq, current)) < 0)
             {
                 current = current->prev;
-                ++count;
             }
             fc_list_add_after(dlink, current);
             *notify = false;
