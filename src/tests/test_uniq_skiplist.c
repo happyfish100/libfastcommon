@@ -36,7 +36,8 @@ static UniqSkiplist *sl = NULL;
 static UniqSkiplistIterator iterator;
 static int instance_count = 0;
 
-static void free_test_func(void *ptr, const int delay_seconds)
+static void free_test_func(UniqSkiplist *sl,
+        void *ptr, const int delay_seconds)
 {
     instance_count--;
 }
@@ -286,8 +287,9 @@ int main(int argc, char *argv[])
     srand(time(NULL));
 
     fast_mblock_manager_init();
-    result = uniq_skiplist_init_ex2(&factory, LEVEL_COUNT, compare_func,
-            free_test_func, 0, MIN_ALLOC_ONCE, 0, true, allocator_use_lock);
+    result = uniq_skiplist_init_ex2(&factory, LEVEL_COUNT,
+            compare_func, free_test_func, 0, MIN_ALLOC_ONCE,
+            0, true, allocator_use_lock, NULL);
     if (result != 0) {
         return result;
     }

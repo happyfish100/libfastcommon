@@ -54,7 +54,7 @@ int uniq_skiplist_init_ex2(UniqSkiplistFactory *factory,
         const int max_level_count, skiplist_compare_func compare_func,
         uniq_skiplist_free_func free_func, const int alloc_skiplist_once,
         const int min_alloc_elements_once, const int delay_free_seconds,
-        const bool bidirection, const bool allocator_use_lock)
+        const bool bidirection, const bool allocator_use_lock, void *arg)
 {
     const int64_t alloc_elements_limit = 0;
     char name[64];
@@ -136,6 +136,7 @@ int uniq_skiplist_init_ex2(UniqSkiplistFactory *factory,
     factory->compare_func = compare_func;
     factory->free_func = free_func;
     factory->delay_free_seconds = delay_free_seconds;
+    factory->arg = arg;
 
     srand(time(NULL));
     return 0;
@@ -274,7 +275,7 @@ static void do_clear(UniqSkiplist *sl)
             deleted = node;
             node = node->links[0];
 
-            sl->factory->free_func(deleted->data, 0);
+            sl->factory->free_func(sl, deleted->data, 0);
             fast_mblock_free_object(sl->factory->node_allocators +
                     deleted->level_index, (void *)deleted);
         }
@@ -505,7 +506,7 @@ void uniq_skiplist_delete_node_ex(UniqSkiplist *sl,
     }
 
     if (need_free && sl->factory->free_func != NULL) {
-        sl->factory->free_func(deleted->data,
+        sl->factory->free_func(sl, deleted->data,
                 sl->factory->delay_free_seconds);
     }
 
@@ -548,7 +549,8 @@ int uniq_skiplist_replace_ex(UniqSkiplist *sl, void *data,
 
         deleted_data = current->data;
         current->data = data;
-        sl->factory->free_func(deleted_data, sl->factory->delay_free_seconds);
+        sl->factory->free_func(sl, deleted_data,
+                sl->factory->delay_free_seconds);
     } else {
         current->data = data;
     }

@@ -66,6 +66,12 @@ static int test_i64()
         return ENOMEM;
     }
 
+    if (!silence) {
+        printf("input alloc count: %d, output alloc count: %d\n",
+                input->alloc, output->alloc);
+    }
+
+
     input->count = ELEMENT_COUNT;
     for (i=0; i<input->count; i++) {
         input->elts[i] = i + 1;
