@@ -2419,34 +2419,60 @@ int gethostaddrs(char **if_alias_prefixes, const int prefix_count, \
 
 #if defined(OS_LINUX) || defined(OS_FREEBSD)
 
-static inline void formatifmac(char *buff, const int buff_size, unsigned char *hwaddr)
+static inline int formatifmac(char *buff, const int buff_size,
+        unsigned char *hwaddr, const int addr_size)
 {
-    int i;
-    for (i=0; i<6; i++)
+    int len;
+    unsigned char *ptr;
+    unsigned char *end;
+    char *dest;
+
+    for (end=hwaddr+(addr_size-1); end>=hwaddr; end--)
     {
-        if (hwaddr[i] != 0)
+        if (*end != 0)
         {
             break;
         }
     }
+    ++end;
 
-    if (i == 6)
+    len = end - hwaddr;
+    if (len == 0)
     {
         *buff = '\0';
-        return;
+        return 0;
     }
 
-    snprintf(buff, buff_size,
-            "%02X:%02X:%02X:%02X:%02X:%02X",
-            *hwaddr, *(hwaddr+1), *(hwaddr+2),
-            *(hwaddr+3), *(hwaddr+4), *(hwaddr+5));
+    if (len < 6)
+    {
+        len = 6;
+        end = hwaddr + len;
+    }
+    if (len * 3 > buff_size)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "buff size: %d is too small, expect size: %d",
+                __LINE__,  buff_size, len * 3);
+        *buff = '\0';
+        return 0;
+    }
+
+    dest = buff + sprintf(buff, "%02x", *hwaddr);
+    for (ptr=hwaddr+1; ptr<end; ptr++)
+    {
+        dest += sprintf(dest, ":%02x", *ptr);
+    }
+    return dest - buff;
 }
 
 #if defined(OS_LINUX)
 static int getifmac(FastIFConfig *config)
 {
     int sockfd;
+    int len;
     struct ifreq req[1];
+    char cmd[256];
+    char output[64];
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0)
@@ -2470,8 +2496,24 @@ static int getifmac(FastIFConfig *config)
     }
 
     close(sockfd);
-    formatifmac(config->mac, sizeof(config->mac),
-            (unsigned char *)req->ifr_hwaddr.sa_data);
+
+    len = formatifmac(config->mac, sizeof(config->mac),
+            (unsigned char *)req->ifr_hwaddr.sa_data,
+            sizeof(req->ifr_hwaddr.sa_data));
+    if (len > 6)
+    {
+        snprintf(cmd, sizeof(cmd), "ip link | fgrep -A 1 %s: | "
+                "fgrep link/ | awk '{print $2}'", config->name);
+        if (getExecResult(cmd, output, sizeof(output)) == 0)
+        {
+            fc_trim(output);
+            if (*output != '\0')
+            {
+                snprintf(config->mac, sizeof(config->mac), "%s", output);
+            }
+        }
+    }
+
     return 0;
 }
 #else  //FreeBSD
@@ -2483,6 +2525,7 @@ static int getifmac(FastIFConfig *config)
     unsigned char       *ptr;
     struct if_msghdr    *ifm;
     struct sockaddr_dl  *sdl;
+    int size;
 
     mib[0] = CTL_NET;
     mib[1] = AF_ROUTE;
@@ -2509,10 +2552,12 @@ static int getifmac(FastIFConfig *config)
         return errno != 0 ? errno : EPERM;
     }
 
+
     ifm = (struct if_msghdr *)buf;
     sdl = (struct sockaddr_dl *)(ifm + 1);
     ptr = (unsigned char *)LLADDR(sdl);
-    formatifmac(config->mac, sizeof(config->mac), ptr);
+    size = (unsigned char *)(sdl->sdl_data + sizeof(sdl->sdl_data)) - ptr;
+    formatifmac(config->mac, sizeof(config->mac), ptr, size);
     return 0;
 }
 #endif
@@ -2598,7 +2643,6 @@ int getifconfigs(FastIFConfig *if_configs, const int max_count, int *count)
 	}
 
 	freeifaddrs(ifc1);
-
     for (i=0; i<*count; i++)
     {
         getifmac(if_configs + i);

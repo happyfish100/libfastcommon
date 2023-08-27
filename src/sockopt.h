@@ -53,7 +53,7 @@
 
 typedef struct fast_if_config {
     char name[IF_NAMESIZE];    //if name
-    char mac[32];
+    char mac[64];
     char ipv4[IP_ADDRESS_SIZE];
     char ipv6[48];
 } FastIFConfig;
