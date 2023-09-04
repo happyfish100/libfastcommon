@@ -42,6 +42,7 @@ typedef int (*TaskInitCallback)(struct fast_task_info *pTask);
 typedef void (*IOEventCallback) (int sock, short event, void *arg);
 typedef int (*TaskContinueCallback)(struct fast_task_info *task);
 
+struct sf_network_handler;
 struct fast_task_info;
 
 typedef struct ioevent_entry
@@ -79,13 +80,13 @@ struct ioevent_notify_entry
 
 struct fast_task_info
 {
-	IOEventEntry event;  //must first
+    IOEventEntry event;  //must first
     union {
         char server_ip[IP_ADDRESS_SIZE];
         char client_ip[IP_ADDRESS_SIZE];
     };
-	void *arg;  //extra argument pointer
-	char *data; //buffer for write or read
+    void *arg;        //extra argument pointer
+    char *data;       //buffer for write or read
     char *recv_body;  //for extra (dynamic) recv buffer
 
     struct {
@@ -93,9 +94,9 @@ struct fast_task_info
         int count;
     } iovec_array; //for writev
 
-	int size;   //alloc size
-	int length; //data length
-	int offset; //current offset
+    int size;      //alloc size
+    int length;    //data length
+    int offset;    //current offset
     uint16_t port; //peer port
     struct {
         uint8_t current;
@@ -105,13 +106,14 @@ struct fast_task_info
     volatile int8_t canceled;  //if task canceled
     short connect_timeout;     //for client side
     short network_timeout;
-	int64_t req_count; //request count
+    int64_t req_count; //request count
     TaskContinueCallback continue_callback; //for continue stage
-	TaskFinishCallback finish_callback;
-	struct nio_thread_data *thread_data;
-	void *ctx;  //context pointer for libserverframe nio
-    struct fast_task_info *next;  //for free queue and deleted list
-    struct fast_task_info *notify_next;  //for nio notify queue
+    TaskFinishCallback finish_callback;
+    struct nio_thread_data *thread_data;
+    struct sf_network_handler *handler; //network handler for libserverframe nio
+    struct fast_task_info *next;        //for free queue and deleted list
+    struct fast_task_info *notify_next; //for nio notify queue
+    char conn[0];    //for RDMA connection
 };
 
 struct fast_task_queue

@@ -40,11 +40,16 @@ extern "C" {
     (strcmp((conn1).ip_addr, (conn2).ip_addr) == 0 && \
      (conn1).port == (conn2).port)
 
-typedef struct
-{
+typedef enum {
+    fc_network_type_sock = 0,
+    fc_network_type_rdma
+} FCNetworkType;
+
+typedef struct {
 	int sock;
 	uint16_t port;
     short socket_domain;  //socket domain, AF_INET, AF_INET6 or AF_UNSPEC for auto dedect
+    FCNetworkType network_type;
     bool validate_flag;   //for connection pool
 	char ip_addr[INET6_ADDRSTRLEN];
     char args[0];   //for extra data
