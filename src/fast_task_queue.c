@@ -98,11 +98,10 @@ static struct mpool_node *malloc_mpool(const int total_alloc_size)
 		pTask = (struct fast_task_info *)p;
 		pTask->size = g_free_queue.min_buff_size;
 
-		pTask->arg = p + ALIGNED_TASK_INFO_SIZE;
+		pTask->arg = p + ALIGNED_TASK_INFO_SIZE + g_free_queue.padding_size;
 		if (g_free_queue.malloc_whole_block)
 		{
-			pTask->data = (char *)pTask->arg + \
-					g_free_queue.arg_size;
+			pTask->data = (char *)pTask->arg + g_free_queue.arg_size;
 		}
 		else
 		{
@@ -139,8 +138,8 @@ static struct mpool_node *malloc_mpool(const int total_alloc_size)
 
 int free_queue_init_ex2(const int max_connections, const int init_connections,
         const int alloc_task_once, const int min_buff_size,
-        const int max_buff_size, const int arg_size,
-        TaskInitCallback init_callback)
+        const int max_buff_size, const int padding_size,
+        const int arg_size, TaskInitCallback init_callback)
 {
 #define MAX_DATA_SIZE  (256 * 1024 * 1024)
 	int64_t total_size;
@@ -151,21 +150,24 @@ int free_queue_init_ex2(const int max_connections, const int init_connections,
 	int loop_count;
 	int aligned_min_size;
 	int aligned_max_size;
+	int aligned_padding_size;
 	int aligned_arg_size;
 	rlim_t max_data_size;
 
 	if ((result=init_pthread_lock(&(g_free_queue.lock))) != 0)
 	{
-		logError("file: "__FILE__", line: %d, " \
-			"init_pthread_lock fail, errno: %d, error info: %s", \
+		logError("file: "__FILE__", line: %d, "
+			"init_pthread_lock fail, errno: %d, error info: %s",
 			__LINE__, result, STRERROR(result));
 		return result;
 	}
 
 	aligned_min_size = MEM_ALIGN(min_buff_size);
 	aligned_max_size = MEM_ALIGN(max_buff_size);
+    aligned_padding_size = MEM_ALIGN(padding_size);
 	aligned_arg_size = MEM_ALIGN(arg_size);
-	g_free_queue.block_size = ALIGNED_TASK_INFO_SIZE + aligned_arg_size;
+	g_free_queue.block_size = ALIGNED_TASK_INFO_SIZE +
+        aligned_padding_size + aligned_arg_size;
 	alloc_size = g_free_queue.block_size * init_connections;
 	if (aligned_max_size > aligned_min_size)
 	{
@@ -179,9 +181,9 @@ int free_queue_init_ex2(const int max_connections, const int init_connections,
 
 		if (getrlimit(RLIMIT_DATA, &rlimit_data) < 0)
 		{
-			logError("file: "__FILE__", line: %d, " \
-				"call getrlimit fail, " \
-				"errno: %d, error info: %s", \
+			logError("file: "__FILE__", line: %d, "
+				"call getrlimit fail, "
+				"errno: %d, error info: %s",
 				__LINE__, errno, STRERROR(errno));
 			return errno != 0 ? errno : EPERM;
 		}
@@ -231,16 +233,18 @@ int free_queue_init_ex2(const int max_connections, const int init_connections,
     }
 	g_free_queue.min_buff_size = aligned_min_size;
 	g_free_queue.max_buff_size = aligned_max_size;
+	g_free_queue.padding_size = aligned_padding_size;
 	g_free_queue.arg_size = aligned_arg_size;
 	g_free_queue.init_callback = init_callback;
 
 	logDebug("file: "__FILE__", line: %d, "
 		"max_connections: %d, init_connections: %d, alloc_task_once: %d, "
         "min_buff_size: %d, max_buff_size: %d, block_size: %d, "
-        "arg_size: %d, max_data_size: %d, total_size: %"PRId64,
-        __LINE__, max_connections, init_connections,
+        "padding_size: %d, arg_size: %d, max_data_size: %"PRId64", "
+        "total_size: %"PRId64, __LINE__, max_connections, init_connections,
         g_free_queue.alloc_task_once, aligned_min_size, aligned_max_size,
-        g_free_queue.block_size, aligned_arg_size, (int)max_data_size, total_size);
+        g_free_queue.block_size, aligned_padding_size, aligned_arg_size,
+        (int64_t)max_data_size, total_size);
 
 	if ((!g_free_queue.malloc_whole_block) || (total_size <= max_data_size))
 	{

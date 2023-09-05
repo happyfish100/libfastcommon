@@ -126,7 +126,8 @@ struct fast_task_queue
 	int alloc_task_once;
 	int min_buff_size;
 	int max_buff_size;
-	int arg_size;
+    int padding_size;   //for last field: conn[0]
+	int arg_size;       //for arg pointer
 	int block_size;
 	bool malloc_whole_block;
     TaskInitCallback init_callback;
@@ -138,22 +139,25 @@ extern "C" {
 
 int free_queue_init_ex2(const int max_connections, const int init_connections,
         const int alloc_task_once, const int min_buff_size,
-        const int max_buff_size, const int arg_size,
-        TaskInitCallback init_callback);
+        const int max_buff_size, const int padding_size,
+        const int arg_size, TaskInitCallback init_callback);
 
 static inline int free_queue_init_ex(const int max_connections,
         const int init_connections, const int alloc_task_once,
         const int min_buff_size, const int max_buff_size, const int arg_size)
 {
+    const int padding_size = 0;
     return free_queue_init_ex2(max_connections, init_connections,
-            alloc_task_once, min_buff_size, max_buff_size, arg_size, NULL);
+            alloc_task_once, min_buff_size, max_buff_size,
+            padding_size, arg_size, NULL);
 }
 
 static inline int free_queue_init(const int max_connections,
         const int min_buff_size, const int max_buff_size, const int arg_size)
 {
-    return free_queue_init_ex2(max_connections, max_connections,
-            0, min_buff_size, max_buff_size, arg_size, NULL);
+    const int padding_size = 0;
+    return free_queue_init_ex2(max_connections, max_connections, 0,
+            min_buff_size, max_buff_size, padding_size, arg_size, NULL);
 }
 
 void free_queue_destroy();
