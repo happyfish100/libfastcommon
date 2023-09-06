@@ -57,6 +57,7 @@ typedef struct
     string_t group_name;
     int port;          //default port
     int server_port;   //port in server section
+    FCCommunicationType comm_type;
     struct {
         int net_type;
         string_t ip_prefix;

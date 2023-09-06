@@ -314,15 +314,39 @@ static inline void fc_server_set_ip_prefix(FCServerGroupInfo *ginfo,
     }
 }
 
+static inline int fc_server_set_comm_type(FCServerGroupInfo *ginfo,
+        const char *config_filename, const char *section_name,
+        const char *comm_type)
+{
+    if (comm_type == NULL) {
+        ginfo->comm_type = fc_comm_type_sock;
+        return 0;
+    } else if (strcasecmp(comm_type, "socket") == 0) {
+        ginfo->comm_type = fc_comm_type_sock;
+        return 0;
+    } else if (strcasecmp(comm_type, "rdma") == 0) {
+        ginfo->comm_type = fc_comm_type_rdma;
+        return 0;
+    } else {
+        logError("file: "__FILE__", line: %d, "
+                "config filename: %s, section: %s, "
+                "invalid communication: %s!", __LINE__,
+                config_filename, section_name, comm_type);
+        return EINVAL;
+    }
+}
+
 static int fc_server_load_one_group(FCServerConfig *ctx,
         const char *config_filename, IniContext *ini_context,
         const int group_count, const char *section_name)
 {
+    int result;
     FCServerGroupInfo *group;
     char new_name[FAST_INI_ITEM_NAME_SIZE];
     char *port_str;
     char *net_type;
     char *ip_prefix;
+    char *comm_type;
 
     strcpy(new_name, section_name);
     group = ctx->group_array.groups + ctx->group_array.count;
@@ -369,6 +393,16 @@ static int fc_server_load_one_group(FCServerConfig *ctx,
 
     ip_prefix = iniGetStrValue(section_name, "ip_prefix", ini_context);
     fc_server_set_ip_prefix(group, ip_prefix);
+
+    comm_type = iniGetStrValue(section_name, "communication", ini_context);
+    if (comm_type == NULL) {
+        comm_type = iniGetStrValue(section_name, "comm_type", ini_context);
+    }
+    if ((result=fc_server_set_comm_type(group, config_filename,
+                    section_name, comm_type)) != 0)
+    {
+        return result;
+    }
 
     ctx->group_array.count++;
     return 0;
@@ -794,6 +828,7 @@ static int fc_server_load_group_server(FCServerConfig *ctx,
         return result;
     }
 
+    address.conn.comm_type = group->comm_type;
     if ((result=fc_server_set_group_server_address(server,
                     group_addr, &address)) != 0)
     {
@@ -835,9 +870,16 @@ static int fc_server_set_host(FCServerConfig *ctx, FCServerInfo *server,
             if (addr->conn.port == 0) {
                 addr_holder = *addr;
                 addr_holder.conn.port = FC_SERVER_GROUP_PORT(group);
+                addr_holder.conn.comm_type = group->comm_type;
                 new_addr = &addr_holder;
             } else {
-                new_addr = addr;
+                if (addr->conn.comm_type == group->comm_type) {
+                    new_addr = addr;
+                } else {
+                    addr_holder = *addr;
+                    addr_holder.conn.comm_type = group->comm_type;
+                    new_addr = &addr_holder;
+                }
             }
 
             if ((result=fc_server_set_group_server_address(server,
@@ -1341,12 +1383,13 @@ static int fc_groups_to_string(FCServerConfig *ctx, FastBuffer *buffer)
         fast_buffer_append(buffer,
                 "[%s%.*s]\n"
                 "port = %d\n"
+                "communication = %s\n"
                 "net_type = %s\n"
                 "ip_prefix = %.*s\n\n",
                 GROUP_SECTION_PREFIX_STR,
                 group->group_name.len, group->group_name.str,
-                group->port, net_type_caption,
-                group->filter.ip_prefix.len,
+                group->port, fc_comm_type_str(group->comm_type),
+                net_type_caption, group->filter.ip_prefix.len,
                 group->filter.ip_prefix.str);
     }
     return 0;
@@ -1438,8 +1481,9 @@ static void fc_server_log_groups(FCServerConfig *ctx)
 
     end = ctx->group_array.groups + ctx->group_array.count;
     for (group=ctx->group_array.groups; group<end; group++) {
-        logInfo("group_name: %.*s, port: %d, net_type: %s, ip_prefix: %.*s",
-                group->group_name.len, group->group_name.str, group->port,
+        logInfo("group_name: %.*s, port: %d, communication: %s, net_type: %s, "
+                "ip_prefix: %.*s", group->group_name.len, group->group_name.str,
+                group->port, fc_comm_type_str(group->comm_type),
                 get_net_type_caption(group->filter.net_type),
                 group->filter.ip_prefix.len, group->filter.ip_prefix.str);
     }

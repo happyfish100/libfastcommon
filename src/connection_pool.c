@@ -513,6 +513,7 @@ int conn_pool_parse_server_info(const char *pServerStr,
 
     pServerInfo->socket_domain = AF_INET;
     pServerInfo->sock = -1;
+    pServerInfo->comm_type = fc_comm_type_sock;
     return 0;
 }
 

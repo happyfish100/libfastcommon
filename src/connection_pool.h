@@ -41,15 +41,15 @@ extern "C" {
      (conn1).port == (conn2).port)
 
 typedef enum {
-    fc_network_type_sock = 0,
-    fc_network_type_rdma
-} FCNetworkType;
+    fc_comm_type_sock = 0,
+    fc_comm_type_rdma
+} FCCommunicationType;
 
 typedef struct {
 	int sock;
 	uint16_t port;
     short socket_domain;  //socket domain, AF_INET, AF_INET6 or AF_UNSPEC for auto dedect
-    FCNetworkType network_type;
+    FCCommunicationType comm_type;
     bool validate_flag;   //for connection pool
 	char ip_addr[INET6_ADDRSTRLEN];
     char args[0];   //for extra data
@@ -350,6 +350,18 @@ static inline int conn_pool_compare_ip_and_port(const char *ip1,
         return result;
     }
     return port1 - port2;
+}
+
+static inline const char *fc_comm_type_str(const FCCommunicationType type)
+{
+    switch (type) {
+        case fc_comm_type_sock:
+            return "socket";
+        case fc_comm_type_rdma:
+            return "rdma";
+        default:
+            return "unkown";
+    }
 }
 
 #ifdef __cplusplus
