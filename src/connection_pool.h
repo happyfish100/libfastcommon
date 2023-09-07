@@ -42,7 +42,8 @@ extern "C" {
 
 typedef enum {
     fc_comm_type_sock = 0,
-    fc_comm_type_rdma
+    fc_comm_type_rdma,
+    fc_comm_type_both
 } FCCommunicationType;
 
 typedef struct {

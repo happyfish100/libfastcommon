@@ -141,6 +141,16 @@ static inline FCServerInfo *fc_server_get_by_ip_port(FCServerConfig *ctx,
 FCServerGroupInfo *fc_server_get_group_by_name(FCServerConfig *ctx,
         const string_t *group_name);
 
+static inline FCServerGroupInfo *fc_server_get_group_by_index(
+        FCServerConfig *ctx, const int index)
+{
+    if (index < 0 || index >= ctx->group_array.count) {
+        return NULL;
+    }
+
+    return ctx->group_array.groups + index;
+}
+
 static inline int fc_server_get_group_index_ex(FCServerConfig *ctx,
         const string_t *group_name)
 {
