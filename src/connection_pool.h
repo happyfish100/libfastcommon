@@ -47,14 +47,38 @@ typedef enum {
 } FCCommunicationType;
 
 typedef struct {
-	int sock;
-	uint16_t port;
+    int sock;
+    uint16_t port;
     short socket_domain;  //socket domain, AF_INET, AF_INET6 or AF_UNSPEC for auto dedect
     FCCommunicationType comm_type;
     bool validate_flag;   //for connection pool
-	char ip_addr[INET6_ADDRSTRLEN];
+    char ip_addr[INET6_ADDRSTRLEN];
+    void *arg1;     //for RDMA
     char args[0];   //for extra data
 } ConnectionInfo;
+
+typedef int (*fc_get_connection_size_callback)();
+typedef int (*fc_init_connection_callback)(ConnectionInfo *conn,
+        const int buffer_size, void *arg);
+typedef int (*fc_make_connection_callback)(ConnectionInfo *conn,
+        const char *service_name, const int timeout_ms,
+        const char *bind_ipaddr, const bool log_connect_error);
+typedef void (*fc_close_connection_callback)(ConnectionInfo *conn);
+typedef void (*fc_destroy_connection_callback)(ConnectionInfo *conn);
+
+typedef struct {
+    fc_get_connection_size_callback get_connection_size;
+    fc_init_connection_callback init_connection;
+    fc_make_connection_callback make_connection;
+    fc_close_connection_callback close_connection;
+    fc_destroy_connection_callback destroy_connection;
+} ConnectionCallbacks;
+
+struct ibv_pd;
+typedef struct {
+    int buffer_size;
+    struct ibv_pd *pd;
+} ConnectionExtraParams;
 
 typedef int (*fc_connection_callback_func)(ConnectionInfo *conn, void *args);
 
@@ -99,7 +123,14 @@ typedef struct tagConnectionPool {
         fc_connection_callback_func func;
         void *args;
     } validate_callback;
+
+    int extra_data_size;
+    ConnectionExtraParams extra_params;
 } ConnectionPool;
+
+extern ConnectionCallbacks g_connection_callbacks[2];
+
+int conn_pool_global_init_for_rdma();
 
 /**
 *   init ex function
@@ -115,6 +146,7 @@ typedef struct tagConnectionPool {
 *      validate_func: the validate connection callback
 *      validate_args: the args for validate connection callback
 *      extra_data_size: the extra data size of connection
+*      extra_params: for RDMA
 *   return 0 for success, != 0 for error
 */
 int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
@@ -122,7 +154,7 @@ int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
     const int socket_domain, const int htable_init_capacity,
     fc_connection_callback_func connect_done_func, void *connect_done_args,
     fc_connection_callback_func validate_func, void *validate_args,
-    const int extra_data_size);
+    const int extra_data_size, const ConnectionExtraParams *extra_params);
 
 /**
 *   init ex function
@@ -140,9 +172,10 @@ static inline int conn_pool_init_ex(ConnectionPool *cp, int connect_timeout,
 {
     const int htable_init_capacity = 0;
     const int extra_data_size = 0;
+    const ConnectionExtraParams *extra_params = NULL;
     return conn_pool_init_ex1(cp, connect_timeout, max_count_per_entry,
             max_idle_time, socket_domain, htable_init_capacity,
-            NULL, NULL, NULL, NULL, extra_data_size);
+            NULL, NULL, NULL, NULL, extra_data_size, extra_params);
 }
 
 /**
@@ -160,9 +193,10 @@ static inline int conn_pool_init(ConnectionPool *cp, int connect_timeout,
     const int socket_domain = AF_INET;
     const int htable_init_capacity = 0;
     const int extra_data_size = 0;
+    const ConnectionExtraParams *extra_params = NULL;
     return conn_pool_init_ex1(cp, connect_timeout, max_count_per_entry,
             max_idle_time, socket_domain, htable_init_capacity,
-            NULL, NULL, NULL, NULL, extra_data_size);
+            NULL, NULL, NULL, NULL, extra_data_size, extra_params);
 }
 
 /**
