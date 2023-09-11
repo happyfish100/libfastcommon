@@ -23,10 +23,9 @@
 #include "sched_thread.h"
 #include "connection_pool.h"
 
-ConnectionCallbacks g_connection_callbacks[2] = {
-    {NULL, NULL, NULL, conn_pool_connect_server_ex1,
-        conn_pool_disconnect_server, NULL},
-    {NULL, NULL, NULL, NULL, NULL, NULL}
+ConnectionCallbacks g_connection_callbacks = {
+    {{conn_pool_connect_server_ex1, conn_pool_disconnect_server},
+        {NULL, NULL}}, {NULL}
 };
 
 static int node_init_for_socket(ConnectionNode *node,
@@ -119,7 +118,7 @@ static int coon_pool_close_connections(const int index,
             deleted = node;
             node = node->next;
 
-            g_connection_callbacks[deleted->conn->comm_type].
+            G_COMMON_CONNECTION_CALLBACKS[deleted->conn->comm_type].
                 close_connection(deleted->conn);
             fast_mblock_free_object(&cp->node_allocator, deleted);
         }
@@ -307,7 +306,7 @@ ConnectionInfo *conn_pool_get_connection_ex(ConnectionPool *cp,
             node->conn->socket_domain = cp->socket_domain;
 			node->conn->sock = -1;
             node->conn->validate_flag = false;
-			*err_no = g_connection_callbacks[conn->comm_type].
+			*err_no = G_COMMON_CONNECTION_CALLBACKS[conn->comm_type].
                 make_connection(node->conn, service_name,
                         cp->connect_timeout, NULL, true);
             if (*err_no == 0 && cp->connect_done_callback.func != NULL)
@@ -317,7 +316,7 @@ ConnectionInfo *conn_pool_get_connection_ex(ConnectionPool *cp,
             }
 			if (*err_no != 0)
 			{
-                g_connection_callbacks[conn->comm_type].
+                G_COMMON_CONNECTION_CALLBACKS[conn->comm_type].
                     close_connection(node->conn);
                 pthread_mutex_lock(&cm->lock);
                 cm->total_count--;  //rollback
@@ -383,7 +382,8 @@ ConnectionInfo *conn_pool_get_connection_ex(ConnectionPool *cp,
                     (current_time - node->atime), cp->max_idle_time,
                     cm->total_count, cm->free_count);
 
-                g_connection_callbacks[ci->comm_type].close_connection(ci);
+                G_COMMON_CONNECTION_CALLBACKS[ci->comm_type].
+                    close_connection(ci);
                 fast_mblock_free_object(&cp->node_allocator, node);
 				continue;
 			}
@@ -441,7 +441,8 @@ int conn_pool_close_connection_ex(ConnectionPool *cp, ConnectionInfo *conn,
                 __LINE__, conn->ip_addr, conn->port,
                 conn->sock, cm->total_count, cm->free_count);
 
-        g_connection_callbacks[conn->comm_type].close_connection(conn);
+        G_COMMON_CONNECTION_CALLBACKS[conn->comm_type].
+            close_connection(conn);
         fast_mblock_free_object(&cp->node_allocator, node);
 
         node = cm->head;
@@ -571,8 +572,8 @@ int conn_pool_load_server_info(IniContext *pIniContext, const char *filename,
 
 #define LOAD_API(callbacks, fname) \
     do { \
-        callbacks->fname = dlsym(dlhandle, API_PREFIX_NAME#fname); \
-        if (callbacks->fname == NULL) {  \
+        callbacks.fname = dlsym(dlhandle, API_PREFIX_NAME#fname); \
+        if (callbacks.fname == NULL) {  \
             logError("file: "__FILE__", line: %d, "  \
                     "dlsym api %s fail, error info: %s", \
                     __LINE__, API_PREFIX_NAME#fname, dlerror()); \
@@ -583,7 +584,6 @@ int conn_pool_load_server_info(IniContext *pIniContext, const char *filename,
 int conn_pool_global_init_for_rdma()
 {
     const char *library = "libfastrdma.so";
-    ConnectionCallbacks *callbacks;
     void *dlhandle;
 
     dlhandle = dlopen(library, RTLD_LAZY);
@@ -594,13 +594,22 @@ int conn_pool_global_init_for_rdma()
         return EFAULT;
     }
 
-    callbacks = g_connection_callbacks + fc_comm_type_rdma;
-    LOAD_API(callbacks, alloc_pd);
-    LOAD_API(callbacks, get_connection_size);
-    LOAD_API(callbacks, init_connection);
-    LOAD_API(callbacks, make_connection);
-    LOAD_API(callbacks, close_connection);
-    LOAD_API(callbacks, destroy_connection);
+    LOAD_API(G_COMMON_CONNECTION_CALLBACKS[fc_comm_type_rdma],
+            make_connection);
+    LOAD_API(G_COMMON_CONNECTION_CALLBACKS[fc_comm_type_rdma],
+            close_connection);
+
+    LOAD_API(G_RDMA_CONNECTION_CALLBACKS, alloc_pd);
+    LOAD_API(G_RDMA_CONNECTION_CALLBACKS, get_connection_size);
+    LOAD_API(G_RDMA_CONNECTION_CALLBACKS, init_connection);
+    LOAD_API(G_RDMA_CONNECTION_CALLBACKS, make_connection);
+    LOAD_API(G_RDMA_CONNECTION_CALLBACKS, close_connection);
+    LOAD_API(G_RDMA_CONNECTION_CALLBACKS, destroy_connection);
+    LOAD_API(G_RDMA_CONNECTION_CALLBACKS, get_buffer);
+    LOAD_API(G_RDMA_CONNECTION_CALLBACKS, request_by_buf1);
+    LOAD_API(G_RDMA_CONNECTION_CALLBACKS, request_by_buf2);
+    LOAD_API(G_RDMA_CONNECTION_CALLBACKS, request_by_iov);
+    LOAD_API(G_RDMA_CONNECTION_CALLBACKS, request_by_mix);
 
     return 0;
 }

@@ -69,6 +69,24 @@ typedef int (*fc_make_connection_callback)(ConnectionInfo *conn,
 typedef void (*fc_close_connection_callback)(ConnectionInfo *conn);
 typedef void (*fc_destroy_connection_callback)(ConnectionInfo *conn);
 
+typedef BufferInfo *(*fc_rdma_get_buffer_callback)(ConnectionInfo *conn);
+typedef int (*fc_rdma_request_by_buf1_callback)(ConnectionInfo *conn,
+        const char *data, const int length, const int timeout_ms);
+typedef int (*fc_rdma_request_by_buf2_callback)(ConnectionInfo *conn,
+        const char *data1, const int length1, const char *data2,
+        const int length2, const int timeout_ms);
+typedef int (*fc_rdma_request_by_iov_callback)(ConnectionInfo *conn,
+        const struct iovec *iov, const int iovcnt,
+        const int timeout_ms);
+typedef int (*fc_rdma_request_by_mix_callback)(ConnectionInfo *conn,
+        const char *data, const int length, const struct iovec *iov,
+        const int iovcnt, const int timeout_ms);
+
+typedef struct {
+    fc_make_connection_callback make_connection;
+    fc_close_connection_callback close_connection;
+} CommonConnectionCallbacks;
+
 typedef struct {
     fc_alloc_pd_callback alloc_pd;
     fc_get_connection_size_callback get_connection_size;
@@ -76,6 +94,17 @@ typedef struct {
     fc_make_connection_callback make_connection;
     fc_close_connection_callback close_connection;
     fc_destroy_connection_callback destroy_connection;
+
+    fc_rdma_get_buffer_callback get_buffer;
+    fc_rdma_request_by_buf1_callback request_by_buf1;
+    fc_rdma_request_by_buf2_callback request_by_buf2;
+    fc_rdma_request_by_iov_callback request_by_iov;
+    fc_rdma_request_by_mix_callback request_by_mix;
+} RDMAConnectionCallbacks;
+
+typedef struct {
+    CommonConnectionCallbacks common_callbacks[2];
+    RDMAConnectionCallbacks rdma_callbacks;
 } ConnectionCallbacks;
 
 typedef struct {
@@ -131,11 +160,12 @@ typedef struct tagConnectionPool {
     ConnectionExtraParams extra_params;
 } ConnectionPool;
 
-extern ConnectionCallbacks g_connection_callbacks[2];
+extern ConnectionCallbacks g_connection_callbacks;
 
 int conn_pool_global_init_for_rdma();
 
-#define G_RDMA_CONNECTION_CALLBACKS g_connection_callbacks[fc_comm_type_rdma]
+#define G_COMMON_CONNECTION_CALLBACKS g_connection_callbacks.common_callbacks
+#define G_RDMA_CONNECTION_CALLBACKS   g_connection_callbacks.rdma_callbacks
 
 /**
 *   init ex function
