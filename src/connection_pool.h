@@ -57,6 +57,9 @@ typedef struct {
     char args[0];   //for extra data
 } ConnectionInfo;
 
+struct ibv_pd;
+typedef struct ibv_pd *(*fc_alloc_pd_callback)(const char **ip_addrs,
+        const int count, const int port);
 typedef int (*fc_get_connection_size_callback)();
 typedef int (*fc_init_connection_callback)(ConnectionInfo *conn,
         const int buffer_size, void *arg);
@@ -67,6 +70,7 @@ typedef void (*fc_close_connection_callback)(ConnectionInfo *conn);
 typedef void (*fc_destroy_connection_callback)(ConnectionInfo *conn);
 
 typedef struct {
+    fc_alloc_pd_callback alloc_pd;
     fc_get_connection_size_callback get_connection_size;
     fc_init_connection_callback init_connection;
     fc_make_connection_callback make_connection;
@@ -74,7 +78,6 @@ typedef struct {
     fc_destroy_connection_callback destroy_connection;
 } ConnectionCallbacks;
 
-struct ibv_pd;
 typedef struct {
     int buffer_size;
     struct ibv_pd *pd;
@@ -131,6 +134,8 @@ typedef struct tagConnectionPool {
 extern ConnectionCallbacks g_connection_callbacks[2];
 
 int conn_pool_global_init_for_rdma();
+
+#define G_RDMA_CONNECTION_CALLBACKS g_connection_callbacks[fc_comm_type_rdma]
 
 /**
 *   init ex function
@@ -394,6 +399,8 @@ static inline const char *fc_comm_type_str(const FCCommunicationType type)
             return "socket";
         case fc_comm_type_rdma:
             return "rdma";
+        case fc_comm_type_both:
+            return "both";
         default:
             return "unkown";
     }

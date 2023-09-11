@@ -58,6 +58,7 @@ typedef struct
     int port;          //default port
     int server_port;   //port in server section
     FCCommunicationType comm_type;
+    int buffer_size;  //for RDMA
     struct {
         int net_type;
         string_t ip_prefix;
@@ -245,6 +246,9 @@ int fc_server_make_connection_ex(FCAddressPtrArray *addr_array,
         conn, service_name, connect_timeout)  \
     fc_server_make_connection_ex(addr_array, conn, \
             service_name, connect_timeout, NULL, true)
+
+struct ibv_pd *fc_alloc_rdma_pd(fc_alloc_pd_callback alloc_pd,
+        FCAddressPtrArray *address_array, int *result);
 
 #ifdef __cplusplus
 }

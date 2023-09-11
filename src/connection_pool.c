@@ -24,9 +24,9 @@
 #include "connection_pool.h"
 
 ConnectionCallbacks g_connection_callbacks[2] = {
-    {NULL, NULL, conn_pool_connect_server_ex1,
+    {NULL, NULL, NULL, conn_pool_connect_server_ex1,
         conn_pool_disconnect_server, NULL},
-    {NULL, NULL, NULL, NULL, NULL}
+    {NULL, NULL, NULL, NULL, NULL, NULL}
 };
 
 static int node_init_for_socket(ConnectionNode *node,
@@ -41,8 +41,8 @@ static int node_init_for_rdma(ConnectionNode *node,
 {
     node->conn = (ConnectionInfo *)(node + 1);
     node->conn->arg1 = node->conn->args + cp->extra_data_size;
-    return g_connection_callbacks[fc_comm_type_rdma].init_connection(
-            node->conn, cp->extra_params.buffer_size, cp->extra_params.pd);
+    return G_RDMA_CONNECTION_CALLBACKS.init_connection(node->conn,
+            cp->extra_params.buffer_size, cp->extra_params.pd);
 }
 
 int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
@@ -81,8 +81,8 @@ int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
     }
 
     if (extra_params != NULL) {
-        extra_connection_size = g_connection_callbacks
-            [fc_comm_type_rdma].get_connection_size();
+        extra_connection_size = G_RDMA_CONNECTION_CALLBACKS.
+            get_connection_size();
         obj_init_func = (fast_mblock_object_init_func)node_init_for_rdma;
         cp->extra_params = *extra_params;
     } else {
@@ -595,6 +595,7 @@ int conn_pool_global_init_for_rdma()
     }
 
     callbacks = g_connection_callbacks + fc_comm_type_rdma;
+    LOAD_API(callbacks, alloc_pd);
     LOAD_API(callbacks, get_connection_size);
     LOAD_API(callbacks, init_connection);
     LOAD_API(callbacks, make_connection);

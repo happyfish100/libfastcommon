@@ -342,11 +342,13 @@ static int fc_server_load_one_group(FCServerConfig *ctx,
 {
     int result;
     FCServerGroupInfo *group;
+    IniFullContext full_ini_ctx;
     char new_name[FAST_INI_ITEM_NAME_SIZE];
     char *port_str;
     char *net_type;
     char *ip_prefix;
     char *comm_type;
+    int buffer_size;
 
     strcpy(new_name, section_name);
     group = ctx->group_array.groups + ctx->group_array.count;
@@ -402,6 +404,17 @@ static int fc_server_load_one_group(FCServerConfig *ctx,
                     section_name, comm_type)) != 0)
     {
         return result;
+    }
+
+    if (group->comm_type == fc_comm_type_sock) {
+        group->buffer_size = 0;
+    } else {
+        FAST_INI_SET_FULL_CTX_EX(full_ini_ctx, config_filename,
+                section_name, ini_context);
+        buffer_size = iniGetByteValue(section_name, "buffer_size",
+                ini_context, 256 * 1024);
+        group->buffer_size = iniCheckAndCorrectIntValue(&full_ini_ctx,
+                "buffer_size", buffer_size, 8 * 1024, 8 * 1024 * 1024);
     }
 
     ctx->group_array.count++;
@@ -1382,13 +1395,22 @@ static int fc_groups_to_string(FCServerConfig *ctx, FastBuffer *buffer)
 
         fast_buffer_append(buffer,
                 "[%s%.*s]\n"
-                "port = %d\n"
-                "communication = %s\n"
-                "net_type = %s\n"
-                "ip_prefix = %.*s\n\n",
+                "port = %d\n",
                 GROUP_SECTION_PREFIX_STR,
                 group->group_name.len, group->group_name.str,
-                group->port, fc_comm_type_str(group->comm_type),
+                group->port);
+
+        if (group->comm_type != fc_comm_type_sock) {
+            fast_buffer_append(buffer,
+                    "communication = %s\n"
+                    "buffer_size = %d\n",
+                    fc_comm_type_str(group->comm_type),
+                    group->buffer_size);
+        }
+
+        fast_buffer_append(buffer,
+                "net_type = %s\n"
+                "ip_prefix = %.*s\n\n",
                 net_type_caption, group->filter.ip_prefix.len,
                 group->filter.ip_prefix.str);
     }
@@ -1478,14 +1500,24 @@ static void fc_server_log_groups(FCServerConfig *ctx)
 {
     FCServerGroupInfo *group;
     FCServerGroupInfo *end;
+    char buff[1024];
+    char *p;
 
     end = ctx->group_array.groups + ctx->group_array.count;
     for (group=ctx->group_array.groups; group<end; group++) {
-        logInfo("group_name: %.*s, port: %d, communication: %s, net_type: %s, "
-                "ip_prefix: %.*s", group->group_name.len, group->group_name.str,
-                group->port, fc_comm_type_str(group->comm_type),
+        p = buff + sprintf(buff, "group_name: %.*s, port: %d",
+                group->group_name.len, group->group_name.str,
+                group->port);
+        if (group->comm_type != fc_comm_type_sock) {
+            p += sprintf(p, ", communication: %s, buffer_size: %d KB",
+                    fc_comm_type_str(group->comm_type),
+                    group->buffer_size / 1024);
+        }
+        p += sprintf(p, ", net_type: %s, ip_prefix: %.*s",
                 get_net_type_caption(group->filter.net_type),
                 group->filter.ip_prefix.len, group->filter.ip_prefix.str);
+
+        log_it1(LOG_INFO, buff, p - buff);
     }
 }
 
@@ -1667,4 +1699,35 @@ const FCAddressInfo *fc_server_get_address_by_peer(
     }
 
     return *(addr_array->addrs);
+}
+
+struct ibv_pd *fc_alloc_rdma_pd(fc_alloc_pd_callback alloc_pd,
+        FCAddressPtrArray *address_array, int *result)
+{
+    char *ip_addrs[FC_MAX_SERVER_IP_COUNT];
+    char **ip_addr;
+    FCAddressInfo **addr;
+    FCAddressInfo **end;
+    struct ibv_pd *pd;
+    int port;
+
+    if (address_array->count == 0) {
+        port = 0;
+    } else {
+        port = address_array->addrs[0]->conn.port;
+    }
+
+    end = address_array->addrs + address_array->count;
+    for (addr=address_array->addrs, ip_addr=ip_addrs; addr<end; addr++) {
+        *ip_addr = (*addr)->conn.ip_addr;
+    }
+
+    if ((pd=alloc_pd((const char **)ip_addrs, address_array->
+                    count, port)) != NULL)
+    {
+        *result = 0;
+    } else {
+        *result = ENODEV;
+    }
+    return pd;
 }
