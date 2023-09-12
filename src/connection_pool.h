@@ -57,6 +57,7 @@ typedef struct {
     char args[0];   //for extra data
 } ConnectionInfo;
 
+struct fc_server_config;
 struct ibv_pd;
 typedef struct ibv_pd *(*fc_alloc_pd_callback)(const char **ip_addrs,
         const int count, const int port);
@@ -66,6 +67,7 @@ typedef int (*fc_init_connection_callback)(ConnectionInfo *conn,
 typedef int (*fc_make_connection_callback)(ConnectionInfo *conn,
         const char *service_name, const int timeout_ms,
         const char *bind_ipaddr, const bool log_connect_error);
+typedef bool (*fc_is_connected_callback)(ConnectionInfo *conn);
 typedef void (*fc_close_connection_callback)(ConnectionInfo *conn);
 typedef void (*fc_destroy_connection_callback)(ConnectionInfo *conn);
 
@@ -85,6 +87,7 @@ typedef int (*fc_rdma_request_by_mix_callback)(ConnectionInfo *conn,
 typedef struct {
     fc_make_connection_callback make_connection;
     fc_close_connection_callback close_connection;
+    fc_is_connected_callback is_connected;
 } CommonConnectionCallbacks;
 
 typedef struct {
@@ -94,6 +97,7 @@ typedef struct {
     fc_make_connection_callback make_connection;
     fc_close_connection_callback close_connection;
     fc_destroy_connection_callback destroy_connection;
+    fc_is_connected_callback is_connected;
 
     fc_rdma_get_buffer_callback get_buffer;
     fc_rdma_request_by_buf1_callback request_by_buf1;
@@ -103,6 +107,7 @@ typedef struct {
 } RDMAConnectionCallbacks;
 
 typedef struct {
+    bool inited;
     CommonConnectionCallbacks common_callbacks[2];
     RDMAConnectionCallbacks rdma_callbacks;
 } ConnectionCallbacks;
@@ -133,7 +138,7 @@ typedef struct tagConnectionManager {
 typedef struct tagConnectionPool {
 	HashArray hash_array;  //key is ip:port, value is ConnectionManager
 	pthread_mutex_t lock;
-	int connect_timeout;
+	int connect_timeout_ms;
 	int max_count_per_entry;  //0 means no limit
 
 	/*
@@ -274,76 +279,78 @@ int conn_pool_close_connection_ex(ConnectionPool *cp, ConnectionInfo *conn,
 /**
 *   disconnect from the server
 *   parameters:
-*      pConnection: the connection
+*      conn: the connection
 *   return 0 for success, != 0 for error
 */
-void conn_pool_disconnect_server(ConnectionInfo *pConnection);
+void conn_pool_disconnect_server(ConnectionInfo *conn);
+
+bool conn_pool_is_connected(ConnectionInfo *conn);
 
 /**
 *   connect to the server
 *   parameters:
 *      pConnection: the connection
 *      service_name: the service name to log
-*      connect_timeout: the connect timeout in seconds
+*      connect_timeout_ms: the connect timeout in milliseconds
 *      bind_ipaddr: the ip address to bind, NULL or empty for any
 *      log_connect_error: if log error info when connect fail
 *   NOTE: pConnection->sock will be closed when it >= 0 before connect
 *   return 0 for success, != 0 for error
 */
 int conn_pool_connect_server_ex1(ConnectionInfo *conn,
-        const char *service_name, const int connect_timeout,
+        const char *service_name, const int connect_timeout_ms,
         const char *bind_ipaddr, const bool log_connect_error);
 /**
 *   connect to the server
 *   parameters:
 *      pConnection: the connection
-*      connect_timeout: the connect timeout in seconds
+*      connect_timeout_ms: the connect timeout in milliseconds
 *      bind_ipaddr: the ip address to bind, NULL or empty for any
 *      log_connect_error: if log error info when connect fail
 *   NOTE: pConnection->sock will be closed when it >= 0 before connect
 *   return 0 for success, != 0 for error
 */
 static inline int conn_pool_connect_server_ex(ConnectionInfo *pConnection,
-		const int connect_timeout, const char *bind_ipaddr,
+		const int connect_timeout_ms, const char *bind_ipaddr,
         const bool log_connect_error)
 {
     const char *service_name = NULL;
     return conn_pool_connect_server_ex1(pConnection, service_name,
-            connect_timeout, bind_ipaddr, log_connect_error);
+            connect_timeout_ms, bind_ipaddr, log_connect_error);
 }
 
 /**
 *   connect to the server
 *   parameters:
 *      pConnection: the connection
-*      connect_timeout: the connect timeout in seconds
+*      connect_timeout_ms: the connect timeout in seconds
 *   NOTE: pConnection->sock will be closed when it >= 0 before connect
 *   return 0 for success, != 0 for error
 */
 static inline int conn_pool_connect_server(ConnectionInfo *pConnection,
-		const int connect_timeout)
+		const int connect_timeout_ms)
 {
     const char *service_name = NULL;
     const char *bind_ipaddr = NULL;
     return conn_pool_connect_server_ex1(pConnection, service_name,
-            connect_timeout, bind_ipaddr, true);
+            connect_timeout_ms, bind_ipaddr, true);
 }
 
 /**
 *   connect to the server
 *   parameters:
 *      pConnection: the connection
-*      connect_timeout: the connect timeout in seconds
+*      connect_timeout_ms: the connect timeout in seconds
 *   return 0 for success, != 0 for error
 */
 static inline int conn_pool_connect_server_anyway(ConnectionInfo *pConnection,
-		const int connect_timeout)
+		const int connect_timeout_ms)
 {
     const char *service_name = NULL;
     const char *bind_ipaddr = NULL;
     pConnection->sock = -1;
     return conn_pool_connect_server_ex1(pConnection, service_name,
-            connect_timeout, bind_ipaddr, true);
+            connect_timeout_ms, bind_ipaddr, true);
 }
 
 /**
@@ -421,6 +428,25 @@ static inline int conn_pool_compare_ip_and_port(const char *ip1,
     }
     return port1 - port2;
 }
+
+ConnectionInfo *conn_pool_alloc_connection_ex(
+        const FCCommunicationType comm_type,
+        const int extra_data_size,
+        const ConnectionExtraParams *extra_params,
+        int *err_no);
+
+static inline ConnectionInfo *conn_pool_alloc_connection(
+        const FCCommunicationType comm_type,
+        const ConnectionExtraParams *extra_params,
+        int *err_no)
+{
+    const int extra_data_size = 0;
+    return conn_pool_alloc_connection_ex(comm_type,
+            extra_data_size, extra_params, err_no);
+}
+
+int conn_pool_set_rdma_extra_params(ConnectionExtraParams *extra_params,
+        struct fc_server_config *server_cfg, const int server_group_index);
 
 static inline const char *fc_comm_type_str(const FCCommunicationType type)
 {

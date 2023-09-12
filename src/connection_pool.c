@@ -21,11 +21,14 @@
 #include "sockopt.h"
 #include "shared_func.h"
 #include "sched_thread.h"
+#include "server_id_func.h"
 #include "connection_pool.h"
 
 ConnectionCallbacks g_connection_callbacks = {
-    {{conn_pool_connect_server_ex1, conn_pool_disconnect_server},
-        {NULL, NULL}}, {NULL}
+    false, {{conn_pool_connect_server_ex1,
+        conn_pool_disconnect_server,
+        conn_pool_is_connected},
+    {NULL, NULL, NULL}}, {NULL}
 };
 
 static int node_init_for_socket(ConnectionNode *node,
@@ -61,7 +64,7 @@ int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
 	{
 		return result;
 	}
-	cp->connect_timeout = connect_timeout;
+	cp->connect_timeout_ms = connect_timeout * 1000;
 	cp->max_count_per_entry = max_count_per_entry;
 	cp->max_idle_time = max_idle_time;
 	cp->extra_data_size = extra_data_size;
@@ -139,17 +142,22 @@ void conn_pool_destroy(ConnectionPool *cp)
 	pthread_mutex_destroy(&cp->lock);
 }
 
-void conn_pool_disconnect_server(ConnectionInfo *pConnection)
+void conn_pool_disconnect_server(ConnectionInfo *conn)
 {
-	if (pConnection->sock >= 0)
-	{
-		close(pConnection->sock);
-		pConnection->sock = -1;
-	}
+    if (conn->sock >= 0)
+    {
+        close(conn->sock);
+        conn->sock = -1;
+    }
+}
+
+bool conn_pool_is_connected(ConnectionInfo *conn)
+{
+    return (conn->sock >= 0);
 }
 
 int conn_pool_connect_server_ex1(ConnectionInfo *conn,
-        const char *service_name, const int connect_timeout,
+        const char *service_name, const int connect_timeout_ms,
         const char *bind_ipaddr, const bool log_connect_error)
 {
 	int result;
@@ -166,7 +174,7 @@ int conn_pool_connect_server_ex1(ConnectionInfo *conn,
     }
 
 	if ((result=connectserverbyip_nb(conn->sock, conn->ip_addr,
-                    conn->port, connect_timeout)) != 0)
+                    conn->port, connect_timeout_ms / 1000)) != 0)
 	{
         if (log_connect_error)
         {
@@ -308,7 +316,7 @@ ConnectionInfo *conn_pool_get_connection_ex(ConnectionPool *cp,
             node->conn->validate_flag = false;
 			*err_no = G_COMMON_CONNECTION_CALLBACKS[conn->comm_type].
                 make_connection(node->conn, service_name,
-                        cp->connect_timeout, NULL, true);
+                        cp->connect_timeout_ms, NULL, true);
             if (*err_no == 0 && cp->connect_done_callback.func != NULL)
             {
                 *err_no = cp->connect_done_callback.func(node->conn,
@@ -586,6 +594,10 @@ int conn_pool_global_init_for_rdma()
     const char *library = "libfastrdma.so";
     void *dlhandle;
 
+    if (g_connection_callbacks.inited) {
+        return 0;
+    }
+
     dlhandle = dlopen(library, RTLD_LAZY);
     if (dlhandle == NULL) {
         logError("file: "__FILE__", line: %d, "
@@ -598,6 +610,8 @@ int conn_pool_global_init_for_rdma()
             make_connection);
     LOAD_API(G_COMMON_CONNECTION_CALLBACKS[fc_comm_type_rdma],
             close_connection);
+    LOAD_API(G_COMMON_CONNECTION_CALLBACKS[fc_comm_type_rdma],
+            is_connected);
 
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, alloc_pd);
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, get_connection_size);
@@ -605,11 +619,77 @@ int conn_pool_global_init_for_rdma()
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, make_connection);
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, close_connection);
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, destroy_connection);
+    LOAD_API(G_RDMA_CONNECTION_CALLBACKS, is_connected);
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, get_buffer);
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, request_by_buf1);
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, request_by_buf2);
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, request_by_iov);
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, request_by_mix);
 
+    g_connection_callbacks.inited = true;
     return 0;
+}
+
+ConnectionInfo *conn_pool_alloc_connection_ex(
+        const FCCommunicationType comm_type,
+        const int extra_data_size,
+        const ConnectionExtraParams *extra_params,
+        int *err_no)
+{
+    ConnectionInfo *conn;
+    int bytes;
+
+    if (comm_type == fc_comm_type_rdma) {
+        bytes = sizeof(ConnectionInfo) + extra_data_size +
+            G_RDMA_CONNECTION_CALLBACKS.get_connection_size();
+    } else {
+        bytes = sizeof(ConnectionInfo) + extra_data_size;
+    }
+    if ((conn=fc_malloc(bytes)) == NULL) {
+        *err_no = ENOMEM;
+        return NULL;
+    }
+    memset(conn, 0, bytes);
+
+    if (comm_type == fc_comm_type_rdma) {
+        conn->arg1 = conn->args + extra_data_size;
+        if ((*err_no=G_RDMA_CONNECTION_CALLBACKS.init_connection(
+                        conn, extra_params->buffer_size,
+                        extra_params->pd)) != 0)
+        {
+            free(conn);
+            return NULL;
+        }
+    } else {
+        *err_no = 0;
+    }
+
+    conn->comm_type = comm_type;
+    return conn;
+}
+
+int conn_pool_set_rdma_extra_params(ConnectionExtraParams *extra_params,
+        struct fc_server_config *server_cfg, const int server_group_index)
+{
+    const int padding_size = 1024;
+    FCServerGroupInfo *server_group;
+    FCServerInfo *first_server;
+    int result;
+
+    if ((server_group=fc_server_get_group_by_index(server_cfg,
+                    server_group_index)) == NULL)
+    {
+        return ENOENT;
+    }
+
+    if (server_group->comm_type == fc_comm_type_sock) {
+        return 0;
+    } else {
+        first_server = FC_SID_SERVERS(*server_cfg);
+        extra_params->buffer_size = server_group->buffer_size + padding_size;
+        extra_params->pd = fc_alloc_rdma_pd(G_RDMA_CONNECTION_CALLBACKS.
+                alloc_pd, &first_server->group_addrs[server_group_index].
+                address_array, &result);
+        return result;
+    }
 }

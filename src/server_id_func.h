@@ -113,7 +113,7 @@ typedef struct
     FCServerMap *maps;
 } FCServerMapArray;
 
-typedef struct
+typedef struct fc_server_config
 {
     int default_port;
     int min_hosts_each_group;
@@ -222,17 +222,6 @@ void fc_server_destroy(FCServerConfig *ctx);
 int fc_server_to_config_string(FCServerConfig *ctx, FastBuffer *buffer);
 
 void fc_server_to_log(FCServerConfig *ctx);
-
-ConnectionInfo *fc_server_check_connect_ex(FCAddressPtrArray *addr_array,
-        const char *service_name, const int connect_timeout,
-        const char *bind_ipaddr, const bool log_connect_error, int *err_no);
-
-#define fc_server_check_connect(addr_array, service_name, \
-        connect_timeout, err_no) \
-    fc_server_check_connect_ex(addr_array, service_name,  \
-            connect_timeout, NULL, true, err_no)
-
-void fc_server_disconnect(FCAddressPtrArray *addr_array);
 
 const FCAddressInfo *fc_server_get_address_by_peer(
         FCAddressPtrArray *addr_array, const char *peer_ip);

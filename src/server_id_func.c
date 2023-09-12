@@ -1571,63 +1571,6 @@ void fc_server_to_log(FCServerConfig *ctx)
     fc_server_log_servers(ctx);
 }
 
-ConnectionInfo *fc_server_check_connect_ex(FCAddressPtrArray *addr_array,
-        const char *service_name, const int connect_timeout,
-        const char *bind_ipaddr, const bool log_connect_error, int *err_no)
-{
-    FCAddressInfo **current;
-    FCAddressInfo **addr;
-    FCAddressInfo **end;
-
-    if (addr_array->count <= 0) {
-        *err_no = ENOENT;
-        return NULL;
-    }
-
-    current = addr_array->addrs + addr_array->index;
-    if ((*current)->conn.sock >= 0) {
-        return &(*current)->conn;
-    }
-
-    if ((*err_no=conn_pool_connect_server_ex1(&(*current)->conn,
-                    service_name, connect_timeout, bind_ipaddr,
-                    log_connect_error)) == 0)
-    {
-        return &(*current)->conn;
-    }
-
-    if (addr_array->count == 1) {
-        return NULL;
-    }
-
-    end = addr_array->addrs + addr_array->count;
-    for (addr=addr_array->addrs; addr<end; addr++) {
-        if (addr == current) {
-            continue;
-        }
-        if ((*err_no=conn_pool_connect_server_ex1(&(*addr)->conn,
-                        service_name, connect_timeout, bind_ipaddr,
-                        log_connect_error)) == 0)
-        {
-            addr_array->index = addr - addr_array->addrs;
-            return &(*addr)->conn;
-        }
-    }
-
-    return NULL;
-}
-
-void fc_server_disconnect(FCAddressPtrArray *addr_array)
-{
-    FCAddressInfo **current;
-
-    current = addr_array->addrs + addr_array->index;
-    if ((*current)->conn.sock >= 0) {
-        close((*current)->conn.sock);
-        (*current)->conn.sock = -1;
-    }
-}
-
 int fc_server_make_connection_ex(FCAddressPtrArray *addr_array,
         ConnectionInfo *conn, const char *service_name,
         const int connect_timeout, const char *bind_ipaddr,
@@ -1643,10 +1586,11 @@ int fc_server_make_connection_ex(FCAddressPtrArray *addr_array,
     }
 
     current = addr_array->addrs + addr_array->index;
-    *conn = (*current)->conn;
-    conn->sock = -1;
-    if ((result=conn_pool_connect_server_ex1(conn,
-                    service_name, connect_timeout,
+    conn_pool_set_server_info(conn, (*current)->conn.ip_addr,
+            (*current)->conn.port);
+    conn->comm_type = (*current)->conn.comm_type;
+    if ((result=G_COMMON_CONNECTION_CALLBACKS[conn->comm_type].
+                make_connection(conn, service_name, connect_timeout * 1000,
                     bind_ipaddr, log_connect_error)) == 0)
     {
         return 0;
@@ -1662,10 +1606,10 @@ int fc_server_make_connection_ex(FCAddressPtrArray *addr_array,
             continue;
         }
 
-        *conn = (*addr)->conn;
-        conn->sock = -1;
-        if ((result=conn_pool_connect_server_ex1(conn,
-                        service_name, connect_timeout,
+        conn_pool_set_server_info(conn, (*addr)->conn.ip_addr,
+                (*addr)->conn.port);
+        if ((result=G_COMMON_CONNECTION_CALLBACKS[conn->comm_type].
+                make_connection(conn, service_name, connect_timeout * 1000,
                         bind_ipaddr, log_connect_error)) == 0)
         {
             addr_array->index = addr - addr_array->addrs;
