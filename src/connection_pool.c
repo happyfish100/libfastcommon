@@ -89,6 +89,8 @@ int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
         cp->extra_params = *extra_params;
     } else {
         extra_connection_size = 0;
+        cp->extra_params.buffer_size = 0;
+        cp->extra_params.pd = NULL;
         obj_init_func = (fast_mblock_object_init_func)node_init_for_socket;
     }
     if ((result=fast_mblock_init_ex1(&cp->node_allocator, "cpool-node",
@@ -683,6 +685,8 @@ int conn_pool_set_rdma_extra_params(ConnectionExtraParams *extra_params,
     }
 
     if (server_group->comm_type == fc_comm_type_sock) {
+        extra_params->buffer_size = 0;
+        extra_params->pd = NULL;
         return 0;
     } else {
         first_server = FC_SID_SERVERS(*server_cfg);
