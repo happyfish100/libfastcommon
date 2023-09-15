@@ -201,18 +201,33 @@ int ioevent_set(struct fast_task_info *task, struct nio_thread_data *pThread,
 	task->thread_data = pThread;
 	task->event.fd = sock;
 	task->event.callback = callback;
-	if (ioevent_attach(&pThread->ev_puller,
-		sock, event, task) < 0)
+	if (ioevent_attach(&pThread->ev_puller, sock, event, task) < 0)
 	{
 		result = errno != 0 ? errno : ENOENT;
-		logError("file: "__FILE__", line: %d, " \
-			"ioevent_attach fail, " \
-			"errno: %d, error info: %s", \
-			__LINE__, result, STRERROR(result));
+		logError("file: "__FILE__", line: %d, "
+			"ioevent_attach fail, fd: %d, "
+			"errno: %d, error info: %s",
+			__LINE__, sock, result, STRERROR(result));
 		return result;
 	}
 
 	task->event.timer.expires = g_current_time + timeout;
 	fast_timer_add(&pThread->timer, &task->event.timer);
 	return 0;
+}
+
+int ioevent_reset(struct fast_task_info *task, int new_fd, short event)
+{
+    if (task->event.fd == new_fd)
+    {
+        return 0;
+    }
+
+    if (task->event.fd >= 0)
+    {
+        ioevent_detach(&task->thread_data->ev_puller, task->event.fd);
+    }
+
+    task->event.fd = new_fd;
+    return ioevent_attach(&task->thread_data->ev_puller, new_fd, event, task);
 }

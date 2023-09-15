@@ -32,6 +32,8 @@ int ioevent_remove(IOEventPoller *ioevent, void *data);
 int ioevent_set(struct fast_task_info *pTask, struct nio_thread_data *pThread,
 	int sock, short event, IOEventCallback callback, const int timeout);
 
+int ioevent_reset(struct fast_task_info *task, int new_fd, short event);
+
 static inline bool ioevent_is_canceled(struct fast_task_info *task)
 {
     return __sync_fetch_and_add(&task->canceled, 0) != 0;
