@@ -690,7 +690,7 @@ int conn_pool_set_rdma_extra_params(ConnectionExtraParams *extra_params,
         return 0;
     } else {
         first_server = FC_SID_SERVERS(*server_cfg);
-        extra_params->buffer_size = server_group->buffer_size + padding_size;
+        extra_params->buffer_size = server_cfg->buffer_size + padding_size;
         extra_params->pd = fc_alloc_rdma_pd(G_RDMA_CONNECTION_CALLBACKS.
                 alloc_pd, &first_server->group_addrs[server_group_index].
                 address_array, &result);

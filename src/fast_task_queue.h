@@ -25,6 +25,7 @@
 #include "common_define.h"
 #include "ioevent.h"
 #include "fast_timer.h"
+#include "fc_list.h"
 
 #define FC_NOTIFY_READ_FD(tdata)  (tdata)->pipe_fds[0]
 #define FC_NOTIFY_WRITE_FD(tdata) (tdata)->pipe_fds[1]
@@ -59,6 +60,7 @@ struct nio_thread_data
 	int pipe_fds[2];   //for notify
 	struct fast_task_info *deleted_list;   //tasks for cleanup
 	ThreadLoopCallback thread_loop_callback;
+	ThreadLoopCallback busy_polling_callback;
 	void *arg;   //extra argument pointer
     struct {
         struct fast_task_info *head;
@@ -70,6 +72,8 @@ struct nio_thread_data
         bool enabled;
         volatile int64_t counter;
     } notify;  //for thread notify
+
+    struct fc_list_head polling_queue;  //for RDMA busy polling
 };
 
 struct ioevent_notify_entry
@@ -107,6 +111,13 @@ struct fast_task_info
     short connect_timeout;     //for client side
     short network_timeout;
     int64_t req_count; //request count
+    struct {
+        int64_t  last_req_count;
+        uint32_t last_calc_time;
+        uint16_t continuous_count;
+        bool in_queue;
+        struct fc_list_head dlink;  //for polling queue
+    } polling;  //for RDMA busy polling
     TaskContinueCallback continue_callback; //for continue stage
     TaskFinishCallback finish_callback;
     struct nio_thread_data *thread_data;

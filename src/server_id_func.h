@@ -54,11 +54,18 @@ typedef struct {
 
 typedef struct
 {
+    bool enabled;
+    int switch_on_iops;
+    int switch_on_count;
+} FCSmartPollingConfig;
+
+typedef struct
+{
     string_t group_name;
     int port;          //default port
     int server_port;   //port in server section
     FCCommunicationType comm_type;
-    int buffer_size;  //for RDMA
+    FCSmartPollingConfig smart_polling;
     struct {
         int net_type;
         string_t ip_prefix;
@@ -118,6 +125,7 @@ typedef struct fc_server_config
     int default_port;
     int min_hosts_each_group;
     bool share_between_groups;  //if an address shared between different groups
+    int buffer_size;  //for RDMA
     FCServerGroupArray group_array;
     struct {
         FCServerInfoArray by_id;     //sorted by server id

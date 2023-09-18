@@ -152,6 +152,11 @@ int ioevent_loop(struct nio_thread_data *pThreadData,
 				task = pThreadData->deleted_list;
 				pThreadData->deleted_list = task->next;
 
+                if (task->polling.in_queue)
+                {
+                    fc_list_del_init(&task->polling.dlink);
+                    task->polling.in_queue = false;
+                }
 				clean_up_callback(task);
 				count++;
 			}
@@ -187,6 +192,10 @@ int ioevent_loop(struct nio_thread_data *pThreadData,
         if (pThreadData->thread_loop_callback != NULL)
         {
             pThreadData->thread_loop_callback(pThreadData);
+        }
+        if (pThreadData->busy_polling_callback != NULL)
+        {
+            pThreadData->busy_polling_callback(pThreadData);
         }
 	}
 

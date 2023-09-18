@@ -342,13 +342,11 @@ static int fc_server_load_one_group(FCServerConfig *ctx,
 {
     int result;
     FCServerGroupInfo *group;
-    IniFullContext full_ini_ctx;
     char new_name[FAST_INI_ITEM_NAME_SIZE];
     char *port_str;
     char *net_type;
     char *ip_prefix;
     char *comm_type;
-    int buffer_size;
 
     strcpy(new_name, section_name);
     group = ctx->group_array.groups + ctx->group_array.count;
@@ -407,14 +405,16 @@ static int fc_server_load_one_group(FCServerConfig *ctx,
     }
 
     if (group->comm_type == fc_comm_type_sock) {
-        group->buffer_size = 0;
+        group->smart_polling.enabled = false;
+        group->smart_polling.switch_on_iops = 0;
+        group->smart_polling.switch_on_count = 0;
     } else {
-        FAST_INI_SET_FULL_CTX_EX(full_ini_ctx, config_filename,
-                section_name, ini_context);
-        buffer_size = iniGetByteValue(section_name, "buffer_size",
-                ini_context, 256 * 1024);
-        group->buffer_size = iniCheckAndCorrectIntValue(&full_ini_ctx,
-                "buffer_size", buffer_size, 8 * 1024, 8 * 1024 * 1024);
+        group->smart_polling.enabled = iniGetBoolValue(section_name,
+                "smart_polling", ini_context, true);
+        group->smart_polling.switch_on_iops = iniGetIntValue(section_name,
+                "polling_switch_on_iops", ini_context, 10240);
+        group->smart_polling.switch_on_count = iniGetIntValue(section_name,
+                "polling_switch_on_count", ini_context, 3);
     }
 
     ctx->group_array.count++;
@@ -1226,11 +1226,36 @@ static int fc_server_load_data(FCServerConfig *ctx,
         IniContext *ini_context, const char *config_filename)
 {
 	int result;
+    int buffer_size;
+    bool have_rdma;
+    IniFullContext full_ini_ctx;
+    FCServerGroupInfo *group;
+    FCServerGroupInfo *end;
 
     if ((result=fc_server_load_groups(ctx, config_filename,
                     ini_context)) != 0)
     {
         return result;
+    }
+
+    have_rdma = false;
+    end = ctx->group_array.groups + ctx->group_array.count;
+    for (group=ctx->group_array.groups; group<end; group++) {
+        if (group->comm_type != fc_comm_type_sock) {
+            have_rdma = true;
+            break;
+        }
+    }
+
+    if (have_rdma) {
+        FAST_INI_SET_FULL_CTX_EX(full_ini_ctx, config_filename,
+                NULL, ini_context);
+        buffer_size = iniGetByteValue(NULL, "buffer_size",
+                ini_context, 256 * 1024);
+        ctx->buffer_size = iniCheckAndCorrectIntValue(&full_ini_ctx,
+                "buffer_size", buffer_size, 8 * 1024, 8 * 1024 * 1024);
+    } else {
+        ctx->buffer_size = 0;
     }
 
     if ((result=fc_server_load_servers(ctx, config_filename,
@@ -1403,9 +1428,13 @@ static int fc_groups_to_string(FCServerConfig *ctx, FastBuffer *buffer)
         if (group->comm_type != fc_comm_type_sock) {
             fast_buffer_append(buffer,
                     "communication = %s\n"
-                    "buffer_size = %d\n",
+                    "smart_polling = %d\n"
+                    "polling_switch_on_iops = %d\n"
+                    "polling_switch_on_count = %d\n",
                     fc_comm_type_str(group->comm_type),
-                    group->buffer_size);
+                    group->smart_polling.enabled,
+                    group->smart_polling.switch_on_iops,
+                    group->smart_polling.switch_on_count);
         }
 
         fast_buffer_append(buffer,
@@ -1488,6 +1517,14 @@ int fc_server_to_config_string(FCServerConfig *ctx, FastBuffer *buffer)
 {
     int result;
 
+    if (ctx->buffer_size > 0) {
+        if ((result=fast_buffer_check(buffer, 1024)) != 0) {
+            return result;
+        }
+        fast_buffer_append(buffer, "buffer_size = %d KB",
+                ctx->buffer_size / 1024);
+    }
+
     fc_server_clear_server_port(&ctx->group_array);
     if ((result=fc_groups_to_string(ctx, buffer)) != 0) {
         return result;
@@ -1509,9 +1546,12 @@ static void fc_server_log_groups(FCServerConfig *ctx)
                 group->group_name.len, group->group_name.str,
                 group->port);
         if (group->comm_type != fc_comm_type_sock) {
-            p += sprintf(p, ", communication: %s, buffer_size: %d KB",
+            p += sprintf(p, ", communication: %s, smart_polling: %d, "
+                    "polling_switch_on_iops: %d, polling_switch_on_count: %d",
                     fc_comm_type_str(group->comm_type),
-                    group->buffer_size / 1024);
+                    group->smart_polling.enabled,
+                    group->smart_polling.switch_on_iops,
+                    group->smart_polling.switch_on_count);
         }
         p += sprintf(p, ", net_type: %s, ip_prefix: %.*s",
                 get_net_type_caption(group->filter.net_type),
@@ -1567,6 +1607,9 @@ static void fc_server_log_servers(FCServerConfig *ctx)
 
 void fc_server_to_log(FCServerConfig *ctx)
 {
+    if (ctx->buffer_size > 0) {
+        logInfo("buffer_size: %d KB", ctx->buffer_size / 1024);
+    }
     fc_server_log_groups(ctx);
     fc_server_log_servers(ctx);
 }
