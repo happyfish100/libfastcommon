@@ -113,8 +113,15 @@ typedef struct {
 } ConnectionCallbacks;
 
 typedef struct {
-    int buffer_size;
-    struct ibv_pd *pd;
+    struct {
+        bool enabled;
+        int htable_capacity;
+    } tls;  //for thread local
+
+    struct {
+        int buffer_size;
+        struct ibv_pd *pd;
+    } rdma;
 } ConnectionExtraParams;
 
 typedef int (*fc_connection_callback_func)(ConnectionInfo *conn, void *args);
@@ -135,8 +142,15 @@ typedef struct tagConnectionManager {
 	pthread_mutex_t lock;
 } ConnectionManager;
 
+struct tagConnectionPool;
+
+typedef struct {
+    ConnectionNode **buckets;
+    struct tagConnectionPool *cp;
+} ConnectionThreadHashTable;
+
 typedef struct tagConnectionPool {
-	HashArray hash_array;  //key is ip:port, value is ConnectionManager
+	HashArray hash_array;  //key is ip-port, value is ConnectionManager
 	pthread_mutex_t lock;
 	int connect_timeout_ms;
 	int max_count_per_entry;  //0 means no limit
@@ -163,6 +177,7 @@ typedef struct tagConnectionPool {
 
     int extra_data_size;
     ConnectionExtraParams extra_params;
+    pthread_key_t tls_key;  //for ConnectionThreadHashTable
 } ConnectionPool;
 
 extern ConnectionCallbacks g_connection_callbacks;
@@ -273,8 +288,8 @@ ConnectionInfo *conn_pool_get_connection_ex(ConnectionPool *cp,
 *      bForce: set true to close the socket, else only push back to connection pool
 *   return 0 for success, != 0 for error
 */
-int conn_pool_close_connection_ex(ConnectionPool *cp, ConnectionInfo *conn, 
-	const bool bForce);
+int conn_pool_close_connection_ex(ConnectionPool *cp,
+        ConnectionInfo *conn, const bool bForce);
 
 /**
 *   disconnect from the server
