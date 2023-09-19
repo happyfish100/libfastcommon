@@ -22,7 +22,7 @@
 extern "C" {
 #endif
 
-int ioevent_loop(struct nio_thread_data *pThreadData,
+int ioevent_loop(struct nio_thread_data *thread_data,
 	IOEventCallback recv_notify_callback, TaskCleanUpCallback
 	clean_up_callback, volatile bool *continue_flag);
 

@@ -73,6 +73,7 @@ struct nio_thread_data
         volatile int64_t counter;
     } notify;  //for thread notify
 
+    int timeout_ms;   //for restore
     struct fc_list_head polling_queue;  //for RDMA busy polling
 };
 
