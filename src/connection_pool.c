@@ -847,16 +847,35 @@ int conn_pool_set_rdma_extra_params(ConnectionExtraParams *extra_params,
         return ENOENT;
     }
 
-    if (server_group->comm_type == fc_comm_type_sock) {
-        extra_params->tls.enabled = false;
+    switch (server_cfg->connection_thread_local) {
+        case fc_connection_thread_local_auto:
+            if (server_group->comm_type == fc_comm_type_sock) {
+                extra_params->tls.enabled = false;
+            } else {
+                extra_params->tls.enabled = (FC_SID_SERVER_COUNT(
+                            *server_cfg) <= 64);
+            }
+            break;
+        case fc_connection_thread_local_yes:
+            extra_params->tls.enabled = true;
+            break;
+        default:
+            extra_params->tls.enabled = false;
+            break;
+    }
+
+    if (extra_params->tls.enabled) {
+        extra_params->tls.htable_capacity = fc_ceil_prime(
+                FC_SID_SERVER_COUNT(*server_cfg));
+    } else {
         extra_params->tls.htable_capacity = 0;
+    }
+
+    if (server_group->comm_type == fc_comm_type_sock) {
         extra_params->rdma.buffer_size = 0;
         extra_params->rdma.pd = NULL;
         return 0;
     } else {
-        extra_params->tls.enabled = true;
-        extra_params->tls.htable_capacity = fc_ceil_prime(
-                FC_SID_SERVER_COUNT(*server_cfg));
         first_server = FC_SID_SERVERS(*server_cfg);
         extra_params->rdma.buffer_size = server_cfg->buffer_size + padding_size;
         extra_params->rdma.pd = fc_alloc_rdma_pd(G_RDMA_CONNECTION_CALLBACKS.

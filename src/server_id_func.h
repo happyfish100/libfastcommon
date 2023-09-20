@@ -120,12 +120,19 @@ typedef struct
     FCServerMap *maps;
 } FCServerMapArray;
 
+typedef enum {
+    fc_connection_thread_local_auto,
+    fc_connection_thread_local_yes,
+    fc_connection_thread_local_no
+} FCServerConnThreadLocal;
+
 typedef struct fc_server_config
 {
     int default_port;
     int min_hosts_each_group;
     bool share_between_groups;  //if an address shared between different groups
     int buffer_size;  //for RDMA
+    FCServerConnThreadLocal connection_thread_local;
     FCServerGroupArray group_array;
     struct {
         FCServerInfoArray by_id;     //sorted by server id
@@ -246,6 +253,21 @@ int fc_server_make_connection_ex(FCAddressPtrArray *addr_array,
 
 struct ibv_pd *fc_alloc_rdma_pd(fc_alloc_pd_callback alloc_pd,
         FCAddressPtrArray *address_array, int *result);
+
+static inline const char *fc_connection_thread_local_str(
+        const FCServerConnThreadLocal value)
+{
+    switch (value) {
+        case fc_connection_thread_local_auto:
+            return "auto";
+        case fc_connection_thread_local_yes:
+            return "yes";
+        case fc_connection_thread_local_no:
+            return "no";
+        default:
+            return "unkown";
+    }
+}
 
 #ifdef __cplusplus
 }

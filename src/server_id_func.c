@@ -1222,6 +1222,30 @@ static int fc_server_load_servers(FCServerConfig *ctx,
     return result;
 }
 
+static void load_connection_thread_local(FCServerConfig *ctx,
+        IniContext *ini_context, const char *config_filename)
+{
+    char *connection_thread_local;
+
+    connection_thread_local = iniGetStrValue(NULL,
+            "connection_thread_local", ini_context);
+    if (connection_thread_local == NULL || *connection_thread_local == '\0') {
+        ctx->connection_thread_local = fc_connection_thread_local_auto;
+    } else if (strcasecmp(connection_thread_local, "auto") == 0) {
+        ctx->connection_thread_local = fc_connection_thread_local_auto;
+    } else if (strcasecmp(connection_thread_local, "yes") == 0) {
+        ctx->connection_thread_local = fc_connection_thread_local_yes;
+    } else if (strcasecmp(connection_thread_local, "no") == 0) {
+        ctx->connection_thread_local = fc_connection_thread_local_no;
+    } else {
+        logWarning("file: "__FILE__", line: %d, "
+                "config file: %s, invalid connection_thread_local: %s, "
+                "set to auto!", __LINE__, config_filename,
+                connection_thread_local);
+        ctx->connection_thread_local = fc_connection_thread_local_auto;
+    }
+}
+
 static int fc_server_load_data(FCServerConfig *ctx,
         IniContext *ini_context, const char *config_filename)
 {
@@ -1257,6 +1281,7 @@ static int fc_server_load_data(FCServerConfig *ctx,
     } else {
         ctx->buffer_size = 0;
     }
+    load_connection_thread_local(ctx, ini_context, config_filename);
 
     if ((result=fc_server_load_servers(ctx, config_filename,
                     ini_context)) != 0)
@@ -1607,9 +1632,16 @@ static void fc_server_log_servers(FCServerConfig *ctx)
 
 void fc_server_to_log(FCServerConfig *ctx)
 {
+    char buff[256];
+    char *p;
+
+    p = buff + sprintf(buff, "connection_thread_local: %s",
+            fc_connection_thread_local_str(ctx->connection_thread_local));
     if (ctx->buffer_size > 0) {
-        logInfo("buffer_size: %d KB", ctx->buffer_size / 1024);
+        p += sprintf(p, ", buffer_size: %d KB", ctx->buffer_size / 1024);
     }
+    log_it1(LOG_INFO, buff, p - buff);
+
     fc_server_log_groups(ctx);
     fc_server_log_servers(ctx);
 }

@@ -128,12 +128,15 @@ int ioevent_loop(struct nio_thread_data *thread_data,
 	last_check_time = g_current_time;
 	while (*continue_flag)
 	{
-        if (thread_data->ev_puller.timeout == 0)
-        {
+#ifdef OS_LINUX
+        if (thread_data->ev_puller.timeout == 0) {
             sched_pull = (sched_counter++ & 8) != 0;
         } else {
             sched_pull = true;
         }
+#else
+        sched_pull = true;
+#endif
 
         if (sched_pull)
         {
