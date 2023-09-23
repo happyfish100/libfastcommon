@@ -251,6 +251,17 @@ int fc_server_make_connection_ex(FCAddressPtrArray *addr_array,
     fc_server_make_connection_ex(addr_array, conn, \
             service_name, connect_timeout, NULL, true)
 
+static inline void fc_server_close_connection(ConnectionInfo *conn)
+{
+    G_COMMON_CONNECTION_CALLBACKS[conn->comm_type].close_connection(conn);
+}
+
+static inline void fc_server_destroy_connection(ConnectionInfo *conn)
+{
+    fc_server_close_connection(conn);
+    conn_pool_free_connection(conn);
+}
+
 struct ibv_pd *fc_alloc_rdma_pd(fc_alloc_pd_callback alloc_pd,
         FCAddressPtrArray *address_array, int *result);
 

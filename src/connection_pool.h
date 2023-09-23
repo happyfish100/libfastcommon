@@ -460,6 +460,11 @@ static inline ConnectionInfo *conn_pool_alloc_connection(
             extra_data_size, extra_params, err_no);
 }
 
+static inline void conn_pool_free_connection(ConnectionInfo *conn)
+{
+    free(conn);
+}
+
 int conn_pool_set_rdma_extra_params(ConnectionExtraParams *extra_params,
         struct fc_server_config *server_cfg, const int server_group_index);
 
