@@ -59,6 +59,7 @@ typedef struct {
 
 struct fc_server_config;
 struct ibv_pd;
+typedef int (*fc_global_init_callback)();
 typedef struct ibv_pd *(*fc_alloc_pd_callback)(const char **ip_addrs,
         const int count, const int port);
 typedef int (*fc_get_connection_size_callback)();
@@ -83,6 +84,10 @@ typedef int (*fc_rdma_request_by_iov_callback)(ConnectionInfo *conn,
 typedef int (*fc_rdma_request_by_mix_callback)(ConnectionInfo *conn,
         const char *data, const int length, const struct iovec *iov,
         const int iovcnt, const int timeout_ms);
+typedef int (*fc_rdma_send_by_buf1_callback)(ConnectionInfo *conn,
+        const char *data, const int length);
+typedef int (*fc_rdma_recv_data_callback)(ConnectionInfo *conn,
+        const int timeout_ms);
 
 typedef struct {
     fc_make_connection_callback make_connection;
@@ -91,6 +96,7 @@ typedef struct {
 } CommonConnectionCallbacks;
 
 typedef struct {
+    fc_global_init_callback global_init;
     fc_alloc_pd_callback alloc_pd;
     fc_get_connection_size_callback get_connection_size;
     fc_init_connection_callback init_connection;
@@ -104,6 +110,9 @@ typedef struct {
     fc_rdma_request_by_buf2_callback request_by_buf2;
     fc_rdma_request_by_iov_callback request_by_iov;
     fc_rdma_request_by_mix_callback request_by_mix;
+
+    fc_rdma_send_by_buf1_callback send_by_buf1;
+    fc_rdma_recv_data_callback recv_data;
 } RDMAConnectionCallbacks;
 
 typedef struct {

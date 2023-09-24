@@ -790,6 +790,8 @@ int conn_pool_global_init_for_rdma()
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, request_by_buf2);
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, request_by_iov);
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, request_by_mix);
+    LOAD_API(G_RDMA_CONNECTION_CALLBACKS, send_by_buf1);
+    LOAD_API(G_RDMA_CONNECTION_CALLBACKS, recv_data);
 
     g_connection_callbacks.inited = true;
     return 0;
@@ -830,6 +832,7 @@ ConnectionInfo *conn_pool_alloc_connection_ex(
     }
 
     conn->comm_type = comm_type;
+    conn->sock = -1;
     return conn;
 }
 
