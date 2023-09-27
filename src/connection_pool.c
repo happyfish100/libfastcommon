@@ -44,7 +44,8 @@ static int node_init_for_rdma(ConnectionNode *node,
     node->conn = (ConnectionInfo *)(node + 1);
     node->conn->arg1 = node->conn->args + cp->extra_data_size;
     return G_RDMA_CONNECTION_CALLBACKS.init_connection(node->conn,
-            cp->extra_params.rdma.buffer_size, cp->extra_params.rdma.pd);
+            cp->extra_params.rdma.double_buffers, cp->extra_params.
+            rdma.buffer_size, cp->extra_params.rdma.pd);
 }
 
 static void cp_tls_destroy(void *ptr)
@@ -785,7 +786,7 @@ int conn_pool_global_init_for_rdma()
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, close_connection);
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, destroy_connection);
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, is_connected);
-    LOAD_API(G_RDMA_CONNECTION_CALLBACKS, get_buffer);
+    LOAD_API(G_RDMA_CONNECTION_CALLBACKS, get_recv_buffer);
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, request_by_buf1);
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, request_by_buf2);
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, request_by_iov);
@@ -821,7 +822,8 @@ ConnectionInfo *conn_pool_alloc_connection_ex(
     if (comm_type == fc_comm_type_rdma) {
         conn->arg1 = conn->args + extra_data_size;
         if ((*err_no=G_RDMA_CONNECTION_CALLBACKS.init_connection(
-                        conn, extra_params->rdma.buffer_size,
+                        conn, extra_params->rdma.double_buffers,
+                        extra_params->rdma.buffer_size,
                         extra_params->rdma.pd)) != 0)
         {
             free(conn);
@@ -874,6 +876,7 @@ int conn_pool_set_rdma_extra_params(ConnectionExtraParams *extra_params,
         extra_params->tls.htable_capacity = 0;
     }
 
+    extra_params->rdma.double_buffers = false;
     if (server_group->comm_type == fc_comm_type_sock) {
         extra_params->rdma.buffer_size = 0;
         extra_params->rdma.pd = NULL;

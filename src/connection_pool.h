@@ -64,7 +64,7 @@ typedef struct ibv_pd *(*fc_alloc_pd_callback)(const char **ip_addrs,
         const int count, const int port);
 typedef int (*fc_get_connection_size_callback)();
 typedef int (*fc_init_connection_callback)(ConnectionInfo *conn,
-        const int buffer_size, void *arg);
+        const bool double_buffers, const int buffer_size, void *arg);
 typedef int (*fc_make_connection_callback)(ConnectionInfo *conn,
         const char *service_name, const int timeout_ms,
         const char *bind_ipaddr, const bool log_connect_error);
@@ -72,7 +72,7 @@ typedef bool (*fc_is_connected_callback)(ConnectionInfo *conn);
 typedef void (*fc_close_connection_callback)(ConnectionInfo *conn);
 typedef void (*fc_destroy_connection_callback)(ConnectionInfo *conn);
 
-typedef BufferInfo *(*fc_rdma_get_buffer_callback)(ConnectionInfo *conn);
+typedef BufferInfo *(*fc_rdma_get_recv_buffer_callback)(ConnectionInfo *conn);
 typedef int (*fc_rdma_request_by_buf1_callback)(ConnectionInfo *conn,
         const char *data, const int length, const int timeout_ms);
 typedef int (*fc_rdma_request_by_buf2_callback)(ConnectionInfo *conn,
@@ -105,7 +105,7 @@ typedef struct {
     fc_destroy_connection_callback destroy_connection;
     fc_is_connected_callback is_connected;
 
-    fc_rdma_get_buffer_callback get_buffer;
+    fc_rdma_get_recv_buffer_callback get_recv_buffer;
     fc_rdma_request_by_buf1_callback request_by_buf1;
     fc_rdma_request_by_buf2_callback request_by_buf2;
     fc_rdma_request_by_iov_callback request_by_iov;
@@ -128,6 +128,7 @@ typedef struct {
     } tls;  //for thread local
 
     struct {
+        bool double_buffers;
         int buffer_size;
         struct ibv_pd *pd;
     } rdma;
