@@ -475,8 +475,19 @@ static inline void conn_pool_free_connection(ConnectionInfo *conn)
     free(conn);
 }
 
-int conn_pool_set_rdma_extra_params(ConnectionExtraParams *extra_params,
-        struct fc_server_config *server_cfg, const int server_group_index);
+int conn_pool_set_rdma_extra_params_ex(ConnectionExtraParams *extra_params,
+        struct fc_server_config *server_cfg, const int server_group_index,
+        const bool double_buffers);
+
+static inline int conn_pool_set_rdma_extra_params(
+        ConnectionExtraParams *extra_params,
+        struct fc_server_config *server_cfg,
+        const int server_group_index)
+{
+    const bool double_buffers = false;
+    return conn_pool_set_rdma_extra_params_ex(extra_params,
+            server_cfg, server_group_index, double_buffers);
+}
 
 static inline const char *fc_comm_type_str(const FCCommunicationType type)
 {

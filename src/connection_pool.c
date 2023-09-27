@@ -838,8 +838,9 @@ ConnectionInfo *conn_pool_alloc_connection_ex(
     return conn;
 }
 
-int conn_pool_set_rdma_extra_params(ConnectionExtraParams *extra_params,
-        struct fc_server_config *server_cfg, const int server_group_index)
+int conn_pool_set_rdma_extra_params_ex(ConnectionExtraParams *extra_params,
+        struct fc_server_config *server_cfg, const int server_group_index,
+        const bool double_buffers)
 {
     const int padding_size = 1024;
     FCServerGroupInfo *server_group;
@@ -876,13 +877,14 @@ int conn_pool_set_rdma_extra_params(ConnectionExtraParams *extra_params,
         extra_params->tls.htable_capacity = 0;
     }
 
-    extra_params->rdma.double_buffers = false;
     if (server_group->comm_type == fc_comm_type_sock) {
+        extra_params->rdma.double_buffers = false;
         extra_params->rdma.buffer_size = 0;
         extra_params->rdma.pd = NULL;
         return 0;
     } else {
         first_server = FC_SID_SERVERS(*server_cfg);
+        extra_params->rdma.double_buffers = double_buffers;
         extra_params->rdma.buffer_size = server_cfg->buffer_size + padding_size;
         extra_params->rdma.pd = fc_alloc_rdma_pd(G_RDMA_CONNECTION_CALLBACKS.
                 alloc_pd, &first_server->group_addrs[server_group_index].
