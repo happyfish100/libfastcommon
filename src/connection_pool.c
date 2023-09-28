@@ -786,6 +786,7 @@ int conn_pool_global_init_for_rdma()
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, close_connection);
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, destroy_connection);
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, is_connected);
+    LOAD_API(G_RDMA_CONNECTION_CALLBACKS, send_done);
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, get_recv_buffer);
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, request_by_buf1);
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, request_by_buf2);
@@ -793,6 +794,7 @@ int conn_pool_global_init_for_rdma()
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, request_by_mix);
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, send_by_buf1);
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, recv_data);
+    LOAD_API(G_RDMA_CONNECTION_CALLBACKS, post_recv);
 
     g_connection_callbacks.inited = true;
     return 0;
