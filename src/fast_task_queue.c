@@ -127,6 +127,7 @@ int free_queue_init_ex2(struct fast_task_queue *queue, const char *name,
 	queue->padding_size = aligned_padding_size;
 	queue->arg_size = aligned_arg_size;
 	queue->init_callback = init_callback;
+    queue->release_callback = NULL;
 
     /*
 	logInfo("file: "__FILE__", line: %d, [%s] double_buffers: %d, "
@@ -172,6 +173,10 @@ static int _realloc_buffer(struct fast_net_buffer *buffer,
 
 void free_queue_push(struct fast_task_info *task)
 {
+    if (task->free_queue->release_callback != NULL) {
+        task->free_queue->release_callback(task);
+    }
+
     *(task->client_ip) = '\0';
     task->send.ptr->length = 0;
     task->send.ptr->offset = 0;
