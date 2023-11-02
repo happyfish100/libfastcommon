@@ -1068,7 +1068,7 @@ const char *fc_inet_ntop(const struct sockaddr *addr,
 {
     void *sin_addr;
     const char *output;
-
+	
     if (addr->sa_family == AF_INET) {
         sin_addr = &((struct sockaddr_in *)addr)->sin_addr;
     } else if (addr->sa_family == AF_INET6) {
@@ -1092,7 +1092,7 @@ const char *fc_inet_ntop(const struct sockaddr *addr,
     return output;
 }
 
-in_addr_t getIpaddr(getnamefunc getname, int sock, \
+in_addr_64_t getIpaddr(getnamefunc getname, int sock, \
 		char *buff, const int bufferSize)
 {
     sockaddr_convert_t convert;
@@ -1106,7 +1106,7 @@ in_addr_t getIpaddr(getnamefunc getname, int sock, \
 	}
 	
 	if (convert.len > 0)
-	{
+	{   
         fc_inet_ntop(&convert.sa.addr, buff, bufferSize);
 	}
 	else
@@ -1114,7 +1114,13 @@ in_addr_t getIpaddr(getnamefunc getname, int sock, \
 		*buff = '\0';
 	}
 
-    return convert.sa.addr4.sin_addr.s_addr;  //DO NOT support IPv6
+    if (convert.sa.addr.sa_family == AF_INET) {
+        return convert.sa.addr4.sin_addr.s_addr;  
+    } else {
+		in_addr_64_t ip_addr = 0;
+		memcpy(&ip_addr, &((struct sockaddr_in6 *)&convert.sa.addr)->sin6_addr, sizeof(in_addr_64_t));
+        return ip_addr;
+    }
 }
 
 int getIpAndPort(getnamefunc getname, int sock,
@@ -1172,45 +1178,54 @@ char *getHostnameByIp(const char *szIpAddr, char *buff, const int bufferSize)
 	return buff;
 }
 
-in_addr_t getIpaddrByName(const char *name, char *buff, const int bufferSize)
+in_addr_64_t getIpaddrByName(const char *name, char *buff, const int bufferSize)
 {
-	struct in_addr ip_addr;
-	struct hostent *ent;
-	in_addr_t **addr_list;
+	struct addrinfo hints, *res, *p; 
+	int status; 
+	memset(&hints, 0, sizeof hints); 
+	hints.ai_family = AF_UNSPEC; // 支持IPv4和IPv6 
+	status = getaddrinfo(name, NULL, &hints, &res); 
+	if (status != 0) 
+	{ 
+        return INADDR_NONE;
+	} 
 
-	if ((*name >= '0' && *name <= '9') && 
-		inet_pton(AF_INET, name, &ip_addr) == 1)
-	{
-		if (buff != NULL)
-		{
-			snprintf(buff, bufferSize, "%s", name);
-		}
-		return ip_addr.s_addr;
-	}
+    for (p = res; p != NULL; p = p->ai_next)
+    {
+        if (p->ai_family == AF_INET) // 处理IPv4地址
+        {
+            struct sockaddr_in *ipv4 = (struct sockaddr_in *)p->ai_addr;
+            if (buff != NULL)
+            {
+                if (inet_ntop(AF_INET, &(ipv4->sin_addr), buff, bufferSize) == NULL)
+                {
+                    *buff = '\0';
+                }
+            }
 
-	ent = gethostbyname(name);
-	if (ent == NULL)
-	{
-		return INADDR_NONE;
-	}
+			freeaddrinfo(res);
+            return ipv4->sin_addr.s_addr;
+        }
+        else if (p->ai_family == AF_INET6) // 处理IPv6地址
+        {
+            struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)p->ai_addr;
+            if (buff != NULL)
+            {
+                if (inet_ntop(AF_INET6, &(ipv6->sin6_addr), buff, bufferSize) == NULL)
+                {
+                    *buff = '\0';
+                }
+            }
 
-    addr_list = (in_addr_t **)ent->h_addr_list;
-	if (addr_list[0] == NULL)
-	{
-		return INADDR_NONE;
-	}
+			in_addr_64_t ip_addr = 0;
+			memcpy(&ip_addr, &ipv6->sin6_addr, sizeof(in_addr_64_t));
 
-	memset(&ip_addr, 0, sizeof(ip_addr));
-	ip_addr.s_addr = *(addr_list[0]);
-	if (buff != NULL)
-	{
-		if (inet_ntop(AF_INET, &ip_addr, buff, bufferSize) == NULL)
-		{
-			*buff = '\0';
-		}
-	}
-
-	return ip_addr.s_addr;
+			freeaddrinfo(res);
+            return ip_addr;
+        }
+    }
+    
+    return INADDR_NONE;
 }
 
 int getIpaddrsByName(const char *name,
@@ -1354,7 +1369,7 @@ int socketBind2(int af, int sock, const char *bind_ipaddr, const int port)
         }
         sprintf(bind_ip_prompt, "bind ip %s, ", bind_ipaddr);
     }
-
+	
 	if (bind(sock, &convert.sa.addr, convert.len) < 0)
 	{
 		logError("file: "__FILE__", line: %d, "
@@ -2173,21 +2188,39 @@ int getlocaladdrs(char ip_addrs[][IP_ADDRESS_SIZE], \
 	ifc1 = ifc;
 	while (NULL != ifc)
     {
-        struct sockaddr *s;
-        s = ifc->ifa_addr;
-        if (NULL != s && AF_INET == s->sa_family)
-        {
-            if (max_count <= *count)
-            {
-                logError("file: "__FILE__", line: %d, "\
-                        "max_count: %d < iterface count: %d", \
-                        __LINE__, max_count, *count);
-                freeifaddrs(ifc1);
-                return ENOSPC;
-            }
+		if(NULL == ifc->ifa_addr ){
+			continue;
+		}
 
-            if (inet_ntop(AF_INET, &((struct sockaddr_in *)s)-> \
+		if (max_count <= *count)
+		{
+			logError("file: "__FILE__", line: %d, "\
+					"max_count: %d < iterface count: %d", \
+					__LINE__, max_count, *count);
+			freeifaddrs(ifc1);
+			return ENOSPC;
+		}
+
+        if (AF_INET == ifc->ifa_addr->sa_family)
+        {
+            if (inet_ntop(AF_INET, &((struct sockaddr_in *)ifc->ifa_addr)-> \
                         sin_addr, ip_addrs[*count], IP_ADDRESS_SIZE) != NULL)
+            {
+                (*count)++;
+            }
+            else
+            {
+                logWarning("file: "__FILE__", line: %d, " \
+                        "call inet_ntop fail, " \
+                        "errno: %d, error info: %s", \
+                        __LINE__, errno, STRERROR(errno));
+            }
+        }
+	
+	    if (AF_INET6 == ifc->ifa_addr->sa_family)
+        {
+            if (inet_ntop(AF_INET6, &((struct sockaddr_in6 *)ifc->ifa_addr)-> \
+                        sin6_addr, ip_addrs[*count], IP_ADDRESS_SIZE) != NULL)
             {
                 (*count)++;
             }

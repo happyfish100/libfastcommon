@@ -48,6 +48,13 @@ typedef DWORD (WINAPI *ThreadEntranceFunc)(LPVOID lpThreadParameter);
 //#include <sys/syscall.h>
 #endif
 
+/* Internet address (兼容IPv6长度).  */
+typedef unsigned long int in_addr_64_t;
+struct in_addr_64
+  {
+    in_addr_64_t s_addr;
+  };
+
 #define FILE_SEPERATOR	"/"
 typedef int SOCKET;
 #define closesocket     close
@@ -115,7 +122,8 @@ extern int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int kind);
 #define FC_IOV_BATCH_SIZE  IOV_MAX
 #endif
 
-#define IP_ADDRESS_SIZE	16
+// 由于要支持IPv6，所以将IP_ADDRESS_SIZE的值由16修改为46
+#define IP_ADDRESS_SIZE	INET6_ADDRSTRLEN //46
 #define INFINITE_FILE_SIZE (256 * 1024LL * 1024 * 1024 * 1024 * 1024LL)
 
 #define FILE_RESOURCE_TAG_STR  "file://"

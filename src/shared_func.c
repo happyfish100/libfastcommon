@@ -1976,15 +1976,15 @@ int set_run_by(const char *group_name, const char *username)
 	return 0;
 }
 
-static int check_realloc_allow_ips(in_addr_t **allow_ip_addrs,
+static int check_realloc_allow_ips(in_addr_64_t **allow_ip_addrs,
 	int *alloc_count, const int target_ip_count)
 {
 	int bytes;
 	if (*alloc_count < target_ip_count)
 	{
 		*alloc_count = target_ip_count;
-		bytes = sizeof(in_addr_t) * (*alloc_count);
-		*allow_ip_addrs = (in_addr_t *)fc_realloc(*allow_ip_addrs, bytes);
+		bytes = sizeof(in_addr_64_t) * (*alloc_count);
+		*allow_ip_addrs = (in_addr_64_t *)fc_realloc(*allow_ip_addrs, bytes);
 		if (*allow_ip_addrs == NULL)
 		{
 			return ENOMEM;
@@ -1994,7 +1994,7 @@ static int check_realloc_allow_ips(in_addr_t **allow_ip_addrs,
 	return 0;
 }
 
-static int parse_cidr_ips(const char *ip_addr, in_addr_t **allow_ip_addrs,
+static int parse_cidr_ips(const char *ip_addr, in_addr_64_t **allow_ip_addrs,
 	int *alloc_count, int *allow_ip_count, const int remain_items)
 {
 	char *pSlash;
@@ -2091,14 +2091,14 @@ static int parse_cidr_ips(const char *ip_addr, in_addr_t **allow_ip_addrs,
 }
 
 static int parse_range_hosts(const char *value, char *pStart, char *pEnd,
-	char *hostname, const int nHeadLen, in_addr_t **allow_ip_addrs,
+	char *hostname, const int nHeadLen, in_addr_64_t **allow_ip_addrs,
 	int *alloc_count, int *allow_ip_count, const int remain_items)
 {
 	char *pTail;
 	char *p;
 	int result;
 	int i;
-	in_addr_t addr;
+	in_addr_64_t addr;
 
 	pTail = pEnd + 1;
 	p = pStart + 1;  //skip [
@@ -2238,7 +2238,7 @@ static int parse_range_hosts(const char *value, char *pStart, char *pEnd,
 }
 
 int load_allow_hosts(IniContext *pIniContext, \
-		in_addr_t **allow_ip_addrs, int *allow_ip_count)
+		in_addr_64_t **allow_ip_addrs, int *allow_ip_count)
 {
 	int result;
 	int count;
@@ -2276,7 +2276,7 @@ int load_allow_hosts(IniContext *pIniContext, \
 
 	alloc_count = count;
 	*allow_ip_count = 0;
-	*allow_ip_addrs = (in_addr_t *)fc_malloc(sizeof(in_addr_t) * alloc_count);
+	*allow_ip_addrs = (in_addr_64_t *)fc_malloc(sizeof(in_addr_64_t) * alloc_count);
 	if (*allow_ip_addrs == NULL)
 	{
 		return ENOMEM;
@@ -2828,6 +2828,35 @@ bool is_private_ip(const char* ip)
 
     return false;
 }
+
+int parseAddress(char *src, char *parts[2]){
+    char *ip = NULL;  
+    char *port = NULL;  
+  
+    // 检查输入字符串是否为IPv6地址格式  
+    if (src[0] == '[') {  
+        ip = strtok(src, "[]");  
+        parts[0] = ip;  
+        port = strtok(NULL, ":");  
+        if(port=='\0'){
+            return 1;
+        }else{
+            parts[1]=port;
+            return 2;
+        }
+    } else {  
+        ip = strtok(src, ":");  
+        parts[0] = ip;  
+        port = strtok(NULL, ":");  
+        if(port=='\0'){
+            return 1;
+        }else{
+            parts[1]=port;
+            return 2;
+        }
+    }  
+}
+
 
 int64_t get_current_time_ns()
 {

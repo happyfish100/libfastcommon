@@ -544,7 +544,7 @@ void set_log_level(char *pLogLevel);
  *  return: error no , 0 success, != 0 fail
 */
 int load_allow_hosts(IniContext *pIniContext, \
-		in_addr_t **allow_ip_addrs, int *allow_ip_count);
+		in_addr_64_t **allow_ip_addrs, int *allow_ip_count);
 
 
 /** get time item from config context
@@ -754,7 +754,7 @@ int fd_set_cloexec(int fd);
 */
 int set_run_by(const char *group_name, const char *username);
 
-/** compare ip address, type is (in_addr_t *)
+/** compare ip address, type is (in_addr_64_t *)
  *  parameters:
  *  	p1: the first ip address
  *  	p2: the second ip address
@@ -806,6 +806,16 @@ double get_line_distance_km(const double lat1, const double lon1,
  *  return: true for private ip, otherwise false
  */
 bool is_private_ip(const char* ip);
+
+
+/** 从字符串中解析IP地址和端口号
+ *  parameters:
+ *  	src: the source string, will be modified by this function
+ *  	parts: store split strings
+ *  return: string array / column count
+*/
+int parseAddress(char *src, char *parts[2]);
+
 
 /** get current time in ns
  *  return: current time

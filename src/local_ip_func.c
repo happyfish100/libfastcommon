@@ -96,7 +96,7 @@ void load_local_host_ip_addrs()
 	char *if_alias_prefixes[STORAGE_MAX_ALIAS_PREFIX_COUNT];
 	int alias_count;
 
-	insert_into_local_host_ip(LOCAL_LOOPBACK_IP);
+	insert_into_local_host_ip(LOCAL_LOOPBACK_IPv4);
 
 	memset(if_alias_prefixes, 0, sizeof(if_alias_prefixes));
 	if (*g_if_alias_prefix == '\0')
@@ -124,8 +124,8 @@ void load_local_host_ip_addrs()
 		insert_into_local_host_ip(ip_addresses[k]);
 	}
 
-	//log_local_host_ip_addrs();
-	//print_local_host_ip_addrs();
+	// log_local_host_ip_addrs();
+	// print_local_host_ip_addrs();
 }
 
 void print_local_host_ip_addrs()
@@ -161,7 +161,8 @@ const char *get_next_local_ip(const char *previous_ip)
 		IP_ADDRESS_SIZE * g_local_host_ip_count;
 	for (p=g_local_host_ip_addrs; p<pEnd; p+=IP_ADDRESS_SIZE)
 	{
-	    if (strcmp(p, LOCAL_LOOPBACK_IP) != 0)
+	    if (strcmp(p, LOCAL_LOOPBACK_IPv4) != 0 &&
+		     strcmp(p, LOCAL_LOOPBACK_IPv6) !=0 )
         {
             if (found)
             {
@@ -187,7 +188,8 @@ const char *get_first_local_ip()
     }
     else
     {
-        return LOCAL_LOOPBACK_IP;
+		// 注意，当系统存在IPv6回环地址时，为了简化系统的改动，会将IPv6回环地址修改成IPv4回环地址返回
+        return LOCAL_LOOPBACK_IPv4;
     }
 }
 

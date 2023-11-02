@@ -487,7 +487,7 @@ int conn_pool_parse_server_info(const char *pServerStr,
     memcpy(server_info, pServerStr, len);
     *(server_info + len) = '\0';
 
-    count = splitEx(server_info, ':', parts, 2);
+    count = parseAddress(server_info,parts);
     if (count == 1) {
         pServerInfo->port = default_port;
     }
@@ -501,7 +501,7 @@ int conn_pool_parse_server_info(const char *pServerStr,
             return EINVAL;
         }
     }
-
+    
     if (getIpaddrByName(parts[0], pServerInfo->ip_addr,
         sizeof(pServerInfo->ip_addr)) == INADDR_NONE)
     {
@@ -511,7 +511,7 @@ int conn_pool_parse_server_info(const char *pServerStr,
         return EINVAL;
     }
 
-    pServerInfo->socket_domain = AF_INET;
+    pServerInfo->socket_domain = AF_UNSPEC;
     pServerInfo->sock = -1;
     return 0;
 }
