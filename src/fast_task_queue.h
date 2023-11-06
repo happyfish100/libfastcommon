@@ -127,6 +127,7 @@ struct fast_task_info
     volatile int8_t canceled;  //if task canceled
     short connect_timeout;     //for client side
     short network_timeout;
+    int pending_send_count;
     int64_t req_count; //request count
     struct {
         int64_t  last_req_count;
