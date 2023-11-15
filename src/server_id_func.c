@@ -314,31 +314,69 @@ static inline void fc_server_set_ip_prefix(FCServerGroupInfo *ginfo,
     }
 }
 
-static inline int fc_server_set_comm_type(FCServerGroupInfo *ginfo,
+static inline int fc_server_set_comm_type(FCCommunicationType *comm_type,
         const char *config_filename, const char *section_name,
-        const char *comm_type)
+        const char *comm_type_str, const FCCommunicationType default_comm_type)
 {
-    if (comm_type == NULL) {
-        ginfo->comm_type = fc_comm_type_sock;
+    if (comm_type_str == NULL) {
+        *comm_type = fc_comm_type_sock;
         return 0;
-    } else if (strcasecmp(comm_type, "socket") == 0) {
-        ginfo->comm_type = fc_comm_type_sock;
+    } else if (strcasecmp(comm_type_str, "socket") == 0) {
+        *comm_type = fc_comm_type_sock;
         return 0;
-    } else if (strcasecmp(comm_type, "rdma") == 0) {
-        ginfo->comm_type = fc_comm_type_rdma;
+    } else if (strcasecmp(comm_type_str, "rdma") == 0) {
+        *comm_type = fc_comm_type_rdma;
         return 0;
     } else {
         logError("file: "__FILE__", line: %d, "
                 "config filename: %s, section: %s, "
                 "invalid communication: %s!", __LINE__,
-                config_filename, section_name, comm_type);
+                config_filename, section_name, comm_type_str);
         return EINVAL;
     }
 }
 
+static int load_comm_type_and_smart_polling(IniFullContext *ini_ctx,
+        FCCommunicationType *comm_type, FCSmartPollingConfig *smart_polling,
+        const FCCommunicationType default_comm_type,
+        const FCSmartPollingConfig *default_smart_polling)
+{
+    int result;
+    char *comm_type_str;
+
+    comm_type_str = iniGetStrValue(ini_ctx->section_name,
+            "communication", ini_ctx->context);
+    if (comm_type_str == NULL) {
+        comm_type_str = iniGetStrValue(ini_ctx->section_name,
+                "comm_type", ini_ctx->context);
+    }
+    if ((result=fc_server_set_comm_type(comm_type, ini_ctx->filename,
+                    ini_ctx->section_name, comm_type_str,
+                    default_comm_type)) != 0)
+    {
+        return result;
+    }
+
+    if (*comm_type == fc_comm_type_sock) {
+        smart_polling->enabled = false;
+        smart_polling->switch_on_iops = 0;
+        smart_polling->switch_on_count = 0;
+    } else {
+        smart_polling->enabled = iniGetBoolValue(ini_ctx->section_name,
+                "smart_polling", ini_ctx->context,
+                default_smart_polling->enabled);
+        smart_polling->switch_on_iops = iniGetIntValue(ini_ctx->section_name,
+                "polling_switch_on_iops", ini_ctx->context,
+                default_smart_polling->switch_on_iops);
+        smart_polling->switch_on_count = iniGetIntValue(ini_ctx->section_name,
+                "polling_switch_on_count", ini_ctx->context,
+                default_smart_polling->switch_on_count);
+    }
+    return 0;
+}
+
 static int fc_server_load_one_group(FCServerConfig *ctx,
-        const char *config_filename, IniContext *ini_context,
-        const int group_count, const char *section_name)
+        IniFullContext *ini_ctx, const int group_count)
 {
     int result;
     FCServerGroupInfo *group;
@@ -346,27 +384,26 @@ static int fc_server_load_one_group(FCServerConfig *ctx,
     char *port_str;
     char *net_type;
     char *ip_prefix;
-    char *comm_type;
 
-    strcpy(new_name, section_name);
+    strcpy(new_name, ini_ctx->section_name);
     group = ctx->group_array.groups + ctx->group_array.count;
     fc_server_set_group_ptr_name(group, new_name + GROUP_SECTION_PREFIX_LEN);
-
     if (group->group_name.len == 0) {
         logError("file: "__FILE__", line: %d, "
                 "config filename: %s, section: %s, no group name!",
-                __LINE__, config_filename, section_name);
+                __LINE__, ini_ctx->filename, ini_ctx->section_name);
         return EINVAL;
     }
 
-    port_str = iniGetStrValue(section_name, SERVER_ITEM_PORT_STR, ini_context);
+    port_str = iniGetStrValue(ini_ctx->section_name,
+            SERVER_ITEM_PORT_STR, ini_ctx->context);
     if (port_str == NULL) {
         if (group_count == 1) {
             group->port = ctx->default_port;
         } else {
             logError("file: "__FILE__", line: %d, "
                     "config filename: %s, section: %s, no item: %s!",
-                    __LINE__, config_filename, section_name,
+                    __LINE__, ini_ctx->filename, ini_ctx->section_name,
                     SERVER_ITEM_PORT_STR);
             return ENOENT;
         }
@@ -376,45 +413,31 @@ static int fc_server_load_one_group(FCServerConfig *ctx,
         if (group->port <= 0 || (endptr != NULL && *endptr != '\0')) {
             logError("file: "__FILE__", line: %d, "
                     "config filename: %s, section: %s, item: %s, "
-                    "invalid port: %s", __LINE__, config_filename,
-                    section_name, SERVER_ITEM_PORT_STR, port_str);
+                    "invalid port: %s", __LINE__, ini_ctx->filename,
+                    ini_ctx->section_name, SERVER_ITEM_PORT_STR, port_str);
             return EINVAL;
         }
     }
 
-    net_type = iniGetStrValue(section_name, "net_type", ini_context);
+    net_type = iniGetStrValue(ini_ctx->section_name,
+            "net_type", ini_ctx->context);
     group->filter.net_type = fc_get_net_type_by_name(net_type);
     if (group->filter.net_type == FC_NET_TYPE_NONE) {
         logError("file: "__FILE__", line: %d, "
                 "config filename: %s, section: %s, invalid net_type: %s",
-                __LINE__, config_filename, group->group_name.str, net_type);
+                __LINE__, ini_ctx->filename, group->group_name.str, net_type);
         return EINVAL;
     }
 
-    ip_prefix = iniGetStrValue(section_name, "ip_prefix", ini_context);
+    ip_prefix = iniGetStrValue(ini_ctx->section_name,
+            "ip_prefix", ini_ctx->context);
     fc_server_set_ip_prefix(group, ip_prefix);
 
-    comm_type = iniGetStrValue(section_name, "communication", ini_context);
-    if (comm_type == NULL) {
-        comm_type = iniGetStrValue(section_name, "comm_type", ini_context);
-    }
-    if ((result=fc_server_set_comm_type(group, config_filename,
-                    section_name, comm_type)) != 0)
+    if ((result=load_comm_type_and_smart_polling(ini_ctx,
+                    &group->comm_type, &group->smart_polling,
+                    ctx->comm_type, &ctx->smart_polling)) != 0)
     {
         return result;
-    }
-
-    if (group->comm_type == fc_comm_type_sock) {
-        group->smart_polling.enabled = false;
-        group->smart_polling.switch_on_iops = 0;
-        group->smart_polling.switch_on_count = 0;
-    } else {
-        group->smart_polling.enabled = iniGetBoolValue(section_name,
-                "smart_polling", ini_context, true);
-        group->smart_polling.switch_on_iops = iniGetIntValue(section_name,
-                "polling_switch_on_iops", ini_context, 10240);
-        group->smart_polling.switch_on_count = iniGetIntValue(section_name,
-                "polling_switch_on_count", ini_context, 3);
     }
 
     ctx->group_array.count++;
@@ -476,7 +499,7 @@ static void fc_server_sort_groups(FCServerConfig *ctx)
 }
 
 static int fc_server_load_groups(FCServerConfig *ctx,
-        const char *config_filename, IniContext *ini_context)
+        IniFullContext *ini_ctx)
 {
 	int result;
     int count;
@@ -484,13 +507,13 @@ static int fc_server_load_groups(FCServerConfig *ctx,
     IniSectionInfo *section;
     IniSectionInfo *end;
 
-    if ((result=iniGetSectionNamesByPrefix(ini_context,
+    if ((result=iniGetSectionNamesByPrefix(ini_ctx->context,
                     GROUP_SECTION_PREFIX_STR, sections,
                     FC_MAX_GROUP_COUNT, &count)) != 0)
     {
         logError("file: "__FILE__", line: %d, "
                 "config filename: %s, get sections by prefix %s fail, "
-                "errno: %d, error info: %s", __LINE__, config_filename,
+                "errno: %d, error info: %s", __LINE__, ini_ctx->filename,
                 GROUP_SECTION_PREFIX_STR, result, STRERROR(result));
         return result;
     }
@@ -499,15 +522,14 @@ static int fc_server_load_groups(FCServerConfig *ctx,
         ctx->group_array.count = 1;
         fc_server_set_group_ptr_name(ctx->group_array.groups + 0, "");
         ctx->group_array.groups[0].port = iniGetIntValue(NULL, "port",
-            ini_context, ctx->default_port);
+                ini_ctx->context, ctx->default_port);
         return 0;
     }
 
     end = sections + count;
     for (section=sections; section<end; section++) {
-        if ((result=fc_server_load_one_group(ctx, config_filename,
-                        ini_context, count, section->section_name)) != 0)
-        {
+        ini_ctx->section_name = section->section_name;
+        if ((result=fc_server_load_one_group(ctx, ini_ctx, count)) != 0) {
             return result;
         }
     }
@@ -1253,12 +1275,23 @@ static int fc_server_load_data(FCServerConfig *ctx,
     int buffer_size;
     bool have_rdma;
     IniFullContext full_ini_ctx;
+    FCSmartPollingConfig default_smart_polling;
     FCServerGroupInfo *group;
     FCServerGroupInfo *end;
 
-    if ((result=fc_server_load_groups(ctx, config_filename,
-                    ini_context)) != 0)
+    FAST_INI_SET_FULL_CTX_EX(full_ini_ctx,
+            config_filename, NULL, ini_context);
+    default_smart_polling.enabled = true;
+    default_smart_polling.switch_on_iops = 10240;
+    default_smart_polling.switch_on_count = 3;
+    if ((result=load_comm_type_and_smart_polling(&full_ini_ctx,
+                    &ctx->comm_type, &ctx->smart_polling,
+                    fc_comm_type_sock, &default_smart_polling)) != 0)
     {
+        return result;
+    }
+
+    if ((result=fc_server_load_groups(ctx, &full_ini_ctx)) != 0) {
         return result;
     }
 
@@ -1272,8 +1305,7 @@ static int fc_server_load_data(FCServerConfig *ctx,
     }
 
     if (have_rdma) {
-        FAST_INI_SET_FULL_CTX_EX(full_ini_ctx, config_filename,
-                NULL, ini_context);
+        full_ini_ctx.section_name = NULL;
         buffer_size = iniGetByteValue(NULL, "buffer_size",
                 ini_context, 256 * 1024);
         ctx->buffer_size = iniCheckAndCorrectIntValue(&full_ini_ctx,

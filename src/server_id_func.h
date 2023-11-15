@@ -132,6 +132,8 @@ typedef struct fc_server_config
     int min_hosts_each_group;
     bool share_between_groups;  //if an address shared between different groups
     int buffer_size;  //for RDMA
+    FCCommunicationType comm_type;
+    FCSmartPollingConfig smart_polling;
     FCServerConnThreadLocal connection_thread_local;
     FCServerGroupArray group_array;
     struct {
