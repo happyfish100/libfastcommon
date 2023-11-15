@@ -319,7 +319,7 @@ static inline int fc_server_set_comm_type(FCCommunicationType *comm_type,
         const char *comm_type_str, const FCCommunicationType default_comm_type)
 {
     if (comm_type_str == NULL) {
-        *comm_type = fc_comm_type_sock;
+        *comm_type = default_comm_type;
         return 0;
     } else if (strcasecmp(comm_type_str, "socket") == 0) {
         *comm_type = fc_comm_type_sock;
