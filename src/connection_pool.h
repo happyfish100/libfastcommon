@@ -59,7 +59,7 @@ typedef struct {
 
 struct fc_server_config;
 struct ibv_pd;
-typedef int (*fc_global_init_callback)();
+typedef void (*fc_set_busy_polling_callback)(const bool busy_polling);
 typedef struct ibv_pd *(*fc_alloc_pd_callback)(const char **ip_addrs,
         const int count, const int port);
 typedef int (*fc_get_connection_size_callback)();
@@ -98,7 +98,7 @@ typedef struct {
 } CommonConnectionCallbacks;
 
 typedef struct {
-    fc_global_init_callback global_init;
+    fc_set_busy_polling_callback set_busy_polling;
     fc_alloc_pd_callback alloc_pd;
     fc_get_connection_size_callback get_connection_size;
     fc_init_connection_callback init_connection;

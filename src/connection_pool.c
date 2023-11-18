@@ -779,6 +779,7 @@ int conn_pool_global_init_for_rdma()
     LOAD_API(G_COMMON_CONNECTION_CALLBACKS[fc_comm_type_rdma],
             is_connected);
 
+    LOAD_API(G_RDMA_CONNECTION_CALLBACKS, set_busy_polling);
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, alloc_pd);
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, get_connection_size);
     LOAD_API(G_RDMA_CONNECTION_CALLBACKS, init_connection);
