@@ -225,28 +225,41 @@ int log_reopen_ex(LogContext *pContext)
 int log_set_prefix_ex(LogContext *pContext, const char *base_path,
 		const char *filename_prefix)
 {
-	int result;
+    int result;
+    char log_filename[MAX_PATH_SIZE];
 
-	if ((result=check_and_mk_log_dir(base_path)) != 0)
-	{
-		return result;
-	}
+    if ((result=check_and_mk_log_dir(base_path)) != 0)
+    {
+        return result;
+    }
 
-	snprintf(pContext->log_filename, MAX_PATH_SIZE,
-            "%s/logs/%s.log", base_path, filename_prefix);
-
-	return log_open(pContext);
+    snprintf(log_filename, MAX_PATH_SIZE, "%s/logs/%s.log",
+            base_path, filename_prefix);
+    return log_set_filename_ex(pContext, log_filename);
 }
 
 int log_set_filename_ex(LogContext *pContext, const char *log_filename)
 {
-    if (log_filename == NULL) {
-		fprintf(stderr, "file: "__FILE__", line: %d, " \
-                "log_filename is NULL!\n", __LINE__);
+    if (log_filename == NULL || *log_filename == '\0')
+    {
+        fprintf(stderr, "file: "__FILE__", line: %d, "
+                "log_filename is NULL or empty!\n", __LINE__);
         return EINVAL;
     }
-	snprintf(pContext->log_filename, MAX_PATH_SIZE, "%s", log_filename);
-	return log_open(pContext);
+
+    if (*(pContext->log_filename) == '\0')
+    {
+        snprintf(pContext->log_filename, MAX_PATH_SIZE, "%s", log_filename);
+        return log_open(pContext);
+    }
+
+    if (strcmp(log_filename, pContext->log_filename) == 0)
+    {
+        return 0;
+    }
+
+    snprintf(pContext->log_filename, MAX_PATH_SIZE, "%s", log_filename);
+    return log_reopen_ex(pContext);
 }
 
 void log_set_cache_ex(LogContext *pContext, const bool bLogCache)
