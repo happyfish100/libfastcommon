@@ -52,7 +52,7 @@ typedef struct {
     short socket_domain;  //socket domain, AF_INET, AF_INET6 or AF_UNSPEC for auto dedect
     FCCommunicationType comm_type;
     bool validate_flag;   //for connection pool
-    char ip_addr[INET6_ADDRSTRLEN];
+    char ip_addr[IP_ADDRESS_SIZE];
     void *arg1;     //for RDMA
     char args[0];   //for extra data
 } ConnectionInfo;
@@ -259,7 +259,7 @@ static inline int conn_pool_init_ex(ConnectionPool *cp, int connect_timeout,
 static inline int conn_pool_init(ConnectionPool *cp, int connect_timeout,
 	const int max_count_per_entry, const int max_idle_time)
 {
-    const int socket_domain = AF_INET;
+    const int socket_domain = AF_UNSPEC;
     const int htable_init_capacity = 0;
     const int extra_data_size = 0;
     const ConnectionExtraParams *extra_params = NULL;

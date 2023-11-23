@@ -27,7 +27,8 @@
 #define FAST_IF_ALIAS_PREFIX_MAX_SIZE 32
 #define FAST_MAX_LOCAL_IP_ADDRS	  16
 
-#define LOCAL_LOOPBACK_IP  "127.0.0.1"
+#define LOCAL_LOOPBACK_IPv4  "127.0.0.1"
+#define LOCAL_LOOPBACK_IPv6  "::1"
 
 #ifdef __cplusplus
 extern "C" {

@@ -26,6 +26,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
+#include <netdb.h>
 #include "common_define.h"
 
 #define FC_NET_TYPE_NONE          0
@@ -55,11 +56,11 @@ typedef struct fast_if_config {
     char name[IF_NAMESIZE];    //if name
     char mac[64];
     char ipv4[IP_ADDRESS_SIZE];
-    char ipv6[48];
+    char ipv6[IP_ADDRESS_SIZE];
 } FastIFConfig;
 
 typedef struct ip_addr_s {
-    char ip_addr[INET6_ADDRSTRLEN];
+    char ip_addr[IP_ADDRESS_SIZE];
     int socket_domain;
 } ip_addr_t;
 
@@ -344,9 +345,9 @@ int tcpprintkeepalive(int fd);
  *          sock: the socket
  *          buff: buffer to store the ip address
  *          bufferSize: the buffer size (max bytes)
- *  return: in_addr_t, INADDR_NONE for fail
+ *  return: in_addr_64_t, INADDR_NONE for fail
 */
-in_addr_t getIpaddr(getnamefunc getname, int sock, \
+in_addr_64_t getIpaddr(getnamefunc getname, int sock, \
 		char *buff, const int bufferSize);
 
 /** get ip address
@@ -370,14 +371,14 @@ int getIpAndPort(getnamefunc getname, int sock,
 */
 char *getHostnameByIp(const char *szIpAddr, char *buff, const int bufferSize);
 
-/** get by IPv4 address by it's hostname
+/** get by IPv4 or IPv6 address by it's hostname
  *  parameters:
  *          name: the hostname 
  *          buff: buffer to store the ip address
  *          bufferSize: the buffer size (max bytes)
- *  return: in_addr_t, INADDR_NONE for fail
+ *  return: in_addr_64_t, INADDR_NONE for fail
 */
-in_addr_t getIpaddrByName(const char *name, char *buff, const int bufferSize);
+in_addr_64_t getIpaddrByName(const char *name, char *buff, const int bufferSize);
 
 /** get by ip addresses by it's hostname
  *  parameters:
