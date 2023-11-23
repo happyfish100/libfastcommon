@@ -68,6 +68,8 @@ static inline void fc_queue_terminate_all(
 
 //notify by the caller
 void fc_queue_push_ex(struct fc_queue *queue, void *data, bool *notify);
+int fc_queue_push_with_check_ex(struct fc_queue *queue,
+        void *data, bool *notify);
 
 static inline void fc_queue_push(struct fc_queue *queue, void *data)
 {
@@ -77,6 +79,19 @@ static inline void fc_queue_push(struct fc_queue *queue, void *data)
     if (notify) {
         pthread_cond_signal(&(queue->lcp.cond));
     }
+}
+
+static inline int fc_queue_push_with_check(struct fc_queue *queue, void *data)
+{
+    int result;
+    bool notify;
+
+    result = fc_queue_push_with_check_ex(queue, data, &notify);
+    if (notify) {
+        pthread_cond_signal(&(queue->lcp.cond));
+    }
+
+    return result;
 }
 
 static inline void fc_queue_push_silence(struct fc_queue *queue, void *data)
@@ -169,6 +184,16 @@ static inline int fc_queue_count(struct fc_queue *queue)
     }
     pthread_mutex_unlock(&queue->lcp.lock);
     return count;
+}
+
+static inline void *fc_queue_peek(struct fc_queue *queue)
+{
+    void *data;
+
+    pthread_mutex_lock(&queue->lcp.lock);
+    data = queue->head;
+    pthread_mutex_unlock(&queue->lcp.lock);
+    return data;
 }
 
 void *fc_queue_timedpop(struct fc_queue *queue,

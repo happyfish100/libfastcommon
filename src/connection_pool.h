@@ -40,15 +40,103 @@ extern "C" {
     (strcmp((conn1).ip_addr, (conn2).ip_addr) == 0 && \
      (conn1).port == (conn2).port)
 
-typedef struct
-{
-	int sock;
-	uint16_t port;
+typedef enum {
+    fc_comm_type_sock = 0,
+    fc_comm_type_rdma,
+    fc_comm_type_both
+} FCCommunicationType;
+
+typedef struct {
+    int sock;
+    uint16_t port;
     short socket_domain;  //socket domain, AF_INET, AF_INET6 or AF_UNSPEC for auto dedect
+    FCCommunicationType comm_type;
     bool validate_flag;   //for connection pool
-	char ip_addr[IP_ADDRESS_SIZE];
+    char ip_addr[IP_ADDRESS_SIZE];
+    void *arg1;     //for RDMA
     char args[0];   //for extra data
 } ConnectionInfo;
+
+struct fc_server_config;
+struct ibv_pd;
+typedef void (*fc_set_busy_polling_callback)(const bool busy_polling);
+typedef struct ibv_pd *(*fc_alloc_pd_callback)(const char **ip_addrs,
+        const int count, const int port);
+typedef int (*fc_get_connection_size_callback)();
+typedef int (*fc_init_connection_callback)(ConnectionInfo *conn,
+        const bool double_buffers, const int buffer_size, void *arg);
+typedef int (*fc_make_connection_callback)(ConnectionInfo *conn,
+        const char *service_name, const int timeout_ms,
+        const char *bind_ipaddr, const bool log_connect_error);
+typedef bool (*fc_is_connected_callback)(ConnectionInfo *conn);
+typedef bool (*fc_send_done_callback)(ConnectionInfo *conn);
+typedef void (*fc_close_connection_callback)(ConnectionInfo *conn);
+typedef void (*fc_destroy_connection_callback)(ConnectionInfo *conn);
+
+typedef BufferInfo *(*fc_rdma_get_recv_buffer_callback)(ConnectionInfo *conn);
+typedef int (*fc_rdma_request_by_buf1_callback)(ConnectionInfo *conn,
+        const char *data, const int length, const int timeout_ms);
+typedef int (*fc_rdma_request_by_buf2_callback)(ConnectionInfo *conn,
+        const char *data1, const int length1, const char *data2,
+        const int length2, const int timeout_ms);
+typedef int (*fc_rdma_request_by_iov_callback)(ConnectionInfo *conn,
+        const struct iovec *iov, const int iovcnt,
+        const int timeout_ms);
+typedef int (*fc_rdma_request_by_mix_callback)(ConnectionInfo *conn,
+        const char *data, const int length, const struct iovec *iov,
+        const int iovcnt, const int timeout_ms);
+typedef int (*fc_rdma_send_by_buf1_callback)(ConnectionInfo *conn,
+        const char *data, const int length);
+typedef int (*fc_rdma_recv_data_callback)(ConnectionInfo *conn,
+        const bool call_post_recv, const int timeout_ms);
+typedef int (*fc_rdma_post_recv_callback)(ConnectionInfo *conn);
+
+typedef struct {
+    fc_make_connection_callback make_connection;
+    fc_close_connection_callback close_connection;
+    fc_is_connected_callback is_connected;
+} CommonConnectionCallbacks;
+
+typedef struct {
+    fc_set_busy_polling_callback set_busy_polling;
+    fc_alloc_pd_callback alloc_pd;
+    fc_get_connection_size_callback get_connection_size;
+    fc_init_connection_callback init_connection;
+    fc_make_connection_callback make_connection;
+    fc_close_connection_callback close_connection;
+    fc_destroy_connection_callback destroy_connection;
+    fc_is_connected_callback is_connected;
+    fc_send_done_callback send_done;
+
+    fc_rdma_get_recv_buffer_callback get_recv_buffer;
+    fc_rdma_request_by_buf1_callback request_by_buf1;
+    fc_rdma_request_by_buf2_callback request_by_buf2;
+    fc_rdma_request_by_iov_callback request_by_iov;
+    fc_rdma_request_by_mix_callback request_by_mix;
+
+    fc_rdma_send_by_buf1_callback send_by_buf1;
+    fc_rdma_recv_data_callback recv_data;
+    fc_rdma_post_recv_callback post_recv;
+} RDMAConnectionCallbacks;
+
+typedef struct {
+    bool inited;
+    CommonConnectionCallbacks common_callbacks[2];
+    RDMAConnectionCallbacks rdma_callbacks;
+} ConnectionCallbacks;
+
+typedef struct {
+    struct {
+        bool enabled;
+        int htable_capacity;
+    } tls;  //for thread local
+
+    struct {
+        bool double_buffers;
+        int buffer_size;
+        struct ibv_pd *pd;
+    } rdma;
+} ConnectionExtraParams;
 
 typedef int (*fc_connection_callback_func)(ConnectionInfo *conn, void *args);
 
@@ -68,10 +156,17 @@ typedef struct tagConnectionManager {
 	pthread_mutex_t lock;
 } ConnectionManager;
 
+struct tagConnectionPool;
+
+typedef struct {
+    ConnectionNode **buckets;
+    struct tagConnectionPool *cp;
+} ConnectionThreadHashTable;
+
 typedef struct tagConnectionPool {
-	HashArray hash_array;  //key is ip:port, value is ConnectionManager
+	HashArray hash_array;  //key is ip-port, value is ConnectionManager
 	pthread_mutex_t lock;
-	int connect_timeout;
+	int connect_timeout_ms;
 	int max_count_per_entry;  //0 means no limit
 
 	/*
@@ -93,7 +188,18 @@ typedef struct tagConnectionPool {
         fc_connection_callback_func func;
         void *args;
     } validate_callback;
+
+    int extra_data_size;
+    ConnectionExtraParams extra_params;
+    pthread_key_t tls_key;  //for ConnectionThreadHashTable
 } ConnectionPool;
+
+extern ConnectionCallbacks g_connection_callbacks;
+
+int conn_pool_global_init_for_rdma();
+
+#define G_COMMON_CONNECTION_CALLBACKS g_connection_callbacks.common_callbacks
+#define G_RDMA_CONNECTION_CALLBACKS   g_connection_callbacks.rdma_callbacks
 
 /**
 *   init ex function
@@ -109,6 +215,7 @@ typedef struct tagConnectionPool {
 *      validate_func: the validate connection callback
 *      validate_args: the args for validate connection callback
 *      extra_data_size: the extra data size of connection
+*      extra_params: for RDMA
 *   return 0 for success, != 0 for error
 */
 int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
@@ -116,7 +223,7 @@ int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
     const int socket_domain, const int htable_init_capacity,
     fc_connection_callback_func connect_done_func, void *connect_done_args,
     fc_connection_callback_func validate_func, void *validate_args,
-    const int extra_data_size);
+    const int extra_data_size, const ConnectionExtraParams *extra_params);
 
 /**
 *   init ex function
@@ -134,9 +241,10 @@ static inline int conn_pool_init_ex(ConnectionPool *cp, int connect_timeout,
 {
     const int htable_init_capacity = 0;
     const int extra_data_size = 0;
+    const ConnectionExtraParams *extra_params = NULL;
     return conn_pool_init_ex1(cp, connect_timeout, max_count_per_entry,
             max_idle_time, socket_domain, htable_init_capacity,
-            NULL, NULL, NULL, NULL, extra_data_size);
+            NULL, NULL, NULL, NULL, extra_data_size, extra_params);
 }
 
 /**
@@ -154,9 +262,10 @@ static inline int conn_pool_init(ConnectionPool *cp, int connect_timeout,
     const int socket_domain = AF_UNSPEC;
     const int htable_init_capacity = 0;
     const int extra_data_size = 0;
+    const ConnectionExtraParams *extra_params = NULL;
     return conn_pool_init_ex1(cp, connect_timeout, max_count_per_entry,
             max_idle_time, socket_domain, htable_init_capacity,
-            NULL, NULL, NULL, NULL, extra_data_size);
+            NULL, NULL, NULL, NULL, extra_data_size, extra_params);
 }
 
 /**
@@ -193,82 +302,84 @@ ConnectionInfo *conn_pool_get_connection_ex(ConnectionPool *cp,
 *      bForce: set true to close the socket, else only push back to connection pool
 *   return 0 for success, != 0 for error
 */
-int conn_pool_close_connection_ex(ConnectionPool *cp, ConnectionInfo *conn, 
-	const bool bForce);
+int conn_pool_close_connection_ex(ConnectionPool *cp,
+        ConnectionInfo *conn, const bool bForce);
 
 /**
 *   disconnect from the server
 *   parameters:
-*      pConnection: the connection
+*      conn: the connection
 *   return 0 for success, != 0 for error
 */
-void conn_pool_disconnect_server(ConnectionInfo *pConnection);
+void conn_pool_disconnect_server(ConnectionInfo *conn);
+
+bool conn_pool_is_connected(ConnectionInfo *conn);
 
 /**
 *   connect to the server
 *   parameters:
 *      pConnection: the connection
 *      service_name: the service name to log
-*      connect_timeout: the connect timeout in seconds
+*      connect_timeout_ms: the connect timeout in milliseconds
 *      bind_ipaddr: the ip address to bind, NULL or empty for any
 *      log_connect_error: if log error info when connect fail
 *   NOTE: pConnection->sock will be closed when it >= 0 before connect
 *   return 0 for success, != 0 for error
 */
 int conn_pool_connect_server_ex1(ConnectionInfo *conn,
-        const char *service_name, const int connect_timeout,
+        const char *service_name, const int connect_timeout_ms,
         const char *bind_ipaddr, const bool log_connect_error);
 /**
 *   connect to the server
 *   parameters:
 *      pConnection: the connection
-*      connect_timeout: the connect timeout in seconds
+*      connect_timeout_ms: the connect timeout in milliseconds
 *      bind_ipaddr: the ip address to bind, NULL or empty for any
 *      log_connect_error: if log error info when connect fail
 *   NOTE: pConnection->sock will be closed when it >= 0 before connect
 *   return 0 for success, != 0 for error
 */
 static inline int conn_pool_connect_server_ex(ConnectionInfo *pConnection,
-		const int connect_timeout, const char *bind_ipaddr,
+		const int connect_timeout_ms, const char *bind_ipaddr,
         const bool log_connect_error)
 {
     const char *service_name = NULL;
     return conn_pool_connect_server_ex1(pConnection, service_name,
-            connect_timeout, bind_ipaddr, log_connect_error);
+            connect_timeout_ms, bind_ipaddr, log_connect_error);
 }
 
 /**
 *   connect to the server
 *   parameters:
 *      pConnection: the connection
-*      connect_timeout: the connect timeout in seconds
+*      connect_timeout_ms: the connect timeout in seconds
 *   NOTE: pConnection->sock will be closed when it >= 0 before connect
 *   return 0 for success, != 0 for error
 */
 static inline int conn_pool_connect_server(ConnectionInfo *pConnection,
-		const int connect_timeout)
+		const int connect_timeout_ms)
 {
     const char *service_name = NULL;
     const char *bind_ipaddr = NULL;
     return conn_pool_connect_server_ex1(pConnection, service_name,
-            connect_timeout, bind_ipaddr, true);
+            connect_timeout_ms, bind_ipaddr, true);
 }
 
 /**
 *   connect to the server
 *   parameters:
 *      pConnection: the connection
-*      connect_timeout: the connect timeout in seconds
+*      connect_timeout_ms: the connect timeout in seconds
 *   return 0 for success, != 0 for error
 */
 static inline int conn_pool_connect_server_anyway(ConnectionInfo *pConnection,
-		const int connect_timeout)
+		const int connect_timeout_ms)
 {
     const char *service_name = NULL;
     const char *bind_ipaddr = NULL;
     pConnection->sock = -1;
     return conn_pool_connect_server_ex1(pConnection, service_name,
-            connect_timeout, bind_ipaddr, true);
+            connect_timeout_ms, bind_ipaddr, true);
 }
 
 /**
@@ -345,6 +456,55 @@ static inline int conn_pool_compare_ip_and_port(const char *ip1,
         return result;
     }
     return port1 - port2;
+}
+
+ConnectionInfo *conn_pool_alloc_connection_ex(
+        const FCCommunicationType comm_type,
+        const int extra_data_size,
+        const ConnectionExtraParams *extra_params,
+        int *err_no);
+
+static inline ConnectionInfo *conn_pool_alloc_connection(
+        const FCCommunicationType comm_type,
+        const ConnectionExtraParams *extra_params,
+        int *err_no)
+{
+    const int extra_data_size = 0;
+    return conn_pool_alloc_connection_ex(comm_type,
+            extra_data_size, extra_params, err_no);
+}
+
+static inline void conn_pool_free_connection(ConnectionInfo *conn)
+{
+    free(conn);
+}
+
+int conn_pool_set_rdma_extra_params_ex(ConnectionExtraParams *extra_params,
+        struct fc_server_config *server_cfg, const int server_group_index,
+        const bool double_buffers);
+
+static inline int conn_pool_set_rdma_extra_params(
+        ConnectionExtraParams *extra_params,
+        struct fc_server_config *server_cfg,
+        const int server_group_index)
+{
+    const bool double_buffers = false;
+    return conn_pool_set_rdma_extra_params_ex(extra_params,
+            server_cfg, server_group_index, double_buffers);
+}
+
+static inline const char *fc_comm_type_str(const FCCommunicationType type)
+{
+    switch (type) {
+        case fc_comm_type_sock:
+            return "socket";
+        case fc_comm_type_rdma:
+            return "rdma";
+        case fc_comm_type_both:
+            return "both";
+        default:
+            return "unkown";
+    }
 }
 
 #ifdef __cplusplus

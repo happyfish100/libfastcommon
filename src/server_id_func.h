@@ -54,9 +54,18 @@ typedef struct {
 
 typedef struct
 {
+    bool enabled;
+    int switch_on_iops;
+    int switch_on_count;
+} FCSmartPollingConfig;
+
+typedef struct
+{
     string_t group_name;
     int port;          //default port
     int server_port;   //port in server section
+    FCCommunicationType comm_type;
+    FCSmartPollingConfig smart_polling;
     struct {
         int net_type;
         string_t ip_prefix;
@@ -111,11 +120,21 @@ typedef struct
     FCServerMap *maps;
 } FCServerMapArray;
 
-typedef struct
+typedef enum {
+    fc_connection_thread_local_auto,
+    fc_connection_thread_local_yes,
+    fc_connection_thread_local_no
+} FCServerConnThreadLocal;
+
+typedef struct fc_server_config
 {
     int default_port;
     int min_hosts_each_group;
     bool share_between_groups;  //if an address shared between different groups
+    int buffer_size;  //for RDMA
+    FCCommunicationType comm_type;
+    FCSmartPollingConfig smart_polling;
+    FCServerConnThreadLocal connection_thread_local;
     FCServerGroupArray group_array;
     struct {
         FCServerInfoArray by_id;     //sorted by server id
@@ -139,6 +158,16 @@ static inline FCServerInfo *fc_server_get_by_ip_port(FCServerConfig *ctx,
 
 FCServerGroupInfo *fc_server_get_group_by_name(FCServerConfig *ctx,
         const string_t *group_name);
+
+static inline FCServerGroupInfo *fc_server_get_group_by_index(
+        FCServerConfig *ctx, const int index)
+{
+    if (index < 0 || index >= ctx->group_array.count) {
+        return NULL;
+    }
+
+    return ctx->group_array.groups + index;
+}
 
 static inline int fc_server_get_group_index_ex(FCServerConfig *ctx,
         const string_t *group_name)
@@ -211,17 +240,6 @@ int fc_server_to_config_string(FCServerConfig *ctx, FastBuffer *buffer);
 
 void fc_server_to_log(FCServerConfig *ctx);
 
-ConnectionInfo *fc_server_check_connect_ex(FCAddressPtrArray *addr_array,
-        const char *service_name, const int connect_timeout,
-        const char *bind_ipaddr, const bool log_connect_error, int *err_no);
-
-#define fc_server_check_connect(addr_array, service_name, \
-        connect_timeout, err_no) \
-    fc_server_check_connect_ex(addr_array, service_name,  \
-            connect_timeout, NULL, true, err_no)
-
-void fc_server_disconnect(FCAddressPtrArray *addr_array);
-
 const FCAddressInfo *fc_server_get_address_by_peer(
         FCAddressPtrArray *addr_array, const char *peer_ip);
 
@@ -234,6 +252,35 @@ int fc_server_make_connection_ex(FCAddressPtrArray *addr_array,
         conn, service_name, connect_timeout)  \
     fc_server_make_connection_ex(addr_array, conn, \
             service_name, connect_timeout, NULL, true)
+
+static inline void fc_server_close_connection(ConnectionInfo *conn)
+{
+    G_COMMON_CONNECTION_CALLBACKS[conn->comm_type].close_connection(conn);
+}
+
+static inline void fc_server_destroy_connection(ConnectionInfo *conn)
+{
+    fc_server_close_connection(conn);
+    conn_pool_free_connection(conn);
+}
+
+struct ibv_pd *fc_alloc_rdma_pd(fc_alloc_pd_callback alloc_pd,
+        FCAddressPtrArray *address_array, int *result);
+
+static inline const char *fc_connection_thread_local_str(
+        const FCServerConnThreadLocal value)
+{
+    switch (value) {
+        case fc_connection_thread_local_auto:
+            return "auto";
+        case fc_connection_thread_local_yes:
+            return "yes";
+        case fc_connection_thread_local_no:
+            return "no";
+        default:
+            return "unkown";
+    }
+}
 
 #ifdef __cplusplus
 }

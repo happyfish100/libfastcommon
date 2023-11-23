@@ -314,35 +314,96 @@ static inline void fc_server_set_ip_prefix(FCServerGroupInfo *ginfo,
     }
 }
 
-static int fc_server_load_one_group(FCServerConfig *ctx,
-        const char *config_filename, IniContext *ini_context,
-        const int group_count, const char *section_name)
+static inline int fc_server_set_comm_type(FCCommunicationType *comm_type,
+        const char *config_filename, const char *section_name,
+        const char *comm_type_str, const FCCommunicationType default_comm_type)
 {
+    if (comm_type_str == NULL) {
+        *comm_type = default_comm_type;
+        return 0;
+    } else if (strcasecmp(comm_type_str, "socket") == 0) {
+        *comm_type = fc_comm_type_sock;
+        return 0;
+    } else if (strcasecmp(comm_type_str, "rdma") == 0) {
+        *comm_type = fc_comm_type_rdma;
+        return 0;
+    } else {
+        logError("file: "__FILE__", line: %d, "
+                "config filename: %s, section: %s, "
+                "invalid communication: %s!", __LINE__,
+                config_filename, section_name, comm_type_str);
+        return EINVAL;
+    }
+}
+
+static int load_comm_type_and_smart_polling(IniFullContext *ini_ctx,
+        FCCommunicationType *comm_type, FCSmartPollingConfig *smart_polling,
+        const FCCommunicationType default_comm_type,
+        const FCSmartPollingConfig *default_smart_polling)
+{
+    int result;
+    char *comm_type_str;
+
+    comm_type_str = iniGetStrValue(ini_ctx->section_name,
+            "communication", ini_ctx->context);
+    if (comm_type_str == NULL) {
+        comm_type_str = iniGetStrValue(ini_ctx->section_name,
+                "comm_type", ini_ctx->context);
+    }
+    if ((result=fc_server_set_comm_type(comm_type, ini_ctx->filename,
+                    ini_ctx->section_name, comm_type_str,
+                    default_comm_type)) != 0)
+    {
+        return result;
+    }
+
+    if (*comm_type == fc_comm_type_sock) {
+        smart_polling->enabled = false;
+        smart_polling->switch_on_iops = 0;
+        smart_polling->switch_on_count = 0;
+    } else {
+        smart_polling->enabled = iniGetBoolValue(ini_ctx->section_name,
+                "smart_polling", ini_ctx->context,
+                default_smart_polling->enabled);
+        smart_polling->switch_on_iops = iniGetIntValue(ini_ctx->section_name,
+                "polling_switch_on_iops", ini_ctx->context,
+                default_smart_polling->switch_on_iops);
+        smart_polling->switch_on_count = iniGetIntValue(ini_ctx->section_name,
+                "polling_switch_on_count", ini_ctx->context,
+                default_smart_polling->switch_on_count);
+    }
+    return 0;
+}
+
+static int fc_server_load_one_group(FCServerConfig *ctx,
+        IniFullContext *ini_ctx, const int group_count)
+{
+    int result;
     FCServerGroupInfo *group;
     char new_name[FAST_INI_ITEM_NAME_SIZE];
     char *port_str;
     char *net_type;
     char *ip_prefix;
 
-    strcpy(new_name, section_name);
+    strcpy(new_name, ini_ctx->section_name);
     group = ctx->group_array.groups + ctx->group_array.count;
     fc_server_set_group_ptr_name(group, new_name + GROUP_SECTION_PREFIX_LEN);
-
     if (group->group_name.len == 0) {
         logError("file: "__FILE__", line: %d, "
                 "config filename: %s, section: %s, no group name!",
-                __LINE__, config_filename, section_name);
+                __LINE__, ini_ctx->filename, ini_ctx->section_name);
         return EINVAL;
     }
 
-    port_str = iniGetStrValue(section_name, SERVER_ITEM_PORT_STR, ini_context);
+    port_str = iniGetStrValue(ini_ctx->section_name,
+            SERVER_ITEM_PORT_STR, ini_ctx->context);
     if (port_str == NULL) {
         if (group_count == 1) {
             group->port = ctx->default_port;
         } else {
             logError("file: "__FILE__", line: %d, "
                     "config filename: %s, section: %s, no item: %s!",
-                    __LINE__, config_filename, section_name,
+                    __LINE__, ini_ctx->filename, ini_ctx->section_name,
                     SERVER_ITEM_PORT_STR);
             return ENOENT;
         }
@@ -352,23 +413,32 @@ static int fc_server_load_one_group(FCServerConfig *ctx,
         if (group->port <= 0 || (endptr != NULL && *endptr != '\0')) {
             logError("file: "__FILE__", line: %d, "
                     "config filename: %s, section: %s, item: %s, "
-                    "invalid port: %s", __LINE__, config_filename,
-                    section_name, SERVER_ITEM_PORT_STR, port_str);
+                    "invalid port: %s", __LINE__, ini_ctx->filename,
+                    ini_ctx->section_name, SERVER_ITEM_PORT_STR, port_str);
             return EINVAL;
         }
     }
 
-    net_type = iniGetStrValue(section_name, "net_type", ini_context);
+    net_type = iniGetStrValue(ini_ctx->section_name,
+            "net_type", ini_ctx->context);
     group->filter.net_type = fc_get_net_type_by_name(net_type);
     if (group->filter.net_type == FC_NET_TYPE_NONE) {
         logError("file: "__FILE__", line: %d, "
                 "config filename: %s, section: %s, invalid net_type: %s",
-                __LINE__, config_filename, group->group_name.str, net_type);
+                __LINE__, ini_ctx->filename, group->group_name.str, net_type);
         return EINVAL;
     }
 
-    ip_prefix = iniGetStrValue(section_name, "ip_prefix", ini_context);
+    ip_prefix = iniGetStrValue(ini_ctx->section_name,
+            "ip_prefix", ini_ctx->context);
     fc_server_set_ip_prefix(group, ip_prefix);
+
+    if ((result=load_comm_type_and_smart_polling(ini_ctx,
+                    &group->comm_type, &group->smart_polling,
+                    ctx->comm_type, &ctx->smart_polling)) != 0)
+    {
+        return result;
+    }
 
     ctx->group_array.count++;
     return 0;
@@ -429,7 +499,7 @@ static void fc_server_sort_groups(FCServerConfig *ctx)
 }
 
 static int fc_server_load_groups(FCServerConfig *ctx,
-        const char *config_filename, IniContext *ini_context)
+        IniFullContext *ini_ctx)
 {
 	int result;
     int count;
@@ -437,13 +507,13 @@ static int fc_server_load_groups(FCServerConfig *ctx,
     IniSectionInfo *section;
     IniSectionInfo *end;
 
-    if ((result=iniGetSectionNamesByPrefix(ini_context,
+    if ((result=iniGetSectionNamesByPrefix(ini_ctx->context,
                     GROUP_SECTION_PREFIX_STR, sections,
                     FC_MAX_GROUP_COUNT, &count)) != 0)
     {
         logError("file: "__FILE__", line: %d, "
                 "config filename: %s, get sections by prefix %s fail, "
-                "errno: %d, error info: %s", __LINE__, config_filename,
+                "errno: %d, error info: %s", __LINE__, ini_ctx->filename,
                 GROUP_SECTION_PREFIX_STR, result, STRERROR(result));
         return result;
     }
@@ -452,15 +522,14 @@ static int fc_server_load_groups(FCServerConfig *ctx,
         ctx->group_array.count = 1;
         fc_server_set_group_ptr_name(ctx->group_array.groups + 0, "");
         ctx->group_array.groups[0].port = iniGetIntValue(NULL, "port",
-            ini_context, ctx->default_port);
+                ini_ctx->context, ctx->default_port);
         return 0;
     }
 
     end = sections + count;
     for (section=sections; section<end; section++) {
-        if ((result=fc_server_load_one_group(ctx, config_filename,
-                        ini_context, count, section->section_name)) != 0)
-        {
+        ini_ctx->section_name = section->section_name;
+        if ((result=fc_server_load_one_group(ctx, ini_ctx, count)) != 0) {
             return result;
         }
     }
@@ -794,6 +863,7 @@ static int fc_server_load_group_server(FCServerConfig *ctx,
         return result;
     }
 
+    address.conn.comm_type = group->comm_type;
     if ((result=fc_server_set_group_server_address(server,
                     group_addr, &address)) != 0)
     {
@@ -835,9 +905,16 @@ static int fc_server_set_host(FCServerConfig *ctx, FCServerInfo *server,
             if (addr->conn.port == 0) {
                 addr_holder = *addr;
                 addr_holder.conn.port = FC_SERVER_GROUP_PORT(group);
+                addr_holder.conn.comm_type = group->comm_type;
                 new_addr = &addr_holder;
             } else {
-                new_addr = addr;
+                if (addr->conn.comm_type == group->comm_type) {
+                    new_addr = addr;
+                } else {
+                    addr_holder = *addr;
+                    addr_holder.conn.comm_type = group->comm_type;
+                    new_addr = &addr_holder;
+                }
             }
 
             if ((result=fc_server_set_group_server_address(server,
@@ -1167,16 +1244,76 @@ static int fc_server_load_servers(FCServerConfig *ctx,
     return result;
 }
 
+static void load_connection_thread_local(FCServerConfig *ctx,
+        IniContext *ini_context, const char *config_filename)
+{
+    char *connection_thread_local;
+
+    connection_thread_local = iniGetStrValue(NULL,
+            "connection_thread_local", ini_context);
+    if (connection_thread_local == NULL || *connection_thread_local == '\0') {
+        ctx->connection_thread_local = fc_connection_thread_local_auto;
+    } else if (strcasecmp(connection_thread_local, "auto") == 0) {
+        ctx->connection_thread_local = fc_connection_thread_local_auto;
+    } else if (strcasecmp(connection_thread_local, "yes") == 0) {
+        ctx->connection_thread_local = fc_connection_thread_local_yes;
+    } else if (strcasecmp(connection_thread_local, "no") == 0) {
+        ctx->connection_thread_local = fc_connection_thread_local_no;
+    } else {
+        logWarning("file: "__FILE__", line: %d, "
+                "config file: %s, invalid connection_thread_local: %s, "
+                "set to auto!", __LINE__, config_filename,
+                connection_thread_local);
+        ctx->connection_thread_local = fc_connection_thread_local_auto;
+    }
+}
+
 static int fc_server_load_data(FCServerConfig *ctx,
         IniContext *ini_context, const char *config_filename)
 {
 	int result;
+    int buffer_size;
+    bool have_rdma;
+    IniFullContext full_ini_ctx;
+    FCSmartPollingConfig default_smart_polling;
+    FCServerGroupInfo *group;
+    FCServerGroupInfo *end;
 
-    if ((result=fc_server_load_groups(ctx, config_filename,
-                    ini_context)) != 0)
+    FAST_INI_SET_FULL_CTX_EX(full_ini_ctx,
+            config_filename, NULL, ini_context);
+    default_smart_polling.enabled = true;
+    default_smart_polling.switch_on_iops = 10240;
+    default_smart_polling.switch_on_count = 3;
+    if ((result=load_comm_type_and_smart_polling(&full_ini_ctx,
+                    &ctx->comm_type, &ctx->smart_polling,
+                    fc_comm_type_sock, &default_smart_polling)) != 0)
     {
         return result;
     }
+
+    if ((result=fc_server_load_groups(ctx, &full_ini_ctx)) != 0) {
+        return result;
+    }
+
+    have_rdma = false;
+    end = ctx->group_array.groups + ctx->group_array.count;
+    for (group=ctx->group_array.groups; group<end; group++) {
+        if (group->comm_type != fc_comm_type_sock) {
+            have_rdma = true;
+            break;
+        }
+    }
+
+    if (have_rdma) {
+        full_ini_ctx.section_name = NULL;
+        buffer_size = iniGetByteValue(NULL, "buffer_size",
+                ini_context, 256 * 1024);
+        ctx->buffer_size = iniCheckAndCorrectIntValue(&full_ini_ctx,
+                "buffer_size", buffer_size, 8 * 1024, 8 * 1024 * 1024);
+    } else {
+        ctx->buffer_size = 0;
+    }
+    load_connection_thread_local(ctx, ini_context, config_filename);
 
     if ((result=fc_server_load_servers(ctx, config_filename,
                     ini_context)) != 0)
@@ -1340,13 +1477,27 @@ static int fc_groups_to_string(FCServerConfig *ctx, FastBuffer *buffer)
 
         fast_buffer_append(buffer,
                 "[%s%.*s]\n"
-                "port = %d\n"
-                "net_type = %s\n"
-                "ip_prefix = %.*s\n\n",
+                "port = %d\n",
                 GROUP_SECTION_PREFIX_STR,
                 group->group_name.len, group->group_name.str,
-                group->port, net_type_caption,
-                group->filter.ip_prefix.len,
+                group->port);
+
+        if (group->comm_type != fc_comm_type_sock) {
+            fast_buffer_append(buffer,
+                    "communication = %s\n"
+                    "smart_polling = %d\n"
+                    "polling_switch_on_iops = %d\n"
+                    "polling_switch_on_count = %d\n",
+                    fc_comm_type_str(group->comm_type),
+                    group->smart_polling.enabled,
+                    group->smart_polling.switch_on_iops,
+                    group->smart_polling.switch_on_count);
+        }
+
+        fast_buffer_append(buffer,
+                "net_type = %s\n"
+                "ip_prefix = %.*s\n\n",
+                net_type_caption, group->filter.ip_prefix.len,
                 group->filter.ip_prefix.str);
     }
     return 0;
@@ -1423,6 +1574,14 @@ int fc_server_to_config_string(FCServerConfig *ctx, FastBuffer *buffer)
 {
     int result;
 
+    if (ctx->buffer_size > 0) {
+        if ((result=fast_buffer_check(buffer, 1024)) != 0) {
+            return result;
+        }
+        fast_buffer_append(buffer, "buffer_size = %d KB",
+                ctx->buffer_size / 1024);
+    }
+
     fc_server_clear_server_port(&ctx->group_array);
     if ((result=fc_groups_to_string(ctx, buffer)) != 0) {
         return result;
@@ -1435,13 +1594,27 @@ static void fc_server_log_groups(FCServerConfig *ctx)
 {
     FCServerGroupInfo *group;
     FCServerGroupInfo *end;
+    char buff[1024];
+    char *p;
 
     end = ctx->group_array.groups + ctx->group_array.count;
     for (group=ctx->group_array.groups; group<end; group++) {
-        logInfo("group_name: %.*s, port: %d, net_type: %s, ip_prefix: %.*s",
-                group->group_name.len, group->group_name.str, group->port,
+        p = buff + sprintf(buff, "group_name: %.*s, port: %d",
+                group->group_name.len, group->group_name.str,
+                group->port);
+        if (group->comm_type != fc_comm_type_sock) {
+            p += sprintf(p, ", communication: %s, smart_polling: %d, "
+                    "polling_switch_on_iops: %d, polling_switch_on_count: %d",
+                    fc_comm_type_str(group->comm_type),
+                    group->smart_polling.enabled,
+                    group->smart_polling.switch_on_iops,
+                    group->smart_polling.switch_on_count);
+        }
+        p += sprintf(p, ", net_type: %s, ip_prefix: %.*s",
                 get_net_type_caption(group->filter.net_type),
                 group->filter.ip_prefix.len, group->filter.ip_prefix.str);
+
+        log_it1(LOG_INFO, buff, p - buff);
     }
 }
 
@@ -1491,65 +1664,18 @@ static void fc_server_log_servers(FCServerConfig *ctx)
 
 void fc_server_to_log(FCServerConfig *ctx)
 {
+    char buff[256];
+    char *p;
+
+    p = buff + sprintf(buff, "connection_thread_local: %s",
+            fc_connection_thread_local_str(ctx->connection_thread_local));
+    if (ctx->buffer_size > 0) {
+        p += sprintf(p, ", buffer_size: %d KB", ctx->buffer_size / 1024);
+    }
+    log_it1(LOG_INFO, buff, p - buff);
+
     fc_server_log_groups(ctx);
     fc_server_log_servers(ctx);
-}
-
-ConnectionInfo *fc_server_check_connect_ex(FCAddressPtrArray *addr_array,
-        const char *service_name, const int connect_timeout,
-        const char *bind_ipaddr, const bool log_connect_error, int *err_no)
-{
-    FCAddressInfo **current;
-    FCAddressInfo **addr;
-    FCAddressInfo **end;
-
-    if (addr_array->count <= 0) {
-        *err_no = ENOENT;
-        return NULL;
-    }
-
-    current = addr_array->addrs + addr_array->index;
-    if ((*current)->conn.sock >= 0) {
-        return &(*current)->conn;
-    }
-
-    if ((*err_no=conn_pool_connect_server_ex1(&(*current)->conn,
-                    service_name, connect_timeout, bind_ipaddr,
-                    log_connect_error)) == 0)
-    {
-        return &(*current)->conn;
-    }
-
-    if (addr_array->count == 1) {
-        return NULL;
-    }
-
-    end = addr_array->addrs + addr_array->count;
-    for (addr=addr_array->addrs; addr<end; addr++) {
-        if (addr == current) {
-            continue;
-        }
-        if ((*err_no=conn_pool_connect_server_ex1(&(*addr)->conn,
-                        service_name, connect_timeout, bind_ipaddr,
-                        log_connect_error)) == 0)
-        {
-            addr_array->index = addr - addr_array->addrs;
-            return &(*addr)->conn;
-        }
-    }
-
-    return NULL;
-}
-
-void fc_server_disconnect(FCAddressPtrArray *addr_array)
-{
-    FCAddressInfo **current;
-
-    current = addr_array->addrs + addr_array->index;
-    if ((*current)->conn.sock >= 0) {
-        close((*current)->conn.sock);
-        (*current)->conn.sock = -1;
-    }
 }
 
 int fc_server_make_connection_ex(FCAddressPtrArray *addr_array,
@@ -1567,10 +1693,11 @@ int fc_server_make_connection_ex(FCAddressPtrArray *addr_array,
     }
 
     current = addr_array->addrs + addr_array->index;
-    *conn = (*current)->conn;
-    conn->sock = -1;
-    if ((result=conn_pool_connect_server_ex1(conn,
-                    service_name, connect_timeout,
+    conn_pool_set_server_info(conn, (*current)->conn.ip_addr,
+            (*current)->conn.port);
+    conn->comm_type = (*current)->conn.comm_type;
+    if ((result=G_COMMON_CONNECTION_CALLBACKS[conn->comm_type].
+                make_connection(conn, service_name, connect_timeout * 1000,
                     bind_ipaddr, log_connect_error)) == 0)
     {
         return 0;
@@ -1586,10 +1713,10 @@ int fc_server_make_connection_ex(FCAddressPtrArray *addr_array,
             continue;
         }
 
-        *conn = (*addr)->conn;
-        conn->sock = -1;
-        if ((result=conn_pool_connect_server_ex1(conn,
-                        service_name, connect_timeout,
+        conn_pool_set_server_info(conn, (*addr)->conn.ip_addr,
+                (*addr)->conn.port);
+        if ((result=G_COMMON_CONNECTION_CALLBACKS[conn->comm_type].
+                make_connection(conn, service_name, connect_timeout * 1000,
                         bind_ipaddr, log_connect_error)) == 0)
         {
             addr_array->index = addr - addr_array->addrs;
@@ -1623,4 +1750,35 @@ const FCAddressInfo *fc_server_get_address_by_peer(
     }
 
     return *(addr_array->addrs);
+}
+
+struct ibv_pd *fc_alloc_rdma_pd(fc_alloc_pd_callback alloc_pd,
+        FCAddressPtrArray *address_array, int *result)
+{
+    char *ip_addrs[FC_MAX_SERVER_IP_COUNT];
+    char **ip_addr;
+    FCAddressInfo **addr;
+    FCAddressInfo **end;
+    struct ibv_pd *pd;
+    int port;
+
+    if (address_array->count == 0) {
+        port = 0;
+    } else {
+        port = address_array->addrs[0]->conn.port;
+    }
+
+    end = address_array->addrs + address_array->count;
+    for (addr=address_array->addrs, ip_addr=ip_addrs; addr<end; addr++) {
+        *ip_addr = (*addr)->conn.ip_addr;
+    }
+
+    if ((pd=alloc_pd((const char **)ip_addrs, address_array->
+                    count, port)) != NULL)
+    {
+        *result = 0;
+    } else {
+        *result = ENODEV;
+    }
+    return pd;
 }

@@ -50,8 +50,51 @@ void fc_queue_push_ex(struct fc_queue *queue, void *data, bool *notify)
         *notify = false;
 	}
 	queue->tail = data;
-
     PTHREAD_MUTEX_UNLOCK(&queue->lcp.lock);
+}
+
+static inline bool fc_queue_exists(struct fc_queue *queue, void *data)
+{
+    void *current;
+    if (queue->head == NULL) {
+        return false;
+    }
+
+    current = queue->head;
+    do {
+        if (current == data) {
+            return true;
+        }
+        current = FC_QUEUE_NEXT_PTR(queue, current);
+    } while (current != NULL);
+
+    return false;
+}
+
+int fc_queue_push_with_check_ex(struct fc_queue *queue,
+        void *data, bool *notify)
+{
+    int result;
+
+    PTHREAD_MUTEX_LOCK(&queue->lcp.lock);
+    if (fc_queue_exists(queue, data)) {
+        result = EEXIST;
+        *notify = false;
+    } else {
+        result = 0;
+        FC_QUEUE_NEXT_PTR(queue, data) = NULL;
+        if (queue->tail == NULL) {
+            queue->head = data;
+            *notify = true;
+        } else {
+            FC_QUEUE_NEXT_PTR(queue, queue->tail) = data;
+            *notify = false;
+        }
+        queue->tail = data;
+    }
+    PTHREAD_MUTEX_UNLOCK(&queue->lcp.lock);
+
+    return result;
 }
 
 void *fc_queue_pop_ex(struct fc_queue *queue, const bool blocked)
