@@ -182,6 +182,17 @@ static inline int free_queue_init_ex(struct fast_task_queue *queue,
             arg_size, NULL);
 }
 
+static inline int free_queue_init(struct fast_task_queue *queue,
+        const int max_connections, const int alloc_task_once,
+        const int min_buff_size, const int max_buff_size)
+{
+    const char *name = "";
+    const bool double_buffers = false;
+    const int arg_size = 0;
+    return free_queue_init_ex(queue, name, double_buffers, max_connections,
+            alloc_task_once, min_buff_size, max_buff_size, arg_size);
+}
+
 static inline void free_queue_set_release_callback(
         struct fast_task_queue *queue,
         TaskReleaseCallback callback)

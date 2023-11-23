@@ -49,11 +49,7 @@ typedef DWORD (WINAPI *ThreadEntranceFunc)(LPVOID lpThreadParameter);
 #endif
 
 /* Internet address (兼容IPv6长度).  */
-typedef unsigned long int in_addr_64_t;
-struct in_addr_64
-  {
-    in_addr_64_t s_addr;
-  };
+typedef uint64_t in_addr_64_t;
 
 #define FILE_SEPERATOR	"/"
 typedef int SOCKET;

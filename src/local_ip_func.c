@@ -83,7 +83,7 @@ const char *local_host_ip_addrs_to_string(char *buff, const int size)
 
 void log_local_host_ip_addrs()
 {
-	char buff[512];
+	char buff[1024];
 	logInfo("%s", local_host_ip_addrs_to_string(buff, sizeof(buff)));
 }
 
@@ -124,8 +124,8 @@ void load_local_host_ip_addrs()
 		insert_into_local_host_ip(ip_addresses[k]);
 	}
 
-	// log_local_host_ip_addrs();
-	// print_local_host_ip_addrs();
+	//log_local_host_ip_addrs();
+	//print_local_host_ip_addrs();
 }
 
 void print_local_host_ip_addrs()
@@ -188,7 +188,9 @@ const char *get_first_local_ip()
     }
     else
     {
-		// 注意，当系统存在IPv6回环地址时，为了简化系统的改动，会将IPv6回环地址修改成IPv4回环地址返回
+        /* 注意，当系统存在IPv6回环地址时，为了简化系统的改动，
+           会将IPv6回环地址修改成IPv4回环地址返回
+           */
         return LOCAL_LOOPBACK_IPv4;
     }
 }

@@ -2829,34 +2829,26 @@ bool is_private_ip(const char* ip)
     return false;
 }
 
-int parseAddress(char *src, char *parts[2]){
-    char *ip = NULL;  
-    char *port = NULL;  
-  
-    // 检查输入字符串是否为IPv6地址格式  
-    if (src[0] == '[') {  
-        ip = strtok(src, "[]");  
-        parts[0] = ip;  
-        port = strtok(NULL, ":");  
-        if(port=='\0'){
-            return 1;
-        }else{
-            parts[1]=port;
-            return 2;
-        }
-    } else {  
-        ip = strtok(src, ":");  
-        parts[0] = ip;  
-        port = strtok(NULL, ":");  
-        if(port=='\0'){
-            return 1;
-        }else{
-            parts[1]=port;
-            return 2;
-        }
-    }  
-}
+int parseAddress(char *src, char *parts[2])
+{
+    char *ip;
+    char *port;
 
+    if (src[0] == '[') {
+        ip = strtok(src, "[]");
+    } else {
+        ip = strtok(src, ":");
+    }
+
+    parts[0] = ip;
+    port = strtok(NULL, ":");
+    if (port == NULL) {
+        return 1;
+    } else {
+        parts[1] = port;
+        return 2;
+    }
+}
 
 int64_t get_current_time_ns()
 {

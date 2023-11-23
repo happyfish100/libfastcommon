@@ -85,7 +85,6 @@ int id_generator_init_extra_ex(struct idg_context *context, const char *filename
 		const char *private_ip;
 		struct in_addr ip_addr;
 		struct in6_addr ip6_addr;
-		bool is_local_ip_ok = false;
 
 		private_ip = get_first_local_private_ip();
 		if (private_ip != NULL)
@@ -104,23 +103,26 @@ int id_generator_init_extra_ex(struct idg_context *context, const char *filename
 			}
 			else if (strcmp(local_ip, LOCAL_LOOPBACK_IPv4) == 0)
 			{
-				// 注意，当系统存在IPv6回环地址时，为了简化系统的改动，会将IPv6回环地址修改成IPv4回环地址返回
-				// 此处错误打印时，需要带上IPv6回环地址
+				/* 注意，当系统存在IPv6回环地址时，为了简化系统的改动，
+                   会将IPv6回环地址修改成IPv4回环地址返回
+                   此处错误打印时，需要带上IPv6回环地址
+                   */
 				logWarning("file: "__FILE__", line: %d, "
 					"can't get local ip address, set to %s or %s",
 					__LINE__, LOCAL_LOOPBACK_IPv4, LOCAL_LOOPBACK_IPv6);
 			}
 		}
 
-		if (inet_pton(AF_INET, local_ip, &ip_addr) != 1)
-		{
-			is_local_ip_ok = true;
-		}else if(inet_pton(AF_INET6, local_ip, &ip6_addr) != 1)
-		{
-			is_local_ip_ok = true;
-		}
-
-		if(is_local_ip_ok){
+		if (inet_pton(AF_INET, local_ip, &ip_addr) == 1)
+        {
+            //do nothing
+        }
+        else if(inet_pton(AF_INET6, local_ip, &ip6_addr) == 1)
+        {
+            ip_addr.s_addr = *((in_addr_64_t *)&ip6_addr);
+        }
+        else
+        {
 			logError("file: "__FILE__", line: %d, "
 				"invalid local ip address: %s",
 				__LINE__, local_ip);

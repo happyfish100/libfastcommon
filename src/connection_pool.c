@@ -695,11 +695,10 @@ int conn_pool_parse_server_info(const char *pServerStr,
     memcpy(server_info, pServerStr, len);
     *(server_info + len) = '\0';
 
-    count = parseAddress(server_info,parts);
+    count = parseAddress(server_info, parts);
     if (count == 1) {
         pServerInfo->port = default_port;
-    }
-    else {
+    } else {
         char *endptr = NULL;
         pServerInfo->port = (int)strtol(parts[1], &endptr, 10);
         if ((endptr != NULL && *endptr != '\0') || pServerInfo->port <= 0) {
@@ -709,7 +708,7 @@ int conn_pool_parse_server_info(const char *pServerStr,
             return EINVAL;
         }
     }
-    
+
     if (getIpaddrByName(parts[0], pServerInfo->ip_addr,
         sizeof(pServerInfo->ip_addr)) == INADDR_NONE)
     {
