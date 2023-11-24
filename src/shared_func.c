@@ -2005,7 +2005,7 @@ static int parse_cidr_ips(const char *ip_addr, in_addr_64_t **allow_ip_addrs,
 	int host_bits;
 	int bits;
 	uint32_t hip;
-	in_addr_t nip;
+	in_addr_64_t nip;
 	int h;
 	int count;
 	int result;
@@ -2237,7 +2237,7 @@ static int parse_range_hosts(const char *value, char *pStart, char *pEnd,
 	return 0;
 }
 
-int load_allow_hosts(IniContext *pIniContext, \
+int load_allow_hosts(IniContext *pIniContext,
 		in_addr_64_t **allow_ip_addrs, int *allow_ip_count)
 {
 	int result;
@@ -2252,7 +2252,7 @@ int load_allow_hosts(IniContext *pIniContext, \
 	int nHeadLen;
 	int nValueLen;
 	int i;
-	in_addr_t addr;
+	in_addr_64_t addr;
 	char hostname[256];
 
 	if ((pItemStart=iniGetValuesEx(NULL, "allow_hosts", \
@@ -2359,13 +2359,13 @@ int load_allow_hosts(IniContext *pIniContext, \
 
 	if (*allow_ip_count == 0)
 	{
-		logWarning("file: "__FILE__", line: %d, " \
+		logWarning("file: "__FILE__", line: %d, "
 			"allow ip count: 0", __LINE__);
 	}
 
 	if (*allow_ip_count > 0)
 	{
-		qsort(*allow_ip_addrs,  *allow_ip_count, sizeof(in_addr_t), \
+		qsort(*allow_ip_addrs,  *allow_ip_count, sizeof(in_addr_64_t),
 			cmp_by_ip_addr_t);
 	}
 
@@ -2384,7 +2384,7 @@ int load_allow_hosts(IniContext *pIniContext, \
 
 int cmp_by_ip_addr_t(const void *p1, const void *p2)
 {
-        return memcmp((in_addr_t *)p1, (in_addr_t *)p2, sizeof(in_addr_t));
+    return memcmp((in_addr_64_t *)p1, (in_addr_64_t *)p2, sizeof(in_addr_64_t));
 }
 
 int parse_bytes(const char *pStr, const int default_unit_bytes, int64_t *bytes)

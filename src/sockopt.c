@@ -1117,7 +1117,7 @@ in_addr_64_t getIpaddr(getnamefunc getname, int sock,
     if (convert.sa.addr.sa_family == AF_INET) {
         return convert.sa.addr4.sin_addr.s_addr;
     } else {
-        return *((in_addr_64_t *)&convert.sa.addr6.sin6_addr);
+        return *((in_addr_64_t *)((char *)&convert.sa.addr6.sin6_addr + 8));
     }
 }
 
@@ -1218,7 +1218,7 @@ in_addr_64_t getIpaddrByName(const char *name, char *buff, const int bufferSize)
                 }
             }
 
-            ip_addr = *((in_addr_64_t *)&ipv6->sin6_addr);
+            ip_addr = *((in_addr_64_t *)((char *)&ipv6->sin6_addr + 8));
             freeaddrinfo(res);
             return ip_addr;
         }
@@ -1268,7 +1268,7 @@ int getIpaddrsByName(const char *name,
                 continue;
             }
         } else {
-            addr = (struct sockaddr_in *) res->ai_addr;
+            addr = (struct sockaddr_in *)res->ai_addr;
             if (inet_ntop(res->ai_family, &addr->sin_addr,
                     ip_addr_arr[ip_count].ip_addr, INET6_ADDRSTRLEN) == NULL)
             {

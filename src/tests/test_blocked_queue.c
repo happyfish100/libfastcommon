@@ -30,6 +30,7 @@
 static bool g_continue_flag = true;
 static int64_t produce_count = 0;
 static int64_t consume_count = 0;
+static struct fast_task_queue free_queue;
 static struct fast_blocked_queue blocked_queue;
 
 #define MAX_USLEEP 10000
@@ -51,7 +52,7 @@ void *producer_thread(void *arg)
             printf("produce count: %"PRId64"\n", count);
         }
 
-        pTask = free_queue_pop();
+        pTask = free_queue_pop(&free_queue);
         if (pTask != NULL) {
             blocked_queue_push(&blocked_queue, pTask);
         }
@@ -99,7 +100,7 @@ int main(int argc, char *argv[])
         return errno;
     }
 
-    result = free_queue_init(1024, min_buff_size, \
+    result = free_queue_init(&free_queue, 1024, min_buff_size,
             max_buff_size, arg_size);
     if (result != 0) {
         return result;

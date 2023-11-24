@@ -1,4 +1,7 @@
 
+Version 1.71  2023-11-24
+  * full support IPv6 by pull request #47
+
 Version 1.70  2023-09-30
   * get full mac address of infiniband NIC under Linux
   * struct fast_task_info add field conn for RDMA connection
