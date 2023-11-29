@@ -26,6 +26,7 @@
 #include "fast_mblock.h"
 #include "ini_file_reader.h"
 #include "pthread_func.h"
+#include "sockopt.h"
 #include "hash.h"
 
 #ifdef __cplusplus
@@ -49,7 +50,7 @@ typedef enum {
 typedef struct {
     int sock;
     uint16_t port;
-    short socket_domain;  //socket domain, AF_INET, AF_INET6 or AF_UNSPEC for auto dedect
+    short af;  //address family, AF_INET, AF_INET6 or AF_UNSPEC for auto dedect
     FCCommunicationType comm_type;
     bool validate_flag;   //for connection pool
     char ip_addr[IP_ADDRESS_SIZE];
@@ -174,7 +175,6 @@ typedef struct tagConnectionPool {
     unit: second
 	*/
 	int max_idle_time;
-    int socket_domain;  //socket domain
 
     struct fast_mblock_man manager_allocator;
     struct fast_mblock_man node_allocator;
@@ -208,7 +208,7 @@ int conn_pool_global_init_for_rdma();
 *      connect_timeout: the connect timeout in seconds
 *      max_count_per_entry: max connection count per host:port
 *      max_idle_time: reconnect the server after max idle time in seconds
-*      socket_domain: the socket domain
+*      af: the socket domain
 *      htable_init_capacity: the init capacity of connection hash table
 *      connect_done_func: the connect done connection callback
 *      connect_done_args: the args for connect done connection callback
@@ -220,7 +220,7 @@ int conn_pool_global_init_for_rdma();
 */
 int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
 	const int max_count_per_entry, const int max_idle_time,
-    const int socket_domain, const int htable_init_capacity,
+    const int htable_init_capacity,
     fc_connection_callback_func connect_done_func, void *connect_done_args,
     fc_connection_callback_func validate_func, void *validate_args,
     const int extra_data_size, const ConnectionExtraParams *extra_params);
@@ -232,19 +232,17 @@ int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
 *      connect_timeout: the connect timeout in seconds
 *      max_count_per_entry: max connection count per host:port
 *      max_idle_time: reconnect the server after max idle time in seconds
-*      socket_domain: the socket domain
 *   return 0 for success, != 0 for error
 */
 static inline int conn_pool_init_ex(ConnectionPool *cp, int connect_timeout,
-	const int max_count_per_entry, const int max_idle_time,
-    const int socket_domain)
+	const int max_count_per_entry, const int max_idle_time)
 {
     const int htable_init_capacity = 0;
     const int extra_data_size = 0;
     const ConnectionExtraParams *extra_params = NULL;
     return conn_pool_init_ex1(cp, connect_timeout, max_count_per_entry,
-            max_idle_time, socket_domain, htable_init_capacity,
-            NULL, NULL, NULL, NULL, extra_data_size, extra_params);
+            max_idle_time, htable_init_capacity, NULL, NULL, NULL, NULL,
+            extra_data_size, extra_params);
 }
 
 /**
@@ -259,13 +257,12 @@ static inline int conn_pool_init_ex(ConnectionPool *cp, int connect_timeout,
 static inline int conn_pool_init(ConnectionPool *cp, int connect_timeout,
 	const int max_count_per_entry, const int max_idle_time)
 {
-    const int socket_domain = AF_UNSPEC;
     const int htable_init_capacity = 0;
     const int extra_data_size = 0;
     const ConnectionExtraParams *extra_params = NULL;
     return conn_pool_init_ex1(cp, connect_timeout, max_count_per_entry,
-            max_idle_time, socket_domain, htable_init_capacity,
-            NULL, NULL, NULL, NULL, extra_data_size, extra_params);
+            max_idle_time, htable_init_capacity, NULL, NULL, NULL, NULL,
+            extra_data_size, extra_params);
 }
 
 /**
@@ -444,7 +441,7 @@ static inline void conn_pool_set_server_info(ConnectionInfo *pServerInfo,
     snprintf(pServerInfo->ip_addr, sizeof(pServerInfo->ip_addr),
             "%s", ip_addr);
     pServerInfo->port = port;
-    pServerInfo->socket_domain = AF_UNSPEC;
+    pServerInfo->af = is_ipv6_addr(ip_addr) ? AF_INET6 : AF_INET;
     pServerInfo->sock = -1;
 }
 

@@ -1176,22 +1176,23 @@ char *getHostnameByIp(const char *szIpAddr, char *buff, const int bufferSize)
 	return buff;
 }
 
-in_addr_64_t getIpaddrByName(const char *name, char *buff, const int bufferSize)
+in_addr_64_t getIpaddrByNameEx(const char *name, char *buff,
+        const int bufferSize, short *af)
 {
-	struct addrinfo hints, *res, *p; 
-	int status;
+	struct addrinfo hints, *res, *p;
     in_addr_64_t ip_addr;
 
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC; // 支持IPv4和IPv6
-	status = getaddrinfo(name, NULL, &hints, &res);
-	if (status != 0)
+	if (getaddrinfo(name, NULL, &hints, &res) != 0)
     {
+        *af = AF_UNSPEC;
         return INADDR_NONE;
     }
 
     for (p = res; p != NULL; p = p->ai_next)
     {
+        *af = p->ai_family;
         if (p->ai_family == AF_INET) // 处理IPv4地址
         {
             struct sockaddr_in *ipv4 = (struct sockaddr_in *)p->ai_addr;
@@ -1225,6 +1226,7 @@ in_addr_64_t getIpaddrByName(const char *name, char *buff, const int bufferSize)
     }
 
     freeaddrinfo(res);
+    *af = AF_UNSPEC;
     return INADDR_NONE;
 }
 
@@ -1279,7 +1281,7 @@ int getIpaddrsByName(const char *name,
             }
         }
 
-        ip_addr_arr[ip_count++].socket_domain = res->ai_family;
+        ip_addr_arr[ip_count++].af = res->ai_family;
     }
 
     freeaddrinfo(res0);

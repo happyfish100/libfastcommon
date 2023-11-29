@@ -35,12 +35,14 @@ extern "C" {
 #endif
 
 extern int g_local_host_ip_count;
-extern char g_local_host_ip_addrs[FAST_MAX_LOCAL_IP_ADDRS * \
+extern char g_local_host_ip_addrs[FAST_MAX_LOCAL_IP_ADDRS *
 				IP_ADDRESS_SIZE];
 extern char g_if_alias_prefix[FAST_IF_ALIAS_PREFIX_MAX_SIZE];
 
 void load_local_host_ip_addrs();
 bool is_local_host_ip(const char *client_ip);
+
+void stat_local_host_ip(int *ipv4_count, int *ipv6_count);
 
 const char *get_first_local_ip();
 const char *get_next_local_ip(const char *previous_ip);

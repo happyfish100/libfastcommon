@@ -61,7 +61,7 @@ typedef struct fast_if_config {
 
 typedef struct ip_addr_s {
     char ip_addr[IP_ADDRESS_SIZE];
-    int socket_domain;
+    int af;
 } ip_addr_t;
 
 typedef struct sockaddr_convert_s {
@@ -376,9 +376,18 @@ char *getHostnameByIp(const char *szIpAddr, char *buff, const int bufferSize);
  *          name: the hostname 
  *          buff: buffer to store the ip address
  *          bufferSize: the buffer size (max bytes)
+ *          af: store the address family
  *  return: in_addr_64_t, INADDR_NONE for fail
 */
-in_addr_64_t getIpaddrByName(const char *name, char *buff, const int bufferSize);
+in_addr_64_t getIpaddrByNameEx(const char *name, char *buff,
+        const int bufferSize, short *af);
+
+static inline in_addr_64_t getIpaddrByName(const char *name,
+        char *buff, const int bufferSize)
+{
+    short af;
+    return getIpaddrByNameEx(name, buff, bufferSize, &af);
+}
 
 /** get by ip addresses by it's hostname
  *  parameters:

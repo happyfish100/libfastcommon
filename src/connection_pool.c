@@ -76,7 +76,7 @@ static void cp_tls_destroy(void *ptr)
 
 int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
 	const int max_count_per_entry, const int max_idle_time,
-    const int socket_domain, const int htable_init_capacity,
+    const int htable_init_capacity,
     fc_connection_callback_func connect_done_func, void *connect_done_args,
     fc_connection_callback_func validate_func, void *validate_args,
     const int extra_data_size, const ConnectionExtraParams *extra_params)
@@ -95,7 +95,6 @@ int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
 	cp->max_count_per_entry = max_count_per_entry;
 	cp->max_idle_time = max_idle_time;
 	cp->extra_data_size = extra_data_size;
-	cp->socket_domain = socket_domain;
     cp->connect_done_callback.func = connect_done_func;
     cp->connect_done_callback.args = connect_done_args;
     cp->validate_callback.func = validate_func;
@@ -211,7 +210,7 @@ int conn_pool_connect_server_ex1(ConnectionInfo *conn,
 		close(conn->sock);
 	}
 
-    if ((conn->sock=socketCreateEx2(conn->socket_domain, conn->ip_addr,
+    if ((conn->sock=socketCreateEx2(conn->af, conn->ip_addr,
                     O_NONBLOCK, bind_ipaddr, &result)) < 0)
     {
         return result;
@@ -247,9 +246,8 @@ int conn_pool_async_connect_server_ex(ConnectionInfo *conn,
         close(conn->sock);
     }
 
-    if ((conn->sock=socketCreateEx2(conn->socket_domain,
-                    conn->ip_addr, O_NONBLOCK, bind_ipaddr,
-                    &result)) < 0)
+    if ((conn->sock=socketCreateEx2(conn->af, conn->ip_addr,
+                    O_NONBLOCK, bind_ipaddr, &result)) < 0)
     {
         return result;
     }
@@ -353,7 +351,7 @@ static ConnectionInfo *get_connection(ConnectionPool *cp,
 			memcpy(node->conn->ip_addr, conn->ip_addr, sizeof(conn->ip_addr));
             node->conn->port = conn->port;
             node->conn->comm_type = conn->comm_type;
-            node->conn->socket_domain = cp->socket_domain;
+            node->conn->af = conn->af;
 			node->conn->sock = -1;
             node->conn->validate_flag = false;
 			*err_no = G_COMMON_CONNECTION_CALLBACKS[conn->comm_type].
@@ -703,22 +701,22 @@ int conn_pool_parse_server_info(const char *pServerStr,
         pServerInfo->port = (int)strtol(parts[1], &endptr, 10);
         if ((endptr != NULL && *endptr != '\0') || pServerInfo->port <= 0) {
             logError("file: "__FILE__", line: %d, "
-                "host: %s, invalid port: %s!",
-                __LINE__, pServerStr, parts[1]);
+                    "host: %s, invalid port: %s!",
+                    __LINE__, pServerStr, parts[1]);
             return EINVAL;
         }
     }
 
-    if (getIpaddrByName(parts[0], pServerInfo->ip_addr,
-        sizeof(pServerInfo->ip_addr)) == INADDR_NONE)
-    {
+    if (getIpaddrByNameEx(parts[0], pServerInfo->ip_addr,
+                sizeof(pServerInfo->ip_addr),
+                &pServerInfo->af) == INADDR_NONE)
+                {
         logError("file: "__FILE__", line: %d, "
-            "host: %s, invalid hostname: %s!",
-            __LINE__, pServerStr, parts[0]);
+                "host: %s, invalid hostname: %s!",
+                __LINE__, pServerStr, parts[0]);
         return EINVAL;
     }
 
-    pServerInfo->socket_domain = AF_UNSPEC;
     pServerInfo->sock = -1;
     pServerInfo->comm_type = fc_comm_type_sock;
     return 0;

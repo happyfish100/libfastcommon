@@ -31,7 +31,7 @@ bool is_local_host_ip(const char *client_ip)
 	char *p;
 	char *pEnd;
 
-	pEnd = g_local_host_ip_addrs + \
+	pEnd = g_local_host_ip_addrs +
 		IP_ADDRESS_SIZE * g_local_host_ip_count;
 	for (p=g_local_host_ip_addrs; p<pEnd; p+=IP_ADDRESS_SIZE)
 	{
@@ -56,9 +56,8 @@ int insert_into_local_host_ip(const char *client_ip)
 		return -1;
 	}
 
-	strcpy(g_local_host_ip_addrs + \
-		IP_ADDRESS_SIZE * g_local_host_ip_count, \
-		client_ip);
+	strcpy(g_local_host_ip_addrs + IP_ADDRESS_SIZE *
+            g_local_host_ip_count, client_ip);
 	g_local_host_ip_count++;
 	return 1;
 }
@@ -217,3 +216,17 @@ const char *get_first_local_private_ip()
     return NULL;
 }
 
+void stat_local_host_ip(int *ipv4_count, int *ipv6_count)
+{
+    const char *ip_addr;
+
+    *ipv4_count = *ipv6_count = 0;
+    ip_addr = NULL;
+    while ((ip_addr=get_next_local_ip(ip_addr)) != NULL) {
+        if (is_ipv6_addr(ip_addr)) {
+            ++(*ipv6_count);
+        } else {
+            ++(*ipv4_count);
+        }
+    }
+}
