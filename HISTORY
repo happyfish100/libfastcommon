@@ -1,6 +1,7 @@
 
-Version 1.71  2023-11-24
+Version 1.71  2023-12-01
   * full support IPv6 by pull request #47
+  * replace inet_ntop to getnameinfo for IPv6
 
 Version 1.70  2023-09-30
   * get full mac address of infiniband NIC under Linux

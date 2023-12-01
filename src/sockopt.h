@@ -696,7 +696,8 @@ int getifconfigs(FastIFConfig *if_configs, const int max_count, int *count);
  *          convert: the convert struct for IPv4 and IPv6 compatibility
  *  return: error no, 0 success, != 0 fail
 */
-int setsockaddrbyip(const char *ip, const uint16_t port, sockaddr_convert_t *convert);
+int setsockaddrbyip(const char *ip, const uint16_t port,
+        sockaddr_convert_t *convert);
 
 static inline bool is_ipv6_addr(const char *ip)
 {
@@ -717,6 +718,9 @@ bool tcp_socket_connected(int sock);
 int fc_get_net_type_by_name(const char *net_type);
 
 int fc_get_net_type_by_ip(const char *ip);
+
+const char *fc_inet_ntop(const struct sockaddr *addr,
+        char *buff, const int bufferSize);
 
 static inline bool is_network_error(const int err_no)
 {

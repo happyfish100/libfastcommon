@@ -802,27 +802,46 @@ int tcpwritev_nb(int sock, const struct iovec *iov,
 	return 0;
 }
 
-int setsockaddrbyip(const char *ip, const uint16_t port, sockaddr_convert_t *convert)
+int setsockaddrbyip(const char *ip, const uint16_t port,
+        sockaddr_convert_t *convert)
 {
     int af;
+    int result;
     void *dest;
 
     if (is_ipv6_addr(ip))
     {
         convert->len = sizeof(convert->sa.addr6);
-        dest = &convert->sa.addr6.sin6_addr;
+        if (strchr(ip, '#') != NULL)
+        {
+            struct addrinfo hints, *res;
+
+            memset(&hints, 0, sizeof hints);
+            hints.ai_family = AF_INET6;
+            if ((result=getaddrinfo(ip, NULL, &hints, &res)) != 0)
+            {
+                return result;
+            }
+
+            convert->sa.addr6 = *((struct sockaddr_in6 *)res->ai_addr);
+            convert->sa.addr6.sin6_port = htons(port);
+            freeaddrinfo(res);
+            return 0;
+        }
 
         af = AF_INET6;
-        convert->sa.addr6.sin6_family = PF_INET6;
+        dest = &convert->sa.addr6.sin6_addr;
+        convert->sa.addr6.sin6_family = AF_INET6;
         convert->sa.addr6.sin6_port = htons(port);
+        convert->sa.addr6.sin6_flowinfo = 0;
+        convert->sa.addr6.sin6_scope_id = 0;
     }
     else  //ipv4
     {
+        af = AF_INET;
         convert->len = sizeof(convert->sa.addr4);
         dest = &convert->sa.addr4.sin_addr;
-
-        af = AF_INET;
-        convert->sa.addr4.sin_family = PF_INET;
+        convert->sa.addr4.sin_family = AF_INET;
         convert->sa.addr4.sin_port = htons(port);
     }
 
@@ -921,7 +940,6 @@ int connectserverbyip_nb_ex(int sock, const char *server_ip, \
 			result = 0;
 			break;
 		}
-
 
 #ifdef USE_SELECT
 		FD_ZERO(&rset);
@@ -1066,13 +1084,12 @@ int socketClientEx2(int af, const char *server_ip,
 const char *fc_inet_ntop(const struct sockaddr *addr,
         char *buff, const int bufferSize)
 {
-    void *sin_addr;
-    const char *output;
+    int len;
 
     if (addr->sa_family == AF_INET) {
-        sin_addr = &((struct sockaddr_in *)addr)->sin_addr;
+        len = sizeof(struct sockaddr_in);
     } else if (addr->sa_family == AF_INET6) {
-        sin_addr = &((struct sockaddr_in6 *)addr)->sin6_addr;
+        len = sizeof(struct sockaddr_in6);
     } else {
         *buff = '\0';
         logWarning("file: "__FILE__", line: %d, "
@@ -1080,16 +1097,13 @@ const char *fc_inet_ntop(const struct sockaddr *addr,
         return NULL;
     }
 
-    if ((output=inet_ntop(addr->sa_family, sin_addr, buff, bufferSize)) == NULL)
+    if (getnameinfo(addr, len, buff, bufferSize, NULL, 0,
+                NI_NUMERICHOST | NI_NUMERICSERV) != 0)
     {
         *buff = '\0';
-        logWarning("file: "__FILE__", line: %d, "
-                "call inet_ntop fail, "
-                "errno: %d, error info: %s",
-                __LINE__, errno, STRERROR(errno));
+        return NULL;
     }
-
-    return output;
+    return buff;
 }
 
 in_addr_64_t getIpaddr(getnamefunc getname, int sock,
@@ -1107,7 +1121,11 @@ in_addr_64_t getIpaddr(getnamefunc getname, int sock,
 
     if (convert.len > 0)
     {
-        fc_inet_ntop(&convert.sa.addr, buff, bufferSize);
+        if (getnameinfo(&convert.sa.addr, convert.len, buff, bufferSize,
+                    NULL, 0, NI_NUMERICHOST | NI_NUMERICSERV) != 0)
+        {
+            *buff = '\0';
+        }
     }
     else
     {
@@ -1136,7 +1154,11 @@ int getIpAndPort(getnamefunc getname, int sock,
 
 	if (convert.len > 0)
 	{
-        fc_inet_ntop(&convert.sa.addr, buff, bufferSize);
+        if (getnameinfo(&convert.sa.addr, convert.len, buff, bufferSize,
+                    NULL, 0, NI_NUMERICHOST | NI_NUMERICSERV) != 0)
+        {
+            *buff = '\0';
+        }
 	}
 	else
 	{
@@ -1180,7 +1202,30 @@ in_addr_64_t getIpaddrByNameEx(const char *name, char *buff,
         const int bufferSize, short *af)
 {
 	struct addrinfo hints, *res, *p;
+    struct in_addr  addr4;
+    struct in6_addr addr6;
     in_addr_64_t ip_addr;
+
+    if ((*name >= '0' && *name <= '9') &&
+            inet_pton(AF_INET, name, &addr4) == 1)
+    {
+        if (buff != NULL)
+        {
+            snprintf(buff, bufferSize, "%s", name);
+        }
+        *af = AF_INET;
+        return addr4.s_addr;
+    }
+    if (strchr(name, ':') != NULL && inet_pton(
+                AF_INET6, name, &addr6) == 1)
+    {
+        if (buff != NULL)
+        {
+            snprintf(buff, bufferSize, "%s", name);
+        }
+        *af = AF_INET6;
+        return *((in_addr_64_t *)((char *)&addr6 + 8));
+    }
 
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC; // 支持IPv4和IPv6
@@ -1213,9 +1258,15 @@ in_addr_64_t getIpaddrByNameEx(const char *name, char *buff,
             struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)p->ai_addr;
             if (buff != NULL)
             {
-                if (inet_ntop(AF_INET6, &(ipv6->sin6_addr), buff, bufferSize) == NULL)
+                if (getnameinfo((struct sockaddr *)ipv6, sizeof(*ipv6),
+                            buff, bufferSize, NULL, 0, NI_NUMERICHOST |
+                            NI_NUMERICSERV) != 0)
                 {
-                    *buff = '\0';
+                    if (inet_ntop(AF_INET6, &(ipv6->sin6_addr),
+                                buff, bufferSize) == NULL)
+                    {
+                        *buff = '\0';
+                    }
                 }
             }
 
@@ -1233,9 +1284,9 @@ in_addr_64_t getIpaddrByNameEx(const char *name, char *buff,
 int getIpaddrsByName(const char *name,
     ip_addr_t *ip_addr_arr, const int ip_addr_arr_size)
 {
+    int result;
     int ip_count;
-    struct sockaddr_in *addr;
-    struct sockaddr_in6 *addr6;
+    int len;
     struct addrinfo hints, *res, *res0;
 
     memset(&hints, 0, sizeof(hints));
@@ -1247,11 +1298,20 @@ int getIpaddrsByName(const char *name,
     }
 
     for (ip_count = 0, res = res0; res; res = res->ai_next) {
-        if (res->ai_family != AF_INET6 && res->ai_family != AF_INET) {
-            logError("file: "__FILE__", line: %d, " \
-                     "unsupported family %d, " \
-                     "only suppport AF_INET6 and AF_INET", \
-                     __LINE__, res->ai_family);
+        if (res->ai_family == AF_INET)
+        {
+            len = sizeof(struct sockaddr_in);
+        }
+        else if (res->ai_family == AF_INET6)
+        {
+            len = sizeof(struct sockaddr_in6);
+        }
+        else
+        {
+            logError("file: "__FILE__", line: %d, "
+                    "unsupported family %d, "
+                    "only suppport AF_INET and AF_INET6",
+                    __LINE__, res->ai_family);
             continue;
         }
 
@@ -1259,26 +1319,14 @@ int getIpaddrsByName(const char *name,
             break;
         }
 
-        if (res->ai_family == AF_INET6) {
-            addr6 = (struct sockaddr_in6 *)res->ai_addr;
-            if (inet_ntop(res->ai_family, &addr6->sin6_addr,
-                    ip_addr_arr[ip_count].ip_addr, INET6_ADDRSTRLEN) == NULL)
-            {
-                logError("file: "__FILE__", line: %d, " \
-                         "inet_ntop failed: %d, %s", \
-                         __LINE__, errno, strerror(errno));
-                continue;
-            }
-        } else {
-            addr = (struct sockaddr_in *)res->ai_addr;
-            if (inet_ntop(res->ai_family, &addr->sin_addr,
-                    ip_addr_arr[ip_count].ip_addr, INET6_ADDRSTRLEN) == NULL)
-            {
-                logError("file: "__FILE__", line: %d, " \
-                         "inet_ntop failed: %d, %s", \
-                         __LINE__, errno, strerror(errno));
-                continue;
-            }
+        if ((result=getnameinfo(res->ai_addr, len, ip_addr_arr[ip_count].
+                        ip_addr, IP_ADDRESS_SIZE, NULL, 0,
+                        NI_NUMERICHOST | NI_NUMERICSERV)) != 0)
+        {
+            logError("file: "__FILE__", line: %d, "
+                    "getnameinfo fail, errno: %d, error info: %s",
+                    __LINE__, result, gai_strerror(result));
+            continue;
         }
 
         ip_addr_arr[ip_count++].af = res->ai_family;
@@ -1346,6 +1394,7 @@ int socketBind2(int af, int sock, const char *bind_ipaddr, const int port)
     char bind_ip_prompt[256];
     int result;
 
+    memset(&convert, 0, sizeof(convert));
     convert.sa.addr.sa_family = af;
 	if (bind_ipaddr == NULL || *bind_ipaddr == '\0')
 	{
@@ -1414,15 +1463,31 @@ int socketServer2(int af, const char *bind_ipaddr, const int port, int *err_no)
     SET_SOCKOPT_NOSIGPIPE(sock);
 
 	result = 1;
-	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &result, sizeof(int))<0)
+	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR,
+                &result, sizeof(int)) < 0)
 	{
 		*err_no = errno != 0 ? errno : ENOMEM;
-		logError("file: "__FILE__", line: %d, " \
-			"setsockopt failed, errno: %d, error info: %s", \
+		logError("file: "__FILE__", line: %d, "
+			"setsockopt failed, errno: %d, error info: %s",
 			__LINE__, errno, STRERROR(errno));
 		close(sock);
 		return -2;
 	}
+
+    if (af == AF_INET6 && (bind_ipaddr == NULL || *bind_ipaddr == '\0'))
+    {
+        result = 1;
+        if (setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY,
+                    &result, sizeof(result)) < 0)
+        {
+            *err_no = errno != 0 ? errno : ENOMEM;
+            logError("file: "__FILE__", line: %d, "
+                    "setsockopt failed, errno: %d, error info: %s",
+                    __LINE__, errno, STRERROR(errno));
+            close(sock);
+            return -2;
+        }
+    }
 
 	if ((*err_no=socketBind2(af, sock, bind_ipaddr, port)) != 0)
 	{
@@ -2174,6 +2239,8 @@ int tcpsetnodelay(int fd, const int timeout)
 int getlocaladdrs(char ip_addrs[][IP_ADDRESS_SIZE], \
 	const int max_count, int *count)
 {
+    int result;
+    int len;
 	struct ifaddrs *ifc;
 	struct ifaddrs *ifc1;
 
@@ -2204,36 +2271,33 @@ int getlocaladdrs(char ip_addrs[][IP_ADDRESS_SIZE], \
 			return ENOSPC;
 		}
 
-        if (ifc->ifa_addr->sa_family == AF_INET)
-        {
-            if (inet_ntop(AF_INET, &((struct sockaddr_in *)ifc->ifa_addr)->
-                        sin_addr, ip_addrs[*count], IP_ADDRESS_SIZE) != NULL)
+        do {
+            if (ifc->ifa_addr->sa_family == AF_INET)
+            {
+                len = sizeof(struct sockaddr_in);
+            }
+            else if (ifc->ifa_addr->sa_family == AF_INET6)
+            {
+                len = sizeof(struct sockaddr_in6);
+            }
+            else
+            {
+                break;
+            }
+
+            if ((result=getnameinfo(ifc->ifa_addr, len, ip_addrs[*count],
+                            IP_ADDRESS_SIZE, NULL, 0, NI_NUMERICHOST |
+                            NI_NUMERICSERV)) == 0)
             {
                 (*count)++;
             }
             else
             {
-                logWarning("file: "__FILE__", line: %d, " \
-                        "call inet_ntop fail, " \
-                        "errno: %d, error info: %s", \
-                        __LINE__, errno, STRERROR(errno));
+                logWarning("file: "__FILE__", line: %d, "
+                        "getnameinfo fail, errno: %d, error info: %s",
+                        __LINE__, result, gai_strerror(result));
             }
-        }
-        else if (ifc->ifa_addr->sa_family == AF_INET6)
-        {
-            if (inet_ntop(AF_INET6, &((struct sockaddr_in6 *)ifc->ifa_addr)->
-                        sin6_addr, ip_addrs[*count], IP_ADDRESS_SIZE) != NULL)
-            {
-                (*count)++;
-            }
-            else
-            {
-                logWarning("file: "__FILE__", line: %d, " \
-                        "call inet_ntop fail, " \
-                        "errno: %d, error info: %s", \
-                        __LINE__, errno, STRERROR(errno));
-            }
-        }
+        } while (0);
 
         ifc = ifc->ifa_next;
     }
@@ -2247,7 +2311,8 @@ int getlocaladdrs(char ip_addrs[][IP_ADDRESS_SIZE], \
 int getlocaladdrs(char ip_addrs[][IP_ADDRESS_SIZE], \
 	const int max_count, int *count)
 {
-	int s;
+	int sock;
+    int len;
 	struct ifconf ifconf;
 	struct ifreq ifr[32];
 	struct ifreq *ifrp;
@@ -2255,59 +2320,59 @@ int getlocaladdrs(char ip_addrs[][IP_ADDRESS_SIZE], \
 	int result;
 
 	*count = 0;
-	s = socket(AF_INET, SOCK_DGRAM, 0);
-	if (s < 0)
+	sock = socket(AF_INET, SOCK_DGRAM, 0);
+	if (sock < 0)
 	{
-		logError("file: "__FILE__", line: %d, " \
-			"socket create fail, errno: %d, error info: %s", \
+		logError("file: "__FILE__", line: %d, "
+			"socket create fail, errno: %d, error info: %s",
 			__LINE__, errno, STRERROR(errno));
 		return errno != 0 ? errno : EMFILE;
 	}
 
 	ifconf.ifc_buf = (char *) ifr;
 	ifconf.ifc_len = sizeof(ifr);
-	if (ioctl(s, SIOCGIFCONF, &ifconf) < 0)
+	if (ioctl(sock, SIOCGIFCONF, &ifconf) < 0)
 	{
 		result = errno != 0 ? errno : EMFILE;
-		logError("file: "__FILE__", line: %d, " \
-			"call ioctl fail, errno: %d, error info: %s", \
+		logError("file: "__FILE__", line: %d, "
+			"call ioctl fail, errno: %d, error info: %s",
 			__LINE__, result, STRERROR(result));
- 		close(s);
+        close(sock);
 		return result;
 	}
 
 	ifrp = ifconf.ifc_req;
 	p_end = (char *)ifr + ifconf.ifc_len;
 	while ((char *)ifrp < p_end)
-	{
-		struct sockaddr *sa = &ifrp->ifr_addr;
-		struct sockaddr_in *s_in;
+    {
+        struct sockaddr *sa = &ifrp->ifr_addr;
 
-		if (*count >= max_count)
-		{
-			logError("file: "__FILE__", line: %d, " \
-					"max_count: %d < iterface count: %d", \
-					__LINE__, max_count, *count);
-			close(s);
-			return ENOSPC;
-		}
-
-        s_in = (struct sockaddr_in *) &ifrp->ifr_addr;
-		if (sa->sa_family == AF_INET)
+        if (*count >= max_count)
         {
-            if (!inet_ntop(AF_INET, &s_in->sin_addr, \
-                        ip_addrs[*count], IP_ADDRESS_SIZE))
-            {
-                result = errno != 0 ? errno : EMFILE;
-                logError("file: "__FILE__", line: %d, " \
-                        "call inet_ntop fail, " \
-                        "errno: %d, error info: %s", \
-                        __LINE__, result, STRERROR(result));
-                close(s);
-                return result;
-            }
-            (*count)++;
+            logError("file: "__FILE__", line: %d, "
+                    "max_count: %d < iterface count: %d",
+                    __LINE__, max_count, *count);
+            close(sock);
+            return ENOSPC;
         }
+
+        if (sa->sa_family == AF_INET6)
+        {
+            len = sizeof(struct sockaddr_in6);
+        } else
+        {
+            len = sizeof(struct sockaddr_in);
+        }
+        if ((result=getnameinfo(sa, len, ip_addrs[*count], IP_ADDRESS_SIZE,
+                        NULL, 0, NI_NUMERICHOST | NI_NUMERICSERV)) != 0)
+        {
+            logError("file: "__FILE__", line: %d, "
+                    "call getnameinfo fail, errno: %d, error info: %s",
+                    __LINE__, result, gai_strerror(result));
+            close(sock);
+            return result;
+        }
+        (*count)++;
 
 #ifdef OS_FREEBSD
 		ifrp = (struct ifreq*)((caddr_t)&ifrp->ifr_addr + sa->sa_len);
@@ -2316,7 +2381,7 @@ int getlocaladdrs(char ip_addrs[][IP_ADDRESS_SIZE], \
 #endif
 	}
 
-	close(s);
+	close(sock);
 	return *count > 0 ? 0 : ENOENT;
 }
 
@@ -2332,9 +2397,10 @@ int gethostaddrs(char **if_alias_prefixes, const int prefix_count, \
 	int true_count;
 	int i;
 	int k;
+    int len;
 	int sock;
 	struct ifreq req;
-	struct sockaddr_in *addr;
+	struct sockaddr *addr;
 	int ret;
 
 	*count = 0;
@@ -2394,16 +2460,24 @@ int gethostaddrs(char **if_alias_prefixes, const int prefix_count, \
 			break;
 		}
 
-		addr = (struct sockaddr_in*)&req.ifr_addr;
-		if (inet_ntop(AF_INET, &addr->sin_addr, ip_addrs[*count], \
-			IP_ADDRESS_SIZE) != NULL)
-		{
+		addr = &req.ifr_addr;
+        if (addr->sa_family == AF_INET6)
+        {
+            len = sizeof(struct sockaddr_in6);
+        }
+        else
+        {
+            len = sizeof(struct sockaddr_in);
+        }
+        if (getnameinfo(addr, len, ip_addrs[*count], IP_ADDRESS_SIZE,
+                    NULL, 0, NI_NUMERICHOST | NI_NUMERICSERV) == 0)
+        {
 			(*count)++;
 			if (*count >= max_count)
 			{
 				break;
 			}
-		}
+        }
 	}
 	}
 
@@ -2422,7 +2496,7 @@ int gethostaddrs(char **if_alias_prefixes, const int prefix_count, \
 		return errno != 0 ? errno : EFAULT;
 	}
 
-        ent = gethostbyname(hostname);
+    ent = gethostbyname(hostname);
 	if (ent == NULL)
 	{
 		logError("file: "__FILE__", line: %d, " \
@@ -2440,8 +2514,8 @@ int gethostaddrs(char **if_alias_prefixes, const int prefix_count, \
 			break;
 		}
 
-		if (inet_ntop(ent->h_addrtype, ent->h_addr_list[k], \
-			ip_addrs[*count], IP_ADDRESS_SIZE) != NULL)
+		if (inet_ntop(ent->h_addrtype, ent->h_addr_list[k],
+                    ip_addrs[*count], IP_ADDRESS_SIZE) != NULL)
 		{
 			(*count)++;
 		}
@@ -2603,8 +2677,9 @@ int getifconfigs(FastIFConfig *if_configs, const int max_count, int *count)
 	struct ifaddrs *ifc1;
     FastIFConfig *config;
     char *buff;
-    void *sin_addr;
+    int result;
     int buff_size;
+    int len;
     int i;
 
 	*count = 0;
@@ -2655,21 +2730,21 @@ int getifconfigs(FastIFConfig *if_configs, const int max_count, int *count)
                 {
                     buff = config->ipv4;
                     buff_size = sizeof(config->ipv4);
-                    sin_addr = &((struct sockaddr_in *)s)->sin_addr;
+                    len = sizeof(struct sockaddr_in);
                 }
                 else
                 {
                     buff = config->ipv6;
                     buff_size = sizeof(config->ipv6);
-                    sin_addr = &((struct sockaddr_in6 *)s)->sin6_addr;
+                    len = sizeof(struct sockaddr_in6);
                 }
 
-                if (inet_ntop(s->sa_family, sin_addr, buff, buff_size) == NULL)
+                if ((result=getnameinfo(s, len, buff, buff_size, NULL, 0,
+                                NI_NUMERICHOST | NI_NUMERICSERV)) != 0)
                 {
-                    logWarning("file: "__FILE__", line: %d, " \
-                            "call inet_ntop fail, " \
-                            "errno: %d, error info: %s", \
-                            __LINE__, errno, STRERROR(errno));
+                    logWarning("file: "__FILE__", line: %d, "
+                            "getnameinfo fail, errno: %d, error info: %s",
+                            __LINE__, result, gai_strerror(result));
                 }
             }
         }
