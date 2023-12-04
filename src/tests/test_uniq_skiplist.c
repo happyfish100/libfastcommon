@@ -93,13 +93,13 @@ static int test_insert()
     end_time = get_current_time_ms();
     printf("insert time used: %"PRId64" ms\n", end_time - start_time);
 
-    start_time = get_current_time_ms();
+    start_time = get_current_time_us();
     for (i=0; i<COUNT; i++) {
         value = uniq_skiplist_find(sl, numbers + i);
         assert(value != NULL && *((int *)value) == numbers[i]);
     }
-    end_time = get_current_time_ms();
-    printf("find time used: %"PRId64" ms\n", end_time - start_time);
+    end_time = get_current_time_us();
+    printf("find time used: %"PRId64" us\n", end_time - start_time);
 
     start_time = get_current_time_ms();
     i = 0;
@@ -116,6 +116,30 @@ static int test_insert()
     end_time = get_current_time_ms();
     printf("iterator time used: %"PRId64" ms\n", end_time - start_time);
     return 0;
+}
+
+static void test_array_find()
+{
+    int i;
+    int bytes;
+    int64_t start_time;
+    int64_t end_time;
+    int *new_numbers;
+    int *value;
+
+    bytes = sizeof(int) * COUNT;
+    new_numbers = (int *)malloc(bytes);
+    memcpy(new_numbers, numbers, bytes);
+
+    qsort(new_numbers, COUNT, sizeof(int), compare_func);
+    start_time = get_current_time_us();
+    for (i=0; i<COUNT; i++) {
+        value = bsearch(numbers + i, new_numbers,
+                COUNT, sizeof(int), compare_func);
+        assert(value != NULL && *value == numbers[i]);
+    }
+    end_time = get_current_time_us();
+    printf("array find time used: %"PRId64" us\n\n", end_time - start_time);
 }
 
 static void test_delete()
@@ -301,6 +325,8 @@ int main(int argc, char *argv[])
 
     test_insert();
     printf("\n");
+
+    test_array_find();
 
     fast_mblock_manager_stat_print(false);
 
