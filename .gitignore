@@ -61,6 +61,7 @@ src/tests/test_normalize_path
 src/tests/test_sorted_array
 src/tests/test_sorted_queue
 src/tests/test_thread_local
+src/tests/test_memcpy
 
 # other
 *.swp

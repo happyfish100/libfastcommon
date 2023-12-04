@@ -266,7 +266,7 @@ int conn_pool_async_connect_server_ex(ConnectionInfo *conn,
     return result;
 }
 
-static inline void  conn_pool_get_key(const ConnectionInfo *conn,
+static inline void conn_pool_get_key(const ConnectionInfo *conn,
         char *key, int *key_len)
 {
     *key_len = sprintf(key, "%s-%u", conn->ip_addr, conn->port);
@@ -710,7 +710,7 @@ int conn_pool_parse_server_info(const char *pServerStr,
     if (getIpaddrByNameEx(parts[0], pServerInfo->ip_addr,
                 sizeof(pServerInfo->ip_addr),
                 &pServerInfo->af) == INADDR_NONE)
-                {
+    {
         logError("file: "__FILE__", line: %d, "
                 "host: %s, invalid hostname: %s!",
                 __LINE__, pServerStr, parts[0]);
