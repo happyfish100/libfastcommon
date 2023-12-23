@@ -2833,15 +2833,16 @@ int parseAddress(char *src, char *parts[2])
 {
     char *ip;
     char *port;
+    char *saveptr = NULL;
 
     if (src[0] == '[') {
-        ip = strtok(src, "[]");
+        ip = strtok_r(src, "[]", &saveptr);
     } else {
-        ip = strtok(src, ":");
+        ip = strtok_r(src, ":", &saveptr);
     }
 
     parts[0] = ip;
-    port = strtok(NULL, ":");
+    port = strtok_r(NULL, ":", &saveptr);
     if (port == NULL) {
         return 1;
     } else {

@@ -1,5 +1,5 @@
 
-Version 1.71  2023-12-01
+Version 1.71  2023-12-23
   * full support IPv6 by pull request #47
   * replace inet_ntop to getnameinfo for IPv6
 
