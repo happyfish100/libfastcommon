@@ -52,6 +52,16 @@
 
 #define FAST_WRITE_BUFF_SIZE  (256 * 1024)
 
+#define FC_FORMAT_IP_ADDRESS(old_ip_addr, new_ip_addr)  \
+    char new_ip_addr[IP_ADDRESS_SIZE + 2]; \
+    do {  \
+        if (is_ipv6_addr(old_ip_addr)) { \
+            sprintf(new_ip_addr, "[%s]", old_ip_addr); \
+        } else { \
+            strcpy(new_ip_addr, old_ip_addr); \
+        } \
+    } while (0)
+
 typedef struct fast_if_config {
     char name[IF_NAMESIZE];    //if name
     char mac[64];

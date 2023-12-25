@@ -221,11 +221,12 @@ int conn_pool_connect_server_ex1(ConnectionInfo *conn,
 	{
         if (log_connect_error)
         {
+            FC_FORMAT_IP_ADDRESS(conn->ip_addr, new_ip_addr);
             logError("file: "__FILE__", line: %d, "
                     "connect to %s%sserver %s:%u fail, errno: %d, "
                     "error info: %s", __LINE__, service_name != NULL ?
                     service_name : "", service_name != NULL ?  " " : "",
-                    conn->ip_addr, conn->port, result, STRERROR(result));
+                    new_ip_addr, conn->port, result, STRERROR(result));
         }
 
 		close(conn->sock);
@@ -255,9 +256,10 @@ int conn_pool_async_connect_server_ex(ConnectionInfo *conn,
     result = asyncconnectserverbyip(conn->sock, conn->ip_addr, conn->port);
     if (!(result == 0 || result == EINPROGRESS))
     {
+        FC_FORMAT_IP_ADDRESS(conn->ip_addr, new_ip_addr);
         logError("file: "__FILE__", line: %d, "
                 "connect to server %s:%u fail, errno: %d, "
-                "error info: %s", __LINE__, conn->ip_addr,
+                "error info: %s", __LINE__, new_ip_addr,
                 conn->port, result, STRERROR(result));
         close(conn->sock);
         conn->sock = -1;
@@ -319,12 +321,13 @@ static ConnectionInfo *get_connection(ConnectionPool *cp,
 			if ((cp->max_count_per_entry > 0) && 
 				(cm->total_count >= cp->max_count_per_entry))
 			{
+                FC_FORMAT_IP_ADDRESS(conn->ip_addr, new_ip_addr);
 				*err_no = ENOSPC;
 				logError("file: "__FILE__", line: %d, "
 					"connections: %d of %s%sserver %s:%u exceed limit: %d",
                     __LINE__, cm->total_count, service_name != NULL ?
                     service_name : "", service_name != NULL ? " " : "",
-                    conn->ip_addr, conn->port, cp->max_count_per_entry);
+                    new_ip_addr, conn->port, cp->max_count_per_entry);
 				pthread_mutex_unlock(&cm->lock);
 				return NULL;
 			}
@@ -529,18 +532,20 @@ static int close_connection(ConnectionPool *cp, ConnectionInfo *conn,
 	pthread_mutex_unlock(&cp->lock);
 	if (cm == NULL)
 	{
-		logError("file: "__FILE__", line: %d, " \
-			"hash entry of server %s:%u not exist", __LINE__, \
-			conn->ip_addr, conn->port);
+        FC_FORMAT_IP_ADDRESS(conn->ip_addr, new_ip_addr);
+		logError("file: "__FILE__", line: %d, "
+			"hash entry of server %s:%u not exist",
+            __LINE__, new_ip_addr, conn->port);
 		return ENOENT;
 	}
 
 	node = (ConnectionNode *)((char *)conn - sizeof(ConnectionNode));
 	if (node->manager != cm)
 	{
-		logError("file: "__FILE__", line: %d, " \
-			"manager of server entry %s:%u is invalid!", \
-			__LINE__, conn->ip_addr, conn->port);
+        FC_FORMAT_IP_ADDRESS(conn->ip_addr, new_ip_addr);
+		logError("file: "__FILE__", line: %d, "
+			"manager of server entry %s:%u is invalid!",
+			__LINE__, new_ip_addr, conn->port);
 		return EINVAL;
 	}
 

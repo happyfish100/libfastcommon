@@ -812,7 +812,7 @@ int setsockaddrbyip(const char *ip, const uint16_t port,
     if (is_ipv6_addr(ip))
     {
         convert->len = sizeof(convert->sa.addr6);
-        if (strchr(ip, '#') != NULL)
+        if (strchr(ip, '%') != NULL)
         {
             struct addrinfo hints, *res;
 
@@ -873,8 +873,8 @@ int connectserverbyip(int sock, const char *server_ip, const uint16_t server_por
 	return 0;
 }
 
-int connectserverbyip_nb_ex(int sock, const char *server_ip, \
-		const uint16_t server_port, const int timeout, \
+int connectserverbyip_nb_ex(int sock, const char *server_ip,
+		const uint16_t server_port, const int timeout,
 		const bool auto_detect)
 {
 	int result;
@@ -1069,10 +1069,11 @@ int socketClientEx2(int af, const char *server_ip,
             server_port, timeout, auto_detect);
     if (*err_no != 0)
     {
+        FC_FORMAT_IP_ADDRESS(server_ip, new_ip_addr);
         logError("file: "__FILE__", line: %d, "
                 "connect to %s:%u fail, "
                 "errno: %d, error info: %s",
-                __LINE__, server_ip, server_port,
+                __LINE__, new_ip_addr, server_port,
                 *err_no, STRERROR(*err_no));
         close(sock);
         return -4;
