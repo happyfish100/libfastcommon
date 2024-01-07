@@ -666,9 +666,11 @@ static inline void fast_mblock_ref_counter_op(struct fast_mblock_man *mblock,
 }
 
 #define fast_mblock_ref_counter_inc(mblock, pNode) \
+    mblock->info.element_used_count++;  \
     fast_mblock_ref_counter_op(mblock, pNode, true)
 
 #define fast_mblock_ref_counter_dec(mblock, pNode) \
+    mblock->info.element_used_count--;   \
     fast_mblock_ref_counter_op(mblock, pNode, false)
 
 static void fast_mblock_free_trunk(struct fast_mblock_man *mblock,
@@ -748,6 +750,7 @@ static inline struct fast_mblock_node *alloc_node(
                 mblock->delay_free_chain.tail = NULL;
             }
 
+            fast_mblock_ref_counter_dec(mblock, pNode);
             mblock->info.delay_free_elements--;
             break;
         }
@@ -775,7 +778,6 @@ static inline struct fast_mblock_node *alloc_node(
 
     if (pNode != NULL)
     {
-        mblock->info.element_used_count++;
         fast_mblock_ref_counter_inc(mblock, pNode);
     }
 
@@ -830,7 +832,6 @@ int fast_mblock_free(struct fast_mblock_man *mblock,
     notify = (mblock->free_chain_head == NULL);
 	pNode->next = mblock->free_chain_head;
 	mblock->free_chain_head = pNode;
-    mblock->info.element_used_count--;
     fast_mblock_ref_counter_dec(mblock, pNode);
 
     if (mblock->alloc_elements.need_wait && notify)
@@ -859,7 +860,6 @@ static inline void batch_free(struct fast_mblock_man *mblock,
     pNode = chain->head;
     while (pNode != NULL)
     {
-        mblock->info.element_used_count--;
         fast_mblock_ref_counter_dec(mblock, pNode);
         pNode = pNode->next;
     }
@@ -1013,9 +1013,7 @@ int fast_mblock_delay_free(struct fast_mblock_man *mblock,
     mblock->delay_free_chain.tail = pNode;
     pNode->next = NULL;
 
-    mblock->info.element_used_count--;
     mblock->info.delay_free_elements++;
-    fast_mblock_ref_counter_dec(mblock, pNode);
 
 	if (mblock->need_lock && (result=pthread_mutex_unlock(
                     &mblock->lcp.lock)) != 0)
@@ -1080,65 +1078,65 @@ static int fast_mblock_do_reclaim(struct fast_mblock_man *mblock,
         const int reclaim_target, int *reclaim_count,
         struct fast_mblock_malloc **ppFreelist)
 {
-    struct fast_mblock_node *pPrevious;
-    struct fast_mblock_node *pCurrent;
-    struct fast_mblock_malloc *pMallocNode;
+    struct fast_mblock_node *free_chain_prev;
+    struct fast_mblock_node *current;
+    struct fast_mblock_malloc *malloc_node;
     struct fast_mblock_malloc *freelist;
     bool lookup_done;
 
     lookup_done = false;
     *reclaim_count = 0;
     freelist = NULL;
-    pPrevious = NULL;
-	pCurrent = mblock->free_chain_head;
+    free_chain_prev = NULL;
+	current = mblock->free_chain_head;
     mblock->free_chain_head = NULL;
-	while (pCurrent != NULL)
+	while (current != NULL)
 	{
-        pMallocNode = FAST_MBLOCK_GET_TRUNK(pCurrent);
-        if (pMallocNode->ref_count > 0 ||
-                (pMallocNode->ref_count == 0 && lookup_done))
-        {    //keep in free chain
+        malloc_node = FAST_MBLOCK_GET_TRUNK(current);
+        if (malloc_node->ref_count > 0 ||
+                (malloc_node->ref_count == 0 && lookup_done))
+        {    /* keep in the free chain */
 
-            if (pPrevious != NULL)
+            if (free_chain_prev != NULL)
             {
-                pPrevious->next = pCurrent;
+                free_chain_prev->next = current;
             }
             else
             {
-                mblock->free_chain_head = pCurrent;
+                mblock->free_chain_head = current;
             }
 
-            pPrevious = pCurrent;
-            pCurrent = pCurrent->next;
-            if (pCurrent == NULL)
+            free_chain_prev = current;
+            current = current->next;
+            if (current == NULL)
             {
                 goto OUTER;
             }
-            pMallocNode = FAST_MBLOCK_GET_TRUNK(pCurrent);
+            malloc_node = FAST_MBLOCK_GET_TRUNK(current);
 
-            while (pMallocNode->ref_count > 0 ||
-                    (pMallocNode->ref_count == 0 && lookup_done))
+            while (malloc_node->ref_count > 0 ||
+                    (malloc_node->ref_count == 0 && lookup_done))
             {
-                pPrevious = pCurrent;
-                pCurrent = pCurrent->next;
-                if (pCurrent == NULL)
+                free_chain_prev = current;
+                current = current->next;
+                if (current == NULL)
                 {
                     goto OUTER;
                 }
-                pMallocNode = FAST_MBLOCK_GET_TRUNK(pCurrent);
+                malloc_node = FAST_MBLOCK_GET_TRUNK(current);
             }
         }
 
-        while (pMallocNode->ref_count < 0 ||
-                (pMallocNode->ref_count == 0 && !lookup_done))
+        while (malloc_node->ref_count < 0 ||
+                (malloc_node->ref_count == 0 && !lookup_done))
         {
-            if (pMallocNode->ref_count == 0) //trigger by the first node
+            if (malloc_node->ref_count == 0) //trigger by the first node only
             {
-                fast_mblock_remove_trunk(mblock, pMallocNode);
-                pMallocNode->ref_count = -1;
+                fast_mblock_remove_trunk(mblock, malloc_node);
+                malloc_node->ref_count = -1;
 
-                pMallocNode->next = freelist;
-                freelist = pMallocNode;
+                malloc_node->next = freelist;
+                freelist = malloc_node;
                 (*reclaim_count)++;
                 if (reclaim_target > 0 && *reclaim_count == reclaim_target)
                 {
@@ -1146,20 +1144,20 @@ static int fast_mblock_do_reclaim(struct fast_mblock_man *mblock,
                 }
             }
 
-            pCurrent = pCurrent->next;
-            if (pCurrent == NULL)
+            current = current->next;
+            if (current == NULL)
             {
                 goto OUTER;
             }
-            pMallocNode = FAST_MBLOCK_GET_TRUNK(pCurrent);
+            malloc_node = FAST_MBLOCK_GET_TRUNK(current);
         }
 	}
 
 
 OUTER:
-    if (pPrevious != NULL)
+    if (free_chain_prev != NULL)
     {
-        pPrevious->next = NULL;
+        free_chain_prev->next = NULL;
     }
 
 

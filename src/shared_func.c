@@ -1234,6 +1234,7 @@ int getFileContent1(int fd, const char *filename,
         char **buff, int64_t *file_size)
 {
     int result;
+    int64_t bytes;
 
 	if ((*file_size=lseek(fd, 0, SEEK_END)) < 0) {
         *buff = NULL;
@@ -1262,12 +1263,13 @@ int getFileContent1(int fd, const char *filename,
                     filename, result, STRERROR(result));
             break;
         }
-        if (read(fd, *buff, *file_size) != *file_size) {
+        if ((bytes=read(fd, *buff, *file_size)) != *file_size) {
             result = errno != 0 ? errno : EIO;
             logError("file: "__FILE__", line: %d, "
-                    "read from file %s fail, size: %"PRId64", "
-                    "errno: %d, error info: %s", __LINE__,
-                    filename, *file_size, result, STRERROR(result));
+                    "read from file %s fail, file size: %"PRId64", "
+                    "read bytes: %"PRId64", errno: %d, error info: %s",
+                    __LINE__, filename, *file_size, bytes, result,
+                    STRERROR(result));
             break;
         }
     } while (0);
@@ -3150,7 +3152,7 @@ ssize_t fc_safe_read(int fd, char *buf, const size_t count)
             }
 
             done = count - remain;
-            return done > 0 ? done : -1;
+            return (done > 0 ? done : -1);
         }
         else if (n == 0)
         {

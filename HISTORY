@@ -1,4 +1,7 @@
 
+Version 1.72  2024-01-07
+  * call fast_mblock_ref_counter_dec for delay free node correctly
+
 Version 1.71  2023-12-23
   * full support IPv6 by pull request #47
   * replace inet_ntop to getnameinfo for IPv6
