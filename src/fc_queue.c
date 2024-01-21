@@ -295,3 +295,49 @@ int fc_queue_free_chain(struct fc_queue *queue, struct fast_mblock_man
     chain.tail = previous;
     return fast_mblock_batch_free(mblock, &chain);
 }
+
+int fc_queue_remove(struct fc_queue *queue, void *data)
+{
+    void *previous;
+    void *current;
+    int result;
+
+    pthread_mutex_lock(&queue->lcp.lock);
+    if (queue->head == NULL)
+    {
+        result = ENOENT;
+    }
+    else if (queue->head == data)
+    {
+        queue->head = FC_QUEUE_NEXT_PTR(queue, queue->head);
+        if (queue->head == NULL)
+        {
+            queue->tail = NULL;
+        }
+        result = 0;
+    }
+    else
+    {
+        result = ENOENT;
+        previous = queue->head;
+        while ((current=FC_QUEUE_NEXT_PTR(queue, previous)) != NULL)
+        {
+            if (current == data)
+            {
+                FC_QUEUE_NEXT_PTR(queue, previous) =
+                    FC_QUEUE_NEXT_PTR(queue, current);
+                if (queue->tail == current)
+                {
+                    queue->tail = previous;
+                }
+                result = 0;
+                break;
+            }
+
+            previous = current;
+        }
+    }
+    pthread_mutex_unlock(&queue->lcp.lock);
+
+    return result;
+}

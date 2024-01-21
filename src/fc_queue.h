@@ -226,6 +226,8 @@ int fc_queue_alloc_chain(struct fc_queue *queue, struct fast_mblock_man
 int fc_queue_free_chain(struct fc_queue *queue, struct fast_mblock_man
         *mblock, struct fc_queue_info *qinfo);
 
+int fc_queue_remove(struct fc_queue *queue, void *data);
+
 #ifdef __cplusplus
 }
 #endif
