@@ -212,6 +212,9 @@ int free_queue_get_new_buffer_size(const int min_buff_size,
                 "exceeds max buffer size: %d", __LINE__, expect_size,
                 max_buff_size);
         return EOVERFLOW;
+    } else if (expect_size == max_buff_size) {
+        *new_size = max_buff_size;
+        return 0;
     }
 
     *new_size = min_buff_size;

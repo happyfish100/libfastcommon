@@ -406,6 +406,8 @@ typedef void* (*MallocFunc)(size_t size);
         (dest).len = l;   \
     } while (0)
 
+#define FC_SET_STRING_EMPTY(dest, s) FC_SET_STRING_EX(dest, s, 0)
+
 #define FC_SET_STRING_NULL(dest)  \
     do {  \
         (dest).str = NULL;   \

@@ -1,4 +1,7 @@
 
+Version 1.73  2024-02-15
+  * add macro FC_SET_STRING_EMPTY
+
 Version 1.72  2024-01-21
   * call fast_mblock_ref_counter_dec for delay free node correctly
   * fc_queue.[hc]: add function fc_queue_remove
