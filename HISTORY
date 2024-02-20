@@ -1,6 +1,7 @@
 
-Version 1.73  2024-02-15
+Version 1.73  2024-02-20
   * add macro FC_SET_STRING_EMPTY
+  * struct fast_task_info remove fields: connect_timeout and network_timeout
 
 Version 1.72  2024-01-21
   * call fast_mblock_ref_counter_dec for delay free node correctly

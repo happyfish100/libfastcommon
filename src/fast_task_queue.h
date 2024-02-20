@@ -125,8 +125,6 @@ struct fast_task_info
     } nio_stages; //stages for network IO
     volatile int8_t reffer_count;
     volatile int8_t canceled;  //if task canceled
-    short connect_timeout;     //for client side
-    short network_timeout;
     int pending_send_count;
     int64_t req_count; //request count
     struct {
