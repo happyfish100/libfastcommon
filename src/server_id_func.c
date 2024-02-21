@@ -375,6 +375,16 @@ static int load_comm_type_and_smart_polling(IniFullContext *ini_ctx,
     return 0;
 }
 
+static inline int load_buffer_size(IniFullContext *ini_ctx,
+        const int default_buffer_size)
+{
+    int buffer_size;
+    buffer_size = iniGetByteValue(ini_ctx->section_name, "buffer_size",
+            ini_ctx->context, default_buffer_size);
+    return iniCheckAndCorrectIntValue(ini_ctx, "buffer_size",
+            buffer_size, 8 * 1024, 8 * 1024 * 1024);
+}
+
 static int fc_server_load_one_group(FCServerConfig *ctx,
         IniFullContext *ini_ctx, const int group_count)
 {
@@ -438,6 +448,12 @@ static int fc_server_load_one_group(FCServerConfig *ctx,
                     ctx->comm_type, &ctx->smart_polling)) != 0)
     {
         return result;
+    }
+
+    if (group->comm_type == fc_comm_type_sock) {
+        group->buffer_size = 0;
+    } else {
+        group->buffer_size = load_buffer_size(ini_ctx, ctx->buffer_size);
     }
 
     ctx->group_array.count++;
@@ -520,6 +536,7 @@ static int fc_server_load_groups(FCServerConfig *ctx,
 
     if (count == 0) {
         ctx->group_array.count = 1;
+        memset(ctx->group_array.groups, 0, sizeof(FCServerGroupInfo));
         fc_server_set_group_ptr_name(ctx->group_array.groups + 0, "");
         ctx->group_array.groups[0].port = iniGetIntValue(NULL, "port",
                 ini_ctx->context, ctx->default_port);
@@ -1272,7 +1289,6 @@ static int fc_server_load_data(FCServerConfig *ctx,
         IniContext *ini_context, const char *config_filename)
 {
 	int result;
-    int buffer_size;
     bool have_rdma;
     IniFullContext full_ini_ctx;
     FCSmartPollingConfig default_smart_polling;
@@ -1291,6 +1307,7 @@ static int fc_server_load_data(FCServerConfig *ctx,
         return result;
     }
 
+    ctx->buffer_size = load_buffer_size(&full_ini_ctx, 256 * 1024);
     if ((result=fc_server_load_groups(ctx, &full_ini_ctx)) != 0) {
         return result;
     }
@@ -1304,13 +1321,7 @@ static int fc_server_load_data(FCServerConfig *ctx,
         }
     }
 
-    if (have_rdma) {
-        full_ini_ctx.section_name = NULL;
-        buffer_size = iniGetByteValue(NULL, "buffer_size",
-                ini_context, 256 * 1024);
-        ctx->buffer_size = iniCheckAndCorrectIntValue(&full_ini_ctx,
-                "buffer_size", buffer_size, 8 * 1024, 8 * 1024 * 1024);
-    } else {
+    if (!have_rdma) {
         ctx->buffer_size = 0;
     }
     load_connection_thread_local(ctx, ini_context, config_filename);
@@ -1492,6 +1503,10 @@ static int fc_groups_to_string(FCServerConfig *ctx, FastBuffer *buffer)
                     group->smart_polling.enabled,
                     group->smart_polling.switch_on_iops,
                     group->smart_polling.switch_on_count);
+            if (group->buffer_size != ctx->buffer_size) {
+                fast_buffer_append(buffer, "buffer_size = %d KB\n",
+                        group->buffer_size / 1024);
+            }
         }
 
         fast_buffer_append(buffer,
@@ -1578,7 +1593,7 @@ int fc_server_to_config_string(FCServerConfig *ctx, FastBuffer *buffer)
         if ((result=fast_buffer_check(buffer, 1024)) != 0) {
             return result;
         }
-        fast_buffer_append(buffer, "buffer_size = %d KB",
+        fast_buffer_append(buffer, "buffer_size = %d KB\n",
                 ctx->buffer_size / 1024);
     }
 
@@ -1609,6 +1624,10 @@ static void fc_server_log_groups(FCServerConfig *ctx)
                     group->smart_polling.enabled,
                     group->smart_polling.switch_on_iops,
                     group->smart_polling.switch_on_count);
+            if (group->buffer_size != ctx->buffer_size) {
+                p += sprintf(p, ", buffer_size = %d KB",
+                        group->buffer_size / 1024);
+            }
         }
         p += sprintf(p, ", net_type: %s, ip_prefix: %.*s",
                 get_net_type_caption(group->filter.net_type),

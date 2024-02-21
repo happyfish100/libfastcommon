@@ -64,6 +64,7 @@ typedef struct
     string_t group_name;
     int port;          //default port
     int server_port;   //port in server section
+    int buffer_size;  //for RDMA
     FCCommunicationType comm_type;
     FCSmartPollingConfig smart_polling;
     struct {
