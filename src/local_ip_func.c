@@ -160,9 +160,7 @@ const char *get_next_local_ip(const char *previous_ip)
 		IP_ADDRESS_SIZE * g_local_host_ip_count;
 	for (p=g_local_host_ip_addrs; p<pEnd; p+=IP_ADDRESS_SIZE)
     {
-        if (strcmp(p, LOCAL_LOOPBACK_IPv4) != 0 &&
-                strcmp(p, LOCAL_LOOPBACK_IPv6) != 0 &&
-                strcasecmp(p, "fe80::1") != 0)
+        if (!is_loopback_ip(p))
         {
             if (found)
             {

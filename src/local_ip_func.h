@@ -42,6 +42,13 @@ extern char g_if_alias_prefix[FAST_IF_ALIAS_PREFIX_MAX_SIZE];
 void load_local_host_ip_addrs();
 bool is_local_host_ip(const char *client_ip);
 
+static inline bool is_loopback_ip(const char *ip_addr)
+{
+    return (strcmp(ip_addr, LOCAL_LOOPBACK_IPv4) == 0 ||
+            strcmp(ip_addr, LOCAL_LOOPBACK_IPv6) == 0 ||
+            strcasecmp(ip_addr, "fe80::1") == 0);
+}
+
 void stat_local_host_ip(int *ipv4_count, int *ipv6_count);
 
 const char *get_first_local_ip();
