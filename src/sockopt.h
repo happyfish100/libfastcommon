@@ -18,9 +18,10 @@
 #ifndef _SOCKETOPT_H_
 #define _SOCKETOPT_H_
 
-#include <net/if.h>
+#include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
+#include <net/if.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -53,7 +54,7 @@
 #define FAST_WRITE_BUFF_SIZE  (256 * 1024)
 
 #define FC_FORMAT_IP_ADDRESS(old_ip_addr, new_ip_addr)  \
-    char new_ip_addr[IP_ADDRESS_SIZE + 2]; \
+    char new_ip_addr[FORMATTED_IP_SIZE]; \
     do {  \
         if (is_ipv6_addr(old_ip_addr)) { \
             sprintf(new_ip_addr, "[%s]", old_ip_addr); \
@@ -712,6 +713,35 @@ int setsockaddrbyip(const char *ip, const uint16_t port,
 static inline bool is_ipv6_addr(const char *ip)
 {
     return (*ip == ':' || strchr(ip, ':') != NULL); //ipv6
+}
+
+static inline const char *format_ip_address(const char *ip, char *buff)
+{
+    if (is_ipv6_addr(ip))
+    {
+        sprintf(buff, "[%s]", ip);
+    }
+    else
+    {
+        strcpy(buff, ip);
+    }
+
+    return buff;
+}
+
+static inline const char *format_ip_port(const char *ip,
+        const int port, char *buff)
+{
+    if (is_ipv6_addr(ip))
+    {
+        sprintf(buff, "[%s]:%u", ip, port);
+    }
+    else
+    {
+        sprintf(buff, "%s:%u", ip, port);
+    }
+
+    return buff;
 }
 
 void tcp_set_try_again_when_interrupt(const bool value);

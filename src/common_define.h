@@ -119,7 +119,8 @@ extern int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int kind);
 #endif
 
 // 由于要支持IPv6，所以将IP_ADDRESS_SIZE的值由16修改为46
-#define IP_ADDRESS_SIZE	INET6_ADDRSTRLEN //46
+#define IP_ADDRESS_SIZE     INET6_ADDRSTRLEN  //46
+#define FORMATTED_IP_SIZE   (IP_ADDRESS_SIZE + 2)
 #define INFINITE_FILE_SIZE (256 * 1024LL * 1024 * 1024 * 1024 * 1024LL)
 
 #define FILE_RESOURCE_TAG_STR  "file://"

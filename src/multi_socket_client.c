@@ -128,6 +128,7 @@ static int fast_multi_sock_client_do_send(FastMultiSockClient *client,
 {
     int bytes;
     int result;
+    char formatted_ip[FORMATTED_IP_SIZE];
 
     result = 0;
     while (entry->remain > 0) {
@@ -139,27 +140,26 @@ static int fast_multi_sock_client_do_send(FastMultiSockClient *client,
                 break;
             } else if (errno == EINTR) {  //should retry
                 logDebug("file: "__FILE__", line: %d, "
-                        "server: %s:%u, ignore interupt signal",
-                        __LINE__, entry->conn->ip_addr,
+                        "server: %s:%u, ignore interupt signal", __LINE__,
+                        format_ip_address(entry->conn->ip_addr, formatted_ip),
                         entry->conn->port);
                 continue;
             } else {
                 result = errno != 0 ? errno : ECONNRESET;
                 logError("file: "__FILE__", line: %d, "
                         "send to server %s:%u fail, "
-                        "errno: %d, error info: %s",
-                        __LINE__, entry->conn->ip_addr,
-                        entry->conn->port,
-                        result, strerror(result));
+                        "errno: %d, error info: %s", __LINE__,
+                        format_ip_address(entry->conn->ip_addr, formatted_ip),
+                        entry->conn->port, result, strerror(result));
 
                 break;
             }
         } else if (bytes == 0) {
             logError("file: "__FILE__", line: %d, "
                     "send to server %s:%u, sock: %d fail, "
-                    "connection disconnected",
-                    __LINE__, entry->conn->ip_addr, entry->conn->port,
-                    entry->conn->sock);
+                    "connection disconnected", __LINE__,
+                    format_ip_address(entry->conn->ip_addr, formatted_ip),
+                    entry->conn->port, entry->conn->sock);
 
             result = ECONNRESET;
             break;
@@ -190,6 +190,7 @@ static int fast_multi_sock_client_send_data(FastMultiSockClient *client,
 {
     int i;
     int result;
+    char formatted_ip[FORMATTED_IP_SIZE];
 
     for (i=0; i<client->entry_count; i++) {
         client->entries[i].remain = send_buffer->length;
@@ -202,9 +203,9 @@ static int fast_multi_sock_client_send_data(FastMultiSockClient *client,
             client->entries[i].error_no = ENOTCONN;
             client->entries[i].done = true;
             logError("file: "__FILE__", line: %d, "
-                    "NOT connected to %s:%u",
-                    __LINE__, client->entries[i].conn->ip_addr,
-                    client->entries[i].conn->port);
+                    "NOT connected to %s:%u", __LINE__,
+                    format_ip_address(client->entries[i].conn->ip_addr,
+                        formatted_ip), client->entries[i].conn->port);
             continue;
         }
 
@@ -244,6 +245,7 @@ static int fast_multi_sock_client_do_recv(FastMultiSockClient *client,
 {
     int bytes;
     int result;
+    char formatted_ip[FORMATTED_IP_SIZE];
 
     result = 0;
     while (entry->remain > 0) {
@@ -254,27 +256,26 @@ static int fast_multi_sock_client_do_recv(FastMultiSockClient *client,
                 break;
             } else if (errno == EINTR) {  //should retry
                 logDebug("file: "__FILE__", line: %d, "
-                        "server: %s:%u, ignore interupt signal",
-                        __LINE__, entry->conn->ip_addr,
+                        "server: %s:%u, ignore interupt signal", __LINE__,
+                        format_ip_address(entry->conn->ip_addr, formatted_ip),
                         entry->conn->port);
                 continue;
             } else {
                 result = errno != 0 ? errno : ECONNRESET;
                 logError("file: "__FILE__", line: %d, "
                         "server: %s:%u, recv failed, "
-                        "errno: %d, error info: %s",
-                        __LINE__, entry->conn->ip_addr,
-                        entry->conn->port,
-                        result, strerror(result));
+                        "errno: %d, error info: %s", __LINE__,
+                        format_ip_address(entry->conn->ip_addr, formatted_ip),
+                        entry->conn->port, result, strerror(result));
 
                 break;
             }
         } else if (bytes == 0) {
             logError("file: "__FILE__", line: %d, "
                     "server: %s:%u, sock: %d, recv failed, "
-                    "connection disconnected",
-                    __LINE__, entry->conn->ip_addr, entry->conn->port,
-                    entry->conn->sock);
+                    "connection disconnected", __LINE__,
+                    format_ip_address(entry->conn->ip_addr, formatted_ip),
+                    entry->conn->port, entry->conn->sock);
 
             result = ECONNRESET;
             break;
@@ -289,8 +290,8 @@ static int fast_multi_sock_client_do_recv(FastMultiSockClient *client,
             body_length = client->get_body_length_func(&entry->recv_buffer);
             if (body_length < 0) {
                 logError("file: "__FILE__", line: %d, "
-                        "server: %s:%u, body_length: %d < 0",
-                        __LINE__, entry->conn->ip_addr,
+                        "server: %s:%u, body_length: %d < 0", __LINE__,
+                        format_ip_address(entry->conn->ip_addr, formatted_ip),
                         entry->conn->port, body_length);
                 result = EPIPE;
                 break;
@@ -320,6 +321,7 @@ static int fast_multi_sock_client_deal_io(FastMultiSockClient *client)
     int index;
     int remain_timeout;
     FastMultiSockEntry *entry;
+    char formatted_ip[FORMATTED_IP_SIZE];
 
     while (client->pulling_count > 0) {
         remain_timeout = client->deadline_time_ms -
@@ -329,7 +331,7 @@ static int fast_multi_sock_client_deal_io(FastMultiSockClient *client)
         }
 
         count = ioevent_poll_ex(&client->ioevent, remain_timeout);
-        logInfo("poll count: %d\n", count);
+        //logInfo("poll count: %d\n", count);
         for (index=0; index<count; index++) {
             event = IOEVENT_GET_EVENTS(&client->ioevent, index);
             entry = (FastMultiSockEntry *)IOEVENT_GET_DATA(
@@ -337,15 +339,15 @@ static int fast_multi_sock_client_deal_io(FastMultiSockClient *client)
 
             if (event & IOEVENT_ERROR) {
                 logError("file: "__FILE__", line: %d, "
-                        "server: %s:%u, recv error event: %d, "
-                        "connection reset", __LINE__,
-                        entry->conn->ip_addr, entry->conn->port, event);
+                        "server: %s:%u, recv error event: %d, connection "
+                        "reset", __LINE__, format_ip_address(entry->conn->
+                            ip_addr, formatted_ip), entry->conn->port, event);
 
                 fast_multi_sock_client_finish(client, entry, ECONNRESET);
                 continue;
             }
 
-            logInfo("sock: %d, event: %d", entry->conn->sock, event);
+            //logInfo("sock: %d, event: %d", entry->conn->sock, event);
 
             result = entry->io_callback(client, entry);
             if (result != 0 || entry->remain == 0) {
@@ -366,9 +368,9 @@ static int fast_multi_sock_client_deal_io(FastMultiSockClient *client)
                 fast_multi_sock_client_finish(client,
                         client->entries + i, ETIMEDOUT);
                 logError("file: "__FILE__", line: %d, "
-                        "recv from %s:%u timedout",
-                        __LINE__, client->entries[i].conn->ip_addr,
-                        client->entries[i].conn->port);
+                        "recv from %s:%u timedout", __LINE__,
+                        format_ip_address(client->entries[i].conn->ip_addr,
+                            formatted_ip), client->entries[i].conn->port);
             }
         }
     }

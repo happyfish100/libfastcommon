@@ -816,7 +816,6 @@ bool is_private_ip(const char* ip);
 */
 int parseAddress(char *src, char *parts[2]);
 
-
 /** get current time in ns
  *  return: current time
  */

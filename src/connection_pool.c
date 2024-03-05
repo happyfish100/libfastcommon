@@ -204,6 +204,7 @@ int conn_pool_connect_server_ex1(ConnectionInfo *conn,
         const char *bind_ipaddr, const bool log_connect_error)
 {
 	int result;
+    char formatted_ip[FORMATTED_IP_SIZE];
 
 	if (conn->sock >= 0)
 	{
@@ -221,12 +222,12 @@ int conn_pool_connect_server_ex1(ConnectionInfo *conn,
 	{
         if (log_connect_error)
         {
-            FC_FORMAT_IP_ADDRESS(conn->ip_addr, new_ip_addr);
+            format_ip_address(conn->ip_addr, formatted_ip);
             logError("file: "__FILE__", line: %d, "
                     "connect to %s%sserver %s:%u fail, errno: %d, "
                     "error info: %s", __LINE__, service_name != NULL ?
                     service_name : "", service_name != NULL ?  " " : "",
-                    new_ip_addr, conn->port, result, STRERROR(result));
+                    formatted_ip, conn->port, result, STRERROR(result));
         }
 
 		close(conn->sock);
@@ -241,6 +242,7 @@ int conn_pool_async_connect_server_ex(ConnectionInfo *conn,
         const char *bind_ipaddr)
 {
     int result;
+    char formatted_ip[FORMATTED_IP_SIZE];
 
     if (conn->sock >= 0)
     {
@@ -256,10 +258,10 @@ int conn_pool_async_connect_server_ex(ConnectionInfo *conn,
     result = asyncconnectserverbyip(conn->sock, conn->ip_addr, conn->port);
     if (!(result == 0 || result == EINPROGRESS))
     {
-        FC_FORMAT_IP_ADDRESS(conn->ip_addr, new_ip_addr);
+        format_ip_address(conn->ip_addr, formatted_ip);
         logError("file: "__FILE__", line: %d, "
                 "connect to server %s:%u fail, errno: %d, "
-                "error info: %s", __LINE__, new_ip_addr,
+                "error info: %s", __LINE__, formatted_ip,
                 conn->port, result, STRERROR(result));
         close(conn->sock);
         conn->sock = -1;
@@ -281,6 +283,7 @@ static ConnectionInfo *get_connection(ConnectionPool *cp,
 	ConnectionManager *cm;
 	ConnectionNode *node;
 	ConnectionInfo *ci;
+    char formatted_ip[FORMATTED_IP_SIZE];
 	time_t current_time;
 
 	pthread_mutex_lock(&cp->lock);
@@ -321,13 +324,13 @@ static ConnectionInfo *get_connection(ConnectionPool *cp,
 			if ((cp->max_count_per_entry > 0) && 
 				(cm->total_count >= cp->max_count_per_entry))
 			{
-                FC_FORMAT_IP_ADDRESS(conn->ip_addr, new_ip_addr);
+                format_ip_address(conn->ip_addr, formatted_ip);
 				*err_no = ENOSPC;
 				logError("file: "__FILE__", line: %d, "
 					"connections: %d of %s%sserver %s:%u exceed limit: %d",
                     __LINE__, cm->total_count, service_name != NULL ?
                     service_name : "", service_name != NULL ? " " : "",
-                    new_ip_addr, conn->port, cp->max_count_per_entry);
+                    formatted_ip, conn->port, cp->max_count_per_entry);
 				pthread_mutex_unlock(&cm->lock);
 				return NULL;
 			}
@@ -377,12 +380,15 @@ static ConnectionInfo *get_connection(ConnectionPool *cp,
 				return NULL;
 			}
 
-			logDebug("file: "__FILE__", line: %d, " \
-				"server %s:%u, new connection: %d, " \
-				"total_count: %d, free_count: %d",   \
-				__LINE__, conn->ip_addr, conn->port, \
-				node->conn->sock, cm->total_count, \
-				cm->free_count);
+            if (FC_LOG_BY_LEVEL(LOG_DEBUG)) {
+                format_ip_address(conn->ip_addr, formatted_ip);
+                logDebug("file: "__FILE__", line: %d, "
+                        "server %s:%u, new connection: %d, "
+                        "total_count: %d, free_count: %d",
+                        __LINE__, formatted_ip, conn->port,
+                        node->conn->sock, cm->total_count,
+                        cm->free_count);
+            }
 			return node->conn;
 		}
 		else
@@ -425,13 +431,16 @@ static ConnectionInfo *get_connection(ConnectionPool *cp,
             {
 				cm->total_count--;
 
-				logDebug("file: "__FILE__", line: %d, "
-					"server %s:%u, connection: %d idle "
-					"time: %d exceeds max idle time: %d, "
-					"total_count: %d, free_count: %d", __LINE__,
-                    conn->ip_addr, conn->port, ci->sock, (int)
-                    (current_time - node->atime), cp->max_idle_time,
-                    cm->total_count, cm->free_count);
+                if (FC_LOG_BY_LEVEL(LOG_DEBUG)) {
+                    format_ip_address(conn->ip_addr, formatted_ip);
+                    logDebug("file: "__FILE__", line: %d, "
+                            "server %s:%u, connection: %d idle "
+                            "time: %d exceeds max idle time: %d, "
+                            "total_count: %d, free_count: %d", __LINE__,
+                            formatted_ip, conn->port, ci->sock, (int)
+                            (current_time - node->atime), cp->max_idle_time,
+                            cm->total_count, cm->free_count);
+                }
 
                 G_COMMON_CONNECTION_CALLBACKS[ci->comm_type].
                     close_connection(ci);
@@ -440,11 +449,16 @@ static ConnectionInfo *get_connection(ConnectionPool *cp,
 			}
 
 			pthread_mutex_unlock(&cm->lock);
-			logDebug("file: "__FILE__", line: %d, " \
-				"server %s:%u, reuse connection: %d, " \
-				"total_count: %d, free_count: %d", 
-				__LINE__, conn->ip_addr, conn->port, 
-				ci->sock, cm->total_count, cm->free_count);
+
+            if (FC_LOG_BY_LEVEL(LOG_DEBUG)) {
+                format_ip_address(conn->ip_addr, formatted_ip);
+                logDebug("file: "__FILE__", line: %d, "
+                        "server %s:%u, reuse connection: %d, "
+                        "total_count: %d, free_count: %d",
+                        __LINE__, formatted_ip, conn->port,
+                        ci->sock, cm->total_count, cm->free_count);
+            }
+
             *err_no = 0;
 			return ci;
 		}
@@ -526,26 +540,27 @@ static int close_connection(ConnectionPool *cp, ConnectionInfo *conn,
 {
 	ConnectionManager *cm;
 	ConnectionNode *node;
+    char formatted_ip[FORMATTED_IP_SIZE];
 
 	pthread_mutex_lock(&cp->lock);
 	cm = (ConnectionManager *)fc_hash_find(&cp->hash_array, key->str, key->len);
 	pthread_mutex_unlock(&cp->lock);
 	if (cm == NULL)
 	{
-        FC_FORMAT_IP_ADDRESS(conn->ip_addr, new_ip_addr);
+        format_ip_address(conn->ip_addr, formatted_ip);
 		logError("file: "__FILE__", line: %d, "
 			"hash entry of server %s:%u not exist",
-            __LINE__, new_ip_addr, conn->port);
+            __LINE__, formatted_ip, conn->port);
 		return ENOENT;
 	}
 
 	node = (ConnectionNode *)((char *)conn - sizeof(ConnectionNode));
 	if (node->manager != cm)
 	{
-        FC_FORMAT_IP_ADDRESS(conn->ip_addr, new_ip_addr);
+        format_ip_address(conn->ip_addr, formatted_ip);
 		logError("file: "__FILE__", line: %d, "
 			"manager of server entry %s:%u is invalid!",
-			__LINE__, new_ip_addr, conn->port);
+			__LINE__, formatted_ip, conn->port);
 		return EINVAL;
 	}
 
@@ -554,11 +569,14 @@ static int close_connection(ConnectionPool *cp, ConnectionInfo *conn,
     {
         cm->total_count--;
 
-        logDebug("file: "__FILE__", line: %d, "
-                "server %s:%u, release connection: %d, "
-                "total_count: %d, free_count: %d",
-                __LINE__, conn->ip_addr, conn->port,
-                conn->sock, cm->total_count, cm->free_count);
+        if (FC_LOG_BY_LEVEL(LOG_DEBUG)) {
+            format_ip_address(conn->ip_addr, formatted_ip);
+            logDebug("file: "__FILE__", line: %d, "
+                    "server %s:%u, release connection: %d, "
+                    "total_count: %d, free_count: %d",
+                    __LINE__, formatted_ip, conn->port,
+                    conn->sock, cm->total_count, cm->free_count);
+        }
 
         G_COMMON_CONNECTION_CALLBACKS[conn->comm_type].
             close_connection(conn);
@@ -578,11 +596,14 @@ static int close_connection(ConnectionPool *cp, ConnectionInfo *conn,
 		cm->head = node;
 		cm->free_count++;
 
-		logDebug("file: "__FILE__", line: %d, " \
-			"server %s:%u, free connection: %d, " \
-			"total_count: %d, free_count: %d", 
-			__LINE__, conn->ip_addr, conn->port, 
-			conn->sock, cm->total_count, cm->free_count);
+        if (FC_LOG_BY_LEVEL(LOG_DEBUG)) {
+            format_ip_address(conn->ip_addr, formatted_ip);
+            logDebug("file: "__FILE__", line: %d, "
+                    "server %s:%u, free connection: %d, "
+                    "total_count: %d, free_count: %d",
+                    __LINE__, formatted_ip, conn->port,
+                    conn->sock, cm->total_count, cm->free_count);
+        }
 	}
 	pthread_mutex_unlock(&cm->lock);
 

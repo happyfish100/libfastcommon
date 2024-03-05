@@ -1056,6 +1056,7 @@ int socketClientEx2(int af, const char *server_ip,
 {
     int sock;
     bool auto_detect;
+    char formatted_ip[FORMATTED_IP_SIZE];
 
     sock = socketCreateEx2(af, server_ip,
             flags, bind_ipaddr, err_no);
@@ -1069,11 +1070,11 @@ int socketClientEx2(int af, const char *server_ip,
             server_port, timeout, auto_detect);
     if (*err_no != 0)
     {
-        FC_FORMAT_IP_ADDRESS(server_ip, new_ip_addr);
+        format_ip_address(server_ip, formatted_ip);
         logError("file: "__FILE__", line: %d, "
                 "connect to %s:%u fail, "
                 "errno: %d, error info: %s",
-                __LINE__, new_ip_addr, server_port,
+                __LINE__, formatted_ip, server_port,
                 *err_no, STRERROR(*err_no));
         close(sock);
         return -4;

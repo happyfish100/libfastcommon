@@ -1,7 +1,8 @@
 
-Version 1.73  2024-02-20
+Version 1.73  2024-03-05
   * add macro FC_SET_STRING_EMPTY
   * struct fast_task_info remove fields: connect_timeout and network_timeout
+  * format ip address for IPv6
 
 Version 1.72  2024-01-21
   * call fast_mblock_ref_counter_dec for delay free node correctly
