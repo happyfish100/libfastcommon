@@ -1,4 +1,7 @@
 
+Version 1.74  2024-04-08
+  * add functions: get_log_level and get_log_level_caption
+
 Version 1.73  2024-03-05
   * add macro FC_SET_STRING_EMPTY
   * struct fast_task_info remove fields: connect_timeout and network_timeout

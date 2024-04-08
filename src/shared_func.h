@@ -531,10 +531,25 @@ int load_log_level_ex(const char *conf_filename);
 
 /** set global log level
  *  parameters:
- *  	pLogLevel: log level string value
+ *  	pLogLevel: the log level string value
  *  return: none
 */
 void set_log_level(char *pLogLevel);
+
+/** get log level by caption
+ *  parameters:
+ *  	pLogLevel: the log level string value
+ *      default_value: the default log level
+ *  return: the log level integer value
+*/
+int get_log_level(char *pLogLevel, const int default_value);
+
+/** get log level caption
+ *  parameters:
+ *  	log_level: the log level integer value
+ *  return: the log level caption
+*/
+const char *get_log_level_caption(const int log_level);
 
 /** load allow hosts from config context
  *  parameters:

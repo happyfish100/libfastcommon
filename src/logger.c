@@ -1287,40 +1287,7 @@ void logAccess(LogContext *pContext, struct timeval *tvStart, \
 
 const char *log_get_level_caption_ex(LogContext *pContext)
 {
-	const char *caption;
-
-	switch (pContext->log_level)
-	{
-		case LOG_DEBUG:
-			caption = "DEBUG";
-			break;
-		case LOG_INFO:
-			caption = "INFO";
-			break;
-		case LOG_NOTICE:
-			caption = "NOTICE";
-			break;
-		case LOG_WARNING:
-			caption = "WARNING";
-			break;
-		case LOG_ERR:
-			caption = "ERROR";
-			break;
-		case LOG_CRIT:
-			caption = "CRIT";
-			break;
-		case LOG_ALERT:
-			caption = "ALERT";
-			break;
-		case LOG_EMERG:
-			caption = "EMERG";
-			break;
-		default:
-			caption = "UNKOWN";
-			break;
-	}
-
-    return caption;
+    return get_log_level_caption(pContext->log_level);
 }
 
 #ifndef LOG_FORMAT_CHECK

@@ -1842,52 +1842,108 @@ int load_log_level_ex(const char *conf_filename)
 	return 0;
 }
 
+int get_log_level(char *pLogLevel, const int default_value)
+{
+    if (pLogLevel == NULL || *pLogLevel == '\0')
+    {
+        return default_value;
+    }
+
+    toUppercase(pLogLevel);
+    if (strncmp(pLogLevel, "DEBUG", 5) == 0 ||
+            strcmp(pLogLevel, "LOG_DEBUG") == 0)
+    {
+        return LOG_DEBUG;
+    }
+    else if (strncmp(pLogLevel, "INFO", 4) == 0 ||
+            strcmp(pLogLevel, "LOG_INFO") == 0)
+    {
+        return LOG_INFO;
+    }
+    else if (strncmp(pLogLevel, "NOTICE", 6) == 0 ||
+            strcmp(pLogLevel, "LOG_NOTICE") == 0)
+    {
+        return LOG_NOTICE;
+    }
+    else if (strncmp(pLogLevel, "WARN", 4) == 0 ||
+            strcmp(pLogLevel, "LOG_WARNING") == 0)
+    {
+        return LOG_WARNING;
+    }
+    else if (strncmp(pLogLevel, "ERR", 3) == 0 ||
+            strcmp(pLogLevel, "LOG_ERR") == 0)
+    {
+        return LOG_ERR;
+    }
+    else if (strncmp(pLogLevel, "CRIT", 4) == 0 ||
+            strcmp(pLogLevel, "LOG_CRIT") == 0)
+    {
+        return LOG_CRIT;
+    }
+    else if (strncmp(pLogLevel, "ALERT", 5) == 0 ||
+            strcmp(pLogLevel, "LOG_ALERT") == 0)
+    {
+        return LOG_ALERT;
+    }
+    else if (strncmp(pLogLevel, "EMERG", 5) == 0 ||
+            strcmp(pLogLevel, "LOG_EMERG") == 0)
+    {
+        return LOG_EMERG;
+    } else {
+        logWarning("file: "__FILE__", line: %d, "
+                "unkown log level: %s, set to default value!",
+                __LINE__, pLogLevel);
+        return default_value;
+    }
+}
+
+const char *get_log_level_caption(const int log_level)
+{
+    const char *caption;
+
+    switch (log_level)
+    {
+        case LOG_DEBUG:
+            caption = "DEBUG";
+            break;
+        case LOG_INFO:
+            caption = "INFO";
+            break;
+        case LOG_NOTICE:
+            caption = "NOTICE";
+            break;
+        case LOG_WARNING:
+            caption = "WARNING";
+            break;
+        case LOG_ERR:
+            caption = "ERROR";
+            break;
+        case LOG_CRIT:
+            caption = "CRIT";
+            break;
+        case LOG_ALERT:
+            caption = "ALERT";
+            break;
+        case LOG_EMERG:
+            caption = "EMERG";
+            break;
+        default:
+            caption = "UNKOWN";
+            break;
+    }
+
+    return caption;
+}
+
 void set_log_level(char *pLogLevel)
 {
-	if (pLogLevel != NULL)
-	{
-		toUppercase(pLogLevel);
-		if ( strncmp(pLogLevel, "DEBUG", 5) == 0 || \
-		     strcmp(pLogLevel, "LOG_DEBUG") == 0)
-		{
-			g_log_context.log_level = LOG_DEBUG;
-		}
-		else if ( strncmp(pLogLevel, "INFO", 4) == 0 || \
-		     strcmp(pLogLevel, "LOG_INFO") == 0)
-		{
-			g_log_context.log_level = LOG_INFO;
-		}
-		else if ( strncmp(pLogLevel, "NOTICE", 6) == 0 || \
-		     strcmp(pLogLevel, "LOG_NOTICE") == 0)
-		{
-			g_log_context.log_level = LOG_NOTICE;
-		}
-		else if ( strncmp(pLogLevel, "WARN", 4) == 0 || \
-		     strcmp(pLogLevel, "LOG_WARNING") == 0)
-		{
-			g_log_context.log_level = LOG_WARNING;
-		}
-		else if ( strncmp(pLogLevel, "ERR", 3) == 0 || \
-		     strcmp(pLogLevel, "LOG_ERR") == 0)
-		{
-			g_log_context.log_level = LOG_ERR;
-		}
-		else if ( strncmp(pLogLevel, "CRIT", 4) == 0 || \
-		     strcmp(pLogLevel, "LOG_CRIT") == 0)
-		{
-			g_log_context.log_level = LOG_CRIT;
-		}
-		else if ( strncmp(pLogLevel, "ALERT", 5) == 0 || \
-		     strcmp(pLogLevel, "LOG_ALERT") == 0)
-		{
-			g_log_context.log_level = LOG_ALERT;
-		}
-		else if ( strncmp(pLogLevel, "EMERG", 5) == 0 || \
-		     strcmp(pLogLevel, "LOG_EMERG") == 0)
-		{
-			g_log_context.log_level = LOG_EMERG;
-		}
-	}
+    int log_level;
+
+    log_level = get_log_level(pLogLevel, LOG_NOTHING);
+    if (log_level != LOG_NOTHING)
+    {
+        g_log_context.log_level = log_level;
+    }
 }
 
 int fcntl_add_flags(int fd, int get_cmd, int set_cmd, int adding_flags)
