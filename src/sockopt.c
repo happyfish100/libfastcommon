@@ -2849,9 +2849,13 @@ bool tcp_socket_connected(int sock)
     struct tcp_info info;
 #else
 #include <netinet/tcp_fsm.h>
-#define TCP_INFO         TCP_CONNECTION_INFO
 #define TCP_ESTABLISHED  TCPS_ESTABLISHED
+#ifndef TCP_INFO
+    #define TCP_INFO         TCP_CONNECTION_INFO
     struct tcp_connection_info info;
+#else
+    struct tcp_info info;
+#endif
 #endif
 
     len = sizeof(info);

@@ -1,6 +1,7 @@
 
-Version 1.74  2024-04-08
+Version 1.74  2024-05-18
   * add functions: get_log_level and get_log_level_caption
+  * adapt to FreeBSD 13
 
 Version 1.73  2024-03-05
   * add macro FC_SET_STRING_EMPTY

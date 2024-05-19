@@ -2911,8 +2911,16 @@ int parseAddress(char *src, char *parts[2])
 
 int64_t get_current_time_ns()
 {
+#ifdef CLOCK_MONOTONIC_RAW
+  #define MY_NS_CLK_ID CLOCK_MONOTONIC_RAW
+#elif defined(CLOCK_MONOTONIC_PRECISE)
+  #define MY_NS_CLK_ID CLOCK_MONOTONIC_PRECISE
+#else
+  #define MY_NS_CLK_ID CLOCK_MONOTONIC
+#endif
+
     struct timespec ts;
-    if (clock_gettime(CLOCK_MONOTONIC_RAW, &ts) != 0)
+    if (clock_gettime(MY_NS_CLK_ID, &ts) != 0)
     {
         logError("file: "__FILE__", line: %d, "
                 "call clock_gettime fail, "

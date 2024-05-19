@@ -203,9 +203,11 @@ extern int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int kind);
 #define st_ctimensec st_ctim.tv_nsec
 #endif
 #elif defined(OS_FREEBSD)
+#ifndef st_atimensec
 #define st_atimensec st_atimespec.tv_nsec
 #define st_mtimensec st_mtimespec.tv_nsec
 #define st_ctimensec st_ctimespec.tv_nsec
+#endif
 #endif
 
 #ifdef __cplusplus

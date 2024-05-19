@@ -99,6 +99,7 @@ else
   CFLAGS="$CFLAGS -g -O3"
 fi
 
+INCS=''
 LIBS='-lm -ldl'
 if [ -f /usr/include/curl/curl.h ] || [ -f /usr/local/include/curl/curl.h ]; then
   CFLAGS="$CFLAGS -DUSE_LIBCURL"
@@ -121,6 +122,9 @@ elif [ "$uname" = "FreeBSD" ] || [ "$uname" = "Darwin" ]; then
   if [ "$uname" = "Darwin" ]; then
     CFLAGS="$CFLAGS -DDARWIN"
     TARGET_PREFIX=$TARGET_PREFIX/local
+  else
+    INCS="$INCS -I/usr/local/include"
+    LIBS="$LIBS -L/usr/local/lib"
   fi
 
   if [ -f /usr/include/sys/vmmeter.h ]; then
@@ -247,6 +251,7 @@ sed_replace()
 cd src
 cp Makefile.in Makefile
 sed_replace "s#\\\$(CFLAGS)#$CFLAGS#g" Makefile
+sed_replace "s#\\\$(INCS)#$INCS#g" Makefile
 sed_replace "s#\\\$(LIBS)#$LIBS#g" Makefile
 sed_replace "s#\\\$(TARGET_PREFIX)#$TARGET_PREFIX#g" Makefile
 sed_replace "s#\\\$(LIB_VERSION)#$LIB_VERSION#g" Makefile

@@ -102,7 +102,9 @@ int ioevent_loop(struct nio_thread_data *thread_data,
 	time_t last_check_time;
     int save_extra_events;
 	int count;
+#ifdef OS_LINUX
     uint32_t sched_counter;
+#endif
     bool sched_pull;
 
 	memset(&ev_notify, 0, sizeof(ev_notify));
@@ -123,7 +125,10 @@ int ioevent_loop(struct nio_thread_data *thread_data,
 	}
     thread_data->ev_puller.extra_events = save_extra_events; //restore
 
+#ifdef OS_LINUX
     sched_counter = 0;
+#endif
+
     thread_data->deleted_list = NULL;
 	last_check_time = g_current_time;
 	while (*continue_flag)
