@@ -72,8 +72,11 @@ int get_sys_total_mem_size(int64_t *mem_size)
    size_t len;
 
    mib[0] = CTL_HW;
-   //mib[1] = HW_MEMSIZE;
+#ifdef DARWIN
+   mib[1] = HW_MEMSIZE;
+#else
    mib[1] = HW_PHYSMEM;
+#endif
    len = sizeof(*mem_size);
    if (sysctl(mib, 2, mem_size, &len, NULL, 0) != 0)
    {

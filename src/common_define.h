@@ -153,6 +153,10 @@ extern int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int kind);
 #define ECANCELED 125
 #endif
 
+#ifndef ENODATA
+#define ENODATA         61      /* No data available */
+#endif
+
 #ifndef ENONET
 #define ENONET          64      /* Machine is not on the network */
 #endif
