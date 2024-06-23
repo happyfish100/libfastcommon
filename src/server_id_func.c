@@ -1743,6 +1743,7 @@ int fc_server_make_connection_ex(FCAddressPtrArray *addr_array,
 
         conn_pool_set_server_info(conn, (*addr)->conn.ip_addr,
                 (*addr)->conn.port);
+        conn->comm_type = (*addr)->conn.comm_type;
         if ((result=G_COMMON_CONNECTION_CALLBACKS[conn->comm_type].
                 make_connection(conn, service_name, connect_timeout * 1000,
                         bind_ipaddr, log_connect_error)) == 0)
