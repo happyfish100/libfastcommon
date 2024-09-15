@@ -39,7 +39,7 @@ struct fast_task_info;
 typedef int (*ThreadLoopCallback) (struct nio_thread_data *pThreadData);
 typedef int (*TaskFinishCallback) (struct fast_task_info *task);
 typedef void (*TaskCleanUpCallback) (struct fast_task_info *task);
-typedef int (*TaskInitCallback)(struct fast_task_info *task);
+typedef int (*TaskInitCallback)(struct fast_task_info *task, void *arg);
 typedef void (*TaskReleaseCallback)(struct fast_task_info *task);
 
 typedef void (*IOEventCallback) (int sock, short event, void *arg);
@@ -155,6 +155,7 @@ struct fast_task_queue
     bool double_buffers;  //if send buffer and recv buffer are independent
     struct fast_mblock_man allocator;
     TaskInitCallback init_callback;
+    void *init_arg;
     TaskReleaseCallback release_callback;
 };
 
@@ -166,7 +167,8 @@ int free_queue_init_ex2(struct fast_task_queue *queue, const char *name,
         const bool double_buffers, const int max_connections,
         const int alloc_task_once, const int min_buff_size,
         const int max_buff_size, const int padding_size,
-        const int arg_size, TaskInitCallback init_callback);
+        const int arg_size, TaskInitCallback init_callback,
+        void *init_arg);
 
 static inline int free_queue_init_ex(struct fast_task_queue *queue,
         const char *name, const bool double_buffers,
@@ -177,7 +179,7 @@ static inline int free_queue_init_ex(struct fast_task_queue *queue,
     const int padding_size = 0;
     return free_queue_init_ex2(queue, name, double_buffers, max_connections,
             alloc_task_once, min_buff_size, max_buff_size, padding_size,
-            arg_size, NULL);
+            arg_size, NULL, NULL);
 }
 
 static inline int free_queue_init(struct fast_task_queue *queue,

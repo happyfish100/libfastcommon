@@ -1798,7 +1798,9 @@ struct ibv_pd *fc_alloc_rdma_pd(fc_alloc_pd_callback alloc_pd,
     }
 
     end = address_array->addrs + address_array->count;
-    for (addr=address_array->addrs, ip_addr=ip_addrs; addr<end; addr++) {
+    for (addr=address_array->addrs, ip_addr=ip_addrs;
+            addr<end; addr++, ip_addr++)
+    {
         *ip_addr = (*addr)->conn.ip_addr;
     }
 

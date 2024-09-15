@@ -53,7 +53,7 @@ static int task_alloc_init(struct fast_task_info *task,
 
     task->free_queue = queue;
     if (queue->init_callback != NULL) {
-        return queue->init_callback(task);
+        return queue->init_callback(task, queue->init_arg);
     }
     return 0;
 }
@@ -62,7 +62,8 @@ int free_queue_init_ex2(struct fast_task_queue *queue, const char *name,
         const bool double_buffers, const int max_connections,
         const int alloc_task_once, const int min_buff_size,
         const int max_buff_size, const int padding_size,
-        const int arg_size, TaskInitCallback init_callback)
+        const int arg_size, TaskInitCallback init_callback,
+        void *init_arg)
 {
 #define MAX_DATA_SIZE  (256 * 1024 * 1024)
     int alloc_once;
@@ -127,6 +128,7 @@ int free_queue_init_ex2(struct fast_task_queue *queue, const char *name,
 	queue->padding_size = aligned_padding_size;
 	queue->arg_size = aligned_arg_size;
 	queue->init_callback = init_callback;
+	queue->init_arg = init_arg;
     queue->release_callback = NULL;
 
     /*

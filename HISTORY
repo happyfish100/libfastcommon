@@ -1,4 +1,7 @@
 
+Version 1.75  2024-09-15
+  * task init callback support extra argument
+
 Version 1.74  2024-05-18
   * add functions: get_log_level and get_log_level_caption
   * adapt to FreeBSD 13
