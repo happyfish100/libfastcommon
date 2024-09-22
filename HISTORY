@@ -1,6 +1,7 @@
 
-Version 1.75  2024-09-15
+Version 1.75  2024-09-22
   * task init callback support extra argument
+  * connection pool performance optimization
 
 Version 1.74  2024-05-18
   * add functions: get_log_level and get_log_level_caption

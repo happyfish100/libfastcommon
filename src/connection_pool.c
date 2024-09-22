@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <dlfcn.h>
+#include <sys/types.h>
 #include "logger.h"
 #include "sockopt.h"
 #include "shared_func.h"
@@ -48,6 +49,156 @@ static int node_init_for_rdma(ConnectionNode *node,
             rdma.buffer_size, cp->extra_params.rdma.pd);
 }
 
+static inline void conn_pool_get_key(const ConnectionInfo *conn,
+        char *key, int *key_len)
+{
+    *key_len = sprintf(key, "%s-%u", conn->ip_addr, conn->port);
+}
+
+static int close_conn(ConnectionPool *cp, ConnectionManager *cm,
+        ConnectionInfo *conn, const bool bForce)
+{
+	ConnectionNode *node;
+    char formatted_ip[FORMATTED_IP_SIZE];
+
+	node = (ConnectionNode *)((char *)conn - sizeof(ConnectionNode));
+	if (node->manager != cm)
+	{
+        format_ip_address(conn->ip_addr, formatted_ip);
+		logError("file: "__FILE__", line: %d, "
+			"manager of server entry %s:%u is invalid!",
+			__LINE__, formatted_ip, conn->port);
+		return EINVAL;
+	}
+
+	if (bForce)
+    {
+        cm->total_count--;
+
+        if (FC_LOG_BY_LEVEL(LOG_DEBUG)) {
+            format_ip_address(conn->ip_addr, formatted_ip);
+            logDebug("file: "__FILE__", line: %d, "
+                    "server %s:%u, release connection: %d, "
+                    "total_count: %d, free_count: %d",
+                    __LINE__, formatted_ip, conn->port,
+                    conn->sock, cm->total_count, cm->free_count);
+        }
+
+        G_COMMON_CONNECTION_CALLBACKS[conn->comm_type].
+            close_connection(conn);
+        fast_mblock_free_object(&cp->node_allocator, node);
+
+        node = cm->head;
+        while (node != NULL)
+        {
+            node->conn->validate_flag = true;
+            node = node->next;
+        }
+    }
+	else
+	{
+		node->atime = get_current_time();
+		node->next = cm->head;
+		cm->head = node;
+		cm->free_count++;
+
+        if (FC_LOG_BY_LEVEL(LOG_DEBUG)) {
+            format_ip_address(conn->ip_addr, formatted_ip);
+            logDebug("file: "__FILE__", line: %d, "
+                    "server %s:%u, free connection: %d, "
+                    "total_count: %d, free_count: %d",
+                    __LINE__, formatted_ip, conn->port,
+                    conn->sock, cm->total_count, cm->free_count);
+        }
+	}
+
+	return 0;
+}
+
+static ConnectionManager *find_manager(ConnectionPool *cp,
+        ConnectionBucket *bucket, const string_t *key,
+        const bool need_create)
+{
+    ConnectionManager *cm;
+
+    if (bucket->head != NULL)
+    {
+        if (fc_string_equal(&bucket->head->key, key))  //fast path
+        {
+            return bucket->head;
+        }
+        else
+        {
+            cm = bucket->head->next;
+            while (cm != NULL)
+            {
+                if (fc_string_equal(&cm->key, key))
+                {
+                    return cm;
+                }
+                cm = cm->next;
+            }
+        }
+    }
+
+    if (!need_create)
+    {
+        return NULL;
+    }
+
+    cm = (ConnectionManager *)fast_mblock_alloc_object(
+            &cp->manager_allocator);
+    if (cm == NULL)
+    {
+        logError("file: "__FILE__", line: %d, "
+                "malloc %d bytes fail", __LINE__,
+                (int)sizeof(ConnectionManager));
+        return NULL;
+    }
+
+    cm->head = NULL;
+    cm->total_count = 0;
+    cm->free_count = 0;
+    if ((cm->key.str=fc_malloc(key->len + 1)) == NULL)
+    {
+        return NULL;
+    }
+    memcpy(cm->key.str, key->str, key->len + 1);
+    cm->key.len = key->len;
+
+    //add to chain
+    cm->next = bucket->head;
+    bucket->head = cm;
+    return cm;
+}
+
+static int close_connection(ConnectionPool *cp, ConnectionInfo *conn,
+        const string_t *key, uint32_t hash_code, const bool bForce)
+{
+    ConnectionBucket *bucket;
+    ConnectionManager *cm;
+    char formatted_ip[FORMATTED_IP_SIZE];
+    int result;
+
+    bucket = cp->hashtable.buckets + hash_code % cp->hashtable.capacity;
+    pthread_mutex_lock(&bucket->lock);
+    if ((cm=find_manager(cp, bucket, key, false)) != NULL)
+    {
+        result = close_conn(cp, cm, conn, bForce);
+    }
+    else
+    {
+        format_ip_address(conn->ip_addr, formatted_ip);
+		logError("file: "__FILE__", line: %d, "
+			"hash entry of server %s:%u not exist",
+            __LINE__, formatted_ip, conn->port);
+		result = ENOENT;
+    }
+	pthread_mutex_unlock(&bucket->lock);
+
+	return result;
+}
+
 static void cp_tls_destroy(void *ptr)
 {
     ConnectionThreadHashTable *htable;
@@ -55,7 +206,11 @@ static void cp_tls_destroy(void *ptr)
     ConnectionNode **end;
     ConnectionNode *current;
     ConnectionNode *node;
+    string_t key;
+    uint32_t hash_code;
+    char key_buff[INET6_ADDRSTRLEN + 8];
 
+    key.str = key_buff;
     htable = ptr;
     end = htable->buckets + htable->cp->extra_params.tls.htable_capacity;
     for (pp=htable->buckets; pp<end; pp++) {
@@ -67,30 +222,65 @@ static void cp_tls_destroy(void *ptr)
         do {
             current = node;
             node = node->next;
-            conn_pool_close_connection(htable->cp, current->conn);
+
+            conn_pool_get_key(current->conn, key.str, &key.len);
+            hash_code = fc_simple_hash(key.str, key.len);
+            close_connection(htable->cp, current->conn, &key, hash_code, false);
         } while (node != NULL);
     }
 
     free(ptr);
 }
 
-int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
+static int init_hashtable(ConnectionPool *cp, const int htable_capacity)
+{
+    int bytes;
+	int result;
+    unsigned int *hash_capacity;
+    ConnectionBucket *bucket;
+    ConnectionBucket *end;
+
+    if (htable_capacity > 0)
+    {
+        hash_capacity = fc_hash_get_prime_capacity(htable_capacity);
+        cp->hashtable.capacity = (hash_capacity != NULL ?
+                *hash_capacity : fc_ceil_prime(htable_capacity));
+    }
+    else
+    {
+        cp->hashtable.capacity = 163;
+    }
+    bytes = sizeof(ConnectionBucket) * cp->hashtable.capacity;
+    if ((cp->hashtable.buckets=fc_malloc(bytes)) == NULL)
+    {
+        return ENOMEM;
+    }
+
+    end = cp->hashtable.buckets + cp->hashtable.capacity;
+    for (bucket=cp->hashtable.buckets; bucket<end; bucket++)
+    {
+        bucket->head = NULL;
+        if ((result=init_pthread_lock(&bucket->lock)) != 0)
+        {
+            return result;
+        }
+    }
+
+    return 0;
+}
+
+int conn_pool_init_ex1(ConnectionPool *cp, const int connect_timeout,
 	const int max_count_per_entry, const int max_idle_time,
-    const int htable_init_capacity,
-    fc_connection_callback_func connect_done_func, void *connect_done_args,
-    fc_connection_callback_func validate_func, void *validate_args,
-    const int extra_data_size, const ConnectionExtraParams *extra_params)
+    const int htable_capacity, fc_connection_callback_func connect_done_func,
+    void *connect_done_args, fc_connection_callback_func validate_func,
+    void *validate_args, const int extra_data_size,
+    const ConnectionExtraParams *extra_params)
 {
     const int64_t alloc_elements_limit = 0;
 	int result;
-    int init_capacity;
     int extra_connection_size;
     fast_mblock_object_init_func obj_init_func;
 
-	if ((result=init_pthread_lock(&cp->lock)) != 0)
-	{
-		return result;
-	}
 	cp->connect_timeout_ms = connect_timeout * 1000;
 	cp->max_count_per_entry = max_count_per_entry;
 	cp->max_idle_time = max_idle_time;
@@ -100,10 +290,9 @@ int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
     cp->validate_callback.func = validate_func;
     cp->validate_callback.args = validate_args;
 
-    init_capacity = htable_init_capacity > 0 ? htable_init_capacity : 256;
     if ((result=fast_mblock_init_ex1(&cp->manager_allocator, "cpool-manager",
-                    sizeof(ConnectionManager), init_capacity,
-                    alloc_elements_limit, NULL, NULL, false)) != 0)
+                    sizeof(ConnectionManager), 256, alloc_elements_limit,
+                    NULL, NULL, true)) != 0)
     {
         return result;
     }
@@ -116,14 +305,14 @@ int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
     } else {
         extra_connection_size = 0;
         cp->extra_params.tls.enabled = false;
-        cp->extra_params.tls.htable_capacity = 0;
+        cp->extra_params.tls.htable_capacity = 163;
         cp->extra_params.rdma.buffer_size = 0;
         cp->extra_params.rdma.pd = NULL;
         obj_init_func = (fast_mblock_object_init_func)node_init_for_socket;
     }
     if ((result=fast_mblock_init_ex1(&cp->node_allocator, "cpool-node",
                     sizeof(ConnectionNode) + sizeof(ConnectionInfo) +
-                    extra_data_size + extra_connection_size, init_capacity,
+                    extra_data_size + extra_connection_size, 256,
                     alloc_elements_limit, obj_init_func, cp, true)) != 0)
     {
         return result;
@@ -142,47 +331,77 @@ int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
         }
     }
 
-	return fc_hash_init(&(cp->hash_array), fc_simple_hash, init_capacity, 0.75);
+	return init_hashtable(cp, htable_capacity);
 }
 
-static int coon_pool_close_connections(const int index,
-        const HashData *data, void *args)
+typedef void (*cp_hash_walk_callback)(ConnectionPool *cp,
+        ConnectionManager *cm, void *args);
+
+static void conn_pool_hash_walk(ConnectionPool *cp,
+        cp_hash_walk_callback callback, void *args)
 {
-    ConnectionPool *cp;
+    ConnectionBucket *bucket;
+    ConnectionBucket *end;
     ConnectionManager *cm;
+    ConnectionManager *current;
 
-    cp = (ConnectionPool *)args;
-    cm = (ConnectionManager *)data->value;
-    if (cm != NULL)
+    end = cp->hashtable.buckets + cp->hashtable.capacity;
+    for (bucket=cp->hashtable.buckets; bucket<end; bucket++)
     {
-        ConnectionNode *node;
-        ConnectionNode *deleted;
-
-        node = cm->head;
-        while (node != NULL)
+        pthread_mutex_lock(&bucket->lock);
+        cm = bucket->head;
+        while (cm != NULL)
         {
-            deleted = node;
-            node = node->next;
-
-            G_COMMON_CONNECTION_CALLBACKS[deleted->conn->comm_type].
-                close_connection(deleted->conn);
-            fast_mblock_free_object(&cp->node_allocator, deleted);
+            current = cm;
+            cm = cm->next;
+            callback(cp, current, args);
         }
+        pthread_mutex_unlock(&bucket->lock);
+    }
+}
 
-        fast_mblock_free_object(&cp->manager_allocator, cm);
+static void cp_destroy_walk_callback(ConnectionPool *cp,
+        ConnectionManager *cm, void *args)
+{
+    ConnectionNode *node;
+    ConnectionNode *deleted;
+
+    node = cm->head;
+    while (node != NULL)
+    {
+        deleted = node;
+        node = node->next;
+        G_COMMON_CONNECTION_CALLBACKS[deleted->conn->comm_type].
+            close_connection(deleted->conn);
     }
 
-    return 0;
+    free(cm->key.str);
 }
 
 void conn_pool_destroy(ConnectionPool *cp)
 {
-	pthread_mutex_lock(&cp->lock);
-    fc_hash_walk(&(cp->hash_array), coon_pool_close_connections, cp);
-	fc_hash_destroy(&(cp->hash_array));
-	pthread_mutex_unlock(&cp->lock);
+    ConnectionBucket *bucket;
+    ConnectionBucket *end;
 
-	pthread_mutex_destroy(&cp->lock);
+    if (cp->hashtable.buckets == NULL) {
+        return;
+    }
+
+    conn_pool_hash_walk(cp, cp_destroy_walk_callback, cp);
+
+    end = cp->hashtable.buckets + cp->hashtable.capacity;
+    for (bucket=cp->hashtable.buckets; bucket<end; bucket++) {
+        pthread_mutex_destroy(&bucket->lock);
+    }
+    free(cp->hashtable.buckets);
+    cp->hashtable.buckets = NULL;
+
+    if (cp->extra_params.tls.enabled) {
+        pthread_key_delete(cp->tls_key);
+    }
+
+    fast_mblock_destroy(&cp->manager_allocator);
+    fast_mblock_destroy(&cp->node_allocator);
 }
 
 void conn_pool_disconnect_server(ConnectionInfo *conn)
@@ -270,53 +489,17 @@ int conn_pool_async_connect_server_ex(ConnectionInfo *conn,
     return result;
 }
 
-static inline void conn_pool_get_key(const ConnectionInfo *conn,
-        char *key, int *key_len)
+static ConnectionInfo *get_conn(ConnectionPool *cp,
+	ConnectionManager *cm, pthread_mutex_t *lock,
+    const ConnectionInfo *conn, const char *service_name,
+    int *err_no)
 {
-    *key_len = sprintf(key, "%s-%u", conn->ip_addr, conn->port);
-}
-
-static ConnectionInfo *get_connection(ConnectionPool *cp,
-	const ConnectionInfo *conn, const string_t *key,
-    const char *service_name, int *err_no)
-{
-	ConnectionManager *cm;
 	ConnectionNode *node;
 	ConnectionInfo *ci;
     char formatted_ip[FORMATTED_IP_SIZE];
 	time_t current_time;
 
-	pthread_mutex_lock(&cp->lock);
-	cm = (ConnectionManager *)fc_hash_find(
-            &cp->hash_array, key->str, key->len);
-	if (cm == NULL)
-	{
-		cm = (ConnectionManager *)fast_mblock_alloc_object(
-                &cp->manager_allocator);
-		if (cm == NULL)
-		{
-			*err_no = ENOMEM;
-			logError("file: "__FILE__", line: %d, "
-				"malloc %d bytes fail", __LINE__,
-				(int)sizeof(ConnectionManager));
-			pthread_mutex_unlock(&cp->lock);
-			return NULL;
-		}
-
-		cm->head = NULL;
-		cm->total_count = 0;
-		cm->free_count = 0;
-		if ((*err_no=init_pthread_lock(&cm->lock)) != 0)
-		{
-			pthread_mutex_unlock(&cp->lock);
-			return NULL;
-		}
-		fc_hash_insert(&cp->hash_array, key->str, key->len, cm);
-	}
-	pthread_mutex_unlock(&cp->lock);
-
 	current_time = get_current_time();
-	pthread_mutex_lock(&cm->lock);
 	while (1)
 	{
 		if (cm->head == NULL)
@@ -331,7 +514,6 @@ static ConnectionInfo *get_connection(ConnectionPool *cp,
                     __LINE__, cm->total_count, service_name != NULL ?
                     service_name : "", service_name != NULL ? " " : "",
                     formatted_ip, conn->port, cp->max_count_per_entry);
-				pthread_mutex_unlock(&cm->lock);
 				return NULL;
 			}
 
@@ -343,7 +525,6 @@ static ConnectionInfo *get_connection(ConnectionPool *cp,
                 logError("file: "__FILE__", line: %d, "
                         "malloc %d bytes fail", __LINE__, (int)
                         (sizeof(ConnectionNode) + sizeof(ConnectionInfo)));
-                pthread_mutex_unlock(&cm->lock);
                 return NULL;
             }
 
@@ -352,7 +533,7 @@ static ConnectionInfo *get_connection(ConnectionPool *cp,
 			node->atime = 0;
 
 			cm->total_count++;
-			pthread_mutex_unlock(&cm->lock);
+			pthread_mutex_unlock(lock);
 
 			memcpy(node->conn->ip_addr, conn->ip_addr, sizeof(conn->ip_addr));
             node->conn->port = conn->port;
@@ -372,11 +553,10 @@ static ConnectionInfo *get_connection(ConnectionPool *cp,
 			{
                 G_COMMON_CONNECTION_CALLBACKS[conn->comm_type].
                     close_connection(node->conn);
-                pthread_mutex_lock(&cm->lock);
-                cm->total_count--;  //rollback
                 fast_mblock_free_object(&cp->node_allocator, node);
-                pthread_mutex_unlock(&cm->lock);
 
+                pthread_mutex_lock(lock);
+                cm->total_count--;  //rollback
 				return NULL;
 			}
 
@@ -389,6 +569,8 @@ static ConnectionInfo *get_connection(ConnectionPool *cp,
                         node->conn->sock, cm->total_count,
                         cm->free_count);
             }
+
+            pthread_mutex_lock(lock);
 			return node->conn;
 		}
 		else
@@ -448,8 +630,6 @@ static ConnectionInfo *get_connection(ConnectionPool *cp,
 				continue;
 			}
 
-			pthread_mutex_unlock(&cm->lock);
-
             if (FC_LOG_BY_LEVEL(LOG_DEBUG)) {
                 format_ip_address(conn->ip_addr, formatted_ip);
                 logDebug("file: "__FILE__", line: %d, "
@@ -463,6 +643,29 @@ static ConnectionInfo *get_connection(ConnectionPool *cp,
 			return ci;
 		}
 	}
+}
+
+static ConnectionInfo *get_connection(ConnectionPool *cp,
+	const ConnectionInfo *conn, const string_t *key,
+    const uint32_t hash_code, const char *service_name, int *err_no)
+{
+    ConnectionBucket *bucket;
+	ConnectionManager *cm;
+	ConnectionInfo *ci;
+
+    bucket = cp->hashtable.buckets + hash_code % cp->hashtable.capacity;
+	pthread_mutex_lock(&bucket->lock);
+    if ((cm=find_manager(cp, bucket, key, true)) != NULL)
+    {
+        ci = get_conn(cp, cm, &bucket->lock, conn, service_name, err_no);
+    }
+    else
+    {
+        *err_no = ENOMEM;
+        ci = NULL;
+    }
+    pthread_mutex_unlock(&bucket->lock);
+    return ci;
 }
 
 ConnectionInfo *conn_pool_get_connection_ex(ConnectionPool *cp,
@@ -479,8 +682,9 @@ ConnectionInfo *conn_pool_get_connection_ex(ConnectionPool *cp,
 
     key.str = key_buff;
     conn_pool_get_key(conn, key.str, &key.len);
+    hash_code = fc_simple_hash(key.str, key.len);
     if (!cp->extra_params.tls.enabled) {
-        return get_connection(cp, conn, &key, service_name, err_no);
+        return get_connection(cp, conn, &key, hash_code, service_name, err_no);
     }
 
     htable = pthread_getspecific(cp->tls_key);
@@ -500,7 +704,6 @@ ConnectionInfo *conn_pool_get_connection_ex(ConnectionPool *cp,
         }
     }
 
-    hash_code = fc_simple_hash(key.str, key.len);
     bucket = htable->buckets + hash_code % cp->
         extra_params.tls.htable_capacity;
     if (*bucket == NULL) {
@@ -521,8 +724,8 @@ ConnectionInfo *conn_pool_get_connection_ex(ConnectionPool *cp,
         *err_no = 0;
         return node->conn;
     } else {
-        if ((ci=get_connection(cp, conn, &key, service_name,
-                        err_no)) == NULL)
+        if ((ci=get_connection(cp, conn, &key, hash_code,
+                        service_name, err_no)) == NULL)
         {
             return NULL;
         }
@@ -533,81 +736,6 @@ ConnectionInfo *conn_pool_get_connection_ex(ConnectionPool *cp,
         *err_no = 0;
         return ci;
     }
-}
-
-static int close_connection(ConnectionPool *cp, ConnectionInfo *conn,
-        const string_t *key, const bool bForce)
-{
-	ConnectionManager *cm;
-	ConnectionNode *node;
-    char formatted_ip[FORMATTED_IP_SIZE];
-
-	pthread_mutex_lock(&cp->lock);
-	cm = (ConnectionManager *)fc_hash_find(&cp->hash_array, key->str, key->len);
-	pthread_mutex_unlock(&cp->lock);
-	if (cm == NULL)
-	{
-        format_ip_address(conn->ip_addr, formatted_ip);
-		logError("file: "__FILE__", line: %d, "
-			"hash entry of server %s:%u not exist",
-            __LINE__, formatted_ip, conn->port);
-		return ENOENT;
-	}
-
-	node = (ConnectionNode *)((char *)conn - sizeof(ConnectionNode));
-	if (node->manager != cm)
-	{
-        format_ip_address(conn->ip_addr, formatted_ip);
-		logError("file: "__FILE__", line: %d, "
-			"manager of server entry %s:%u is invalid!",
-			__LINE__, formatted_ip, conn->port);
-		return EINVAL;
-	}
-
-	pthread_mutex_lock(&cm->lock);
-	if (bForce)
-    {
-        cm->total_count--;
-
-        if (FC_LOG_BY_LEVEL(LOG_DEBUG)) {
-            format_ip_address(conn->ip_addr, formatted_ip);
-            logDebug("file: "__FILE__", line: %d, "
-                    "server %s:%u, release connection: %d, "
-                    "total_count: %d, free_count: %d",
-                    __LINE__, formatted_ip, conn->port,
-                    conn->sock, cm->total_count, cm->free_count);
-        }
-
-        G_COMMON_CONNECTION_CALLBACKS[conn->comm_type].
-            close_connection(conn);
-        fast_mblock_free_object(&cp->node_allocator, node);
-
-        node = cm->head;
-        while (node != NULL)
-        {
-            node->conn->validate_flag = true;
-            node = node->next;
-        }
-    }
-	else
-	{
-		node->atime = get_current_time();
-		node->next = cm->head;
-		cm->head = node;
-		cm->free_count++;
-
-        if (FC_LOG_BY_LEVEL(LOG_DEBUG)) {
-            format_ip_address(conn->ip_addr, formatted_ip);
-            logDebug("file: "__FILE__", line: %d, "
-                    "server %s:%u, free connection: %d, "
-                    "total_count: %d, free_count: %d",
-                    __LINE__, formatted_ip, conn->port,
-                    conn->sock, cm->total_count, cm->free_count);
-        }
-	}
-	pthread_mutex_unlock(&cm->lock);
-
-	return 0;
 }
 
 int conn_pool_close_connection_ex(ConnectionPool *cp,
@@ -623,8 +751,9 @@ int conn_pool_close_connection_ex(ConnectionPool *cp,
 
     key.str = key_buff;
     conn_pool_get_key(conn, key.str, &key.len);
+    hash_code = fc_simple_hash(key.str, key.len);
     if (!cp->extra_params.tls.enabled) {
-        return close_connection(cp, conn, &key, bForce);
+        return close_connection(cp, conn, &key, hash_code, bForce);
     }
 
     if (!bForce) {
@@ -633,10 +762,9 @@ int conn_pool_close_connection_ex(ConnectionPool *cp,
 
     htable = pthread_getspecific(cp->tls_key);
     if (htable == NULL) {
-        return close_connection(cp, conn, &key, bForce);
+        return close_connection(cp, conn, &key, hash_code, bForce);
     }
 
-    hash_code = fc_simple_hash(key.str, key.len);
     bucket = htable->buckets + hash_code % cp->
         extra_params.tls.htable_capacity;
     if (*bucket == NULL) {
@@ -665,33 +793,39 @@ int conn_pool_close_connection_ex(ConnectionPool *cp,
         }
     }
 
-    return close_connection(cp, conn, &key, bForce);
+    return close_connection(cp, conn, &key, hash_code, bForce);
 }
 
-static int _conn_count_walk(const int index, const HashData *data, void *args)
+static void cp_stat_walk_callback(ConnectionPool *cp,
+        ConnectionManager *cm, void *args)
 {
-	int *count;
-	ConnectionManager *cm;
-	ConnectionNode *node;
+    ConnectionPoolStat *stat;
 
-	count = (int *)args;
-	cm = (ConnectionManager *)data->value;
-	node = cm->head;
-	while (node != NULL)
-	{
-		(*count)++;
-		node = node->next;
-	}
-
-	return 0;
+    stat = args;
+    stat->server_count++;
+    stat->connection.total_count += cm->total_count;
+    stat->connection.free_count += cm->free_count;
 }
 
-int conn_pool_get_connection_count(ConnectionPool *cp)
+void conn_pool_stat(ConnectionPool *cp, ConnectionPoolStat *stat)
 {
-	int count;
-	count = 0;
-	fc_hash_walk(&cp->hash_array, _conn_count_walk, &count);
-	return count;
+    ConnectionBucket *bucket;
+    ConnectionBucket *end;
+
+    stat->htable_capacity = cp->hashtable.capacity;
+    stat->server_count = 0;
+    stat->connection.total_count = 0;
+    stat->connection.free_count = 0;
+    conn_pool_hash_walk(cp, cp_stat_walk_callback, stat);
+
+    stat->bucket_used = 0;
+    end = cp->hashtable.buckets + cp->hashtable.capacity;
+    for (bucket=cp->hashtable.buckets; bucket<end; bucket++)
+    {
+        if (bucket->head != NULL) {
+            stat->bucket_used++;
+        }
+    }
 }
 
 int conn_pool_parse_server_info(const char *pServerStr,

@@ -151,11 +151,17 @@ typedef struct tagConnectionNode {
 } ConnectionNode;
 
 typedef struct tagConnectionManager {
-	ConnectionNode *head;
-	int total_count;  //total connections
-	int free_count;   //free connections
-	pthread_mutex_t lock;
+    string_t key;
+    ConnectionNode *head;
+    int total_count;  //total connections
+    int free_count;   //free connections
+    struct tagConnectionManager *next;
 } ConnectionManager;
+
+typedef struct tagConnectionBucket {
+    ConnectionManager *head;
+    pthread_mutex_t lock;
+} ConnectionBucket;
 
 struct tagConnectionPool;
 
@@ -165,8 +171,11 @@ typedef struct {
 } ConnectionThreadHashTable;
 
 typedef struct tagConnectionPool {
-	HashArray hash_array;  //key is ip-port, value is ConnectionManager
-	pthread_mutex_t lock;
+    struct {
+        ConnectionBucket *buckets;
+        uint32_t capacity;
+    } hashtable;
+
 	int connect_timeout_ms;
 	int max_count_per_entry;  //0 means no limit
 
@@ -194,6 +203,16 @@ typedef struct tagConnectionPool {
     pthread_key_t tls_key;  //for ConnectionThreadHashTable
 } ConnectionPool;
 
+typedef struct {
+    int htable_capacity;
+    int bucket_used;
+    int server_count;
+    struct {
+        int total_count;
+        int free_count;
+    } connection;
+} ConnectionPoolStat;
+
 extern ConnectionCallbacks g_connection_callbacks;
 
 int conn_pool_global_init_for_rdma();
@@ -209,7 +228,7 @@ int conn_pool_global_init_for_rdma();
 *      max_count_per_entry: max connection count per host:port
 *      max_idle_time: reconnect the server after max idle time in seconds
 *      af: the socket domain
-*      htable_init_capacity: the init capacity of connection hash table
+*      htable_capacity: the capacity of connection hash table
 *      connect_done_func: the connect done connection callback
 *      connect_done_args: the args for connect done connection callback
 *      validate_func: the validate connection callback
@@ -218,12 +237,12 @@ int conn_pool_global_init_for_rdma();
 *      extra_params: for RDMA
 *   return 0 for success, != 0 for error
 */
-int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
+int conn_pool_init_ex1(ConnectionPool *cp, const int connect_timeout,
 	const int max_count_per_entry, const int max_idle_time,
-    const int htable_init_capacity,
-    fc_connection_callback_func connect_done_func, void *connect_done_args,
-    fc_connection_callback_func validate_func, void *validate_args,
-    const int extra_data_size, const ConnectionExtraParams *extra_params);
+    const int htable_capacity, fc_connection_callback_func connect_done_func,
+    void *connect_done_args, fc_connection_callback_func validate_func,
+    void *validate_args, const int extra_data_size,
+    const ConnectionExtraParams *extra_params);
 
 /**
 *   init ex function
@@ -234,14 +253,15 @@ int conn_pool_init_ex1(ConnectionPool *cp, int connect_timeout,
 *      max_idle_time: reconnect the server after max idle time in seconds
 *   return 0 for success, != 0 for error
 */
-static inline int conn_pool_init_ex(ConnectionPool *cp, int connect_timeout,
-	const int max_count_per_entry, const int max_idle_time)
+static inline int conn_pool_init_ex(ConnectionPool *cp,
+        const int connect_timeout, const int max_count_per_entry,
+        const int max_idle_time)
 {
-    const int htable_init_capacity = 0;
+    const int htable_capacity = 0;
     const int extra_data_size = 0;
     const ConnectionExtraParams *extra_params = NULL;
     return conn_pool_init_ex1(cp, connect_timeout, max_count_per_entry,
-            max_idle_time, htable_init_capacity, NULL, NULL, NULL, NULL,
+            max_idle_time, htable_capacity, NULL, NULL, NULL, NULL,
             extra_data_size, extra_params);
 }
 
@@ -254,14 +274,14 @@ static inline int conn_pool_init_ex(ConnectionPool *cp, int connect_timeout,
 *      max_idle_time: reconnect the server after max idle time in seconds
 *   return 0 for success, != 0 for error
 */
-static inline int conn_pool_init(ConnectionPool *cp, int connect_timeout,
+static inline int conn_pool_init(ConnectionPool *cp, const int connect_timeout,
 	const int max_count_per_entry, const int max_idle_time)
 {
-    const int htable_init_capacity = 0;
+    const int htable_capacity = 0;
     const int extra_data_size = 0;
     const ConnectionExtraParams *extra_params = NULL;
     return conn_pool_init_ex1(cp, connect_timeout, max_count_per_entry,
-            max_idle_time, htable_init_capacity, NULL, NULL, NULL, NULL,
+            max_idle_time, htable_capacity, NULL, NULL, NULL, NULL,
             extra_data_size, extra_params);
 }
 
@@ -395,12 +415,13 @@ int conn_pool_async_connect_server_ex(ConnectionInfo *conn,
 
 
 /**
-*   get connection count of the pool
+*   connection pool stat
 *   parameters:
 *      cp: the ConnectionPool
-*   return current connection count
+*      stat: the output stat
+*   return none
 */
-int conn_pool_get_connection_count(ConnectionPool *cp);
+void conn_pool_stat(ConnectionPool *cp, ConnectionPoolStat *stat);
 
 /**
 *   load server info from config file
