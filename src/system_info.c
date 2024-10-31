@@ -213,6 +213,10 @@ int get_mounted_filesystems(struct fast_statfs *stats,
     char line[1024];
     int result;
     int i;
+    char *ftypes[] = {"ext3", "ext4", "xfs", "btrfs", "f2fs", "jfs",
+        "reiserfs", "nilfs", "zfs", "ufs", "ntfs", "vfat", "udf",
+        "tmpfs", "devtmpfs", "nfs", "smb", "cifs", "fuse"};
+    const int ftype_count = sizeof(ftypes) / sizeof(char *);
 
     *count = 0;
     fp = fopen(filename, "r");
@@ -240,6 +244,18 @@ int get_mounted_filesystems(struct fast_statfs *stats,
         mntfromname = strsep(&p, " \t");
         mntonname = strsep(&p, " \t");
         fstypename = strsep(&p, " \t");
+        toLowercase(fstypename);
+        for (i=0; i<ftype_count; i++)
+        {
+            if (strcmp(fstypename, ftypes[i]) == 0)
+            {
+                break;
+            }
+        }
+        if (i == ftype_count)  //not found
+        {
+            continue;
+        }
 
         snprintf(stats[*count].f_mntfromname,
                 sizeof(stats[*count].f_mntfromname), "%s", mntfromname);
