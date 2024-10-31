@@ -64,6 +64,8 @@ int main(int argc, char *argv[])
     volatile bool continue_flag = true;
     FastIFConfig if_configs[32];
     struct fast_statfs stats[32];
+    char *path;
+    FastStatFS statfs;
 
     start_time = get_current_time_ms();
     srand(time(NULL));
@@ -90,6 +92,13 @@ int main(int argc, char *argv[])
                 stats[i].f_type, stats[i].f_bsize, stats[i].f_blocks,
                 stats[i].f_bfree, stats[i].f_bavail, stats[i].f_files,
                 stats[i].f_ffree);
+    }
+
+    path = "/root";
+    if (get_statfs_by_path(path, &statfs) == 0) {
+        printf("\ninput path: %s, %s => %s, type: %s\n\n", path,
+                statfs.f_mntfromname, statfs.f_mntonname,
+                statfs.f_fstypename);
     }
 
 #if defined(OS_LINUX) || defined(OS_FREEBSD)
@@ -138,31 +147,6 @@ int main(int argc, char *argv[])
     }
 
 #endif
-
-    /*
-    {
-    int result;
-    char *filename;
-    IniContext iniContext;
-    if (argc > 1) {
-        filename  = argv[1];
-    } else {
-        filename = "/etc/mc/worker.conf";
-    }
-
-
-    if ((result=iniLoadFromFile(filename, &iniContext)) != 0) {
-        logError("file: "__FILE__", line: %d, "
-                "load conf file \"%s\" fail, ret code: %d",
-                __LINE__, filename, result);
-        return result;
-    }
-
-
-    //iniPrintItems(&iniContext);
-    iniFreeContext(&iniContext);
-    }
-    */
 
     sched_enable_delay_task();
     scheduleArray.entries = scheduleEntries;

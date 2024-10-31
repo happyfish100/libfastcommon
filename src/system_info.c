@@ -334,6 +334,52 @@ int get_mounted_filesystems(struct fast_statfs *stats,
 #endif
 }
 
+int get_statfs_by_path(const char *path, FastStatFS *statfs)
+{
+#define MAX_STATFS_COUNT  256
+    int result;
+    int count;
+    int path_len;
+    int mnt_len;
+    int matched_len;
+    char resolved_path[PATH_MAX];
+    struct fast_statfs stats[MAX_STATFS_COUNT];
+    struct fast_statfs *entry;
+    struct fast_statfs *end;
+
+    if ((result=get_mounted_filesystems(stats, MAX_STATFS_COUNT,
+                    &count)) != 0)
+    {
+        return result;
+    }
+
+    realpath(path, resolved_path);
+    path_len = strlen(resolved_path);
+    matched_len = 0;
+    end = stats + count;
+    for (entry=stats; entry<end; entry++)
+    {
+        mnt_len = strlen(entry->f_mntonname);
+        if (mnt_len <= path_len && memcmp(resolved_path, entry->
+                    f_mntonname, mnt_len) == 0)
+        {
+            if ((mnt_len > 1 && mnt_len < path_len) &&
+                    *(resolved_path + mnt_len) != '/')
+            {
+                continue;
+            }
+
+            if (mnt_len > matched_len)
+            {
+                matched_len = mnt_len;
+                *statfs = *entry;
+            }
+        }
+    }
+
+    return (matched_len > 0 ? 0 : ENOENT);
+}
+
 #if defined(OS_LINUX) || defined(OS_FREEBSD)
 
 typedef struct fast_process_array {

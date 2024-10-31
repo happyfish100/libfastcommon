@@ -151,6 +151,15 @@ int get_boot_time(struct timeval *boot_time);
 int get_mounted_filesystems(struct fast_statfs *stats,
         const int size, int *count);
 
+/** get statfs by path
+ *  parameters:
+ *      path: the path
+ *      statfs: return the statfs
+ *  return: error no, 0 success, != 0 fail
+*/
+int get_statfs_by_path(const char *path, FastStatFS *statfs);
+
+
 #if defined(OS_LINUX) || defined(OS_FREEBSD)
 /** get processes
  *  parameters:
