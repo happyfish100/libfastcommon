@@ -42,6 +42,14 @@ extern "C" {
 #define MNAMELEN 128
 #endif
 
+    typedef enum fast_device_type {
+        fast_device_type_unkown = 0,
+        fast_device_type_disk,
+        fast_device_type_memory,
+        fast_device_type_fuse,
+        fast_device_type_network
+    } FastDeviceType;
+
    typedef struct fast_statfs {
         long    f_type;     /* type of file system (see below) */
         long    f_bsize;    /* optimal transfer block size */
@@ -56,6 +64,7 @@ extern "C" {
         char    f_fstypename[MFSNAMELEN]; /* fs type name */
         char    f_mntfromname[MNAMELEN];  /* mounted file system */
         char    f_mntonname[MNAMELEN];    /* directory on which mounted */
+        FastDeviceType device_type;
     } FastStatFS;
 
 #if defined(OS_LINUX) || defined(OS_FREEBSD)
@@ -120,6 +129,23 @@ extern "C" {
    } FastProcessInfo;
 #endif
 
+   static inline const char *get_device_type_caption(
+           const FastDeviceType device_type)
+   {
+       switch (device_type) {
+           case fast_device_type_disk:
+               return "disk";
+           case fast_device_type_memory:
+               return "memory";
+           case fast_device_type_fuse:
+               return "fuse";
+           case fast_device_type_network:
+               return "network";
+           default:
+               return "unkown";
+       }
+   }
+
 /** get system total memory size
  *  parameters:
  *  	mem_size: return the total memory size
@@ -159,6 +185,12 @@ int get_mounted_filesystems(struct fast_statfs *stats,
 */
 int get_statfs_by_path(const char *path, FastStatFS *statfs);
 
+/** is rotational device by path
+ *  parameters:
+ *      path: the path
+ *  return: true for rotational device, otherwise false
+*/
+bool is_rotational_device_by_path(const char *path);
 
 #if defined(OS_LINUX) || defined(OS_FREEBSD)
 /** get processes

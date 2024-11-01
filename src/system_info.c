@@ -199,6 +199,47 @@ int get_boot_time(struct timeval *boot_time)
         snprintf(left.f_mntonname, sizeof(left.f_mntonname), "%s", mntonname); \
     } while (0)
 
+#ifdef OS_LINUX
+static int get_device_type(const char *type_name, FastDeviceType *device_type)
+{
+    int i;
+    const char *disk_ftypes[] = {"ext2", "ext3", "ext4", "xfs",
+        "btrfs", "f2fs", "jfs", "reiserfs", "nilfs", "zfs",
+        "ufs", "ntfs", "vfat", "udf", "romfs", "squashfs"};
+    const int disk_ftype_count = sizeof(disk_ftypes) / sizeof(char *);
+
+    for (i=0; i<disk_ftype_count; i++)
+    {
+        if (strcmp(type_name, disk_ftypes[i]) == 0)
+        {
+            *device_type = fast_device_type_disk;
+            return 0;
+        }
+    }
+
+    if (strcmp(type_name, "tmpfs") == 0 || strcmp(type_name, "devtmpfs") == 0)
+    {
+        *device_type = fast_device_type_memory;
+        return 0;
+    }
+
+    if (strcmp(type_name, "nfs") == 0 || strcmp(type_name, "smb") == 0 ||
+            strcmp(type_name, "cifs") == 0 || strcmp(type_name, "afp") == 0)
+    {
+        *device_type = fast_device_type_network;
+        return 0;
+    }
+
+    if (strcmp(type_name, "fuse") == 0)
+    {
+        *device_type = fast_device_type_fuse;
+        return 0;
+    }
+
+    return ENOENT;
+}
+#endif
+
 int get_mounted_filesystems(struct fast_statfs *stats,
         const int size, int *count)
 {
@@ -213,10 +254,6 @@ int get_mounted_filesystems(struct fast_statfs *stats,
     char line[1024];
     int result;
     int i;
-    char *ftypes[] = {"ext3", "ext4", "xfs", "btrfs", "f2fs", "jfs",
-        "reiserfs", "nilfs", "zfs", "ufs", "ntfs", "vfat", "udf",
-        "tmpfs", "devtmpfs", "nfs", "smb", "cifs", "fuse"};
-    const int ftype_count = sizeof(ftypes) / sizeof(char *);
 
     *count = 0;
     fp = fopen(filename, "r");
@@ -245,26 +282,16 @@ int get_mounted_filesystems(struct fast_statfs *stats,
         mntonname = strsep(&p, " \t");
         fstypename = strsep(&p, " \t");
         toLowercase(fstypename);
-        for (i=0; i<ftype_count; i++)
+        if (get_device_type(fstypename, &stats[*count].device_type) == 0)
         {
-            if (strcmp(fstypename, ftypes[i]) == 0)
-            {
-                break;
-            }
+            snprintf(stats[*count].f_mntfromname, sizeof(stats[*count].
+                        f_mntfromname), "%s", mntfromname);
+            snprintf(stats[*count].f_mntonname, sizeof(stats[*count].
+                        f_mntonname), "%s", mntonname);
+            snprintf(stats[*count].f_fstypename, sizeof(stats[*count].
+                        f_fstypename), "%s", fstypename);
+            (*count)++;
         }
-        if (i == ftype_count)  //not found
-        {
-            continue;
-        }
-
-        snprintf(stats[*count].f_mntfromname,
-                sizeof(stats[*count].f_mntfromname), "%s", mntfromname);
-        snprintf(stats[*count].f_mntonname,
-                sizeof(stats[*count].f_mntonname), "%s", mntonname);
-        snprintf(stats[*count].f_fstypename,
-                sizeof(stats[*count].f_fstypename), "%s", fstypename);
-
-        (*count)++;
     }
     fclose(fp);
 
@@ -295,7 +322,7 @@ int get_mounted_filesystems(struct fast_statfs *stats,
     int i;
 
     mnts = NULL;
-    *count = getmntinfo(&mnts, 0);
+    *count = getmntinfo(&mnts, MNT_NOWAIT);
     if (*count == 0)
     {
         result = errno != 0 ? errno : EPERM;
@@ -321,6 +348,7 @@ int get_mounted_filesystems(struct fast_statfs *stats,
         SET_STATFS_FIELDS(stats[i], mnts[i]);
 #ifdef HAVE_FILE_SYSTEM_ID
         stats[i].f_fsid = mnts[i].f_fsid;
+        stats[i].device_type = fast_device_type_unkown;
 #endif
         SET_MNT_FIELDS(stats[i], mnts[i].f_fstypename,
                 mnts[i].f_mntfromname, mnts[i].f_mntonname);
@@ -353,7 +381,10 @@ int get_statfs_by_path(const char *path, FastStatFS *statfs)
         return result;
     }
 
-    realpath(path, resolved_path);
+    if (realpath(path, resolved_path) == NULL)
+    {
+        return errno != 0 ? errno : ENOENT;
+    }
     path_len = strlen(resolved_path);
     matched_len = 0;
     end = stats + count;
@@ -378,6 +409,65 @@ int get_statfs_by_path(const char *path, FastStatFS *statfs)
     }
 
     return (matched_len > 0 ? 0 : ENOENT);
+}
+
+bool is_rotational_device_by_path(const char *path)
+{
+#if defined(OS_LINUX)
+#define DEV_PATH_PREFIX_STR  "/dev/"
+#define DEV_PATH_PREFIX_LEN  (sizeof(DEV_PATH_PREFIX_STR) - 1)
+
+    int result;
+    int fd;
+    int len;
+    FastStatFS statfs;
+    char resolved_path[PATH_MAX];
+    char filename[PATH_MAX];
+    char buff[8];
+    char *device_name;
+
+    if ((result=get_statfs_by_path(path, &statfs)) != 0) {
+        return true;
+    }
+
+    if (statfs.device_type == fast_device_type_memory) {
+        return false;
+    }
+
+    if (!(statfs.device_type == fast_device_type_disk &&
+                strncmp(statfs.f_mntfromname, DEV_PATH_PREFIX_STR,
+                    DEV_PATH_PREFIX_LEN) == 0))
+    {
+        return true;
+    }
+
+    if (realpath(statfs.f_mntfromname, resolved_path) == NULL) {
+        return true;
+    }
+    if (strncmp(resolved_path, DEV_PATH_PREFIX_STR,
+                DEV_PATH_PREFIX_LEN) != 0)
+    {
+        return true;
+    }
+    device_name = resolved_path + DEV_PATH_PREFIX_LEN;
+    sprintf(filename, "/sys/class/block/%s/queue/rotational", device_name);
+    if ((fd=open(filename, O_RDONLY)) < 0) {
+        sprintf(filename, "/sys/class/block/%s/../queue/rotational", device_name);
+        if ((fd=open(filename, O_RDONLY)) < 0) {
+            return true;
+        }
+    }
+
+    len = read(fd, buff, sizeof(buff));
+    close(fd);
+    if (len == 1 || len == 2) {
+        return (buff[0] != '0');
+    } else {
+        return true;
+    }
+#else
+    return true;
+#endif
 }
 
 #if defined(OS_LINUX) || defined(OS_FREEBSD)
@@ -679,7 +769,7 @@ int get_processes(struct fast_process_info **processes, int *count)
     mib[0] = CTL_KERN;
     mib[1] = KERN_PROC;
     mib[2] = KERN_PROC_ALL;
-    mib[3] =  0;
+    mib[3] = 0;
     size = 0;
     if (sysctl(mib, 4, NULL, &size, NULL, 0) < 0)
     {

@@ -88,17 +88,19 @@ int main(int argc, char *argv[])
     printf("mounted fs count: %d\n", count);
     for (i=0; i<count; i++) {
         printf("%s => %s %s %ld %ld %ld %ld %ld %ld %ld\n",
-                stats[i].f_mntfromname, stats[i].f_mntonname, stats[i].f_fstypename,
-                stats[i].f_type, stats[i].f_bsize, stats[i].f_blocks,
-                stats[i].f_bfree, stats[i].f_bavail, stats[i].f_files,
-                stats[i].f_ffree);
+                stats[i].f_mntfromname, stats[i].f_mntonname,
+                stats[i].f_fstypename, stats[i].f_type, stats[i].f_bsize,
+                stats[i].f_blocks, stats[i].f_bfree, stats[i].f_bavail,
+                stats[i].f_files, stats[i].f_ffree);
     }
 
-    path = "/root";
+    path = "/";
     if (get_statfs_by_path(path, &statfs) == 0) {
-        printf("\ninput path: %s, %s => %s, type: %s\n\n", path,
-                statfs.f_mntfromname, statfs.f_mntonname,
-                statfs.f_fstypename);
+        printf("\ninput path: %s, %s => %s, type: %s, category: %s, "
+                "rotational: %d\n\n", path, statfs.f_mntfromname,
+                statfs.f_mntonname, statfs.f_fstypename,
+                get_device_type_caption(statfs.device_type),
+                is_rotational_device_by_path(path));
     }
 
 #if defined(OS_LINUX) || defined(OS_FREEBSD)
