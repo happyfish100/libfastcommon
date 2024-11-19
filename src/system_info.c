@@ -217,7 +217,8 @@ static int get_device_type(const char *type_name, FastDeviceType *device_type)
         }
     }
 
-    if (strcmp(type_name, "tmpfs") == 0 || strcmp(type_name, "devtmpfs") == 0)
+    if (strcmp(type_name, "tmpfs") == 0 || strcmp(type_name, "devtmpfs") == 0
+            || strcmp(type_name, "ramfs") == 0)
     {
         *device_type = fast_device_type_memory;
         return 0;
@@ -236,6 +237,7 @@ static int get_device_type(const char *type_name, FastDeviceType *device_type)
         return 0;
     }
 
+    *device_type = fast_device_type_unkown;
     return ENOENT;
 }
 #endif
@@ -348,8 +350,8 @@ int get_mounted_filesystems(struct fast_statfs *stats,
         SET_STATFS_FIELDS(stats[i], mnts[i]);
 #ifdef HAVE_FILE_SYSTEM_ID
         stats[i].f_fsid = mnts[i].f_fsid;
-        stats[i].device_type = fast_device_type_unkown;
 #endif
+        stats[i].device_type = fast_device_type_unkown;
         SET_MNT_FIELDS(stats[i], mnts[i].f_fstypename,
                 mnts[i].f_mntfromname, mnts[i].f_mntonname);
     }
