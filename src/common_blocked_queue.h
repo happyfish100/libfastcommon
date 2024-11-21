@@ -100,7 +100,7 @@ static inline struct common_blocked_node *common_blocked_queue_alloc_node(
     struct common_blocked_node *node;
 
     pthread_mutex_lock(&(queue->lc_pair.lock));
-    node = fast_mblock_alloc_object(&queue->mblock);
+    node = (struct common_blocked_node *)fast_mblock_alloc_object(&queue->mblock);
     pthread_mutex_unlock(&(queue->lc_pair.lock));
     return node;
 }

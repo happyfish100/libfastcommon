@@ -205,7 +205,7 @@ void free_queue_destroy(struct fast_task_queue *queue);
 static inline struct fast_task_info *free_queue_pop(
         struct fast_task_queue *queue)
 {
-    return fast_mblock_alloc_object(&queue->allocator);
+    return (struct fast_task_info *)fast_mblock_alloc_object(&queue->allocator);
 }
 
 void free_queue_push(struct fast_task_info *task);
