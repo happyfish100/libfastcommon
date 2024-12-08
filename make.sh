@@ -250,6 +250,7 @@ sed_replace()
 
 cd src
 cp Makefile.in Makefile
+sed_replace "s#\\\$(CC)#gcc#g" Makefile
 sed_replace "s#\\\$(CFLAGS)#$CFLAGS#g" Makefile
 sed_replace "s#\\\$(INCS)#$INCS#g" Makefile
 sed_replace "s#\\\$(LIBS)#$LIBS#g" Makefile

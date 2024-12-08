@@ -57,7 +57,7 @@ int write_to_pid_file(const char *pidFilename)
 int delete_pid_file(const char *pidFilename)
 {
   int result;
-  pid_t pid;
+  pid_t pid = 0;
 
   if ((result=get_pid_from_file(pidFilename, &pid)) != 0) {
     return result;
@@ -115,7 +115,7 @@ static int do_stop(const char *pidFilename, const bool bShowError, pid_t *pid)
 int process_stop_ex(const char *pidFilename, const bool bShowError)
 {
 #define MAX_WAIT_COUNT  300
-  pid_t pid;
+  pid_t pid = 0;
   int result;
   int sig;
   int i;
@@ -192,7 +192,7 @@ static const char *get_exename_by_pid(const pid_t pid, char *buff,
 
 int process_start(const char* pidFilename)
 {
-    pid_t pid;
+    pid_t pid = 0;
     int result;
 
     if ((result=get_pid_from_file(pidFilename, &pid)) != 0) {

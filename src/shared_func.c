@@ -3983,7 +3983,7 @@ int fc_get_last_line(const char *filename, char *buff,
 int fc_get_last_lines(const char *filename, char *buff,
         const int buff_size, string_t *lines, int *count)
 {
-    int64_t file_size;
+    int64_t file_size = 0;
     int64_t offset;
     int64_t read_bytes;
     int remain_len;
