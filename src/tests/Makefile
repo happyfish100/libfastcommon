@@ -1,6 +1,6 @@
 .SUFFIXES: .c .o
 
-COMPILE = $(CC) -g -O3 -Wall -D_FILE_OFFSET_BITS=64 -g -DDEBUG_FLAG
+COMPILE = $(CC) -g -O3 -Wall -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -g -DDEBUG_FLAG
 INC_PATH = -I/usr/local/include
 LIB_PATH = -lfastcommon -lpthread
 
@@ -14,9 +14,6 @@ ALL_PRGS = test_allocator test_skiplist test_multi_skiplist test_mblock test_blo
            test_thread_local test_memcpy
 
 all: $(ALL_PRGS)
-
-test_memcpy: test_memcpy.c
-	$(CC) -g -Wall -o $@ $< $(LIB_PATH) $(INC_PATH)
 
 .c:
 	$(COMPILE) -o $@ $< $(LIB_PATH) $(INC_PATH)
