@@ -166,7 +166,7 @@ static ConnectionManager *find_manager(ConnectionPool *cp,
     memcpy(cm->key.str, key->str, key->len + 1);
     cm->key.len = key->len;
 
-    //add to chain
+    //add to manager chain
     cm->next = bucket->head;
     bucket->head = cm;
     return cm;
@@ -297,17 +297,21 @@ int conn_pool_init_ex1(ConnectionPool *cp, const int connect_timeout,
         return result;
     }
 
-    if (extra_params != NULL) {
+    if (extra_params != NULL && extra_params->rdma.pd != NULL) {
         extra_connection_size = G_RDMA_CONNECTION_CALLBACKS.
             get_connection_size();
         obj_init_func = (fast_mblock_object_init_func)node_init_for_rdma;
         cp->extra_params = *extra_params;
     } else {
         extra_connection_size = 0;
-        cp->extra_params.tls.enabled = false;
-        cp->extra_params.tls.htable_capacity = 163;
-        cp->extra_params.rdma.buffer_size = 0;
-        cp->extra_params.rdma.pd = NULL;
+        if (extra_params != NULL) {
+            cp->extra_params = *extra_params;
+        } else {
+            cp->extra_params.tls.enabled = false;
+            cp->extra_params.tls.htable_capacity = 163;
+            cp->extra_params.rdma.buffer_size = 0;
+            cp->extra_params.rdma.pd = NULL;
+        }
         obj_init_func = (fast_mblock_object_init_func)node_init_for_socket;
     }
     if ((result=fast_mblock_init_ex1(&cp->node_allocator, "cpool-node",
@@ -730,6 +734,7 @@ ConnectionInfo *conn_pool_get_connection_ex(ConnectionPool *cp,
             return NULL;
         }
 
+        //add to thread local hashtable
         node = (ConnectionNode *)((char *)ci - sizeof(ConnectionNode));
         node->next = *bucket;
         *bucket = node;
