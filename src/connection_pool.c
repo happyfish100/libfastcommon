@@ -762,6 +762,8 @@ int conn_pool_close_connection_ex(ConnectionPool *cp,
 
     htable = pthread_getspecific(cp->tls_key);
     if (htable == NULL) {
+        logError("file: "__FILE__", line: %d, "
+                "the thread local key NOT exist!", __LINE__);
         return close_connection(cp, conn, &key, hash_code, bForce);
     }
 
@@ -791,6 +793,10 @@ int conn_pool_close_connection_ex(ConnectionPool *cp,
         } else {
             previous->next = node->next;
         }
+    } else {
+        logError("file: "__FILE__", line: %d, "
+                "%.*s NOT in the thread local hashtable!",
+                __LINE__, key.len, key.str);
     }
 
     return close_connection(cp, conn, &key, hash_code, bForce);
