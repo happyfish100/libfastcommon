@@ -651,7 +651,8 @@ static ConnectionInfo *get_conn(ConnectionPool *cp,
 
 static ConnectionInfo *get_connection(ConnectionPool *cp,
 	const ConnectionInfo *conn, const string_t *key,
-    const uint32_t hash_code, const char *service_name, int *err_no)
+    const uint32_t hash_code, const char *service_name,
+    const bool shared, int *err_no)
 {
     ConnectionBucket *bucket;
 	ConnectionManager *cm;
@@ -662,6 +663,10 @@ static ConnectionInfo *get_connection(ConnectionPool *cp,
     if ((cm=find_manager(cp, bucket, key, true)) != NULL)
     {
         ci = get_conn(cp, cm, &bucket->lock, conn, service_name, err_no);
+        if (ci != NULL)
+        {
+            ci->shared = shared;
+        }
     }
     else
     {
@@ -673,7 +678,8 @@ static ConnectionInfo *get_connection(ConnectionPool *cp,
 }
 
 ConnectionInfo *conn_pool_get_connection_ex(ConnectionPool *cp,
-	const ConnectionInfo *conn, const char *service_name, int *err_no)
+	const ConnectionInfo *conn, const char *service_name,
+    const bool shared, int *err_no)
 {
     string_t key;
     int bytes;
@@ -687,8 +693,9 @@ ConnectionInfo *conn_pool_get_connection_ex(ConnectionPool *cp,
     key.str = key_buff;
     conn_pool_get_key(conn, key.str, &key.len);
     hash_code = fc_simple_hash(key.str, key.len);
-    if (!cp->extra_params.tls.enabled) {
-        return get_connection(cp, conn, &key, hash_code, service_name, err_no);
+    if (!cp->extra_params.tls.enabled || !shared) {
+        return get_connection(cp, conn, &key, hash_code,
+                service_name, shared, err_no);
     }
 
     htable = pthread_getspecific(cp->tls_key);
@@ -729,7 +736,7 @@ ConnectionInfo *conn_pool_get_connection_ex(ConnectionPool *cp,
         return node->conn;
     } else {
         if ((ci=get_connection(cp, conn, &key, hash_code,
-                        service_name, err_no)) == NULL)
+                        service_name, shared, err_no)) == NULL)
         {
             return NULL;
         }
@@ -757,10 +764,11 @@ int conn_pool_close_connection_ex(ConnectionPool *cp,
     key.str = key_buff;
     conn_pool_get_key(conn, key.str, &key.len);
     hash_code = fc_simple_hash(key.str, key.len);
-    if (!cp->extra_params.tls.enabled) {
+    if (!cp->extra_params.tls.enabled || !conn->shared) {
         return close_connection(cp, conn, &key, hash_code, bForce);
     }
 
+    //thread local logic
     if (!bForce) {
         return 0;
     }

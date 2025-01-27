@@ -1201,7 +1201,7 @@ char *getHostnameByIp(const char *szIpAddr, char *buff, const int bufferSize)
 }
 
 in_addr_64_t getIpaddrByNameEx(const char *name, char *buff,
-        const int bufferSize, short *af)
+        const int bufferSize, uint8_t *af)
 {
 	struct addrinfo hints, *res, *p;
     struct in_addr  addr4;

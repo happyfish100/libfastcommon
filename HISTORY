@@ -1,8 +1,9 @@
 
-Version 1.76  2024-11-01
+Version 1.76  2025-01-27
   * get_mounted_filesystems act as program df
   * add function get_statfs_by_path
   * add function is_rotational_device_by_path
+  * conn_pool_get_connection_ex add parameter: shared
 
 Version 1.75  2024-09-22
   * task init callback support extra argument

@@ -391,12 +391,12 @@ char *getHostnameByIp(const char *szIpAddr, char *buff, const int bufferSize);
  *  return: in_addr_64_t, INADDR_NONE for fail
 */
 in_addr_64_t getIpaddrByNameEx(const char *name, char *buff,
-        const int bufferSize, short *af);
+        const int bufferSize, uint8_t *af);
 
 static inline in_addr_64_t getIpaddrByName(const char *name,
         char *buff, const int bufferSize)
 {
-    short af;
+    uint8_t af;
     return getIpaddrByNameEx(name, buff, bufferSize, &af);
 }
 

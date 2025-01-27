@@ -50,7 +50,8 @@ typedef enum {
 typedef struct {
     int sock;
     uint16_t port;
-    short af;  //address family, AF_INET, AF_INET6 or AF_UNSPEC for auto dedect
+    uint8_t af;  //address family, AF_INET, AF_INET6 or AF_UNSPEC for auto dedect
+    bool shared; //for connection pool
     FCCommunicationType comm_type;
     bool validate_flag;   //for connection pool
     char ip_addr[IP_ADDRESS_SIZE];
@@ -299,14 +300,16 @@ void conn_pool_destroy(ConnectionPool *cp);
 *      cp: the ConnectionPool
 *      conn: the connection
 *      service_name: the service name to log
+*      shared: if the connection shared
 *      err_no: return the the errno, 0 for success
 *   return != NULL for success, NULL for error
 */
 ConnectionInfo *conn_pool_get_connection_ex(ConnectionPool *cp,
-	const ConnectionInfo *conn, const char *service_name, int *err_no);
+	const ConnectionInfo *conn, const char *service_name,
+    const bool shared, int *err_no);
 
 #define conn_pool_get_connection(cp, conn, err_no) \
-    conn_pool_get_connection_ex(cp, conn, NULL, err_no)
+    conn_pool_get_connection_ex(cp, conn, NULL, false, err_no)
 
 #define conn_pool_close_connection(cp, conn) \
 	conn_pool_close_connection_ex(cp, conn, false)
