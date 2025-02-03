@@ -3413,6 +3413,77 @@ char *format_http_date(time_t t, BufferInfo *buffer)
     return buffer->buff;
 }
 
+static int shorten_path(char *filepath, const int len)
+{
+    char src_path[PATH_MAX];
+    char *up_path;
+    char *src;
+    char *dest;
+    char *end;
+
+    if (strstr(filepath, "//") == NULL &&
+            strstr(filepath, "/.") == NULL &&
+            strstr(filepath, "/..") == NULL)
+    {
+        return len;
+    }
+
+    if (len > sizeof(src_path)) {
+        logWarning("file: "__FILE__", line: %d, "
+                "filename length: %d exceeds PATH_MAX: %d",
+                __LINE__, len, (int)sizeof(src_path));
+        return len;
+    }
+
+    memcpy(src_path, filepath, len + 1);
+    end = src_path + len;
+    src = src_path;
+    dest = filepath;
+    while (src < end) {
+        while (src < end && *src != '/') {
+            *dest++ = *src++;
+        }
+        if (src == end) {
+            break;
+        }
+
+        //skip continuous slashes
+        do {
+            ++src;
+        } while (src < end && *src == '/');
+
+        *dest++ = '/';  //keep the slash
+        while (src < end && *src == '.') {
+            if (*(src + 1) == '/' || *(src + 1) == '\0') {
+                /* ignore subdir "./" */
+                src += 2;
+            } else if ((*(src + 1) == '.') && (*(src + 2) == '/' ||
+                        *(src + 2) == '\0'))
+            {
+                /* up one level for subdir "../" */
+                if (dest - filepath > 1) {
+                    up_path = (char *)fc_memrchr(filepath,
+                            '/', dest - filepath - 1);
+                    if (up_path != NULL) {
+                        dest = up_path + 1;
+                    }
+                }
+                src += 3;
+            } else {
+                break;
+            }
+
+            //skip continuous slashes
+            while (src < end && *src == '/') {
+                ++src;
+            }
+        }
+    }
+
+    *dest = '\0';
+    return dest - filepath;
+}
+
 int normalize_path(const string_t *from, const string_t *filename,
         char *full_filename, const int size)
 {
@@ -3424,6 +3495,7 @@ int normalize_path(const string_t *from, const string_t *filename,
     string_t true_filename;
     int up_count;
     int path_len;
+    int len;
     int i;
 
     if (IS_FILE_RESOURCE_EX(filename)) {
@@ -3433,8 +3505,9 @@ int normalize_path(const string_t *from, const string_t *filename,
     }
 
     if (*filename->str == '/') {
-        return snprintf(full_filename, size, "%.*s",
+        len = snprintf(full_filename, size, "%.*s",
                 filename->len, filename->str);
+        return shorten_path(full_filename, len);
     }
 
     if (from == NULL) {
@@ -3497,14 +3570,16 @@ int normalize_path(const string_t *from, const string_t *filename,
             }
             path_len = last - from->str;
         }
-        return snprintf(full_filename, size, "%.*s/%.*s",
+        len = snprintf(full_filename, size, "%.*s/%.*s",
                 path_len, from->str, (int)(end - start), start);
+        return shorten_path(full_filename, len);
     } else {
         logWarning("file: "__FILE__", line: %d, "
                 "no \"/\" in the from filename: %.*s",
                 __LINE__, from->len, from->str);
-        return snprintf(full_filename, size, "%.*s",
+        len = snprintf(full_filename, size, "%.*s",
                 filename->len, filename->str);
+        return shorten_path(full_filename, len);
     }
 }
 
