@@ -112,7 +112,8 @@ static int do_stop(const char *pidFilename, const bool bShowError, pid_t *pid)
   }
 }
 
-int process_stop_ex(const char *pidFilename, const bool bShowError)
+int process_stop_ex(const char *pidFilename,
+        const bool bShowError, bool *force)
 {
 #define MAX_WAIT_COUNT  300
   pid_t pid = 0;
@@ -120,6 +121,7 @@ int process_stop_ex(const char *pidFilename, const bool bShowError)
   int sig;
   int i;
 
+  *force = false;
   if ((result=do_stop(pidFilename, bShowError, &pid)) != 0) {
     return result;
   }
@@ -131,14 +133,15 @@ int process_stop_ex(const char *pidFilename, const bool bShowError)
       break;
     }
 
-    usleep(100 * 1000);
+    fc_sleep_ms(100);
   }
 
   if (i == MAX_WAIT_COUNT) {
     if (kill(pid, SIGKILL) == 0) {
       fprintf(stderr, "waiting for pid [%d] exit timeout, "
               "force kill!\n", (int)pid);
-      usleep(100 * 1000);
+      *force = true;
+      fc_sleep_ms(100);
     }
   }
 
@@ -149,12 +152,16 @@ int process_stop_ex(const char *pidFilename, const bool bShowError)
 int process_restart(const char *pidFilename)
 {
   const bool bShowError = false;
+  bool force;
   int result;
 
-  result = process_stop_ex(pidFilename, bShowError);
+  result = process_stop_ex(pidFilename, bShowError, &force);
   if (result == ENOENT || result == ESRCH) {
     result = 0;
   } else if (result == 0) {
+    if (force) {
+      sleep(1);
+    }
     fprintf(stderr, "starting ...\n");
   }
 
@@ -332,7 +339,6 @@ int get_base_path_from_conf_file_ex(const char *filename, char *base_path,
 
 int process_action(const char *pidFilename, const char *action, bool *stop)
 {
-    const bool bShowError = true;
     int result;
     pid_t pid;
 
@@ -345,7 +351,7 @@ int process_action(const char *pidFilename, const char *action, bool *stop)
 	if (strcmp(action, "stop") == 0)
 	{
 		*stop = true;
-		return process_stop_ex(pidFilename, bShowError);
+		return process_stop(pidFilename);
 	}
     else if (strcmp(action, "status") == 0)
 	{

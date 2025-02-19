@@ -39,9 +39,15 @@ int write_to_pid_file(const char *pidFilename);
 
 int delete_pid_file(const char *pidFilename);
 
-int process_stop_ex(const char *pidFilename, const bool bShowError);
+int process_stop_ex(const char *pidFilename,
+        const bool bShowError, bool *force);
 
-#define process_stop(pidFilename) process_stop_ex(pidFilename, true)
+static inline int process_stop(const char *pidFilename)
+{
+    const bool bShowError = true;
+    bool force;
+    return process_stop_ex(pidFilename, bShowError, &force);
+}
 
 int process_restart(const char *pidFilename);
 
