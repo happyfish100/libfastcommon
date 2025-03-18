@@ -1,6 +1,7 @@
 
-Version 1.77  2025-02-03
+Version 1.77  2025-03-18
   * impl. shorten_path for /./ and /../
+  * add function fc_compare_int64_ptr
 
 Version 1.76  2025-01-27
   * get_mounted_filesystems act as program df

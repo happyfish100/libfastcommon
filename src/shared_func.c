@@ -4362,3 +4362,8 @@ int fc_itoa(int64_t n, char *buff)
     }
     return (start - buff) + len;
 }
+
+int fc_compare_int64_ptr(const int64_t *n1, const int64_t *n2)
+{
+    return fc_compare_int64(*n1, *n2);
+}

@@ -777,6 +777,8 @@ int set_run_by(const char *group_name, const char *username);
 */
 int cmp_by_ip_addr_t(const void *p1, const void *p2);
 
+int fc_compare_int64_ptr(const int64_t *n1, const int64_t *n2);
+
 /** parse bytes
  *  parameters:
  *  	pStr: the string to parse
