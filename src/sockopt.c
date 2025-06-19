@@ -1208,25 +1208,34 @@ in_addr_64_t getIpaddrByNameEx(const char *name, char *buff,
     struct in6_addr addr6;
     in_addr_64_t ip_addr;
 
-    if ((*name >= '0' && *name <= '9') &&
+    if (strchr(name, ':') != NULL)  //IPv6
+    {
+        if (strchr(name, '%') == NULL &&
+                inet_pton(AF_INET6, name, &addr6) == 1)
+        {
+            if (buff != NULL)
+            {
+                if (inet_ntop(AF_INET6, &addr6, buff, bufferSize) == NULL)
+                {
+                    *buff = '\0';
+                }
+            }
+            *af = AF_INET6;
+            return *((in_addr_64_t *)((char *)&addr6 + 8));
+        }
+    }
+    else if ((*name >= '0' && *name <= '9') &&
             inet_pton(AF_INET, name, &addr4) == 1)
     {
         if (buff != NULL)
         {
-            snprintf(buff, bufferSize, "%s", name);
+            if (inet_ntop(AF_INET, &addr4, buff, bufferSize) == NULL)
+            {
+                *buff = '\0';
+            }
         }
         *af = AF_INET;
         return addr4.s_addr;
-    }
-    if (strchr(name, ':') != NULL && inet_pton(
-                AF_INET6, name, &addr6) == 1)
-    {
-        if (buff != NULL)
-        {
-            snprintf(buff, bufferSize, "%s", name);
-        }
-        *af = AF_INET6;
-        return *((in_addr_64_t *)((char *)&addr6 + 8));
     }
 
 	memset(&hints, 0, sizeof hints);
@@ -2180,10 +2189,10 @@ int tcpprintkeepalive(int fd)
 		return errno != 0 ? errno : EINVAL;
 	}
 
-	logInfo("keepAlive=%d, keepIdle=%d, keepInterval=%d, keepCount=%d", 
+	logDebug("keepAlive=%d, keepIdle=%d, keepInterval=%d, keepCount=%d",
 		keepAlive, keepIdle, keepInterval, keepCount);
 #else
-        logInfo("keepAlive=%d", keepAlive);
+        logDebug("keepAlive=%d", keepAlive);
 #endif
 
 	return 0;
