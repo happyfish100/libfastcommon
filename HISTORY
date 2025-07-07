@@ -1,6 +1,7 @@
 
-Version 1.78  2025-06-19
+Version 1.78  2025-07-07
   * getIpaddrByName: normalize ip addr when input addr is IPv4 or IPv6
+  * add files: spinlock.[hc]
 
 Version 1.77  2025-03-18
   * impl. shorten_path for /./ and /../
