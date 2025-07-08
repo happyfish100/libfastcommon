@@ -25,6 +25,17 @@
 #include "logger.h"
 #include "spinlock.h"
 
+#ifdef OS_LINUX
+static inline int fc_futex(int *ptr, int op, int val)
+{
+    if (FUTEX(ptr, op, val) == 0) {
+        return 0;
+    } else {
+        return errno != 0 ? errno : EBUSY;
+    }
+}
+#endif
+
 int fc_spinlock_init(FCSpinlock *lock, int *cond)
 {
 #ifdef OS_LINUX
@@ -47,7 +58,7 @@ void fc_spinlock_destroy(FCSpinlock *lock)
 int fc_spinlock_lock(FCSpinlock *lock)
 {
 #ifdef OS_LINUX
-    return FUTEX(&lock->mutex, FUTEX_LOCK_PI_PRIVATE, 0);
+    return fc_futex(&lock->mutex, FUTEX_LOCK_PI_PRIVATE, 0);
 #else
     return pthread_mutex_lock(&lock->lcp.lock);
 #endif
@@ -56,7 +67,7 @@ int fc_spinlock_lock(FCSpinlock *lock)
 int fc_spinlock_trylock(FCSpinlock *lock)
 {
 #ifdef OS_LINUX
-    return FUTEX(&lock->mutex, FUTEX_TRYLOCK_PI_PRIVATE, 0);
+    return fc_futex(&lock->mutex, FUTEX_TRYLOCK_PI_PRIVATE, 0);
 #else
     return pthread_mutex_trylock(&lock->lcp.lock);
 #endif
@@ -65,7 +76,7 @@ int fc_spinlock_trylock(FCSpinlock *lock)
 int fc_spinlock_unlock(FCSpinlock *lock)
 {
 #ifdef OS_LINUX
-    return FUTEX(&lock->mutex, FUTEX_UNLOCK_PI_PRIVATE, 0);
+    return fc_futex(&lock->mutex, FUTEX_UNLOCK_PI_PRIVATE, 0);
 #else
     return pthread_mutex_unlock(&lock->lcp.lock);
 #endif
@@ -74,7 +85,15 @@ int fc_spinlock_unlock(FCSpinlock *lock)
 int fc_spinlock_wait(FCSpinlock *lock, const int expected)
 {
 #ifdef OS_LINUX
-    return FUTEX(lock->cond, FUTEX_WAIT_PRIVATE, expected);
+    int result;
+    int lock_ret;
+
+    if ((result=fc_futex(&lock->mutex, FUTEX_UNLOCK_PI_PRIVATE, 0)) != 0) {
+        return result;
+    }
+    result = fc_futex(lock->cond, FUTEX_WAIT_PRIVATE, expected);
+    lock_ret = fc_futex(&lock->mutex, FUTEX_LOCK_PI_PRIVATE, 0);
+    return result == 0 ? lock_ret : result;
 #else
     return pthread_cond_wait(&lock->lcp.cond, &lock->lcp.lock);
 #endif
@@ -83,7 +102,11 @@ int fc_spinlock_wait(FCSpinlock *lock, const int expected)
 int fc_spinlock_wake_ex(FCSpinlock *lock, const int count)
 {
 #ifdef OS_LINUX
-    return FUTEX(lock->cond, FUTEX_WAKE_PRIVATE, count);
+    if (FUTEX(lock->cond, FUTEX_WAKE_PRIVATE, count) >= 0) {
+        return 0;
+    } else {
+        return errno != 0 ? errno : EBUSY;
+    }
 #else
     if (count == 1) {
         return pthread_cond_signal(&lock->lcp.cond);
