@@ -477,8 +477,9 @@ static int fast_mblock_prealloc(struct fast_mblock_man *mblock)
 #endif
 	}
 
-    ((struct fast_mblock_node *)pLast)->next = mblock->free_chain_head;
-	mblock->free_chain_head = (struct fast_mblock_node *)pTrunkStart;
+    ((struct fast_mblock_node *)pLast)->next = mblock->freelist.head;
+	mblock->freelist.head = (struct fast_mblock_node *)pTrunkStart;
+    mblock->freelist.count += alloc_count;
 
     pMallocNode->ref_count = 0;
     pMallocNode->alloc_count = alloc_count;
@@ -558,7 +559,8 @@ int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
     mblock->info.trunk_total_count = 0;
     mblock->info.trunk_used_count = 0;
     mblock->info.delay_free_elements = 0;
-    mblock->free_chain_head = NULL;
+    mblock->freelist.head = NULL;
+    mblock->freelist.count = 0;
     mblock->delay_free_chain.head = NULL;
     mblock->delay_free_chain.tail = NULL;
     mblock->info.element_total_count = 0;
@@ -612,6 +614,7 @@ static inline void fast_mblock_remove_trunk(struct fast_mblock_man *mblock,
 	pMallocNode->next->prev = pMallocNode->prev;
     mblock->info.trunk_total_count--;
     mblock->info.element_total_count -= pMallocNode->alloc_count;
+    mblock->freelist.count -= pMallocNode->alloc_count;
 
     if (mblock->trunk_callbacks.notify_func != NULL)
     {
@@ -714,7 +717,8 @@ void fast_mblock_destroy(struct fast_mblock_man *mblock)
         INIT_HEAD(&mblock->trunks.head);
         mblock->info.trunk_total_count = 0;
         mblock->info.trunk_used_count = 0;
-        mblock->free_chain_head = NULL;
+        mblock->freelist.head = NULL;
+        mblock->freelist.count = 0;
         mblock->info.element_used_count = 0;
         mblock->info.delay_free_elements = 0;
         mblock->info.element_total_count = 0;
@@ -732,10 +736,11 @@ static inline struct fast_mblock_node *alloc_node(
 
     while (1)
     {
-        if (mblock->free_chain_head != NULL)
+        if (mblock->freelist.head != NULL)
         {
-            pNode = mblock->free_chain_head;
-            mblock->free_chain_head = pNode->next;
+            pNode = mblock->freelist.head;
+            mblock->freelist.head = pNode->next;
+            mblock->freelist.count--;
             break;
         }
 
@@ -757,8 +762,9 @@ static inline struct fast_mblock_node *alloc_node(
 
         if ((result=fast_mblock_prealloc(mblock)) == 0)
         {
-            pNode = mblock->free_chain_head;
-            mblock->free_chain_head = pNode->next;
+            pNode = mblock->freelist.head;
+            mblock->freelist.head = pNode->next;
+            mblock->freelist.count--;
             break;
         }
 
@@ -829,9 +835,10 @@ int fast_mblock_free(struct fast_mblock_man *mblock,
 		return result;
 	}
 
-    notify = (mblock->free_chain_head == NULL);
-	pNode->next = mblock->free_chain_head;
-	mblock->free_chain_head = pNode;
+    notify = (mblock->freelist.head == NULL);
+	pNode->next = mblock->freelist.head;
+	mblock->freelist.head = pNode;
+    mblock->freelist.count++;
     fast_mblock_ref_counter_dec(mblock, pNode);
 
     if (mblock->alloc_elements.need_wait && notify)
@@ -855,18 +862,22 @@ static inline void batch_free(struct fast_mblock_man *mblock,
         struct fast_mblock_chain *chain)
 {
     bool notify;
+    int count;
     struct fast_mblock_node *pNode;
 
+    count = 0;
     pNode = chain->head;
     while (pNode != NULL)
     {
+        ++count;
         fast_mblock_ref_counter_dec(mblock, pNode);
         pNode = pNode->next;
     }
 
-    notify = (mblock->free_chain_head == NULL);
-    chain->tail->next = mblock->free_chain_head;
-    mblock->free_chain_head = chain->head;
+    notify = (mblock->freelist.head == NULL);
+    chain->tail->next = mblock->freelist.head;
+    mblock->freelist.head = chain->head;
+    mblock->freelist.count += count;
     if (mblock->alloc_elements.need_wait && notify)
     {
         pthread_cond_broadcast(&mblock->lcp.cond);
@@ -1066,7 +1077,7 @@ static int fast_mblock_chain_count(struct fast_mblock_man *mblock,
 
 int fast_mblock_free_count(struct fast_mblock_man *mblock)
 {
-    return fast_mblock_chain_count(mblock, mblock->free_chain_head);
+    return mblock->freelist.count;
 }
 
 int fast_mblock_delay_free_count(struct fast_mblock_man *mblock)
@@ -1088,8 +1099,8 @@ static int fast_mblock_do_reclaim(struct fast_mblock_man *mblock,
     *reclaim_count = 0;
     freelist = NULL;
     free_chain_prev = NULL;
-	current = mblock->free_chain_head;
-    mblock->free_chain_head = NULL;
+	current = mblock->freelist.head;
+    mblock->freelist.head = NULL;
 	while (current != NULL)
 	{
         malloc_node = FAST_MBLOCK_GET_TRUNK(current);
@@ -1103,7 +1114,7 @@ static int fast_mblock_do_reclaim(struct fast_mblock_man *mblock,
             }
             else
             {
-                mblock->free_chain_head = current;
+                mblock->freelist.head = current;
             }
 
             free_chain_prev = current;
@@ -1159,7 +1170,6 @@ OUTER:
     {
         free_chain_prev->next = NULL;
     }
-
 
     /*
     {

@@ -127,7 +127,12 @@ struct fast_mblock_man
         int64_t limit;         //<= 0 for no limit
         bool *pcontinue_flag;
     } alloc_elements;
-    struct fast_mblock_node *free_chain_head;    //free node chain
+
+    struct {
+        struct fast_mblock_node *head;
+        int count;
+    } freelist;    //free node chain
+
     struct fast_mblock_trunks trunks;
     struct fast_mblock_chain delay_free_chain;   //delay free node chain
 
@@ -407,7 +412,7 @@ return the delay free node count of the mblock, return -1 if fail
 */
 int fast_mblock_delay_free_count(struct fast_mblock_man *mblock);
 
-#define fast_mblock_total_count(mblock) (mblock)->total_count
+#define fast_mblock_total_count(mblock) (mblock)->info.element_total_count
 
 /**
 init mblock manager
