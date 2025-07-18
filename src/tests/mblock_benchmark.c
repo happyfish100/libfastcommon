@@ -27,7 +27,7 @@
 #include "fastcommon/pthread_func.h"
 #include "fastcommon/fast_mblock.h"
 
-static int thread_count = 2;
+static int thread_count = 4;
 static int64_t loop_count = 10000000;
 static struct fast_mblock_man mblock;
 
