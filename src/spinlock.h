@@ -21,7 +21,7 @@
 
 typedef struct fc_spinlock_t {
 #ifdef OS_LINUX
-    int mutex;
+    pthread_spinlock_t mutex;
     int *cond;
 #else
     pthread_lock_cond_pair_t lcp;
