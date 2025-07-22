@@ -130,7 +130,6 @@ struct fast_mblock_man
 
     struct {
         struct fast_mblock_node *head;
-        int count;
     } freelist;    //free node chain
 
     struct fast_mblock_trunks trunks;
