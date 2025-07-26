@@ -28,7 +28,7 @@
 #include "fastcommon/connection_pool.h"
 
 static int thread_count = 2;
-static int64_t loop_count = 1000000;
+static int64_t loop_count = 10000000;
 static ConnectionPool cpool;
 
 static void *thread_run(void *args)

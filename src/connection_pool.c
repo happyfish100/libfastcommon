@@ -52,7 +52,11 @@ static int node_init_for_rdma(ConnectionNode *node,
 static inline void conn_pool_get_key(const ConnectionInfo *conn,
         char *key, int *key_len)
 {
-    *key_len = sprintf(key, "%s-%u", conn->ip_addr, conn->port);
+    *key_len = strlen(conn->ip_addr);
+    memcpy(key, conn->ip_addr, *key_len);
+    *(key + (*key_len)++) = '-';
+    *(key + (*key_len)++) = (conn->port >> 8) & 0xFF;
+    *(key + (*key_len)++) = conn->port & 0xFF;
 }
 
 static int close_conn(ConnectionPool *cp, ConnectionManager *cm,
