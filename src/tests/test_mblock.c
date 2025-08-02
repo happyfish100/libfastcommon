@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
     printf("cpu count: %d\n", get_sys_cpu_count());
 
     end_time = get_current_time_ms();
-    logInfo("time used: %d ms", (int)(end_time - start_time));
+    logInfo("time used: %d ms\n", (int)(end_time - start_time));
 
     fast_mblock_manager_init();
 
@@ -182,18 +182,32 @@ int main(int argc, char *argv[])
         sched_add_delay_task(test_delay, objs + i, delay, false);
     }
 
+    printf("mblock1 total count: %"PRId64", free count: %u\n",
+        fast_mblock_total_count(&mblock1),
+        fast_mblock_free_count(&mblock1));
+
     /*
     for (i=0; i<count; i++)
     {
-        fast_mblock_free_object(&mblock1, objs[i]);
+        fast_mblock_free_object(objs[i].mblock, objs[i].obj);
     }
     */
 
     obj1 = fast_mblock_alloc_object(&mblock1);
     obj2 = fast_mblock_alloc_object(&mblock1);
     fast_mblock_free_object(&mblock1, obj1);
+
+
+    printf("mblock1 total count: %"PRId64", free count: %u\n",
+        fast_mblock_total_count(&mblock1),
+        fast_mblock_free_count(&mblock1));
+
     //fast_mblock_delay_free_object(&mblock1, obj2, 10);
     fast_mblock_free_object(&mblock1, obj2);
+
+    printf("mblock1 total count: %"PRId64", free count: %u\n\n",
+        fast_mblock_total_count(&mblock1),
+        fast_mblock_free_count(&mblock1));
 
     obj1 = fast_mblock_alloc_object(&mblock2);
     obj2 = fast_mblock_alloc_object(&mblock2);
@@ -206,6 +220,13 @@ int main(int argc, char *argv[])
     fast_mblock_reclaim(&mblock1, reclaim_target, &reclaim_count, NULL);
     fast_mblock_reclaim(&mblock2, reclaim_target, &reclaim_count, NULL);
 
+    printf("\nmblock1 total count: %"PRId64", free count: %u, "
+            "mblock2 total count: %"PRId64", free count: %u\n\n",
+            fast_mblock_total_count(&mblock1),
+            fast_mblock_free_count(&mblock1),
+            fast_mblock_total_count(&mblock2),
+            fast_mblock_free_count(&mblock2));
+
     fast_mblock_manager_stat_print(false);
 
     sleep(31);
@@ -217,10 +238,24 @@ int main(int argc, char *argv[])
     fast_mblock_reclaim(&mblock1, reclaim_target, &reclaim_count, NULL);
     fast_mblock_reclaim(&mblock2, reclaim_target, &reclaim_count, NULL);
 
+    printf("\nmblock1 total count: %"PRId64", free count: %u, "
+            "mblock2 total count: %"PRId64", free count: %u\n\n",
+            fast_mblock_total_count(&mblock1),
+            fast_mblock_free_count(&mblock1),
+            fast_mblock_total_count(&mblock2),
+            fast_mblock_free_count(&mblock2));
+
     fast_mblock_manager_stat_print(false);
 
     obj1 = fast_mblock_alloc_object(&mblock1);
     obj2 = fast_mblock_alloc_object(&mblock2);
+
+    printf("mblock1 total count: %"PRId64", free count: %u, "
+            "mblock2 total count: %"PRId64", free count: %u\n\n",
+            fast_mblock_total_count(&mblock1),
+            fast_mblock_free_count(&mblock1),
+            fast_mblock_total_count(&mblock2),
+            fast_mblock_free_count(&mblock2));
 
     fast_mblock_manager_stat_print(false);
 

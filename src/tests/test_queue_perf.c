@@ -84,6 +84,56 @@ static void sigQuitHandler(int sig)
             __LINE__, sig);
 }
 
+static void test_remove()
+{
+#define COUNT 8
+    typedef struct node {
+        int n;
+        struct node *next;
+    } Node;
+    struct fc_queue queue;
+    Node nodes[COUNT];
+    Node *node;
+    Node *end;
+    int result;
+
+    if ((result=fc_queue_init(&queue, (long)&((Node *)NULL)->next)) != 0)
+    {
+        return;
+    }
+
+    fc_queue_push(&queue, nodes);
+    printf("remove: %d\n", fc_queue_remove(&queue, nodes + 1));
+    printf("remove: %d\n", fc_queue_remove(&queue, nodes + 2));
+    printf("remove: %d\n", fc_queue_remove(&queue, nodes));
+    printf("count: %d\n", fc_queue_count(&queue));
+
+    end = nodes + COUNT / 2;
+    for (node=nodes; node<end; node++) {
+        node->n = (node - nodes) + 1;
+        fc_queue_push(&queue, node);
+    }
+
+    printf("remove: %d\n", fc_queue_remove(&queue, node));
+    printf("remove: %d\n", fc_queue_remove(&queue, node - 1));
+    printf("remove: %d\n", fc_queue_remove(&queue, node - 3));
+    printf("remove: %d\n", fc_queue_remove(&queue, nodes));
+
+    end = nodes + COUNT;
+    for (; node<end; node++) {
+        node->n = (node - nodes) + 1;
+        fc_queue_push(&queue, node);
+    }
+    printf("count: %d\n\n", fc_queue_count(&queue));
+
+    for (node=end-1; node>=nodes; node--) {
+        printf("remove: %d\n", fc_queue_remove(&queue, node));
+        fc_queue_push(&queue, node);
+    }
+
+    printf("count: %d\n", fc_queue_count(&queue));
+}
+
 int main(int argc, char *argv[])
 {
     const int alloc_elements_once = 8 * 1024;
@@ -106,6 +156,9 @@ int main(int argc, char *argv[])
     srand(time(NULL));
     log_init();
     g_log_context.log_level = LOG_DEBUG;
+
+    test_remove();
+    return 0;
 
     memset(&act, 0, sizeof(act));
     sigemptyset(&act.sa_mask);

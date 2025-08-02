@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
     */
 
     //fd = open(filename, O_RDWR | O_CREAT | O_TRUNC, 0644);
-    fd = open(filename, O_RDWR | O_CREAT, 0644);
+    fd = open(filename, O_RDWR | O_CREAT | O_APPEND, 0644);
     if (fd < 0) {
         result = errno != 0 ? errno : EIO;
         logError("file: "__FILE__", line: %d, " \
@@ -69,7 +69,8 @@ int main(int argc, char *argv[])
         return errno != 0 ? errno : EIO;
     }
 
-    if (lseek(fd, SEEK_POS, SEEK_SET) < 0) {
+    for (int i=0; i<5; i++) {
+    if (lseek(fd, 0, SEEK_SET) < 0) {
         logError("file: "__FILE__", line: %d, " \
             "lseek file %s fail, " \
             "errno: %d, error info: %s", __LINE__, \
@@ -86,6 +87,7 @@ int main(int argc, char *argv[])
         return errno != 0 ? errno : EIO;
     }
     printf("write bytes: %d\n", n);
+    }
 
     if (lseek(fd, 0, SEEK_SET) < 0) {
         logError("file: "__FILE__", line: %d, " \

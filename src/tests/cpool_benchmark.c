@@ -27,9 +27,30 @@
 #include "fastcommon/pthread_func.h"
 #include "fastcommon/connection_pool.h"
 
-static int thread_count = 2;
+#define USE_CONN_POOL  1
+//#define USE_CAS_LOCK   1
+
+static int thread_count = 24;
 static int64_t loop_count = 10000000;
 static ConnectionPool cpool;
+static char buff[1024];
+static pthread_mutex_t lock;
+volatile int mutex = 0;
+
+#ifndef USE_CONN_POOL
+static int64_t test_var1 = 0;
+static int64_t test_var2 = 0;
+#endif
+
+static inline void conn_pool_get_key(const ConnectionInfo *conn,
+        char *key, int *key_len)
+{
+    *key_len = strlen(conn->ip_addr);
+    memcpy(key, conn->ip_addr, *key_len);
+    *(key + (*key_len)++) = '-';
+    *(key + (*key_len)++) = (conn->port >> 8) & 0xFF;
+    *(key + (*key_len)++) = conn->port & 0xFF;
+}
 
 static void *thread_run(void *args)
 {
@@ -37,21 +58,52 @@ static void *thread_run(void *args)
     int result;
     int64_t i;
     ConnectionInfo cinfo;
+#ifdef USE_CONN_POOL
     ConnectionInfo *conn;
+#endif
 
     thread_index = (long)args;
     printf("thread #%d start\n", thread_index);
     
-    if ((result=conn_pool_parse_server_info("127.0.0.1:23000", &cinfo, 23000)) != 0) {
+    if ((result=conn_pool_parse_server_info("127.0.0.1", &cinfo, 23000)) != 0) {
         return NULL;
     }
     for (i=0; i<loop_count; i++) {
+#ifdef USE_CONN_POOL
         if ((conn=conn_pool_get_connection_ex(&cpool, &cinfo,
                         NULL, true, &result)) == NULL)
         {
             break;
         }
+        //fc_sleep_us(1);
         conn_pool_close_connection(&cpool, conn);
+#else
+        char key_buff[INET6_ADDRSTRLEN + 8];
+        string_t key;
+        uint32_t hash_code;
+        for (int j=0; j<2; j++) {
+            key.str = key_buff;
+            conn_pool_get_key(&cinfo, key.str, &key.len);
+            hash_code = fc_simple_hash(key.str, key.len);
+#ifdef USE_CAS_LOCK
+            while (!__sync_bool_compare_and_swap(&mutex, 0, 1)) {
+                sched_yield();
+            }
+            __sync_fetch_and_add(&test_var1, 1);
+            __sync_fetch_and_add(&test_var2, 1);
+#else
+            PTHREAD_MUTEX_LOCK(&lock);
+            test_var1++;
+            test_var2++;
+#endif
+#ifdef USE_CAS_LOCK
+            __sync_bool_compare_and_swap(&mutex, 1, 0);
+#else
+            PTHREAD_MUTEX_UNLOCK(&lock);
+#endif
+        }
+#endif
+
     }
 
     if (i == loop_count) {
@@ -96,6 +148,12 @@ int main(int argc, char *argv[])
         return result;
     }
 
+
+    memset(buff, 0, sizeof(buff));
+    if ((result=init_pthread_lock(&lock)) != 0) {
+        return result;
+    }
+
     if ((result=pthread_attr_init(&thread_attr)) != 0) {
         logError("file: "__FILE__", line: %d, "
                 "call pthread_attr_init fail, "
@@ -136,6 +194,15 @@ int main(int argc, char *argv[])
     time_used = end_time - start_time;
     qps = (thread_count * loop_count * 1000 * 1000) / time_used;
     printf("time used: %"PRId64" ms, QPS: %"PRId64"\n", time_used / 1000, qps);
+
+    {
+        ConnectionPoolStat stat;
+        conn_pool_stat(&cpool, &stat);
+        printf("htable_capacity: %d, bucket_used: %d, server_count: %d, "
+                "connection {total_count: %d, free_count: %d}\n",
+                stat.htable_capacity, stat.bucket_used, stat.server_count,
+                stat.connection.total_count, stat.connection.free_count);
+    }
 
     free(tids);
     conn_pool_destroy(&cpool);

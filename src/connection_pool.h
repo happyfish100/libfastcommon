@@ -147,21 +147,24 @@ struct tagConnectionManager;
 typedef struct tagConnectionNode {
 	ConnectionInfo *conn;
 	struct tagConnectionManager *manager;
-	struct tagConnectionNode *next;
+    struct tagConnectionNode *next;  //for thread local
 	time_t atime;  //last access time
 } ConnectionNode;
 
 typedef struct tagConnectionManager {
     string_t key;
-    ConnectionNode *head;
-    int total_count;  //total connections
-    int free_count;   //free connections
-    struct tagConnectionManager *next;
+    struct {
+        ConnectionNode **nodes;
+        volatile int64_t head;  //producer
+        volatile int64_t tail;  //consumer
+    } ring;
+    volatile int total_count;  //total connections
+    volatile int free_count;   //free connections
+    volatile struct tagConnectionManager *next;
 } ConnectionManager;
 
 typedef struct tagConnectionBucket {
-    ConnectionManager *head;
-    pthread_mutex_t lock;
+    volatile ConnectionManager *head;
 } ConnectionBucket;
 
 struct tagConnectionPool;
@@ -179,6 +182,7 @@ typedef struct tagConnectionPool {
 
 	int connect_timeout_ms;
 	int max_count_per_entry;  //0 means no limit
+    int ring_size;
 
 	/*
 	connections whose idle time exceeds this time will be closed
