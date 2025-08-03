@@ -30,7 +30,7 @@
 #define USE_CONN_POOL  1
 //#define USE_CAS_LOCK   1
 
-static int thread_count = 24;
+static int thread_count = 16;
 static int64_t loop_count = 10000000;
 static ConnectionPool cpool;
 static char buff[1024];

@@ -3,6 +3,7 @@ Version 1.78  2025-08-02
   * getIpaddrByName: normalize ip addr when input addr is IPv4 or IPv6
   * add files: spinlock.[hc]
   * connection_pool.[hc]: use CAS instead of pthread mutex lock
+  * shared_func.[hc]: change int2buff, buff2int etc. functions to static inline
 
 Version 1.77  2025-03-18
   * impl. shorten_path for /./ and /../

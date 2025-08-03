@@ -196,14 +196,24 @@ void printBuffHex(const char *s, const int len);
  *  	buff: the buffer, at least 2 bytes space, no tail \0
  *  return: none
 */
-void short2buff(const short n, char *buff);
+static inline void short2buff(const short n, char *buff)
+{
+	unsigned char *p;
+	p = (unsigned char *)buff;
+	*p++ = (n >> 8) & 0xFF;
+	*p++ = n & 0xFF;
+}
 
 /** buffer convert to 16 bits int
  *  parameters:
  *  	buff: big-endian 2 bytes buffer
  *  return: 16 bits int value
 */
-short buff2short(const char *buff);
+static inline short buff2short(const char *buff)
+{
+	return  (short)((((unsigned char)(*(buff))) << 8) |
+		((unsigned char)(*(buff+1))));
+}
 
 /** 32 bits int convert to buffer (big-endian)
  *  parameters:
@@ -211,14 +221,28 @@ short buff2short(const char *buff);
  *  	buff: the buffer, at least 4 bytes space, no tail \0
  *  return: none
 */
-void int2buff(const int n, char *buff);
+static inline void int2buff(const int n, char *buff)
+{
+	unsigned char *p;
+	p = (unsigned char *)buff;
+	*p++ = (n >> 24) & 0xFF;
+	*p++ = (n >> 16) & 0xFF;
+	*p++ = (n >> 8) & 0xFF;
+	*p++ = n & 0xFF;
+}
 
 /** buffer convert to 32 bits int
  *  parameters:
  *  	buff: big-endian 4 bytes buffer
  *  return: 32 bits int value
 */
-int buff2int(const char *buff);
+static inline int buff2int(const char *buff)
+{
+	return  (((unsigned char)(*buff)) << 24) |
+		(((unsigned char)(*(buff+1))) << 16) |
+		(((unsigned char)(*(buff+2))) << 8)  |
+		((unsigned char)(*(buff+3)));
+}
 
 /** long (64 bits) convert to buffer (big-endian)
  *  parameters:
@@ -226,15 +250,38 @@ int buff2int(const char *buff);
  *  	buff: the buffer, at least 8 bytes space, no tail \0
  *  return: none
 */
-void long2buff(int64_t n, char *buff);
+static inline void long2buff(int64_t n, char *buff)
+{
+	unsigned char *p;
+	p = (unsigned char *)buff;
+	*p++ = (n >> 56) & 0xFF;
+	*p++ = (n >> 48) & 0xFF;
+	*p++ = (n >> 40) & 0xFF;
+	*p++ = (n >> 32) & 0xFF;
+	*p++ = (n >> 24) & 0xFF;
+	*p++ = (n >> 16) & 0xFF;
+	*p++ = (n >> 8) & 0xFF;
+	*p++ = n & 0xFF;
+}
 
 /** buffer convert to 64 bits int
  *  parameters:
  *  	buff: big-endian 8 bytes buffer
  *  return: 64 bits int value
 */
-int64_t buff2long(const char *buff);
-
+static inline int64_t buff2long(const char *buff)
+{
+	unsigned char *p;
+	p = (unsigned char *)buff;
+	return  (((int64_t)(*p)) << 56) |
+		(((int64_t)(*(p+1))) << 48) |
+		(((int64_t)(*(p+2))) << 40) |
+		(((int64_t)(*(p+3))) << 32) |
+		(((int64_t)(*(p+4))) << 24) |
+		(((int64_t)(*(p+5))) << 16) |
+		(((int64_t)(*(p+6))) <<  8) |
+		((int64_t)(*(p+7)));
+}
 
 /** 32 bits float convert to buffer (big-endian)
  *  parameters:
