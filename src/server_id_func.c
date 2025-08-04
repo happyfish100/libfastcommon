@@ -294,15 +294,18 @@ FCServerInfo *fc_server_get_by_ip_port_ex(FCServerConfig *ctx,
 static inline void fc_server_set_group_ptr_name(FCServerGroupInfo *ginfo,
         const char *group_name)
 {
+    int len;
+
     ginfo->group_name.str = ginfo->name_buff;
-    ginfo->group_name.len = snprintf(ginfo->name_buff,
-            sizeof(ginfo->name_buff) - 1, "%s", group_name);
-    if (ginfo->group_name.len == 0) {
-        return;
+    len = strlen(group_name);
+    if (len >= sizeof(ginfo->name_buff)) {
+        len = sizeof(ginfo->name_buff) - 1;
     }
 
-    fc_trim(ginfo->group_name.str);
-    ginfo->group_name.len = strlen(ginfo->group_name.str);
+    memcpy(ginfo->name_buff, group_name, len);
+    *(ginfo->name_buff + len) = '\0';
+    fc_trim(ginfo->name_buff);
+    ginfo->group_name.len = strlen(ginfo->name_buff);
 }
 
 static inline void fc_server_set_ip_prefix(FCServerGroupInfo *ginfo,

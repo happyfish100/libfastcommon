@@ -768,23 +768,22 @@ int64_t fc_hash_inc_value(const HashData *old_data, const int inc,
 	{
 		if (old_data->value_len < *new_value_len)
 		{
-			memcpy(new_value, old_data->value, old_data->value_len);
-                        new_value[old_data->value_len] = '\0';
-                        n = strtoll(new_value, NULL, 10);
-                        n += inc;
+            memcpy(new_value, old_data->value, old_data->value_len);
+            new_value[old_data->value_len] = '\0';
+            n = strtoll(new_value, NULL, 10);
+            n += inc;
 		}
 		else
 		{
 			n = inc;
 		}
-		*new_value_len = sprintf(new_value, "%"PRId64, n);
 	}
 	else
 	{
 		n = inc;
-		*new_value_len = sprintf(new_value, "%"PRId64, n);
 	}
 
+    *new_value_len = fc_itoa(n, new_value);
 	return n;
 }
 

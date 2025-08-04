@@ -180,7 +180,7 @@ int fast_buffer_append_int(FastBuffer *buffer, const int n)
         return result;
     }
 
-    buffer->length += sprintf(buffer->data + buffer->length, "%d", n);
+    buffer->length += fc_itoa(n, buffer->data + buffer->length);
     return 0;
 }
 
@@ -193,7 +193,7 @@ int fast_buffer_append_int64(FastBuffer *buffer, const int64_t n)
         return result;
     }
 
-    buffer->length += sprintf(buffer->data + buffer->length, "%"PRId64, n);
+    buffer->length += fc_itoa(n, buffer->data + buffer->length);
     return 0;
 }
 

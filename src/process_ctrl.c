@@ -50,7 +50,7 @@ int write_to_pid_file(const char *pidFilename)
   char buff[32];
   int len;
 
-  len = sprintf(buff, "%d", (int)getpid());
+  len = fc_itoa(getpid(), buff);
   return writeToFile(pidFilename, buff, len);
 }
 

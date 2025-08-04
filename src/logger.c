@@ -590,7 +590,9 @@ static int log_get_matched_files(LogContext *pContext,
     the_time = get_current_time() - days_before * 86400;
     localtime_r(&the_time, &tm);
     memset(filename_prefix, 0, sizeof(filename_prefix));
-    len = sprintf(filename_prefix, "%s.", log_filename);
+    len = strlen(log_filename);
+    memcpy(filename_prefix, log_filename, len);
+    *(filename_prefix + len++) = '.';
     strftime(filename_prefix + len, sizeof(filename_prefix) - len,
             rotate_time_format_prefix, &tm);
     prefix_filename_len = strlen(filename_prefix);
@@ -703,7 +705,9 @@ int log_delete_old_files(void *args)
             the_time -= 86400;
             localtime_r(&the_time, &tm);
             memset(old_filename, 0, sizeof(old_filename));
-            len = sprintf(old_filename, "%s.", pContext->log_filename);
+            len = strlen(pContext->log_filename);
+            memcpy(old_filename, pContext->log_filename, len);
+            *(old_filename + len++) = '.';
             strftime(old_filename + len, sizeof(old_filename) - len,
                     pContext->rotate_time_format, &tm);
             if ((result=log_delete_old_file(pContext, old_filename)) != 0)
@@ -843,7 +847,9 @@ int log_rotate(LogContext *pContext)
     localtime_r(&current_time, &tm);
 
     memset(old_filename, 0, sizeof(old_filename));
-	len = sprintf(old_filename, "%s.", pContext->log_filename);
+    len = strlen(pContext->log_filename);
+    memcpy(old_filename, pContext->log_filename, len);
+    *(old_filename + len++) = '.';
     strftime(old_filename + len, sizeof(old_filename) - len,
             pContext->rotate_time_format, &tm);
     if (access(old_filename, F_OK) == 0)
@@ -1045,10 +1051,14 @@ static void doLogEx(LogContext *pContext, struct timeval *tv, \
     }
 
 	if (caption != NULL)
-	{
-		buff_len = sprintf(pContext->pcurrent_buff, "%s - ", caption);
-		pContext->pcurrent_buff += buff_len;
-	}
+    {
+        buff_len = strlen(caption);
+        memcpy(pContext->pcurrent_buff, caption, buff_len);
+        pContext->pcurrent_buff += buff_len;
+        *pContext->pcurrent_buff++ = ' ';
+        *pContext->pcurrent_buff++ = '-';
+        *pContext->pcurrent_buff++ = ' ';
+    }
 	memcpy(pContext->pcurrent_buff, text, text_len);
 	pContext->pcurrent_buff += text_len;
 	*pContext->pcurrent_buff++ = '\n';

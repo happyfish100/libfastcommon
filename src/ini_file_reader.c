@@ -2629,8 +2629,7 @@ static char *iniProccessFor(char *content, const int content_len,
         char *pRemain;
         int remainLen;
 
-        valueLen = sprintf(value, "%d", i);
-
+        valueLen = fc_itoa(i, value);
         pRemain = pForBlock;
         remainLen = forBlockLen;
         while (remainLen >= tagLen)

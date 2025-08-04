@@ -511,7 +511,7 @@ static ConnectionInfo *get_conn(ConnectionPool *cp,
 	{
 		if (cm->head == NULL)
 		{
-			if ((cp->max_count_per_entry > 0) && 
+			if ((cp->max_count_per_entry > 0) &&
 				(cm->total_count >= cp->max_count_per_entry))
 			{
                 format_ip_address(conn->ip_addr, formatted_ip);

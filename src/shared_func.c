@@ -528,18 +528,20 @@ void daemon_init(bool bCloseFiles)
 
 char *bin2hex(const char *s, const int len, char *szHexBuff)
 {
+    const char *hex_chars = "0123456789abcdef";
 	unsigned char *p;
 	unsigned char *pEnd;
-	int nLen;
-	
-	nLen = 0;
+	char *dest;
+
+	dest = szHexBuff;
 	pEnd = (unsigned char *)s + len;
 	for (p=(unsigned char *)s; p<pEnd; p++)
-	{
-		nLen += sprintf(szHexBuff + nLen, "%02x", *p);
-	}
-	
-	szHexBuff[nLen] = '\0';
+    {
+        *dest++ = hex_chars[(*p >> 4) & 0x0F];
+        *dest++ = hex_chars[*p & 0x0F];
+    }
+
+	*dest = '\0';
 	return szHexBuff;
 }
 
@@ -3231,7 +3233,7 @@ static void add_thousands_separator(char *str, const int len)
 const char *int2str(const int n, char *buff, const bool thousands_separator)
 {
     int len;
-    len = sprintf(buff, "%d", n);
+    len = fc_itoa(n, buff);
     if (thousands_separator)
     {
         add_thousands_separator(buff, len);
@@ -3242,7 +3244,7 @@ const char *int2str(const int n, char *buff, const bool thousands_separator)
 const char *long2str(const int64_t n, char *buff, const bool thousands_separator)
 {
     int len;
-    len = sprintf(buff, "%"PRId64, n);
+    len = fc_itoa(n, buff);
     if (thousands_separator)
     {
         add_thousands_separator(buff, len);
