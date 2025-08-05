@@ -26,23 +26,28 @@
 #include "fc_memory.h"
 #include "fast_buffer.h"
 
-int fast_buffer_init_ex(FastBuffer *buffer, const int init_capacity)
+int fast_buffer_init_ex(FastBuffer *buffer, const int init_capacity,
+        const bool binary_mode, const bool check_capacity)
 {
     buffer->length = 0;
+    buffer->binary_mode = binary_mode;
     if (init_capacity > 0)
     {
         buffer->alloc_size = init_capacity;
+        buffer->check_capacity = check_capacity;
     }
     else
     {
         buffer->alloc_size = 256;
+        buffer->check_capacity = true;
     }
     buffer->data = (char *)fc_malloc(buffer->alloc_size);
     if (buffer->data == NULL)
     {
         return ENOMEM;
     }
-    *(buffer->data) = '\0';
+
+    fast_buffer_set_null_terminator(buffer);
     return 0;
 }
 
@@ -88,7 +93,9 @@ int fast_buffer_set_capacity(FastBuffer *buffer, const int capacity)
 
     if (buffer->length > 0) {
         memcpy(buff, buffer->data, buffer->length);
-        *(buff + buffer->length) = '\0';
+        if (!buffer->binary_mode) {
+            *(buff + buffer->length) = '\0';
+        }
     }
 
     free(buffer->data);
@@ -127,7 +134,7 @@ int fast_buffer_append(FastBuffer *buffer, const char *format, ...)
         }
         else
         {
-            *(buffer->data + buffer->length) = '\0';  //restore
+            fast_buffer_set_null_terminator(buffer);  //restore
         }
     }
     return result;
@@ -148,7 +155,7 @@ int fast_buffer_append_buff(FastBuffer *buffer, const char *data, const int len)
 
     memcpy(buffer->data + buffer->length, data, len);
     buffer->length += len;
-    *(buffer->data + buffer->length) = '\0';
+    fast_buffer_set_null_terminator(buffer);
     return 0;
 }
 
@@ -168,32 +175,6 @@ int fast_buffer_append_binary(FastBuffer *buffer,
 
     memcpy(buffer->data + buffer->length, data, len);
     buffer->length += len;
-    return 0;
-}
-
-int fast_buffer_append_int(FastBuffer *buffer, const int n)
-{
-    int result;
-
-    if ((result=fast_buffer_check(buffer, 16)) != 0)
-    {
-        return result;
-    }
-
-    buffer->length += fc_itoa(n, buffer->data + buffer->length);
-    return 0;
-}
-
-int fast_buffer_append_int64(FastBuffer *buffer, const int64_t n)
-{
-    int result;
-
-    if ((result=fast_buffer_check(buffer, 32)) != 0)
-    {
-        return result;
-    }
-
-    buffer->length += fc_itoa(n, buffer->data + buffer->length);
     return 0;
 }
 

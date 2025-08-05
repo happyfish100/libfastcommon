@@ -64,6 +64,7 @@ src/tests/test_thread_local
 src/tests/test_memcpy
 src/tests/mblock_benchmark
 src/tests/cpool_benchmark
+src/tests/test_fast_buffer
 
 # other
 *.swp

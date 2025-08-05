@@ -85,7 +85,7 @@ int fast_multi_sock_client_init_ex(FastMultiSockClient *client,
     }
 
     for (i=0; i<entry_count; i++) {
-        if ((result=fast_buffer_init_ex(&entries[i].recv_buffer,
+        if ((result=fast_buffer_init1(&entries[i].recv_buffer,
                         new_init_recv_buffer_size)) != 0)
         {
             return result;
