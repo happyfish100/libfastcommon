@@ -3234,6 +3234,7 @@ const char *int2str(const int n, char *buff, const bool thousands_separator)
 {
     int len;
     len = fc_itoa(n, buff);
+    *(buff + len) = '\0';
     if (thousands_separator)
     {
         add_thousands_separator(buff, len);
@@ -3245,6 +3246,7 @@ const char *long2str(const int64_t n, char *buff, const bool thousands_separator
 {
     int len;
     len = fc_itoa(n, buff);
+    *(buff + len) = '\0';
     if (thousands_separator)
     {
         add_thousands_separator(buff, len);
