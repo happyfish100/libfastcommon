@@ -46,6 +46,7 @@ extern "C" {
 #endif
 
     extern bool g_set_cloexec;
+    extern const char *g_lower_hex_chars;
 
 static inline void fc_enable_fd_cloexec(const bool cloexec)
 {
@@ -337,6 +338,97 @@ static inline double buff2double(const char *buff)
     n = buff2long(buff);
     p = (double *)&n;
     return *p;
+}
+
+static inline void padding_hex(char *buff, const int len, const int padding_len)
+{
+    char *p;
+    char *end;
+    char *stop;
+    int new_len;
+    int fill_len;
+
+    if (padding_len == len) {
+        return;
+    } else if (padding_len > len) {
+        fill_len = padding_len - len;
+        memmove(buff + fill_len, buff, len + 1);
+        memset(buff, '0', fill_len);
+        return;
+    } else if (*buff != '0') {
+        return;
+    }
+
+    end = buff + len;
+    if (padding_len <= 0) {
+        stop = end - 1;
+    } else {
+        stop = end - padding_len;
+    }
+
+    p = buff + 1;
+    while (p < stop && *p == '0') {
+        ++p;
+    }
+
+    new_len = end - p;
+    memmove(buff, p, new_len + 1);
+}
+
+static inline void short2hex(const short n, char *buff, const int padding_len)
+{
+    unsigned char *p;
+
+    p = (unsigned char *)buff;
+    *p++ = g_lower_hex_chars[(n >> 12) & 0x0F];
+    *p++ = g_lower_hex_chars[(n >> 8) & 0x0F];
+    *p++ = g_lower_hex_chars[(n >> 4) & 0x0F];
+    *p++ = g_lower_hex_chars[n & 0x0F];
+    *p = '\0';
+    padding_hex(buff, 4, padding_len);
+}
+
+static inline void int2hex(const int n, char *buff, const int padding_len)
+{
+    unsigned char *p;
+
+    p = (unsigned char *)buff;
+    *p++ = g_lower_hex_chars[(n >> 28) & 0x0F];
+    *p++ = g_lower_hex_chars[(n >> 24) & 0x0F];
+    *p++ = g_lower_hex_chars[(n >> 20) & 0x0F];
+    *p++ = g_lower_hex_chars[(n >> 16) & 0x0F];
+    *p++ = g_lower_hex_chars[(n >> 12) & 0x0F];
+    *p++ = g_lower_hex_chars[(n >> 8) & 0x0F];
+    *p++ = g_lower_hex_chars[(n >> 4) & 0x0F];
+    *p++ = g_lower_hex_chars[n & 0x0F];
+    *p = '\0';
+    padding_hex(buff, 8, padding_len);
+}
+
+static inline void long2hex(const int64_t n,
+        char *buff, const int padding_len)
+{
+    unsigned char *p;
+
+    p = (unsigned char *)buff;
+    *p++ = g_lower_hex_chars[(n >> 60) & 0x0F];
+    *p++ = g_lower_hex_chars[(n >> 56) & 0x0F];
+    *p++ = g_lower_hex_chars[(n >> 52) & 0x0F];
+    *p++ = g_lower_hex_chars[(n >> 48) & 0x0F];
+    *p++ = g_lower_hex_chars[(n >> 44) & 0x0F];
+    *p++ = g_lower_hex_chars[(n >> 40) & 0x0F];
+    *p++ = g_lower_hex_chars[(n >> 36) & 0x0F];
+    *p++ = g_lower_hex_chars[(n >> 32) & 0x0F];
+    *p++ = g_lower_hex_chars[(n >> 28) & 0x0F];
+    *p++ = g_lower_hex_chars[(n >> 24) & 0x0F];
+    *p++ = g_lower_hex_chars[(n >> 20) & 0x0F];
+    *p++ = g_lower_hex_chars[(n >> 16) & 0x0F];
+    *p++ = g_lower_hex_chars[(n >> 12) & 0x0F];
+    *p++ = g_lower_hex_chars[(n >> 8) & 0x0F];
+    *p++ = g_lower_hex_chars[(n >> 4) & 0x0F];
+    *p++ = g_lower_hex_chars[n & 0x0F];
+    *p = '\0';
+    padding_hex(buff, 16, padding_len);
 }
 
 /** trim leading spaces ( \t\r\n)
@@ -1272,6 +1364,22 @@ bool fc_path_contains(const string_t *path, const string_t *needle,
  *  return: string length
 */
 int fc_itoa(int64_t n, char *buff);
+
+static inline size_t fc_strlcpy(char *dest, const char *src, const size_t size)
+{
+    int len;
+
+    len = strlen(src);
+    if (len < size) {
+        memcpy(dest, src, len + 1);
+    } else {
+        len = size - 1;
+        memcpy(dest, src, len);
+        *(dest + len) = '\0';
+    }
+
+    return len;
+}
 
 /** sleep in microseconds
  *  parameters:

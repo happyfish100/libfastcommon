@@ -46,6 +46,7 @@
 #endif
 
 bool g_set_cloexec = false;
+const char *g_lower_hex_chars = "0123456789abcdef";
 
 char *formatDatetime(const time_t nTime, \
 	const char *szDateFormat, \
@@ -528,7 +529,6 @@ void daemon_init(bool bCloseFiles)
 
 char *bin2hex(const char *s, const int len, char *szHexBuff)
 {
-    const char *hex_chars = "0123456789abcdef";
 	unsigned char *p;
 	unsigned char *pEnd;
 	char *dest;
@@ -537,8 +537,8 @@ char *bin2hex(const char *s, const int len, char *szHexBuff)
 	pEnd = (unsigned char *)s + len;
 	for (p=(unsigned char *)s; p<pEnd; p++)
     {
-        *dest++ = hex_chars[(*p >> 4) & 0x0F];
-        *dest++ = hex_chars[*p & 0x0F];
+        *dest++ = g_lower_hex_chars[*p >> 4];
+        *dest++ = g_lower_hex_chars[*p & 0x0F];
     }
 
 	*dest = '\0';
@@ -2568,7 +2568,7 @@ int get_time_item_from_str(const char *pValue, const char *item_name,
 
 char *urlencode(const char *src, const int src_len, char *dest, int *dest_len)
 {
-	static unsigned char hex_chars[] = "0123456789ABCDEF";
+	const unsigned char upper_hex_chars[] = "0123456789ABCDEF";
 	const unsigned char *pSrc;
 	const unsigned char *pEnd;
 	char *pDest;
@@ -2591,8 +2591,8 @@ char *urlencode(const char *src, const int src_len, char *dest, int *dest_len)
 		else
 		{
 			*pDest++ = '%';
-			*pDest++ = hex_chars[(*pSrc) >> 4];
-			*pDest++ = hex_chars[(*pSrc) & 0x0F];
+			*pDest++ = upper_hex_chars[(*pSrc) >> 4];
+			*pDest++ = upper_hex_chars[(*pSrc) & 0x0F];
 		}
 	}
 

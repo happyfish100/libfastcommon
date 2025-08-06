@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
 
     setup_mblock_stat_task();
 
-    if ((result=fast_buffer_init_ex(&buffer, 1024)) != 0) {
+    if ((result=fast_buffer_init1(&buffer, 1024)) != 0) {
         return result;
     }
     fc_server_to_config_string(&ctx, &buffer);
