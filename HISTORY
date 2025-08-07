@@ -1,9 +1,10 @@
 
-Version 1.78  2025-08-06
+Version 1.78  2025-08-07
   * getIpaddrByName: normalize ip addr when input addr is IPv4 or IPv6
   * add files: spinlock.[hc]
   * shared_func.[hc]: change int2buff, buff2int etc. functions to static inline
   * shared_func.[hc]: add functions short2hex, int2hex, long2hex etc.
+  * performance opt.: replace sprintf and snprintf as necessary
 
 Version 1.77  2025-03-18
   * impl. shorten_path for /./ and /../

@@ -313,8 +313,8 @@ static inline void fc_server_set_ip_prefix(FCServerGroupInfo *ginfo,
 {
     ginfo->filter.ip_prefix.str = ginfo->filter.prefix_buff;
     if (ip_prefix != NULL) {
-        ginfo->filter.ip_prefix.len = snprintf(ginfo->filter.prefix_buff,
-                sizeof(ginfo->filter.prefix_buff) - 1, "%s", ip_prefix);
+        ginfo->filter.ip_prefix.len = fc_safe_strcpy(
+                ginfo->filter.prefix_buff, ip_prefix);
     }
 }
 

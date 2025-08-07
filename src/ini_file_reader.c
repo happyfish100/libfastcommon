@@ -198,7 +198,7 @@ static int iniAnnotationFuncLocalIpGet(IniContext *context,
                 (int)(square_start - param), param);
         index = atoi(square_start + 1);
     } else {
-        snprintf(name_part, sizeof(name_part) - 1, "%s", param);
+        fc_safe_strcpy(name_part, param);
         index = -2;
     }
 
@@ -322,7 +322,7 @@ static char *doReplaceVars(IniContext *pContext, const char *param,
         logWarning("file: "__FILE__", line: %d, "
                 "NO set directives before, set value to %s",
                 __LINE__, param);
-        snprintf(output, FAST_INI_ITEM_VALUE_SIZE, "%s", param);
+        fc_strlcpy(output, param, FAST_INI_ITEM_VALUE_SIZE);
         return output;
     }
 
@@ -652,7 +652,7 @@ int iniLoadFromFileEx(const char *szFilename, IniContext *pContext,
 	if (IS_URL_RESOURCE(szFilename))
 	{
 		*pContext->config_path = '\0';
-		snprintf(full_filename, sizeof(full_filename), "%s", szFilename);
+		fc_safe_strcpy(full_filename, szFilename);
 	}
 	else
 	{
@@ -675,8 +675,7 @@ int iniLoadFromFileEx(const char *szFilename, IniContext *pContext,
 
 			memcpy(pContext->config_path, szFilename, len);
 			*(pContext->config_path + len) = '\0';
-			snprintf(full_filename, sizeof(full_filename), \
-				"%s", szFilename);
+            fc_safe_strcpy(full_filename, szFilename);
 		}
 		else
 		{
@@ -699,9 +698,8 @@ int iniLoadFromFileEx(const char *szFilename, IniContext *pContext,
 				*(pContext->config_path + len) = '\0';
 			}
 
-			snprintf(full_filename, sizeof(full_filename), \
-				"%s/%s", pContext->config_path, szFilename);
-
+            fc_combine_full_filename(pContext->config_path,
+                    szFilename, full_filename);
 			pLast = strrchr(szFilename, '/');
 			if (pLast != NULL)
 			{
@@ -914,7 +912,7 @@ static int iniAddAnnotation(char *params)
         return EFAULT;
     }
 
-    snprintf(symbol, sizeof(symbol), "%s_init_annotation", func_name);
+    fc_combine_two_string(func_name, "init_annotation", '_', symbol);
     init_func = dlsym(dlhandle, symbol);
     if (init_func == NULL)
     {
@@ -1013,14 +1011,12 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 			strncasecmp(pLine+1, "include", 7) == 0 && \
 			(*(pLine+8) == ' ' || *(pLine+8) == '\t'))
 		{
-            snprintf(pIncludeFilename, sizeof(pIncludeFilename),
-                    "%s", pLine + 9);
+            fc_safe_strcpy(pIncludeFilename, pLine + 9);
 			fc_trim(pIncludeFilename);
 			if (IS_URL_RESOURCE(pIncludeFilename))
-			{
-				snprintf(full_filename, sizeof(full_filename),
-					"%s", pIncludeFilename);
-			}
+            {
+                fc_safe_strcpy(full_filename, pIncludeFilename);
+            }
 			else
 			{
                 if (IS_FILE_RESOURCE(pIncludeFilename))
@@ -1034,25 +1030,23 @@ static int iniDoLoadItemsFromBuffer(char *content, IniContext *pContext)
 
                 if (*pTrueFilename == '/')
 				{
-				snprintf(full_filename, sizeof(full_filename), \
-					"%s", pTrueFilename);
+                    fc_safe_strcpy(full_filename, pTrueFilename);
 				}
 				else
-				{
-				snprintf(full_filename, sizeof(full_filename), \
-					"%s/%s", pContext->config_path, \
-					 pTrueFilename);
-				}
+                {
+                    fc_combine_full_filename(pContext->config_path,
+                            pTrueFilename, full_filename);
+                }
 
 				if (!fileExists(full_filename))
-				{
-				logError("file: "__FILE__", line: %d, " \
-					"include file \"%s\" not exists, " \
-					"line: \"%s\"", __LINE__, \
-					pTrueFilename, pLine);
-				result = ENOENT;
-				break;
-				}
+                {
+                    logError("file: "__FILE__", line: %d, "
+                            "include file \"%s\" not exists, "
+                            "line: \"%s\"", __LINE__,
+                            pTrueFilename, pLine);
+                    result = ENOENT;
+                    break;
+                }
 			}
 
             pContext->current_section = &pContext->global;
@@ -2816,7 +2810,7 @@ do { \
         break;  \
     } \
     \
-    snprintf(targetItem.name, sizeof(targetItem.name), "%s", szItemName); \
+    fc_safe_strcpy(targetItem.name, szItemName); \
     pItem = (IniItem *)bsearch(&targetItem, pSection->items, \
             pSection->count, sizeof(IniItem), iniCompareByItemName); \
 } while (0)

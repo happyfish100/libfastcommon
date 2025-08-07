@@ -1194,7 +1194,7 @@ char *getHostnameByIp(const char *szIpAddr, char *buff, const int bufferSize)
 	}
 	else
 	{
-		snprintf(buff, bufferSize, "%s", ent->h_name);
+		fc_strlcpy(buff, ent->h_name, bufferSize);
 	}
 
 	return buff;
@@ -1402,14 +1402,12 @@ int nbaccept(int sock, const int timeout, int *err_no)
 int socketBind2(int af, int sock, const char *bind_ipaddr, const int port)
 {
     sockaddr_convert_t convert;
-    char bind_ip_prompt[256];
     int result;
 
     memset(&convert, 0, sizeof(convert));
     convert.sa.addr.sa_family = af;
 	if (bind_ipaddr == NULL || *bind_ipaddr == '\0')
 	{
-        *bind_ip_prompt = '\0';
         if (af == AF_INET)
         {
             convert.len = sizeof(convert.sa.addr4);
@@ -1429,11 +1427,15 @@ int socketBind2(int af, int sock, const char *bind_ipaddr, const int port)
         {
             return result;
         }
-        sprintf(bind_ip_prompt, "bind ip %s, ", bind_ipaddr);
     }
 
-	if (bind(sock, &convert.sa.addr, convert.len) < 0)
-	{
+	if (bind(sock, &convert.sa.addr, convert.len) < 0) {
+        char bind_ip_prompt[256];
+        if (bind_ipaddr == NULL || *bind_ipaddr == '\0') {
+            *bind_ip_prompt = '\0';
+        } else {
+            sprintf(bind_ip_prompt, "bind ip %s, ", bind_ipaddr);
+        }
 		logError("file: "__FILE__", line: %d, "
 			"%sbind port %d failed, "
 			"errno: %d, error info: %s.",
@@ -2577,10 +2579,14 @@ static inline int formatifmac(char *buff, const int buff_size,
         return 0;
     }
 
-    dest = buff + sprintf(buff, "%02x", *hwaddr);
+    dest = buff;
+    *dest++ = g_lower_hex_chars[*hwaddr >> 4];
+    *dest++ = g_lower_hex_chars[*hwaddr & 0x0F];
     for (ptr=hwaddr+1; ptr<end; ptr++)
     {
-        dest += sprintf(dest, ":%02x", *ptr);
+        *dest++ = ':';
+        *dest++ = g_lower_hex_chars[*ptr >> 4];
+        *dest++ = g_lower_hex_chars[*ptr & 0x0F];
     }
     return dest - buff;
 }
@@ -2629,7 +2635,7 @@ static int getifmac(FastIFConfig *config)
             fc_trim(output);
             if (*output != '\0')
             {
-                snprintf(config->mac, sizeof(config->mac), "%s", output);
+                fc_safe_strcpy(config->mac, output);
             }
         }
     }
@@ -2733,7 +2739,7 @@ int getifconfigs(FastIFConfig *if_configs, const int max_count, int *count)
                         return ENOSPC;
                     }
 
-                    sprintf(config->name, "%s", ifc->ifa_name);
+                    strcpy(config->name, ifc->ifa_name);
                     (*count)++;
                 }
 

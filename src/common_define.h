@@ -540,6 +540,8 @@ static inline int fc_fallocate(int fd, const int64_t size)
 
 #endif
 
+#define FC_MACRO_STRINGIFY(x) #x
+#define FC_MACRO_TOSTRING(x)  FC_MACRO_STRINGIFY(x)
 
 #ifdef __cplusplus
 }

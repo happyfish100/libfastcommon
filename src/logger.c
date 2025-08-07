@@ -50,21 +50,21 @@ static int log_fsync(LogContext *pContext, const bool bNeedLock);
 
 static int check_and_mk_log_dir(const char *base_path)
 {
-	char data_path[MAX_PATH_SIZE];
+    char log_path[MAX_PATH_SIZE];
 
-	snprintf(data_path, sizeof(data_path), "%s/logs", base_path);
-	if (!fileExists(data_path))
-	{
-		if (mkdir(data_path, 0755) != 0)
-		{
-			fprintf(stderr, "mkdir \"%s\" fail, " \
-				"errno: %d, error info: %s\n", \
-				data_path, errno, STRERROR(errno));
-			return errno != 0 ? errno : EPERM;
-		}
-	}
+    fc_combine_full_filename(base_path, "logs", log_path);
+    if (!fileExists(log_path))
+    {
+        if (mkdir(log_path, 0755) != 0)
+        {
+            fprintf(stderr, "mkdir \"%s\" fail, "
+                    "errno: %d, error info: %s\n",
+                    log_path, errno, STRERROR(errno));
+            return errno != 0 ? errno : EPERM;
+        }
+    }
 
-	return 0;
+    return 0;
 }
 
 int log_init()
@@ -249,7 +249,7 @@ int log_set_filename_ex(LogContext *pContext, const char *log_filename)
 
     if (*(pContext->log_filename) == '\0')
     {
-        snprintf(pContext->log_filename, MAX_PATH_SIZE, "%s", log_filename);
+        fc_strlcpy(pContext->log_filename, log_filename, MAX_PATH_SIZE);
         return log_open(pContext);
     }
 
@@ -258,7 +258,7 @@ int log_set_filename_ex(LogContext *pContext, const char *log_filename)
         return 0;
     }
 
-    snprintf(pContext->log_filename, MAX_PATH_SIZE, "%s", log_filename);
+    fc_strlcpy(pContext->log_filename, log_filename, MAX_PATH_SIZE);
     return log_reopen_ex(pContext);
 }
 
@@ -390,7 +390,7 @@ static int log_delete_old_file(LogContext *pContext,
     }
     else
     {
-        snprintf(full_filename, sizeof(full_filename), "%s", old_filename);
+        fc_safe_strcpy(full_filename, old_filename);
     }
 
     if (unlink(full_filename) != 0)

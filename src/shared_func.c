@@ -146,7 +146,7 @@ char *getAbsolutePath(const char *filename, char *szAbsPath, \
 	
 	if (szPath[0] == '/')
 	{
-		snprintf(szAbsPath, pathSize, "%s", szPath);
+		fc_strlcpy(szAbsPath, szPath, pathSize);
 	}
 	else
 	{
@@ -166,12 +166,13 @@ char *getAbsolutePath(const char *filename, char *szAbsPath, \
 		
 		if (szPath[0] != '\0')
 		{
-			snprintf(szAbsPath, pathSize, "%s/%s", cwd, szPath);
-		}
+            fc_get_full_filepath_ex(cwd, strlen(cwd), szPath,
+                    strlen(szPath), szAbsPath, pathSize);
+        }
 		else
-		{
-			snprintf(szAbsPath, pathSize, "%s", cwd);
-		}
+        {
+            fc_strlcpy(szAbsPath, cwd, pathSize);
+        }
 	}
 	
 	return szAbsPath;
@@ -206,8 +207,7 @@ char *getExeAbsoluteFilename(const char *exeFilename, char *szAbsFilename, \
 		filename = exeFilename;
 		for (i=0; i<3; i++)
 		{
-			snprintf(cwd, sizeof(cwd), "%s/%s", \
-				search_paths[i], filename);
+            fc_combine_full_filename(search_paths[i], filename, cwd);
 			if (fileExists(cwd))
 			{
 				strcpy(szPath, search_paths[i]);
@@ -226,11 +226,11 @@ char *getExeAbsoluteFilename(const char *exeFilename, char *szAbsFilename, \
 			}
 		}
 		else
-		{
-			snprintf(szAbsFilename, maxSize, "%s/%s", \
-				szPath, filename);
-			return szAbsFilename;
-		}
+        {
+            fc_get_full_filename_ex(szPath, strlen(szPath), filename,
+                    strlen(filename), szAbsFilename, maxSize);
+            return szAbsFilename;
+        }
 	}
 	else
 	{
@@ -242,8 +242,9 @@ char *getExeAbsoluteFilename(const char *exeFilename, char *szAbsFilename, \
 	
 	if (*szPath == '/')
 	{
-		snprintf(szAbsFilename, maxSize, "%s/%s", szPath, filename);
-	}
+        fc_get_full_filename_ex(szPath, strlen(szPath), filename,
+                strlen(filename), szAbsFilename, maxSize);
+    }
 	else
 	{
 		if (getcwd(cwd, sizeof(cwd)) == NULL)
@@ -262,14 +263,14 @@ char *getExeAbsoluteFilename(const char *exeFilename, char *szAbsFilename, \
 		
 		if (*szPath != '\0')
 		{
-			snprintf(szAbsFilename, maxSize, "%s/%s/%s", \
+			snprintf(szAbsFilename, maxSize, "%s/%s/%s",
 				cwd, szPath, filename);
 		}
 		else
-		{
-			snprintf(szAbsFilename, maxSize, "%s/%s", \
-				cwd, filename);
-		}
+        {
+            fc_get_full_filename_ex(cwd, strlen(cwd), filename,
+                    strlen(filename), szAbsFilename, maxSize);
+        }
 	}
 	
 	return szAbsFilename;
@@ -328,16 +329,16 @@ int getUserProcIds(const char *progName, const bool bAllOwners, \
 			continue;
 		}
 		
-		sprintf(fullpath, "%s/%s", path, dirp->d_name);
+        fc_combine_full_filepath(path, dirp->d_name, fullpath);
 		memset(&statbuf, 0, sizeof(statbuf));
 		if (lstat(fullpath, &statbuf) < 0)
 		{
 			continue;
 		}
-		
+
 		if ((bAllOwners || (statbuf.st_uid == myuid)) && S_ISDIR(statbuf.st_mode))
 		{
-			sprintf(filepath, "%s/cmdline", fullpath);
+            fc_combine_full_filename(fullpath, "cmdline", filepath);
 			if ((fd=open(filepath, O_RDONLY | O_CLOEXEC))<0)
 			{
 				continue;
@@ -358,12 +359,12 @@ int getUserProcIds(const char *progName, const bool bAllOwners, \
 			ptr = strrchr(buf, '/');
 			if (ptr == NULL)
 			{
-				snprintf(procname, 64, "%s", buf);
+				fc_safe_strcpy(procname, buf);
 			}
 			else
-			{
-				snprintf(procname, 64, "%s", ptr + 1);
-			}
+            {
+                fc_safe_strcpy(procname, ptr + 1);
+            }
 			
 			if (strcmp(procname, pTargetProg) == 0)
 			{				
@@ -1452,13 +1453,13 @@ int writeToFile(const char *filename, const char *buff, const int file_size)
 	return 0;
 }
 
-int safeWriteToFile(const char *filename, const char *buff, \
+int safeWriteToFile(const char *filename, const char *buff,
 		const int file_size)
 {
 	char tmpFilename[PATH_MAX];
 	int result;
 
-	snprintf(tmpFilename, sizeof(tmpFilename), "%s.tmp", filename);
+    fc_combine_two_string(filename, "tmp", '.', tmpFilename);
 	if ((result=writeToFile(tmpFilename, buff, file_size)) != 0)
 	{
 		return result;
@@ -1555,13 +1556,11 @@ int fc_copy_to_path(const char *src_filename, const char *dest_path)
     fname = strrchr(src_filename, '/');
     if (fname == NULL)
     {
-        snprintf(dest_filename, sizeof(dest_filename),
-                "%s/%s", dest_path, src_filename);
+        fc_combine_full_filename(dest_path, src_filename, dest_filename);
     }
     else
     {
-        snprintf(dest_filename, sizeof(dest_filename),
-                "%s%s", dest_path, fname);
+        fc_combine_full_filename(dest_path, fname, dest_filename);
     }
 
     return fc_copy_file(src_filename, dest_filename);
@@ -3233,8 +3232,7 @@ static void add_thousands_separator(char *str, const int len)
 const char *int2str(const int n, char *buff, const bool thousands_separator)
 {
     int len;
-    len = fc_itoa(n, buff);
-    *(buff + len) = '\0';
+    len = fc_ltostr(n, buff);
     if (thousands_separator)
     {
         add_thousands_separator(buff, len);
@@ -3245,8 +3243,7 @@ const char *int2str(const int n, char *buff, const bool thousands_separator)
 const char *long2str(const int64_t n, char *buff, const bool thousands_separator)
 {
     int len;
-    len = fc_itoa(n, buff);
-    *(buff + len) = '\0';
+    len = fc_ltostr(n, buff);
     if (thousands_separator)
     {
         add_thousands_separator(buff, len);
@@ -4216,15 +4213,13 @@ int fc_safe_write_file_init(SafeWriteFileInfo *fi,
 {
     char full_filename[PATH_MAX];
 
-    snprintf(full_filename, sizeof(full_filename), "%s/%s",
-            file_path, redo_filename);
+    fc_combine_full_filename(file_path, redo_filename, full_filename);
     if ((fi->filename=fc_strdup(full_filename)) == NULL)
     {
         return ENOMEM;
     }
 
-    snprintf(full_filename, sizeof(full_filename), "%s/%s",
-            file_path, tmp_filename);
+    fc_combine_full_filename(file_path, tmp_filename, full_filename);
     if ((fi->tmp_filename=fc_strdup(full_filename)) == NULL)
     {
         return ENOMEM;

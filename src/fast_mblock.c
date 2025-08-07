@@ -584,7 +584,7 @@ int fast_mblock_init_ex2(struct fast_mblock_man *mblock, const char *name,
 
     if (name != NULL)
     {
-        snprintf(mblock->info.name, sizeof(mblock->info.name), "%s", name);
+        fc_safe_strcpy(mblock->info.name, name);
     }
     else
     {

@@ -1230,6 +1230,67 @@ static inline int resolve_path(const char *from, const char *filename,
             size, NORMALIZE_FLAGS_URL_ENABLED_AND_APPEND_PARAMS);
 }
 
+static inline int fc_combine_two_string_ex(
+        const char *first_str, const int first_len,
+        const char *second_str, const int second_len,
+        const char seperator, char *combined_str, const int size)
+{
+    char *p;
+
+    if (first_len + 1 + second_len >= size) {
+        return snprintf(combined_str, size, "%s%c%s",
+                first_str, seperator, second_str);
+    }
+
+    memcpy(combined_str, first_str, first_len);
+    p = combined_str + first_len;
+    *p++ = seperator;
+    memcpy(p, second_str, second_len);
+    p += second_len;
+    *p = '\0';
+    return p - combined_str;
+}
+
+#define fc_combine_two_string_s(first, second, seperator, combined, size)  \
+    fc_combine_two_string_ex(first, strlen(first), second, strlen(second), \
+            seperator, combined, size)
+
+#define fc_combine_two_string(first, second, seperator, combined) \
+    fc_combine_two_string_s(first, second, seperator, \
+            combined, sizeof(combined))
+
+static inline int fc_get_full_filename_ex(
+        const char *base_path_str, const int base_path_len,
+        const char *filename_str, const int filename_len,
+        char *full_filename, const int size)
+{
+    const char seperator = '/';
+    return fc_combine_two_string_ex(base_path_str, base_path_len,
+            filename_str, filename_len, seperator, full_filename, size);
+}
+
+#define fc_get_full_filename(base_path_str, base_path_len,    \
+        filename_str, filename_len, full_filename)            \
+        fc_get_full_filename_ex(base_path_str, base_path_len, \
+            filename_str, filename_len, full_filename, sizeof(full_filename))
+
+#define fc_combine_full_filename(base_path, filename, full_filename) \
+    fc_get_full_filename(base_path, strlen(base_path),    \
+        filename, strlen(filename), full_filename)
+
+#define fc_get_full_filepath_ex(base_path_str, base_path_len, \
+        filepath_str, filepath_len, full_filename, size)      \
+        fc_get_full_filename_ex(base_path_str, base_path_len, \
+        filepath_str, filepath_len, full_filename, size)
+
+#define fc_get_full_filepath(base_path_str, base_path_len,    \
+        filepath_str, filepath_len, full_filename)            \
+        fc_get_full_filename(base_path_str, base_path_len,    \
+        filepath_str, filepath_len, full_filename)
+
+#define fc_combine_full_filepath(base_path, filepath, full_filename) \
+    fc_combine_full_filename(base_path, filepath, full_filename)
+
 /** get gzip command full filename
  *  return: the gzip command full filename
 */
@@ -1365,6 +1426,29 @@ bool fc_path_contains(const string_t *path, const string_t *needle,
 */
 int fc_itoa(int64_t n, char *buff);
 
+static inline int fc_ltostr_ex(int64_t n, char *buff, const int padding_len)
+{
+    int len;
+    int fill_len;
+
+    len = fc_itoa(n, buff);
+    *(buff + len) = '\0';
+    if (padding_len <= len) {
+        return len;
+    }
+
+    fill_len = padding_len - len;
+    memmove(buff + fill_len, buff, len + 1);
+    memset(buff, '0', fill_len);
+    return padding_len;
+}
+
+static inline int fc_ltostr(int64_t n, char *buff)
+{
+    const int padding_len = 0;
+    return fc_ltostr_ex(n, buff, padding_len);
+}
+
 static inline size_t fc_strlcpy(char *dest, const char *src, const size_t size)
 {
     int len;
@@ -1380,6 +1464,8 @@ static inline size_t fc_strlcpy(char *dest, const char *src, const size_t size)
 
     return len;
 }
+
+#define fc_safe_strcpy(dest, src) fc_strlcpy(dest, src, sizeof(dest))
 
 /** sleep in microseconds
  *  parameters:

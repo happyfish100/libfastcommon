@@ -210,7 +210,7 @@ int fc_thread_pool_init_ex(FCThreadPool *pool, const char *name,
         return result;
     }
 
-    snprintf(pool->name, sizeof(pool->name), "%s", name);
+    fc_safe_strcpy(pool->name, name);
     pool->stack_size = stack_size;
     pool->max_idle_time = max_idle_time;
     if (min_idle_count > limit) {

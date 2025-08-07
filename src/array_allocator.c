@@ -47,7 +47,7 @@ int array_allocator_init_ex(ArrayAllocatorContext *ctx,
         start = end;
     }
 
-    snprintf(name, sizeof(name), "%s-array", name_prefix);
+    fc_combine_two_string(name_prefix, "array", '-', name);
     return fast_allocator_init_ex(&ctx->allocator, name,
             obj_size, NULL, regions, region - regions, 0,
             0.9999, reclaim_interval, need_lock);

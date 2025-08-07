@@ -194,9 +194,9 @@ int get_boot_time(struct timeval *boot_time)
 
 #define SET_MNT_FIELDS(left, fstypename, mntfromname, mntonname) \
     do { \
-        snprintf(left.f_fstypename, sizeof(left.f_fstypename), "%s", fstypename); \
-        snprintf(left.f_mntfromname, sizeof(left.f_mntfromname), "%s", mntfromname); \
-        snprintf(left.f_mntonname, sizeof(left.f_mntonname), "%s", mntonname); \
+        fc_safe_strcpy(left.f_fstypename, fstypename);   \
+        fc_safe_strcpy(left.f_mntfromname, mntfromname); \
+        fc_safe_strcpy(left.f_mntonname, mntonname); \
     } while (0)
 
 #ifdef OS_LINUX
@@ -286,12 +286,9 @@ int get_mounted_filesystems(struct fast_statfs *stats,
         toLowercase(fstypename);
         if (get_device_type(fstypename, &stats[*count].device_type) == 0)
         {
-            snprintf(stats[*count].f_mntfromname, sizeof(stats[*count].
-                        f_mntfromname), "%s", mntfromname);
-            snprintf(stats[*count].f_mntonname, sizeof(stats[*count].
-                        f_mntonname), "%s", mntonname);
-            snprintf(stats[*count].f_fstypename, sizeof(stats[*count].
-                        f_fstypename), "%s", fstypename);
+            fc_safe_strcpy(stats[*count].f_mntfromname, mntfromname);
+            fc_safe_strcpy(stats[*count].f_mntonname, mntonname);
+            fc_safe_strcpy(stats[*count].f_fstypename, fstypename);
             (*count)++;
         }
     }
@@ -841,8 +838,7 @@ int get_processes(struct fast_process_info **processes, int *count)
     for (i=0; i<nproc; i++)
     {
         process->field_count = 9;
-        snprintf(process->comm, sizeof(process->comm),
-                "%s", procs[i].ki_comm);
+        fc_safe_strcpy(process->comm, procs[i].ki_comm);
         process->pid = procs[i].ki_pid;
         process->ppid = procs[i].ki_ppid;
         process->starttime = procs[i].ki_start;
@@ -1041,8 +1037,7 @@ static int get_block_size_by_write(const char *path, int *block_size)
         return result;
     }
 
-    snprintf(tmp_filename, sizeof(tmp_filename),
-            "%s/.blksize-test.tmp", path);
+    fc_combine_full_filename(path, ".blksize-test.tmp", tmp_filename);
     if ((fd=open(tmp_filename, O_WRONLY | O_CREAT |
                     O_DIRECT | O_CLOEXEC, 0755)) < 0)
     {

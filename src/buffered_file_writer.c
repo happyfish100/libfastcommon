@@ -48,7 +48,7 @@ int buffered_file_writer_open_ex(BufferedFileWriter *writer,
         return ENOMEM;
     }
 
-    snprintf(writer->filename, sizeof(writer->filename), "%s", filename);
+    fc_safe_strcpy(writer->filename, filename);
     writer->fd = open(writer->filename, O_WRONLY |
             O_CREAT | O_TRUNC | O_CLOEXEC, mode);
     if (writer->fd < 0)
