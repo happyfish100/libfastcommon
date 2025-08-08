@@ -100,6 +100,58 @@ static inline void log_pack_by_sprintf(const DATrunkSpaceLogRecord
     }
 }
 
+#define BINLOG_FILENAME_PREFIX_STR  "binlog."
+#define BINLOG_FILENAME_PREFIX_LEN  (sizeof(BINLOG_FILENAME_PREFIX_STR) - 1)
+
+static inline int cache_binlog_filename_by_sprintf(
+        const char *data_path, const char *subdir_name,
+        const uint32_t subdirs, const uint64_t id,
+        char *full_filename, const int size)
+{
+    int path_index;
+    path_index = id % subdirs;
+    return sprintf(full_filename, "%s/%s/%02X/%02X/%s%08"PRIX64,
+            data_path, subdir_name, path_index, path_index,
+            BINLOG_FILENAME_PREFIX_STR, id);
+}
+
+static inline int cache_binlog_filename_by_append(
+        const char *data_path, const char *subdir_name,
+        const uint32_t subdirs, const uint64_t id,
+        char *full_filename, const int size)
+{
+    int path_index;
+    int path_len;
+    int subdir_len;
+    char *p;
+
+    path_index = id % subdirs;
+    path_len = strlen(data_path);
+    subdir_len = strlen(subdir_name);
+    p = full_filename;
+    memcpy(p, data_path, path_len);
+    p += path_len;
+    *p++ = '/';
+    memcpy(p, subdir_name, subdir_len);
+    p += subdir_len;
+    *p++ = '/';
+    *p++ = g_upper_hex_chars[(path_index >> 4) & 0x0F];
+    *p++ = g_upper_hex_chars[path_index & 0x0F];
+    *p++ = '/';
+    *p++ = g_upper_hex_chars[(path_index >> 4) & 0x0F];
+    *p++ = g_upper_hex_chars[path_index & 0x0F];
+    *p++ = '/';
+    memcpy(p, BINLOG_FILENAME_PREFIX_STR, BINLOG_FILENAME_PREFIX_LEN);
+    p += BINLOG_FILENAME_PREFIX_LEN;
+    if (id <= UINT32_MAX) {
+        p += int2HEX(id, p, 8);
+    } else {
+        p += long2HEX(id, p, 8);
+    }
+
+    return p - full_filename;
+}
+
 int main(int argc, char *argv[])
 {
     const bool binary_mode = true;
@@ -109,8 +161,8 @@ int main(int argc, char *argv[])
     int result;
     int i;
     int64_t start_time_us;
-    int append_time_ms;
-    int sprintf_time_ms;
+    int append_time_us;
+    int sprintf_time_us;
     double ratio;
     FastBuffer buffer;
     DATrunkSpaceLogRecord record;
@@ -134,29 +186,41 @@ int main(int argc, char *argv[])
     record.storage.offset = 12345;
     record.storage.size = 64;
 
+
+    const char *data_path = "/opt/fastcfs/fdir/data";
+    const char *subdir_name = "binlog";
+    const uint32_t subdirs = 256;
+    uint64_t id = 123456;
+    char full_filename1[PATH_MAX];
+    char full_filename2[PATH_MAX];
+
     start_time_us = get_current_time_us();
     for (i=0; i<LOOP; i++) {
+        cache_binlog_filename_by_sprintf(data_path, subdir_name,
+                subdirs, ++id, full_filename1, sizeof(full_filename1));
         fast_buffer_reset(&buffer);
         log_pack_by_sprintf(&record, &buffer, have_extra_field);
     }
-    sprintf_time_ms = (get_current_time_us() - start_time_us) / 1000;
+    sprintf_time_us = (get_current_time_us() - start_time_us);
 
     start_time_us = get_current_time_us();
     for (i=0; i<LOOP; i++) {
+        cache_binlog_filename_by_append(data_path, subdir_name,
+                subdirs, ++id, full_filename2, sizeof(full_filename2));
         fast_buffer_reset(&buffer);
         log_pack_by_append(&record, &buffer, have_extra_field);
     }
-    append_time_ms = (get_current_time_us() - start_time_us) / 1000;
+    append_time_us = (get_current_time_us() - start_time_us);
 
-    if (append_time_ms > 0) {
-        ratio = (double)sprintf_time_ms / (double)append_time_ms;
+    if (append_time_us > 0) {
+        ratio = (double)sprintf_time_us / (double)append_time_us;
     } else {
         ratio = 1.0;
     }
 
     printf("sprintf time: %d ms, append time: %d ms, "
             "sprintf time / append time: %d%%\n",
-            sprintf_time_ms, append_time_ms,
+            sprintf_time_us / 1000, append_time_us / 1000,
             (int)(ratio * 100.00));
 
     fast_buffer_destroy(&buffer);

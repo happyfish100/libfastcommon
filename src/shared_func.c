@@ -47,6 +47,7 @@
 
 bool g_set_cloexec = false;
 const char *g_lower_hex_chars = "0123456789abcdef";
+const char *g_upper_hex_chars = "0123456789ABCDEF";
 
 char *formatDatetime(const time_t nTime, \
 	const char *szDateFormat, \
@@ -2567,7 +2568,6 @@ int get_time_item_from_str(const char *pValue, const char *item_name,
 
 char *urlencode(const char *src, const int src_len, char *dest, int *dest_len)
 {
-	const unsigned char upper_hex_chars[] = "0123456789ABCDEF";
 	const unsigned char *pSrc;
 	const unsigned char *pEnd;
 	char *pDest;
@@ -2590,8 +2590,8 @@ char *urlencode(const char *src, const int src_len, char *dest, int *dest_len)
 		else
 		{
 			*pDest++ = '%';
-			*pDest++ = upper_hex_chars[(*pSrc) >> 4];
-			*pDest++ = upper_hex_chars[(*pSrc) & 0x0F];
+			*pDest++ = g_upper_hex_chars[(*pSrc) >> 4];
+			*pDest++ = g_upper_hex_chars[(*pSrc) & 0x0F];
 		}
 	}
 

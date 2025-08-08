@@ -24,6 +24,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include "fc_memory.h"
+#include "shared_func.h"
 #include "base64.h"
 
 /**
@@ -53,15 +54,11 @@ void base64_set_line_length(struct base64_context *context, const int length)
     * Usually contains only a combination of chars \n and \r.
     * Could be any chars not in set A-Z a-z 0-9 + /.
 */
-void base64_set_line_separator(struct base64_context *context, \
+void base64_set_line_separator(struct base64_context *context,
 		const char *pLineSeparator)
 {
-    context->line_sep_len = snprintf(context->line_separator, \
-			sizeof(context->line_separator), "%s", pLineSeparator);
-    if (context->line_sep_len >= sizeof(context->line_separator))
-    {
-        context->line_sep_len = sizeof(context->line_separator) - 1;
-    }
+    context->line_sep_len = fc_safe_strcpy(context->
+            line_separator, pLineSeparator);
 }
 
 void base64_init_ex(struct base64_context *context, const int nLineLength, \

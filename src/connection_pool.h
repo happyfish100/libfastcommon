@@ -462,14 +462,7 @@ int conn_pool_parse_server_info(const char *pServerStr,
 static inline void conn_pool_set_server_info(ConnectionInfo *pServerInfo,
         const char *ip_addr, const int port)
 {
-    int len;
-
-    len = strlen(ip_addr);
-    if (len >= sizeof(pServerInfo->ip_addr)) {
-        len = sizeof(pServerInfo->ip_addr) - 1;
-    }
-    memcpy(pServerInfo->ip_addr, ip_addr, len);
-    *(pServerInfo->ip_addr + len) = '\0';
+    fc_safe_strcpy(pServerInfo->ip_addr, ip_addr);
     pServerInfo->port = port;
     pServerInfo->af = is_ipv6_addr(ip_addr) ? AF_INET6 : AF_INET;
     pServerInfo->sock = -1;
