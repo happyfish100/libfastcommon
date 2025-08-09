@@ -1288,7 +1288,7 @@ static inline int resolve_path(const char *from, const char *filename,
             size, NORMALIZE_FLAGS_URL_ENABLED_AND_APPEND_PARAMS);
 }
 
-static inline int fc_combine_two_string_ex(
+static inline int fc_combine_two_strings_ex(
         const char *first_str, const int first_len,
         const char *second_str, const int second_len,
         const char seperator, char *combined_str, const int size)
@@ -1311,16 +1311,16 @@ static inline int fc_combine_two_string_ex(
     return p - combined_str;
 }
 
-#define fc_combine_two_string_s(first, second, seperator, combined, size)  \
-    fc_combine_two_string_ex(first, strlen(first), second, strlen(second), \
+#define fc_combine_two_strings_s(first, second, seperator, combined, size)  \
+    fc_combine_two_strings_ex(first, strlen(first), second, strlen(second), \
             seperator, combined, size)
 
-#define fc_combine_two_string(first, second, seperator, combined) \
-    fc_combine_two_string_s(first, second, seperator,   \
+#define fc_combine_two_strings(first, second, seperator, combined) \
+    fc_combine_two_strings_s(first, second, seperator,   \
             combined, sizeof(combined))
 
-#define fc_concat_two_string(first, second, combined)   \
-    fc_combine_two_string(first, second, '\0', combined)
+#define fc_concat_two_strings(first, second, combined)   \
+    fc_combine_two_strings(first, second, '\0', combined)
 
 static inline int fc_get_full_filename_ex(
         const char *base_path_str, const int base_path_len,
@@ -1328,7 +1328,7 @@ static inline int fc_get_full_filename_ex(
         char *full_filename, const int size)
 {
     const char seperator = '/';
-    return fc_combine_two_string_ex(base_path_str, base_path_len,
+    return fc_combine_two_strings_ex(base_path_str, base_path_len,
             filename_str, filename_len, seperator, full_filename, size);
 }
 
@@ -1353,6 +1353,30 @@ static inline int fc_get_full_filename_ex(
 
 #define fc_combine_full_filepath(base_path, filepath, full_filename) \
     fc_combine_full_filename(base_path, filepath, full_filename)
+
+static inline int fc_get_hex_subdir_filepath(const char *base_path,
+        const int base_len, const int subdir_index, char *file_path)
+{
+    const int padding_len = 2;
+    char *p;
+
+    memcpy(file_path, base_path, base_len);
+    p = file_path + base_len;
+    *p++ = '/';
+    if (subdir_index <= UINT8_MAX) {
+        *p++ = g_upper_hex_chars[(subdir_index >> 4) & 0x0F];
+        *p++ = g_upper_hex_chars[subdir_index & 0x0F];
+        *p = '\0';
+    } else {
+        if (subdir_index <= UINT16_MAX) {
+            p += short2HEX(subdir_index, p, padding_len);
+        } else {
+            p += int2HEX(subdir_index, p, padding_len);
+        }
+    }
+
+    return p - file_path;
+}
 
 /** get gzip command full filename
  *  return: the gzip command full filename

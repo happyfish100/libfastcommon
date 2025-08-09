@@ -142,7 +142,7 @@ int free_queue_init_ex2(struct fast_task_queue *queue, const char *name,
         (int64_t)max_data_size);
         */
 
-    fc_combine_two_string(name, "task", '-', aname);
+    fc_combine_two_strings(name, "task", '-', aname);
 	return fast_mblock_init_ex1(&queue->allocator, aname,
             queue->block_size, alloc_once, max_connections,
             (fast_mblock_object_init_func)task_alloc_init,

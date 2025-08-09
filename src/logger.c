@@ -385,7 +385,7 @@ static int log_delete_old_file(LogContext *pContext,
     char full_filename[MAX_PATH_SIZE + 128];
     if (NEED_COMPRESS_LOG(pContext->compress_log_flags))
     {
-        fc_concat_two_string(old_filename, GZIP_EXT_NAME_STR, full_filename);
+        fc_concat_two_strings(old_filename, GZIP_EXT_NAME_STR, full_filename);
     }
     else
     {
@@ -652,7 +652,7 @@ static int log_delete_matched_old_files(LogContext *pContext,
     log_get_file_path(pContext, log_filepath);
     for (i=0; i<filename_array.count; i++)
     {
-        fc_concat_two_string(log_filepath, filename_array.
+        fc_concat_two_strings(log_filepath, filename_array.
                 filenames[i], full_filename);
         if (unlink(full_filename) != 0)
         {
@@ -765,9 +765,9 @@ static void *log_gzip_func(void *args)
         }
 
         gzip_cmd_filename = get_gzip_command_filename();
-        fc_concat_two_string(log_filepath, filename_array.
+        fc_concat_two_strings(log_filepath, filename_array.
                 filenames[i], full_filename);
-        fc_combine_two_string(gzip_cmd_filename, full_filename, ' ', cmd);
+        fc_combine_two_strings(gzip_cmd_filename, full_filename, ' ', cmd);
         result = getExecResult(cmd, output, sizeof(output));
         if (result != 0)
         {

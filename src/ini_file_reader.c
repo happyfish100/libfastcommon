@@ -912,7 +912,7 @@ static int iniAddAnnotation(char *params)
         return EFAULT;
     }
 
-    fc_combine_two_string(func_name, "init_annotation", '_', symbol);
+    fc_combine_two_strings(func_name, "init_annotation", '_', symbol);
     init_func = dlsym(dlhandle, symbol);
     if (init_func == NULL)
     {

@@ -1460,7 +1460,7 @@ int safeWriteToFile(const char *filename, const char *buff,
 	char tmpFilename[PATH_MAX];
 	int result;
 
-    fc_combine_two_string(filename, "tmp", '.', tmpFilename);
+    fc_combine_two_strings(filename, "tmp", '.', tmpFilename);
 	if ((result=writeToFile(tmpFilename, buff, file_size)) != 0)
 	{
 		return result;
