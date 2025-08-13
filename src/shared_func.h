@@ -1378,6 +1378,100 @@ static inline int fc_get_hex_subdir_filepath(const char *base_path,
     return p - file_path;
 }
 
+static inline int fc_get_two_subdirs_full_filepath_ex(
+        const char *base_path, const int base_len,
+        const char *subdir_str1, const int subdir_len1,
+        const char *subdir_str2, const int subdir_len2,
+        char *file_path, const int size)
+{
+    char *p;
+
+    if (base_len + 1 + subdir_len1 + 1 + subdir_len2 >= size) {
+        return snprintf(file_path, size, "%s/%s/%s",
+                base_path, subdir_str1, subdir_str2);
+    }
+
+    memcpy(file_path, base_path, base_len);
+    p = file_path + base_len;
+    *p++ = '/';
+    memcpy(p, subdir_str1, subdir_len1);
+    p += subdir_len1;
+    *p++ = '/';
+    memcpy(p, subdir_str2, subdir_len2);
+    p += subdir_len2;
+    *p = '\0';
+    return p - file_path;
+}
+
+#define fc_get_two_subdirs_full_filepath(base_path, base_len,          \
+        subdir_str1, subdir_len1, subdir_str2, subdir_len2, file_path) \
+        fc_get_two_subdirs_full_filepath_ex(base_path, base_len,    \
+                subdir_str1, subdir_len1, subdir_str2, subdir_len2, \
+                file_path, sizeof(file_path))
+
+#define fc_get_one_subdir_full_filename_ex(base_path, base_len, subdir_str, \
+        subdir_len, filename_str, filename_len, full_filename, size)        \
+        fc_get_two_subdirs_full_filepath_ex(base_path, base_len,    \
+                subdir_str, subdir_len, filename_str, filename_len, \
+                full_filename, size)
+
+#define fc_get_one_subdir_full_filename(base_path, base_len, subdir_str, \
+        subdir_len, filename_str, filename_len, full_filename)      \
+        fc_get_one_subdir_full_filename_ex(base_path, base_len,     \
+                subdir_str, subdir_len, filename_str, filename_len, \
+                full_filename, sizeof(full_filename))
+
+static inline int fc_get_three_subdirs_full_filepath_ex(
+        const char *base_path, const int base_len,
+        const char *subdir_str1, const int subdir_len1,
+        const char *subdir_str2, const int subdir_len2,
+        const char *subdir_str3, const int subdir_len3,
+        char *file_path, const int size)
+{
+    char *p;
+
+    if (base_len + 1 + subdir_len1 + 1 + subdir_len2 + subdir_len3 >= size) {
+        return snprintf(file_path, size, "%s/%s/%s/%s",
+                base_path, subdir_str1, subdir_str2, subdir_str3);
+    }
+
+    memcpy(file_path, base_path, base_len);
+    p = file_path + base_len;
+    *p++ = '/';
+    memcpy(p, subdir_str1, subdir_len1);
+    p += subdir_len1;
+    *p++ = '/';
+    memcpy(p, subdir_str2, subdir_len2);
+    p += subdir_len2;
+    *p++ = '/';
+    memcpy(p, subdir_str3, subdir_len3);
+    p += subdir_len3;
+    *p = '\0';
+    return p - file_path;
+}
+
+#define fc_get_three_subdirs_full_filepath(base_path, base_len,  \
+        subdir_str1, subdir_len1, subdir_str2, subdir_len2,      \
+        subdir_str3, subdir_len3, file_path)  \
+        fc_get_three_subdirs_full_filepath_ex(base_path, base_len,     \
+                subdir_str1, subdir_len1, subdir_str2, subdir_len2,    \
+                subdir_str3, subdir_len3, file_path, sizeof(file_path))
+
+#define fc_get_two_subdirs_full_filename_ex(base_path, base_len, \
+        subdir_str1, subdir_len1, subdir_str2, subdir_len2,     \
+        filename_str, filename_len, full_filename, size)        \
+        fc_get_three_subdirs_full_filepath_ex(base_path, base_len,    \
+                subdir_str1, subdir_len1, subdir_str2, subdir_len2,   \
+                filename_str, filename_len, full_filename, size)
+
+#define fc_get_two_subdirs_full_filename(base_path, base_len,    \
+        subdir_str1, subdir_len1, subdir_str2, subdir_len2,     \
+        filename_str, filename_len, full_filename)              \
+        fc_get_two_subdirs_full_filename_ex(base_path, base_len, \
+        subdir_str1, subdir_len1, subdir_str2, subdir_len2,     \
+        filename_str, filename_len, full_filename, sizeof(full_filename))
+
+
 /** get gzip command full filename
  *  return: the gzip command full filename
 */
