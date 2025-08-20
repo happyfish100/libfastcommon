@@ -29,6 +29,7 @@
 #include <netinet/tcp.h>
 #include <netdb.h>
 #include "common_define.h"
+#include "shared_func.h"
 
 #define FC_NET_TYPE_NONE          0
 #define FC_NET_TYPE_OUTER         1   //extranet IP
@@ -52,16 +53,6 @@
 #define SUB_NET_TYPE_INNER_192_STR "inner-192"
 
 #define FAST_WRITE_BUFF_SIZE  (256 * 1024)
-
-#define FC_FORMAT_IP_ADDRESS(old_ip_addr, new_ip_addr)  \
-    char new_ip_addr[FORMATTED_IP_SIZE]; \
-    do {  \
-        if (is_ipv6_addr(old_ip_addr)) { \
-            sprintf(new_ip_addr, "[%s]", old_ip_addr); \
-        } else { \
-            strcpy(new_ip_addr, old_ip_addr); \
-        } \
-    } while (0)
 
 typedef struct fast_if_config {
     char name[IF_NAMESIZE];    //if name
@@ -719,7 +710,16 @@ static inline const char *format_ip_address(const char *ip, char *buff)
 {
     if (is_ipv6_addr(ip))
     {
-        sprintf(buff, "[%s]", ip);
+        int ip_len;
+        char *p;
+
+        ip_len = strlen(ip);
+        p = buff;
+        *p++ = '[';
+        memcpy(p, ip, ip_len);
+        p += ip_len;
+        *p++ = ']';
+        *p = '\0';
     }
     else
     {
@@ -732,14 +732,26 @@ static inline const char *format_ip_address(const char *ip, char *buff)
 static inline const char *format_ip_port(const char *ip,
         const int port, char *buff)
 {
-    if (is_ipv6_addr(ip))
+    int ip_len;
+    bool is_ipv6;
+    char *p;
+
+    is_ipv6 = is_ipv6_addr(ip);
+    ip_len = strlen(ip);
+    p = buff;
+    if (is_ipv6)
     {
-        sprintf(buff, "[%s]:%u", ip, port);
+        *p++ = '[';
     }
-    else
+    memcpy(p, ip, ip_len);
+    p += ip_len;
+    if (is_ipv6)
     {
-        sprintf(buff, "%s:%u", ip, port);
+        *p++ = ']';
     }
+    *p++ = ':';
+    p += fc_itoa(port, p);
+    *p = '\0';
 
     return buff;
 }

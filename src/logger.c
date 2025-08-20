@@ -112,7 +112,7 @@ int log_init_ex(LogContext *pContext)
 	}
 	pContext->pcurrent_buff = pContext->log_buff;
 
-	if ((result=init_pthread_lock(&(pContext->log_thread_lock))) != 0)
+	if ((result=init_pthread_lock(&(pContext->lock))) != 0)
 	{
 		return result;
 	}
@@ -296,9 +296,9 @@ void log_set_header_callback(LogContext *pContext, LogHeaderCallback header_call
     {
         int64_t current_size;
 
-		pthread_mutex_lock(&(pContext->log_thread_lock));
+		pthread_mutex_lock(&(pContext->lock));
         current_size = pContext->current_size;
-		pthread_mutex_unlock(&(pContext->log_thread_lock));
+		pthread_mutex_unlock(&(pContext->lock));
         if (current_size == 0)
         {
             log_print_header(pContext);
@@ -347,7 +347,7 @@ void log_destroy_ex(LogContext *pContext)
 		close(pContext->log_fd);
 		pContext->log_fd = STDERR_FILENO;
 
-		pthread_mutex_destroy(&pContext->log_thread_lock);
+		pthread_mutex_destroy(&pContext->lock);
 	}
 
 	if (pContext->log_buff != NULL)
@@ -918,19 +918,19 @@ static int log_fsync(LogContext *pContext, const bool bNeedLock)
 		{
             if (bNeedLock)
             {
-                pthread_mutex_lock(&(pContext->log_thread_lock));
+                pthread_mutex_lock(&(pContext->lock));
             }
             result = log_check_rotate(pContext);
             if (bNeedLock)
             {
-                pthread_mutex_unlock(&(pContext->log_thread_lock));
+                pthread_mutex_unlock(&(pContext->lock));
             }
             return result;
 		}
 	}
 
 	if (bNeedLock && ((lock_res=pthread_mutex_lock( \
-			&(pContext->log_thread_lock))) != 0))
+			&(pContext->lock))) != 0))
 	{
 		fprintf(stderr, "file: "__FILE__", line: %d, " \
 			"call pthread_mutex_lock fail, " \
@@ -966,7 +966,7 @@ static int log_fsync(LogContext *pContext, const bool bNeedLock)
 	}
 
 	if (bNeedLock && ((lock_res=pthread_mutex_unlock( \
-			&(pContext->log_thread_lock))) != 0))
+			&(pContext->lock))) != 0))
 	{
 		fprintf(stderr, "file: "__FILE__", line: %d, " \
 			"call pthread_mutex_unlock fail, " \
@@ -977,8 +977,8 @@ static int log_fsync(LogContext *pContext, const bool bNeedLock)
 	return result;
 }
 
-static void doLogEx(LogContext *pContext, struct timeval *tv, \
-		const char *caption, const char *text, const int text_len, \
+void log_it_ex3(LogContext *pContext, struct timeval *tv,
+		const char *caption, const char *text, const int text_len,
 		const bool bNeedSync, const bool bNeedLock)
 {
 	struct tm tm;
@@ -1003,7 +1003,7 @@ static void doLogEx(LogContext *pContext, struct timeval *tv, \
 		}
 	}
 
-	if (bNeedLock && (result=pthread_mutex_lock(&pContext->log_thread_lock)) != 0)
+	if (bNeedLock && (result=pthread_mutex_lock(&pContext->lock)) != 0)
 	{
 		fprintf(stderr, "file: "__FILE__", line: %d, " \
 			"call pthread_mutex_lock fail, " \
@@ -1018,12 +1018,12 @@ static void doLogEx(LogContext *pContext, struct timeval *tv, \
 			__LINE__, LOG_BUFF_SIZE, text_len + 64);
         if (bNeedLock)
         {
-		    pthread_mutex_unlock(&(pContext->log_thread_lock));
+		    pthread_mutex_unlock(&(pContext->lock));
         }
 		return;
 	}
 
-	if ((pContext->pcurrent_buff - pContext->log_buff) + text_len + 64 \
+	if ((pContext->pcurrent_buff - pContext->log_buff) + text_len + 64
 			> LOG_BUFF_SIZE)
 	{
 		log_fsync(pContext, false);
@@ -1067,7 +1067,7 @@ static void doLogEx(LogContext *pContext, struct timeval *tv, \
 		log_fsync(pContext, false);
 	}
 
-	if (bNeedLock && (result=pthread_mutex_unlock(&(pContext->log_thread_lock))) != 0)
+	if (bNeedLock && (result=pthread_mutex_unlock(&(pContext->lock))) != 0)
 	{
 		fprintf(stderr, "file: "__FILE__", line: %d, " \
 			"call pthread_mutex_unlock fail, " \
@@ -1076,8 +1076,8 @@ static void doLogEx(LogContext *pContext, struct timeval *tv, \
 	}
 }
 
-void log_it_ex2(LogContext *pContext, const char *caption, \
-		const char *text, const int text_len, \
+void log_it_ex2(LogContext *pContext, const char *caption,
+		const char *text, const int text_len,
         const bool bNeedSync, const bool bNeedLock)
 {
 	struct timeval tv;
@@ -1092,10 +1092,10 @@ void log_it_ex2(LogContext *pContext, const char *caption, \
 		gettimeofday(&tv, NULL);
 	}
 
-	doLogEx(pContext, &tv, caption, text, text_len, bNeedSync, bNeedLock);
+	log_it_ex3(pContext, &tv, caption, text, text_len, bNeedSync, bNeedLock);
 }
 
-void log_it_ex1(LogContext *pContext, const int priority, \
+void log_it_ex1(LogContext *pContext, const int priority,
 		const char *text, const int text_len)
 {
 	bool bNeedSync;
@@ -1291,7 +1291,7 @@ void logAccess(LogContext *pContext, struct timeval *tvStart, \
     {
         len = sizeof(text) - 1;
     }
-	doLogEx(pContext, tvStart, NULL, text, len, false, true);
+	log_it_ex3(pContext, tvStart, NULL, text, len, false, true);
 }
 
 const char *log_get_level_caption_ex(LogContext *pContext)

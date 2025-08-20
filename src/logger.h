@@ -62,7 +62,7 @@ typedef struct log_context
 	char *pcurrent_buff;
 
 	/* mutext lock */
-	pthread_mutex_t log_thread_lock;
+	pthread_mutex_t lock;
 
 	/*
 	rotate the log when the log file exceeds this parameter
@@ -343,7 +343,7 @@ void log_it_ex(LogContext *pContext, const int priority, \
  *           text_len: text string length (bytes)
  *  return: none
 */
-void log_it_ex1(LogContext *pContext, const int priority, \
+void log_it_ex1(LogContext *pContext, const int priority,
 		const char *text, const int text_len);
 
 /** log to file
@@ -355,10 +355,13 @@ void log_it_ex1(LogContext *pContext, const int priority, \
  *           bNeedSync: if sync to file immediatelly
  *  return: none
 */
-void log_it_ex2(LogContext *pContext, const char *caption, \
-		const char *text, const int text_len, \
+void log_it_ex2(LogContext *pContext, const char *caption,
+		const char *text, const int text_len,
         const bool bNeedSync, const bool bNeedLock);
 
+void log_it_ex3(LogContext *pContext, struct timeval *tv,
+		const char *caption, const char *text, const int text_len,
+		const bool bNeedSync, const bool bNeedLock);
 
 /** sync log buffer to log file
  *  parameters:

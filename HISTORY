@@ -1,5 +1,5 @@
 
-Version 1.78  2025-08-07
+Version 1.78  2025-08-20
   * getIpaddrByName: normalize ip addr when input addr is IPv4 or IPv6
   * add files: spinlock.[hc]
   * shared_func.[hc]: change int2buff, buff2int etc. functions to static inline
