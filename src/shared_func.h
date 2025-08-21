@@ -1632,7 +1632,7 @@ static inline int fc_ltostr(int64_t n, char *buff)
 
 static inline size_t fc_strlcpy(char *dest, const char *src, const size_t size)
 {
-    int len;
+    size_t len;
 
     len = strlen(src);
     if (len < size) {
