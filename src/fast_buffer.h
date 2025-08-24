@@ -115,7 +115,7 @@ static inline int fast_buffer_append_char(FastBuffer *buffer, const char ch)
     return 0;
 }
 
-static inline int fast_buffer_append_int(FastBuffer *buffer, const int n)
+static inline int fast_buffer_append_int32(FastBuffer *buffer, const int n)
 {
     int result;
 
@@ -142,6 +142,9 @@ static inline int fast_buffer_append_int64(FastBuffer *buffer, const int64_t n)
     fast_buffer_set_null_terminator(buffer);
     return 0;
 }
+
+#define fast_buffer_append_int(buffer, n)  \
+    fast_buffer_append_int64(buffer, n)
 
 int fast_buffer_append_file(FastBuffer *buffer, const char *filename);
 
