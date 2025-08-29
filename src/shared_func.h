@@ -1191,6 +1191,8 @@ static inline const char *long_to_comma_str(const int64_t n, char *buff)
     return long2str(n, buff, true);
 }
 
+const char *bytes_to_human_str(const int64_t bytes, char *buff);
+
 /** if the string starts with the needle string
  *  parameters:
  *  	str: the string to detect

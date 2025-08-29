@@ -3251,6 +3251,72 @@ const char *long2str(const int64_t n, char *buff, const bool thousands_separator
     return buff;
 }
 
+const char *bytes_to_human_str(const int64_t bytes, char *buff)
+{
+    char *p;
+
+    if (bytes < FC_BYTES_ONE_TB)
+    {
+        if (bytes < FC_BYTES_ONE_MB)
+        {
+            if (bytes < FC_BYTES_ONE_KB)
+            {
+                p = buff + fc_itoa(bytes, buff);
+                *p++ = ' ';
+            }
+            else
+            {
+                p = buff + fc_itoa(bytes / FC_BYTES_ONE_KB, buff);
+                *p++ = ' ';
+                *p++ = 'K';
+            }
+        }
+        else
+        {
+            if (bytes < FC_BYTES_ONE_GB)
+            {
+                p = buff + fc_itoa(bytes / FC_BYTES_ONE_MB, buff);
+                *p++ = ' ';
+                *p++ = 'M';
+            }
+            else
+            {
+                p = buff + fc_itoa(bytes / FC_BYTES_ONE_GB, buff);
+                *p++ = ' ';
+                *p++ = 'G';
+            }
+        }
+    }
+    else
+    {
+        if (bytes < FC_BYTES_ONE_EB)
+        {
+            if (bytes < FC_BYTES_ONE_PB)
+            {
+                p = buff + fc_itoa(bytes / FC_BYTES_ONE_TB, buff);
+                *p++ = ' ';
+                *p++ = 'T';
+            }
+            else
+            {
+                p = buff + fc_itoa(bytes / FC_BYTES_ONE_PB, buff);
+                *p++ = ' ';
+                *p++ = 'P';
+            }
+        }
+        else
+        {
+            p = buff + fc_itoa(bytes / FC_BYTES_ONE_EB, buff);
+            *p++ = ' ';
+            *p++ = 'E';
+        }
+    }
+    *p++ = 'B';
+    *p = '\0';
+
+    return buff;
+}
+
 bool starts_with(const char *str, const char *needle)
 {
     int str_len;

@@ -1,6 +1,7 @@
 
-Version 1.79  2025-08-20
+Version 1.79  2025-08-29
   * logger.h export function log_it_ex3
+  * shared_func.[hc]: add function bytes_to_human_str
 
 Version 1.78  2025-08-07
   * getIpaddrByName: normalize ip addr when input addr is IPv4 or IPv6
