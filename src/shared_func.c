@@ -3251,6 +3251,24 @@ const char *long2str(const int64_t n, char *buff, const bool thousands_separator
     return buff;
 }
 
+static int format_bytes_string(const int64_t input_bytes,
+        const int64_t unit_bytes, char *buff)
+{
+    int n;
+    int fragment;
+    char *p;
+
+    n = input_bytes / unit_bytes;
+    p = buff + fc_itoa(n, buff);
+    if (n < 10)
+    {
+        fragment = ((input_bytes - (n * unit_bytes)) * 10LL) / unit_bytes;
+        *p++ = '.';
+        p += fc_itoa(fragment, p);
+    }
+    return p - buff;
+}
+
 const char *bytes_to_human_str(const int64_t bytes, char *buff)
 {
     char *p;
@@ -3263,10 +3281,11 @@ const char *bytes_to_human_str(const int64_t bytes, char *buff)
             {
                 p = buff + fc_itoa(bytes, buff);
                 *p++ = ' ';
+                *p++ = ' ';  //for alignment
             }
             else
             {
-                p = buff + fc_itoa(bytes / FC_BYTES_ONE_KB, buff);
+                p = buff + format_bytes_string(bytes, FC_BYTES_ONE_KB, buff);
                 *p++ = ' ';
                 *p++ = 'K';
             }
@@ -3275,13 +3294,13 @@ const char *bytes_to_human_str(const int64_t bytes, char *buff)
         {
             if (bytes < FC_BYTES_ONE_GB)
             {
-                p = buff + fc_itoa(bytes / FC_BYTES_ONE_MB, buff);
+                p = buff + format_bytes_string(bytes, FC_BYTES_ONE_MB, buff);
                 *p++ = ' ';
                 *p++ = 'M';
             }
             else
             {
-                p = buff + fc_itoa(bytes / FC_BYTES_ONE_GB, buff);
+                p = buff + format_bytes_string(bytes, FC_BYTES_ONE_GB, buff);
                 *p++ = ' ';
                 *p++ = 'G';
             }
@@ -3293,20 +3312,20 @@ const char *bytes_to_human_str(const int64_t bytes, char *buff)
         {
             if (bytes < FC_BYTES_ONE_PB)
             {
-                p = buff + fc_itoa(bytes / FC_BYTES_ONE_TB, buff);
+                p = buff + format_bytes_string(bytes, FC_BYTES_ONE_TB, buff);
                 *p++ = ' ';
                 *p++ = 'T';
             }
             else
             {
-                p = buff + fc_itoa(bytes / FC_BYTES_ONE_PB, buff);
+                p = buff + format_bytes_string(bytes, FC_BYTES_ONE_PB, buff);
                 *p++ = ' ';
                 *p++ = 'P';
             }
         }
         else
         {
-            p = buff + fc_itoa(bytes / FC_BYTES_ONE_EB, buff);
+            p = buff + format_bytes_string(bytes, FC_BYTES_ONE_EB, buff);
             *p++ = ' ';
             *p++ = 'E';
         }
