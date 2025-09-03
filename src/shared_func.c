@@ -3254,17 +3254,36 @@ const char *long2str(const int64_t n, char *buff, const bool thousands_separator
 static int format_bytes_string(const int64_t input_bytes,
         const int64_t unit_bytes, char *buff)
 {
+    int64_t remain;
     int n;
     int fragment;
     char *p;
 
     n = input_bytes / unit_bytes;
-    p = buff + fc_itoa(n, buff);
+    remain = input_bytes - (n * unit_bytes);
     if (n < 10)
     {
-        fragment = ((input_bytes - (n * unit_bytes)) * 10LL) / unit_bytes;
-        *p++ = '.';
-        p += fc_itoa(fragment, p);
+        fragment = (remain * 10LL + unit_bytes / 2) / unit_bytes;
+        if (fragment == 10)
+        {
+            ++n;
+            fragment = 0;
+        }
+
+        p = buff + fc_itoa(n, buff);
+        if (n < 10)
+        {
+            *p++ = '.';
+            p += fc_itoa(fragment, p);
+        }
+    }
+    else
+    {
+        if (remain >= unit_bytes / 2)
+        {
+            ++n;
+        }
+        p = buff + fc_itoa(n, buff);
     }
     return p - buff;
 }
