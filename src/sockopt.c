@@ -1238,18 +1238,18 @@ in_addr_64_t getIpaddrByNameEx(const char *name, char *buff,
         return addr4.s_addr;
     }
 
+    *af = AF_UNSPEC;
 	memset(&hints, 0, sizeof hints);
-	hints.ai_family = AF_UNSPEC; // 支持IPv4和IPv6
+	hints.ai_family = AF_UNSPEC;
 	if (getaddrinfo(name, NULL, &hints, &res) != 0)
     {
-        *af = AF_UNSPEC;
         return INADDR_NONE;
     }
 
+    ip_addr = INADDR_NONE;
     for (p = res; p != NULL; p = p->ai_next)
     {
-        *af = p->ai_family;
-        if (p->ai_family == AF_INET) // 处理IPv4地址
+        if (p->ai_family == AF_INET) //IPv4 address
         {
             struct sockaddr_in *ipv4 = (struct sockaddr_in *)p->ai_addr;
             if (buff != NULL)
@@ -1260,11 +1260,11 @@ in_addr_64_t getIpaddrByNameEx(const char *name, char *buff,
                 }
             }
 
+            *af = p->ai_family;
             ip_addr = ipv4->sin_addr.s_addr;
-            freeaddrinfo(res);
-            return ip_addr;
+            break;
         }
-        else if (p->ai_family == AF_INET6) // 处理IPv6地址
+        else if (p->ai_family == AF_INET6) //IPv6 address
         {
             struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)p->ai_addr;
             if (buff != NULL)
@@ -1281,15 +1281,14 @@ in_addr_64_t getIpaddrByNameEx(const char *name, char *buff,
                 }
             }
 
+            *af = p->ai_family;
             ip_addr = *((in_addr_64_t *)((char *)&ipv6->sin6_addr + 8));
-            freeaddrinfo(res);
-            return ip_addr;
+            continue;
         }
     }
 
     freeaddrinfo(res);
-    *af = AF_UNSPEC;
-    return INADDR_NONE;
+    return ip_addr;
 }
 
 int getIpaddrsByName(const char *name,
