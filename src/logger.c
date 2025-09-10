@@ -136,8 +136,8 @@ static int log_print_header(LogContext *pContext)
     if (pContext->current_size < 0)
     {
         result = errno != 0 ? errno : EACCES;
-        fprintf(stderr, "lseek file \"%s\" fail, " \
-                "errno: %d, error info: %s\n", \
+        fprintf(stderr, "lseek file \"%s\" fail, "
+                "errno: %d, error info: %s\n",
                 pContext->log_filename, result, STRERROR(result));
     }
     else {

@@ -1603,12 +1603,28 @@ bool fc_path_contains(const string_t *path, const string_t *needle,
 
 /** itoa output as decimal number
  *  parameters:
- *      n: the number to convert
- *      buff: store the converted string
- *  return: string length
+ *      n: the integer number to convert
+ *      buff: store the converted string, NOT null-terminated
+ *  return: converted string length
 */
 int fc_itoa(int64_t n, char *buff);
 
+/** ftoa output as decimal number
+ *  parameters:
+ *      d: the double number to convert
+ *      scale: number of decimal places (round off)
+ *      buff: store the converted string, NOT null-terminated
+ *  return: converted string length
+*/
+int fc_ftoa(double d, const int scale, char *buff);
+
+/** output as decimal number
+ *  parameters:
+ *      n: the integer number to convert
+ *      buff: store the converted string, null-terminated
+ *      padding_len: padding length (padding with charactor '0')
+ *  return: converted string length
+*/
 static inline int fc_ltostr_ex(int64_t n, char *buff, const int padding_len)
 {
     int len;

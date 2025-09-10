@@ -4406,6 +4406,119 @@ int fc_itoa(int64_t n, char *buff)
     return (start - buff) + len;
 }
 
+int fc_ftoa(double d, const int scale, char *buff)
+{
+    int len;
+    int i;
+    bool positive;
+    int64_t n;
+    double fraction;
+    char *p;
+
+    positive = (d >= 0.00);
+    switch (scale)
+    {
+        case 0:
+            d += (positive ? 5e-1 : -5e-1);
+            break;
+        case 1:
+            d += (positive ? 5e-2 : -5e-2);
+            break;
+        case 2:
+            d += (positive ? 5e-3 : -5e-3);
+            break;
+        case 3:
+            d += (positive ? 5e-4 : -5e-4);
+            break;
+        case 4:
+            d += (positive ? 5e-5 : -5e-5);
+            break;
+        case 5:
+            d += (positive ? 5e-6 : -5e-6);
+            break;
+        case 6:
+            d += (positive ? 5e-7 : -5e-7);
+            break;
+        case 7:
+            d += (positive ? 5e-8 : -5e-8);
+            break;
+        case 8:
+            d += (positive ? 5e-9 : -5e-9);
+            break;
+        case 9:
+            d += (positive ? 5e-10 : -5e-10);
+            break;
+        case 10:
+            d += (positive ? 5e-11 : -5e-11);
+            break;
+        case 11:
+            d += (positive ? 5e-12 : -5e-12);
+            break;
+        case 12:
+            d += (positive ? 5e-13 : -5e-13);
+            break;
+        case 13:
+            d += (positive ? 5e-14 : -5e-14);
+            break;
+        case 14:
+            d += (positive ? 5e-15 : -5e-15);
+            break;
+        case 15:
+            d += (positive ? 5e-16 : -5e-16);
+            break;
+        case 16:
+            d += (positive ? 5e-17 : -5e-17);
+            break;
+        default:
+            d += (positive ? 5e-18 : -5e-18);
+            break;
+    }
+
+    n = (int64_t)d;
+    if (n > -10 && n < 10)
+    {
+        if (positive)
+        {
+            *buff = '0' + n;
+            len = 1;
+        }
+        else
+        {
+            *buff = '-';
+            *(buff+1) = '0' + (-1) * n;
+            len = 2;
+        }
+    }
+    else
+    {
+        len = fc_itoa(n, buff);
+    }
+    if (scale <= 0)
+    {
+        return len;
+    }
+
+    p = buff + len;
+    *p++ = '.';
+    if (positive)
+    {
+        fraction = d - (double)n;
+    }
+    else
+    {
+        fraction = (double)n - d;
+    }
+    for (i=0; i<scale; i++)
+    {
+        fraction *= 10;
+        n = (int)fraction;
+        fraction -= n;
+        *p++ = '0' + n;
+    }
+
+    return p - buff;
+}
+
 int fc_compare_int64_ptr(const int64_t *n1, const int64_t *n2)
 {
     return fc_compare_int64(*n1, *n2);
