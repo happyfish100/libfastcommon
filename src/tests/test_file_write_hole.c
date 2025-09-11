@@ -32,6 +32,7 @@ int main(int argc, char *argv[])
     int fd;
     int result;
     int n;
+    int i;
     char buf[1024];
 
     if (argc < 2) {
@@ -69,7 +70,7 @@ int main(int argc, char *argv[])
         return errno != 0 ? errno : EIO;
     }
 
-    for (int i=0; i<5; i++) {
+    for (i=0; i<5; i++) {
     if (lseek(fd, 0, SEEK_SET) < 0) {
         logError("file: "__FILE__", line: %d, " \
             "lseek file %s fail, " \

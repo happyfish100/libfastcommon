@@ -29,7 +29,8 @@
 typedef enum {
     TEST_TYPE_ITOA = 1,
     TEST_TYPE_FTOA,
-    TEST_TYPE_MIXED
+    TEST_TYPE_INT2HEX,
+    TEST_TYPE_APPEND
 } TestType;
 
 typedef enum {
@@ -160,7 +161,7 @@ static inline int cache_binlog_filename_by_append(
 
 static void usage(const char *program)
 {
-    fprintf(stderr, "Usage: %s [-t {itoa | ftoa | mixed}]\n",
+    fprintf(stderr, "Usage: %s [-t {itoa | ftoa | int2hex | append}]\n",
             program);
 }
 
@@ -180,8 +181,9 @@ int main(int argc, char *argv[])
     double d = 123.456;
     int ch;
     int i;
+    int len;
     int64_t start_time_us;
-    int append_time_us;
+    int convert_time_us;
     int sprintf_time_us;
     double ratio;
     FastBuffer buffer;
@@ -211,8 +213,11 @@ int main(int argc, char *argv[])
                 } else if (strcasecmp(optarg, "ftoa") == 0) {
                     test_type = TEST_TYPE_FTOA;
                     caption = "ftoa";
-                } else if (strcasecmp(optarg, "mixed") == 0) {
-                    test_type = TEST_TYPE_MIXED;
+                } else if (strcasecmp(optarg, "int2hex") == 0) {
+                    test_type = TEST_TYPE_INT2HEX;
+                    caption = "int2hex";
+                } else if (strcasecmp(optarg, "append") == 0) {
+                    test_type = TEST_TYPE_APPEND;
                     caption = "append";
                 } else {
                     fprintf(stderr, "invalid type: %s\n", optarg);
@@ -225,7 +230,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (test_type == TEST_TYPE_MIXED) {
+    if (test_type == TEST_TYPE_APPEND) {
         memset(&record, 0, sizeof(record));
         record.op_type = 'C';
         record.slice_type = DA_SLICE_TYPE_FILE;
@@ -241,7 +246,7 @@ int main(int argc, char *argv[])
     start_time_us = get_current_time_us();
     for (i=0; i<LOOP; i++) {
         switch (test_type) {
-            case TEST_TYPE_MIXED:
+            case TEST_TYPE_APPEND:
                 cache_binlog_filename_by_sprintf(data_path, subdir_name,
                         subdirs, ++id, full_filename1, sizeof(full_filename1));
                 fast_buffer_reset(&buffer);
@@ -253,6 +258,9 @@ int main(int argc, char *argv[])
             case TEST_TYPE_FTOA:
                 sprintf(buff, "%.2f", d);
                 break;
+            case TEST_TYPE_INT2HEX:
+                sprintf(buff, "%x", (int)id);
+                break;
             default:
                 break;
         }
@@ -262,33 +270,38 @@ int main(int argc, char *argv[])
     start_time_us = get_current_time_us();
     for (i=0; i<LOOP; i++) {
         switch (test_type) {
-            case TEST_TYPE_MIXED:
+            case TEST_TYPE_APPEND:
                 cache_binlog_filename_by_append(data_path, subdir_name,
                         subdirs, ++id, full_filename2, sizeof(full_filename2));
                 fast_buffer_reset(&buffer);
                 log_pack_by_append(&record, &buffer, have_extra_field);
                 break;
             case TEST_TYPE_ITOA:
-                fc_itoa(id, buff);
+                len = fc_itoa(id, buff);
+                *(buff + len) = '\0';
                 break;
             case TEST_TYPE_FTOA:
-                fc_ftoa(d, 2, buff);
+                len = fc_ftoa(d, 2, buff);
+                *(buff + len) = '\0';
+                break;
+            case TEST_TYPE_INT2HEX:
+                int2hex(id, buff, 0);
                 break;
             default:
                 break;
         }
     }
-    append_time_us = (get_current_time_us() - start_time_us);
+    convert_time_us = (get_current_time_us() - start_time_us);
 
-    if (append_time_us > 0) {
-        ratio = (double)sprintf_time_us / (double)append_time_us;
+    if (convert_time_us > 0) {
+        ratio = (double)sprintf_time_us / (double)convert_time_us;
     } else {
         ratio = 1.0;
     }
 
     printf("sprintf time: %d ms, %s time: %d ms, "
             "sprintf time / %s time: %d%%\n",
-            sprintf_time_us / 1000, caption, append_time_us / 1000,
+            sprintf_time_us / 1000, caption, convert_time_us / 1000,
             caption, (int)(ratio * 100.00));
 
     fast_buffer_destroy(&buffer);
