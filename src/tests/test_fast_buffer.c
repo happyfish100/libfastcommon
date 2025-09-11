@@ -27,6 +27,12 @@
 #include "fastcommon/sched_thread.h"
 
 typedef enum {
+    TEST_TYPE_ITOA = 1,
+    TEST_TYPE_FTOA,
+    TEST_TYPE_MIXED
+} TestType;
+
+typedef enum {
     DA_SLICE_TYPE_FILE  = 'F', /* in file slice */
     DA_SLICE_TYPE_CACHE = 'C', /* in memory cache */
     DA_SLICE_TYPE_ALLOC = 'A'  /* allocate slice (index and space allocate only) */
@@ -152,13 +158,27 @@ static inline int cache_binlog_filename_by_append(
     return p - full_filename;
 }
 
+static void usage(const char *program)
+{
+    fprintf(stderr, "Usage: %s [-t {itoa | ftoa | mixed}]\n",
+            program);
+}
+
 int main(int argc, char *argv[])
 {
     const bool binary_mode = true;
     const bool check_capacity = false;
     const bool have_extra_field = false;
     const int LOOP = 10 * 1000 * 1000;
+    const char *data_path = "/opt/fastcfs/fdir/data";
+    const char *subdir_name = "binlog";
+    const uint32_t subdirs = 256;
+
     int result;
+    TestType test_type = TEST_TYPE_ITOA;
+    uint64_t id = 123456;
+    double d = 123.456;
+    int ch;
     int i;
     int64_t start_time_us;
     int append_time_us;
@@ -166,6 +186,10 @@ int main(int argc, char *argv[])
     double ratio;
     FastBuffer buffer;
     DATrunkSpaceLogRecord record;
+    char full_filename1[PATH_MAX];
+    char full_filename2[PATH_MAX];
+    char buff[32] = {0};
+    char *caption = "itoa";
 
 	log_init();
     g_current_time = time(NULL);
@@ -175,40 +199,84 @@ int main(int argc, char *argv[])
         return result;
     }
 
-    memset(&record, 0, sizeof(record));
-    record.op_type = 'C';
-    record.slice_type = DA_SLICE_TYPE_FILE;
-    record.storage.version = 1111;
-    record.oid = 9007211709265131LL;
-    record.fid = 0;
-    record.storage.trunk_id = 61;
-    record.storage.length = 62;
-    record.storage.offset = 12345;
-    record.storage.size = 64;
+    while ((ch=getopt(argc, argv, "ht:")) != -1) {
+        switch (ch) {
+            case 'h':
+                usage(argv[0]);
+                return 0;
+            case 't':
+                if (strcasecmp(optarg, "itoa") == 0) {
+                    test_type = TEST_TYPE_ITOA;
+                    caption = "itoa";
+                } else if (strcasecmp(optarg, "ftoa") == 0) {
+                    test_type = TEST_TYPE_FTOA;
+                    caption = "ftoa";
+                } else if (strcasecmp(optarg, "mixed") == 0) {
+                    test_type = TEST_TYPE_MIXED;
+                    caption = "append";
+                } else {
+                    fprintf(stderr, "invalid type: %s\n", optarg);
+                    return EINVAL;
+                }
+                break;
+            default:
+                usage(argv[0]);
+                return EINVAL;
+        }
+    }
 
-
-    const char *data_path = "/opt/fastcfs/fdir/data";
-    const char *subdir_name = "binlog";
-    const uint32_t subdirs = 256;
-    uint64_t id = 123456;
-    char full_filename1[PATH_MAX];
-    char full_filename2[PATH_MAX];
+    if (test_type == TEST_TYPE_MIXED) {
+        memset(&record, 0, sizeof(record));
+        record.op_type = 'C';
+        record.slice_type = DA_SLICE_TYPE_FILE;
+        record.storage.version = 1111;
+        record.oid = 9007211709265131LL;
+        record.fid = 0;
+        record.storage.trunk_id = 61;
+        record.storage.length = 62;
+        record.storage.offset = 12345;
+        record.storage.size = 64;
+    }
 
     start_time_us = get_current_time_us();
     for (i=0; i<LOOP; i++) {
-        cache_binlog_filename_by_sprintf(data_path, subdir_name,
-                subdirs, ++id, full_filename1, sizeof(full_filename1));
-        fast_buffer_reset(&buffer);
-        log_pack_by_sprintf(&record, &buffer, have_extra_field);
+        switch (test_type) {
+            case TEST_TYPE_MIXED:
+                cache_binlog_filename_by_sprintf(data_path, subdir_name,
+                        subdirs, ++id, full_filename1, sizeof(full_filename1));
+                fast_buffer_reset(&buffer);
+                log_pack_by_sprintf(&record, &buffer, have_extra_field);
+                break;
+            case TEST_TYPE_ITOA:
+                sprintf(buff, "%"PRId64, id);
+                break;
+            case TEST_TYPE_FTOA:
+                sprintf(buff, "%.2f", d);
+                break;
+            default:
+                break;
+        }
     }
     sprintf_time_us = (get_current_time_us() - start_time_us);
 
     start_time_us = get_current_time_us();
     for (i=0; i<LOOP; i++) {
-        cache_binlog_filename_by_append(data_path, subdir_name,
-                subdirs, ++id, full_filename2, sizeof(full_filename2));
-        fast_buffer_reset(&buffer);
-        log_pack_by_append(&record, &buffer, have_extra_field);
+        switch (test_type) {
+            case TEST_TYPE_MIXED:
+                cache_binlog_filename_by_append(data_path, subdir_name,
+                        subdirs, ++id, full_filename2, sizeof(full_filename2));
+                fast_buffer_reset(&buffer);
+                log_pack_by_append(&record, &buffer, have_extra_field);
+                break;
+            case TEST_TYPE_ITOA:
+                fc_itoa(id, buff);
+                break;
+            case TEST_TYPE_FTOA:
+                fc_ftoa(d, 2, buff);
+                break;
+            default:
+                break;
+        }
     }
     append_time_us = (get_current_time_us() - start_time_us);
 
@@ -218,10 +286,10 @@ int main(int argc, char *argv[])
         ratio = 1.0;
     }
 
-    printf("sprintf time: %d ms, append time: %d ms, "
-            "sprintf time / append time: %d%%\n",
-            sprintf_time_us / 1000, append_time_us / 1000,
-            (int)(ratio * 100.00));
+    printf("sprintf time: %d ms, %s time: %d ms, "
+            "sprintf time / %s time: %d%%\n",
+            sprintf_time_us / 1000, caption, append_time_us / 1000,
+            caption, (int)(ratio * 100.00));
 
     fast_buffer_destroy(&buffer);
 	return 0;
