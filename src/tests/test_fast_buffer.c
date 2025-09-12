@@ -27,7 +27,8 @@
 #include "fastcommon/sched_thread.h"
 
 typedef enum {
-    TEST_TYPE_ITOA = 1,
+    TEST_TYPE_NONE = 0,
+    TEST_TYPE_ITOA,
     TEST_TYPE_FTOA,
     TEST_TYPE_INT2HEX,
     TEST_TYPE_APPEND
@@ -161,7 +162,7 @@ static inline int cache_binlog_filename_by_append(
 
 static void usage(const char *program)
 {
-    fprintf(stderr, "Usage: %s [-t {itoa | ftoa | int2hex | append}]\n",
+    fprintf(stderr, "Usage: %s [-t {itoa | ftoa | int2hex | append | all}]\n",
             program);
 }
 
@@ -177,6 +178,8 @@ int main(int argc, char *argv[])
 
     int result;
     TestType test_type = TEST_TYPE_ITOA;
+    TestType type_start;
+    TestType type_last;
     uint64_t id = 123456;
     double d = 123.456;
     int ch;
@@ -191,7 +194,7 @@ int main(int argc, char *argv[])
     char full_filename1[PATH_MAX];
     char full_filename2[PATH_MAX];
     char buff[32] = {0};
-    char *caption = "itoa";
+    char *caption;
 
 	log_init();
     g_current_time = time(NULL);
@@ -201,6 +204,7 @@ int main(int argc, char *argv[])
         return result;
     }
 
+    type_start = type_last = TEST_TYPE_ITOA;
     while ((ch=getopt(argc, argv, "ht:")) != -1) {
         switch (ch) {
             case 'h':
@@ -208,17 +212,16 @@ int main(int argc, char *argv[])
                 return 0;
             case 't':
                 if (strcasecmp(optarg, "itoa") == 0) {
-                    test_type = TEST_TYPE_ITOA;
-                    caption = "itoa";
+                    type_start = type_last = TEST_TYPE_ITOA;
                 } else if (strcasecmp(optarg, "ftoa") == 0) {
-                    test_type = TEST_TYPE_FTOA;
-                    caption = "ftoa";
+                    type_start = type_last = TEST_TYPE_FTOA;
                 } else if (strcasecmp(optarg, "int2hex") == 0) {
-                    test_type = TEST_TYPE_INT2HEX;
-                    caption = "int2hex";
+                    type_start = type_last = TEST_TYPE_INT2HEX;
                 } else if (strcasecmp(optarg, "append") == 0) {
-                    test_type = TEST_TYPE_APPEND;
-                    caption = "append";
+                    type_start = type_last = TEST_TYPE_APPEND;
+                } else if (strcasecmp(optarg, "all") == 0) {
+                    type_start = TEST_TYPE_ITOA;
+                    type_last = TEST_TYPE_APPEND;
                 } else {
                     fprintf(stderr, "invalid type: %s\n", optarg);
                     return EINVAL;
@@ -230,79 +233,98 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (test_type == TEST_TYPE_APPEND) {
-        memset(&record, 0, sizeof(record));
-        record.op_type = 'C';
-        record.slice_type = DA_SLICE_TYPE_FILE;
-        record.storage.version = 1111;
-        record.oid = 9007211709265131LL;
-        record.fid = 0;
-        record.storage.trunk_id = 61;
-        record.storage.length = 62;
-        record.storage.offset = 12345;
-        record.storage.size = 64;
-    }
+    for (test_type=type_start; test_type<=type_last; test_type++) {
+        if (test_type == TEST_TYPE_APPEND) {
+            memset(&record, 0, sizeof(record));
+            record.op_type = 'C';
+            record.slice_type = DA_SLICE_TYPE_FILE;
+            record.storage.version = 1111;
+            record.oid = 9007211709265131LL;
+            record.fid = 0;
+            record.storage.trunk_id = 61;
+            record.storage.length = 62;
+            record.storage.offset = 12345;
+            record.storage.size = 64;
+        }
 
-    start_time_us = get_current_time_us();
-    for (i=0; i<LOOP; i++) {
+        start_time_us = get_current_time_us();
+        for (i=0; i<LOOP; i++) {
+            switch (test_type) {
+                case TEST_TYPE_APPEND:
+                    cache_binlog_filename_by_sprintf(data_path, subdir_name,
+                            subdirs, ++id, full_filename1, sizeof(full_filename1));
+                    fast_buffer_reset(&buffer);
+                    log_pack_by_sprintf(&record, &buffer, have_extra_field);
+                    break;
+                case TEST_TYPE_ITOA:
+                    sprintf(buff, "%"PRId64, id);
+                    break;
+                case TEST_TYPE_FTOA:
+                    sprintf(buff, "%.2f", d);
+                    break;
+                case TEST_TYPE_INT2HEX:
+                    sprintf(buff, "%x", (int)id);
+                    break;
+                default:
+                    break;
+            }
+        }
+        sprintf_time_us = (get_current_time_us() - start_time_us);
+
+        start_time_us = get_current_time_us();
+        for (i=0; i<LOOP; i++) {
+            switch (test_type) {
+                case TEST_TYPE_APPEND:
+                    cache_binlog_filename_by_append(data_path, subdir_name,
+                            subdirs, ++id, full_filename2, sizeof(full_filename2));
+                    fast_buffer_reset(&buffer);
+                    log_pack_by_append(&record, &buffer, have_extra_field);
+                    break;
+                case TEST_TYPE_ITOA:
+                    len = fc_itoa(id, buff);
+                    *(buff + len) = '\0';
+                    break;
+                case TEST_TYPE_FTOA:
+                    len = fc_ftoa(d, 2, buff);
+                    *(buff + len) = '\0';
+                    break;
+                case TEST_TYPE_INT2HEX:
+                    int2hex(id, buff, 0);
+                    break;
+                default:
+                    break;
+            }
+        }
+        convert_time_us = (get_current_time_us() - start_time_us);
+
+        if (convert_time_us > 0) {
+            ratio = (double)sprintf_time_us / (double)convert_time_us;
+        } else {
+            ratio = 1.0;
+        }
+
         switch (test_type) {
-            case TEST_TYPE_APPEND:
-                cache_binlog_filename_by_sprintf(data_path, subdir_name,
-                        subdirs, ++id, full_filename1, sizeof(full_filename1));
-                fast_buffer_reset(&buffer);
-                log_pack_by_sprintf(&record, &buffer, have_extra_field);
-                break;
             case TEST_TYPE_ITOA:
-                sprintf(buff, "%"PRId64, id);
+                caption = "itoa";
                 break;
             case TEST_TYPE_FTOA:
-                sprintf(buff, "%.2f", d);
+                caption = "ftoa";
                 break;
             case TEST_TYPE_INT2HEX:
-                sprintf(buff, "%x", (int)id);
+                caption = "int2hex";
                 break;
-            default:
-                break;
-        }
-    }
-    sprintf_time_us = (get_current_time_us() - start_time_us);
-
-    start_time_us = get_current_time_us();
-    for (i=0; i<LOOP; i++) {
-        switch (test_type) {
             case TEST_TYPE_APPEND:
-                cache_binlog_filename_by_append(data_path, subdir_name,
-                        subdirs, ++id, full_filename2, sizeof(full_filename2));
-                fast_buffer_reset(&buffer);
-                log_pack_by_append(&record, &buffer, have_extra_field);
-                break;
-            case TEST_TYPE_ITOA:
-                len = fc_itoa(id, buff);
-                *(buff + len) = '\0';
-                break;
-            case TEST_TYPE_FTOA:
-                len = fc_ftoa(d, 2, buff);
-                *(buff + len) = '\0';
-                break;
-            case TEST_TYPE_INT2HEX:
-                int2hex(id, buff, 0);
+                caption = "append";
                 break;
             default:
+                caption = "unkown";
                 break;
         }
+        printf("sprintf time: %d ms, %s time: %d ms, "
+                "sprintf time / %s time: %d%%\n",
+                sprintf_time_us / 1000, caption, convert_time_us / 1000,
+                caption, (int)(ratio * 100.00));
     }
-    convert_time_us = (get_current_time_us() - start_time_us);
-
-    if (convert_time_us > 0) {
-        ratio = (double)sprintf_time_us / (double)convert_time_us;
-    } else {
-        ratio = 1.0;
-    }
-
-    printf("sprintf time: %d ms, %s time: %d ms, "
-            "sprintf time / %s time: %d%%\n",
-            sprintf_time_us / 1000, caption, convert_time_us / 1000,
-            caption, (int)(ratio * 100.00));
 
     fast_buffer_destroy(&buffer);
 	return 0;

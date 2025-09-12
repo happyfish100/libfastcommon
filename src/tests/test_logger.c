@@ -22,6 +22,7 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/stat.h>
+#include <sys/file.h>
 #include "fastcommon/logger.h"
 
 int main(int argc, char *argv[])
@@ -35,6 +36,15 @@ int main(int argc, char *argv[])
     log_take_over_stderr();
     log_take_over_stdout();
     log_set_compress_log_flags(LOG_COMPRESS_FLAGS_ENABLED | LOG_COMPRESS_FLAGS_NEW_THREAD);
+
+    log_set_filename("/opt/fastcfs/fuse/test.log");
+
+
+    if (flock(g_log_context.log_fd, LOCK_EX) != 0) {
+        logError("flock fail");
+    }
+
+    flock(g_log_context.log_fd, LOCK_UN);
     
     printf("sizeof(LogContext): %d, time_precision: %d, compress_log_flags: %d, "
             "use_file_write_lock: %d\n", (int)sizeof(LogContext),
@@ -46,7 +56,7 @@ int main(int argc, char *argv[])
             "by log_it_ex, timestamp: %d", (int)time(NULL));
 
     len = sprintf(buff, "this is by log_it_ex1, "
-            "timestamp: %d", (int)time(NULL));
+            "timestamp: %ld", (long)time(NULL));
     log_it_ex1(&g_log_context, LOG_INFO, buff, len);
 
 	return 0;
