@@ -17,6 +17,45 @@
 #include "logger.h"
 #include "ioevent_loop.h"
 
+#if IOEVENT_USE_URING
+static int ioevent_process(IOEventPoller *ioevent)
+{
+    int result;
+    unsigned head;
+    unsigned count = 0;
+	IOEventEntry *pEntry;
+
+    result = io_uring_wait_cqe_timeout(&ioevent->ring,
+            &ioevent->cqe, &ioevent->timeout);
+    switch (result) {
+        case 0:
+            break;
+        case -ETIME:
+        case -EAGAIN:
+        case -EINTR:
+            return 0;
+        default:
+            result *= -1;
+            logError("file: "__FILE__", line: %d, "
+                    "io_uring_wait_cqe fail, errno: %d, error info: %s",
+                    __LINE__, result, STRERROR(result));
+            return result;
+    }
+
+    io_uring_for_each_cqe(&ioevent->ring, head, ioevent->cqe) {
+        count++;
+        pEntry = (IOEventEntry *)ioevent->cqe->user_data;
+        if (pEntry != NULL) {
+            pEntry->callback(pEntry->fd, ioevent->cqe->res, pEntry);
+        }
+    }
+
+    io_uring_cq_advance(&ioevent->ring, count);
+    return 0;
+}
+
+#else
+
 static void deal_ioevents(IOEventPoller *ioevent)
 {
 	int event;
@@ -39,36 +78,28 @@ static void deal_ioevents(IOEventPoller *ioevent)
 	}
 }
 
-int ioevent_remove(IOEventPoller *ioevent, void *data)
+static int ioevent_process(IOEventPoller *ioevent)
 {
-	IOEventEntry *pEntry;
-    int index;
+    int result;
 
-    if (ioevent->iterator.index >= ioevent->iterator.count)
-    {
-        return ENOENT;
+    ioevent->iterator.count = ioevent_poll(ioevent);
+    if (ioevent->iterator.count > 0) {
+        deal_ioevents(ioevent);
     }
-
-    pEntry = (IOEventEntry *)IOEVENT_GET_DATA(ioevent,
-            ioevent->iterator.index);
-    if (pEntry != NULL && (void *)pEntry == data) {
-        return 0;  //do NOT clear current entry
-    }
-
-    for (index=ioevent->iterator.index + 1; index < ioevent->iterator.count;
-            index++)
-    {
-        pEntry = (IOEventEntry *)IOEVENT_GET_DATA(ioevent, index);
-        if (pEntry != NULL && (void *)pEntry == data) {
-            logDebug("file: "__FILE__", line: %d, "
-                    "clear ioevent data: %p", __LINE__, data);
-            IOEVENT_CLEAR_DATA(ioevent, index);
-            return 0;
+    else if (ioevent->iterator.count < 0) {
+        result = errno != 0 ? errno : EINVAL;
+        if (result != EINTR) {
+            logError("file: "__FILE__", line: %d, "
+                    "ioevent_poll fail, errno: %d, error info: %s",
+                    __LINE__, result, STRERROR(result));
+            return result;
         }
     }
 
-    return ENOENT;
+    return 0;
 }
+
+#endif
 
 static void deal_timeouts(FastTimerEntry *head)
 {
@@ -131,10 +162,9 @@ int ioevent_loop(struct nio_thread_data *thread_data,
 
     thread_data->deleted_list = NULL;
 	last_check_time = g_current_time;
-	while (*continue_flag)
-	{
+	while (*continue_flag) {
 #ifdef OS_LINUX
-        if (thread_data->ev_puller.timeout == 0) {
+        if (thread_data->ev_puller.zero_timeout) {
             sched_pull = (sched_counter++ & 8) != 0;
         } else {
             sched_pull = true;
@@ -143,43 +173,23 @@ int ioevent_loop(struct nio_thread_data *thread_data,
         sched_pull = true;
 #endif
 
-        if (sched_pull)
-        {
-            thread_data->ev_puller.iterator.count = ioevent_poll(
-                    &thread_data->ev_puller);
-            if (thread_data->ev_puller.iterator.count > 0)
-            {
-                deal_ioevents(&thread_data->ev_puller);
-            }
-            else if (thread_data->ev_puller.iterator.count < 0)
-            {
-                result = errno != 0 ? errno : EINVAL;
-                if (result != EINTR)
-                {
-                    logError("file: "__FILE__", line: %d, " \
-                            "ioevent_poll fail, " \
-                            "errno: %d, error info: %s", \
-                            __LINE__, result, STRERROR(result));
-                    return result;
-                }
+        if (sched_pull) {
+            if ((result=ioevent_process(&thread_data->ev_puller)) != 0) {
+                return result;
             }
         }
 
-        if (thread_data->busy_polling_callback != NULL)
-        {
+        if (thread_data->busy_polling_callback != NULL) {
             thread_data->busy_polling_callback(thread_data);
         }
 
-		if (thread_data->deleted_list != NULL)
-		{
+		if (thread_data->deleted_list != NULL) {
 			count = 0;
-			while (thread_data->deleted_list != NULL)
-			{
+			while (thread_data->deleted_list != NULL) {
 				task = thread_data->deleted_list;
 				thread_data->deleted_list = task->next;
 
-                if (task->polling.in_queue)
-                {
+                if (task->polling.in_queue) {
                     fc_list_del_init(&task->polling.dlink);
                     task->polling.in_queue = false;
                     if (fc_list_empty(&task->thread_data->polling_queue)) {
@@ -193,8 +203,7 @@ int ioevent_loop(struct nio_thread_data *thread_data,
 			//logInfo("cleanup task count: %d", count);
 		}
 
-		if (g_current_time - last_check_time > 0)
-		{
+		if (g_current_time - last_check_time > 0) {
 			last_check_time = g_current_time;
 			count = fast_timer_timeouts_get(
 				&thread_data->timer, g_current_time, &head);
@@ -204,8 +213,7 @@ int ioevent_loop(struct nio_thread_data *thread_data,
 			}
 		}
 
-        if (thread_data->notify.enabled)
-        {
+        if (thread_data->notify.enabled) {
             int64_t n;
             if ((n=__sync_fetch_and_add(&thread_data->notify.counter, 0)) != 0)
             {
@@ -219,8 +227,7 @@ int ioevent_loop(struct nio_thread_data *thread_data,
             }
         }
 
-        if (thread_data->thread_loop_callback != NULL)
-        {
+        if (thread_data->thread_loop_callback != NULL) {
             thread_data->thread_loop_callback(thread_data);
         }
 	}
@@ -249,20 +256,4 @@ int ioevent_set(struct fast_task_info *task, struct nio_thread_data *pThread,
 	task->event.timer.expires = g_current_time + timeout;
 	fast_timer_add(&pThread->timer, &task->event.timer);
 	return 0;
-}
-
-int ioevent_reset(struct fast_task_info *task, int new_fd, short event)
-{
-    if (task->event.fd == new_fd)
-    {
-        return 0;
-    }
-
-    if (task->event.fd >= 0)
-    {
-        ioevent_detach(&task->thread_data->ev_puller, task->event.fd);
-    }
-
-    task->event.fd = new_fd;
-    return ioevent_attach(&task->thread_data->ev_puller, new_fd, event, task);
 }

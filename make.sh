@@ -112,7 +112,22 @@ HAVE_VMMETER_H=0
 HAVE_USER_H=0
 if [ "$uname" = "Linux" ]; then
   OS_NAME=OS_LINUX
-  IOEVENT_USE=IOEVENT_USE_EPOLL
+
+  major_version=$(uname -r | awk -F . '{print $1;}')
+  minor_version=$(uname -r | awk -F . '{print $2;}')
+  if [ $major_version -eq 5 ] && [ $minor_version -ge 14 ]; then
+    out=$(grep -F IORING_OP_SEND_ZC /usr/include/liburing/io_uring.h)
+    if [ -z $out ]; then
+      IOEVENT_USE=IOEVENT_USE_EPOLL
+    else
+      IOEVENT_USE=IOEVENT_USE_URING
+    fi
+  elif [ $major_version -gt 5 ]; then
+    IOEVENT_USE=IOEVENT_USE_URING
+  else
+    IOEVENT_USE=IOEVENT_USE_EPOLL
+  fi
+
   if [ $glibc_minor -lt 17 ]; then
     LIBS="$LIBS -lrt"
   fi

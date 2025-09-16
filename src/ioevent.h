@@ -31,6 +31,12 @@
 #define IOEVENT_WRITE EPOLLOUT
 #define IOEVENT_ERROR (EPOLLERR | EPOLLPRI | EPOLLHUP)
 
+#elif IOEVENT_USE_URING
+#include <liburing.h>
+#define IOEVENT_READ  POLLIN
+#define IOEVENT_WRITE POLLOUT
+#define IOEVENT_ERROR (POLLERR | POLLPRI | POLLHUP)
+
 #elif IOEVENT_USE_KQUEUE
 #include <sys/event.h>
 #include <sys/poll.h>
@@ -67,16 +73,22 @@ int kqueue_ev_convert(int16_t event, uint16_t flags);
 typedef struct ioevent_puller {
     int size;  //max events (fd)
     int extra_events;
+#if IOEVENT_USE_URING
+    struct io_uring ring;
+#else
     int poll_fd;
-
     struct {
         int index;
         int count;
     } iterator;  //for deal event loop
+#endif
 
 #if IOEVENT_USE_EPOLL
     struct epoll_event *events;
-    int timeout;
+    int timeout;  //in milliseconds
+#elif IOEVENT_USE_URING
+    struct io_uring_cqe *cqe;
+    struct __kernel_timespec timeout;
 #elif IOEVENT_USE_KQUEUE
     struct kevent *events;
     struct timespec timeout;
@@ -84,11 +96,18 @@ typedef struct ioevent_puller {
     port_event_t *events;
     timespec_t timeout;
 #endif
+
+#ifdef OS_LINUX
+    bool zero_timeout;
+#endif
+
 } IOEventPoller;
 
 #if IOEVENT_USE_EPOLL
   #define IOEVENT_GET_EVENTS(ioevent, index) \
       (ioevent)->events[index].events
+#elif IOEVENT_USE_URING
+
 #elif IOEVENT_USE_KQUEUE
   #define IOEVENT_GET_EVENTS(ioevent, index)  kqueue_ev_convert( \
       (ioevent)->events[index].filter, (ioevent)->events[index].flags)
@@ -102,6 +121,8 @@ typedef struct ioevent_puller {
 #if IOEVENT_USE_EPOLL
   #define IOEVENT_GET_DATA(ioevent, index)  \
       (ioevent)->events[index].data.ptr
+#elif IOEVENT_USE_URING
+
 #elif IOEVENT_USE_KQUEUE
   #define IOEVENT_GET_DATA(ioevent, index)  \
       (ioevent)->events[index].udata
@@ -115,6 +136,8 @@ typedef struct ioevent_puller {
 #if IOEVENT_USE_EPOLL
   #define IOEVENT_CLEAR_DATA(ioevent, index)  \
       (ioevent)->events[index].data.ptr = NULL
+#elif IOEVENT_USE_URING
+
 #elif IOEVENT_USE_KQUEUE
   #define IOEVENT_CLEAR_DATA(ioevent, index)  \
       (ioevent)->events[index].udata = NULL
@@ -133,14 +156,15 @@ int ioevent_init(IOEventPoller *ioevent, const int size,
     const int timeout_ms, const int extra_events);
 void ioevent_destroy(IOEventPoller *ioevent);
 
-int ioevent_attach(IOEventPoller *ioevent, const int fd, const int e,
-    void *data);
-int ioevent_modify(IOEventPoller *ioevent, const int fd, const int e,
-    void *data);
+int ioevent_attach(IOEventPoller *ioevent, const int fd,
+        const int e, void *data);
+int ioevent_modify(IOEventPoller *ioevent, const int fd,
+        const int e, void *data);
 int ioevent_detach(IOEventPoller *ioevent, const int fd);
 int ioevent_poll(IOEventPoller *ioevent);
 
-static inline void ioevent_set_timeout(IOEventPoller *ioevent, const int timeout_ms)
+static inline void ioevent_set_timeout(IOEventPoller *ioevent,
+        const int timeout_ms)
 {
 #if IOEVENT_USE_EPOLL
   ioevent->timeout = timeout_ms;
@@ -148,6 +172,11 @@ static inline void ioevent_set_timeout(IOEventPoller *ioevent, const int timeout
   ioevent->timeout.tv_sec = timeout_ms / 1000;
   ioevent->timeout.tv_nsec = 1000000 * (timeout_ms % 1000);
 #endif
+
+#ifdef OS_LINUX
+    ioevent->zero_timeout = (timeout_ms == 0);
+#endif
+
 }
 
 static inline int ioevent_poll_ex(IOEventPoller *ioevent, const int timeout_ms)
@@ -155,6 +184,23 @@ static inline int ioevent_poll_ex(IOEventPoller *ioevent, const int timeout_ms)
   ioevent_set_timeout(ioevent, timeout_ms);
   return ioevent_poll(ioevent);
 }
+
+#if IOEVENT_USE_URING
+static inline int ioevent_uring_submit(IOEventPoller *ioevent)
+{
+    int result;
+    while (1) {
+        result = io_uring_submit(&ioevent->ring);
+        if (result < 0) {
+            if (result != -EINTR) {
+                return -result;
+            }
+        } else {
+            return 0;
+        }
+    }
+}
+#endif
 
 #ifdef __cplusplus
 }
