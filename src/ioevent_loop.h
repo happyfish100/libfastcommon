@@ -26,8 +26,9 @@ int ioevent_loop(struct nio_thread_data *thread_data,
 	IOEventCallback recv_notify_callback, TaskCleanUpCallback
 	clean_up_callback, volatile bool *continue_flag);
 
-int ioevent_set(struct fast_task_info *pTask, struct nio_thread_data *pThread,
-	int sock, short event, IOEventCallback callback, const int timeout);
+int ioevent_set(struct fast_task_info *task, struct nio_thread_data *pThread,
+        int sock, short event, IOEventCallback callback,
+        const int timeout, const bool use_iouring);
 
 static inline bool ioevent_is_canceled(struct fast_task_info *task)
 {
@@ -70,9 +71,16 @@ static inline int ioevent_notify_thread(struct nio_thread_data *thread_data)
     return 0;
 }
 
+#if IOEVENT_USE_URING
+static inline int uring_prep_recv_by_task(struct fast_task_info *task)
+{
+    return ioevent_uring_prep_recv(&task->thread_data->ev_puller,
+            task->event.fd, task->recv.ptr->data, task->recv.ptr->size, task);
+}
+#endif
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif
-

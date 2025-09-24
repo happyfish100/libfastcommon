@@ -46,7 +46,11 @@ static int ioevent_process(IOEventPoller *ioevent)
         count++;
         pEntry = (IOEventEntry *)ioevent->cqe->user_data;
         if (pEntry != NULL) {
-            pEntry->callback(pEntry->fd, ioevent->cqe->res, pEntry);
+            if (ioevent->cqe->flags & IORING_CQE_F_NOTIF) {
+                //TODO
+            } else {
+                pEntry->callback(pEntry->fd, ioevent->cqe->res, pEntry);
+            }
         }
     }
 
@@ -230,28 +234,56 @@ int ioevent_loop(struct nio_thread_data *thread_data,
         if (thread_data->thread_loop_callback != NULL) {
             thread_data->thread_loop_callback(thread_data);
         }
+
+#if IOEVENT_USE_URING
+        if (thread_data->ev_puller.submmit_count > 0) {
+            thread_data->ev_puller.submmit_count = 0;
+            if ((result=ioevent_uring_submit(&thread_data->ev_puller)) != 0) {
+                logError("file: "__FILE__", line: %d, "
+                        "io_uring_submit fail, errno: %d, error info: %s",
+                        __LINE__, result, STRERROR(result));
+                return result;
+            }
+        }
+#endif
 	}
 
 	return 0;
 }
 
 int ioevent_set(struct fast_task_info *task, struct nio_thread_data *pThread,
-	int sock, short event, IOEventCallback callback, const int timeout)
+        int sock, short event, IOEventCallback callback,
+        const int timeout, const bool use_iouring)
 {
 	int result;
 
 	task->thread_data = pThread;
 	task->event.fd = sock;
 	task->event.callback = callback;
-	if (ioevent_attach(&pThread->ev_puller, sock, event, task) < 0)
-	{
-		result = errno != 0 ? errno : ENOENT;
-		logError("file: "__FILE__", line: %d, "
-			"ioevent_attach fail, fd: %d, "
-			"errno: %d, error info: %s",
-			__LINE__, sock, result, STRERROR(result));
-		return result;
-	}
+    if (use_iouring) {
+#if IOEVENT_USE_URING
+        if ((result=uring_prep_recv_by_task(task)) != 0) {
+            logError("file: "__FILE__", line: %d, "
+                    "uring_prep_recv fail, fd: %d, "
+                    "errno: %d, error info: %s",
+                    __LINE__, sock, result, STRERROR(result));
+            return result;
+        }
+#else
+        logError("file: "__FILE__", line: %d, "
+                "some mistakes happen!", __LINE__);
+        return EBUSY;
+#endif
+    } else {
+        if (ioevent_attach(&pThread->ev_puller, sock, event, task) < 0) {
+            result = errno != 0 ? errno : ENOENT;
+            logError("file: "__FILE__", line: %d, "
+                    "ioevent_attach fail, fd: %d, "
+                    "errno: %d, error info: %s",
+                    __LINE__, sock, result, STRERROR(result));
+            return result;
+        }
+    }
 
 	task->event.timer.expires = g_current_time + timeout;
 	fast_timer_add(&pThread->timer, &task->event.timer);

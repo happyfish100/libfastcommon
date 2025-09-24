@@ -75,6 +75,7 @@ typedef struct ioevent_puller {
     int extra_events;
 #if IOEVENT_USE_URING
     struct io_uring ring;
+    int submmit_count;
 #else
     int poll_fd;
     struct {
@@ -199,6 +200,19 @@ static inline int ioevent_uring_submit(IOEventPoller *ioevent)
             return 0;
         }
     }
+}
+
+static inline int ioevent_uring_prep_recv(IOEventPoller *ioevent,
+        int sockfd, void *buf, size_t size, void *user_data)
+{
+    struct io_uring_sqe *sqe = io_uring_get_sqe(&ioevent->ring);
+    if (sqe == NULL) {
+        return ENOSPC;
+    }
+    sqe->user_data = (long)user_data;
+    io_uring_prep_recv(sqe, sockfd, buf, size, 0);
+    ioevent->submmit_count++;
+    return 0;
 }
 #endif
 

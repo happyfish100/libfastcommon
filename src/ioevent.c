@@ -72,6 +72,7 @@ int ioevent_init(IOEventPoller *ioevent, const int size,
         return -result;
     }
     ioevent->cqe = NULL;
+    ioevent->submmit_count = 0;
 #elif IOEVENT_USE_KQUEUE
     ioevent->poll_fd = kqueue();
     if (ioevent->poll_fd < 0) {
