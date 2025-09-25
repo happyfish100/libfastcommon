@@ -20,6 +20,7 @@
 #include <poll.h>
 #include <sys/time.h>
 #include "_os_define.h"
+#include "logger.h"
 
 #define IOEVENT_TIMEOUT  0x8000
 
@@ -207,10 +208,74 @@ static inline int ioevent_uring_prep_recv(IOEventPoller *ioevent,
 {
     struct io_uring_sqe *sqe = io_uring_get_sqe(&ioevent->ring);
     if (sqe == NULL) {
+        logError("file: "__FILE__", line: %d, "
+                "io_uring_get_sqe fail", __LINE__);
         return ENOSPC;
     }
     sqe->user_data = (long)user_data;
     io_uring_prep_recv(sqe, sockfd, buf, size, 0);
+    ioevent->submmit_count++;
+    return 0;
+}
+
+static inline int ioevent_uring_prep_send(IOEventPoller *ioevent,
+        int sockfd, void *buf, size_t len, void *user_data)
+{
+    struct io_uring_sqe *sqe = io_uring_get_sqe(&ioevent->ring);
+    if (sqe == NULL) {
+        logError("file: "__FILE__", line: %d, "
+                "io_uring_get_sqe fail", __LINE__);
+        return ENOSPC;
+    }
+    sqe->user_data = (long)user_data;
+    io_uring_prep_send(sqe, sockfd, buf, len, 0);
+    ioevent->submmit_count++;
+    return 0;
+}
+
+static inline int ioevent_uring_prep_writev(IOEventPoller *ioevent,
+        int sockfd, const struct iovec *iovecs, unsigned nr_vecs,
+        void *user_data)
+{
+    struct io_uring_sqe *sqe = io_uring_get_sqe(&ioevent->ring);
+    if (sqe == NULL) {
+        logError("file: "__FILE__", line: %d, "
+                "io_uring_get_sqe fail", __LINE__);
+        return ENOSPC;
+    }
+
+    sqe->user_data = (long)user_data;
+    io_uring_prep_writev(sqe, sockfd, iovecs, nr_vecs, 0);
+    ioevent->submmit_count++;
+    return 0;
+}
+
+static inline int ioevent_uring_prep_send_zc(IOEventPoller *ioevent,
+        int sockfd, void *buf, size_t len, void *user_data)
+{
+    struct io_uring_sqe *sqe = io_uring_get_sqe(&ioevent->ring);
+    if (sqe == NULL) {
+        logError("file: "__FILE__", line: %d, "
+                "io_uring_get_sqe fail", __LINE__);
+        return ENOSPC;
+    }
+    sqe->user_data = (long)user_data;
+    io_uring_prep_send_zc(sqe, sockfd, buf, len, 0,
+            IORING_SEND_ZC_REPORT_USAGE);
+    ioevent->submmit_count++;
+    return 0;
+}
+
+static inline int ioevent_uring_prep_close(IOEventPoller *ioevent, int fd)
+{
+    struct io_uring_sqe *sqe = io_uring_get_sqe(&ioevent->ring);
+    if (sqe == NULL) {
+        logError("file: "__FILE__", line: %d, "
+                "io_uring_get_sqe fail", __LINE__);
+        return ENOSPC;
+    }
+    sqe->user_data = 0;
+    io_uring_prep_close(sqe, fd);
     ioevent->submmit_count++;
     return 0;
 }

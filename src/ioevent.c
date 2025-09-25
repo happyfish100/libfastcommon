@@ -217,7 +217,8 @@ int ioevent_detach(IOEventPoller *ioevent, const int fd)
   sqe->flags |= IOSQE_CQE_SKIP_SUCCESS;
   sqe->user_data = 0;
   io_uring_prep_cancel_fd(sqe, fd, 0);
-  return ioevent_uring_submit(ioevent);
+  ioevent->submmit_count++;
+  return 0;
 #elif IOEVENT_USE_KQUEUE
   struct kevent ev[1];
   int r, w;

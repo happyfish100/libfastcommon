@@ -31,7 +31,6 @@ static int ioevent_process(IOEventPoller *ioevent)
         case 0:
             break;
         case -ETIME:
-        case -EAGAIN:
         case -EINTR:
             return 0;
         default:
@@ -49,7 +48,8 @@ static int ioevent_process(IOEventPoller *ioevent)
             if (ioevent->cqe->flags & IORING_CQE_F_NOTIF) {
                 //TODO
             } else {
-                pEntry->callback(pEntry->fd, ioevent->cqe->res, pEntry);
+                pEntry->res = ioevent->cqe->res;
+                pEntry->callback(pEntry->fd, 0, pEntry);
             }
         }
     }
@@ -262,7 +262,7 @@ int ioevent_set(struct fast_task_info *task, struct nio_thread_data *pThread,
 	task->event.callback = callback;
     if (use_iouring) {
 #if IOEVENT_USE_URING
-        if ((result=uring_prep_recv_by_task(task)) != 0) {
+        if ((result=uring_prep_first_recv(task)) != 0) {
             logError("file: "__FILE__", line: %d, "
                     "uring_prep_recv fail, fd: %d, "
                     "errno: %d, error info: %s",

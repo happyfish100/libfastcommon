@@ -48,10 +48,17 @@ typedef int (*TaskContinueCallback)(struct fast_task_info *task);
 struct sf_network_handler;
 struct fast_task_info;
 
+#if IOEVENT_USE_URING
+#define FC_URING_OP_TYPE(task)  (task)->event.timer.op_type
+#endif
+
 typedef struct ioevent_entry
 {
     FastTimerEntry timer; //must first
     int fd;
+#if IOEVENT_USE_URING
+    int res;
+#endif
     IOEventCallback callback;
 } IOEventEntry;
 
