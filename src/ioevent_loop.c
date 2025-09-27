@@ -46,11 +46,27 @@ static int ioevent_process(IOEventPoller *ioevent)
         pEntry = (IOEventEntry *)ioevent->cqe->user_data;
         if (pEntry != NULL) {
             if (ioevent->cqe->flags & IORING_CQE_F_NOTIF) {
-                //TODO
+#ifdef IORING_NOTIF_USAGE_ZC_COPIED
+                if (!ioevent->send_zc_logged) {
+                    ioevent->send_zc_logged = true;
+                    if (ioevent->cqe->res & IORING_NOTIF_USAGE_ZC_COPIED) {
+                        logWarning("file: "__FILE__", line: %d, "
+                                "io_uring send_zc: memory copy "
+                                "instead of zero copy!", __LINE__);
+                    } else {
+                        logInfo("file: "__FILE__", line: %d, "
+                                "io_uring send_zc: zero copy OK.", __LINE__);
+                    }
+                }
+#endif
             } else {
                 pEntry->res = ioevent->cqe->res;
                 pEntry->callback(pEntry->fd, 0, pEntry);
             }
+        } else {
+            logWarning("file: "__FILE__", line: %d, "
+                    "unexpected flags: %d, result: %u", __LINE__,
+                    ioevent->cqe->flags, ioevent->cqe->res);
         }
     }
 
@@ -236,8 +252,7 @@ int ioevent_loop(struct nio_thread_data *thread_data,
         }
 
 #if IOEVENT_USE_URING
-        if (thread_data->ev_puller.submmit_count > 0) {
-            thread_data->ev_puller.submmit_count = 0;
+        if (thread_data->ev_puller.submit_count > 0) {
             if ((result=ioevent_uring_submit(&thread_data->ev_puller)) != 0) {
                 logError("file: "__FILE__", line: %d, "
                         "io_uring_submit fail, errno: %d, error info: %s",
@@ -260,8 +275,8 @@ int ioevent_set(struct fast_task_info *task, struct nio_thread_data *pThread,
 	task->thread_data = pThread;
 	task->event.fd = sock;
 	task->event.callback = callback;
-    if (use_iouring) {
 #if IOEVENT_USE_URING
+    if (use_iouring) {
         if ((result=uring_prep_first_recv(task)) != 0) {
             logError("file: "__FILE__", line: %d, "
                     "uring_prep_recv fail, fd: %d, "
@@ -269,12 +284,8 @@ int ioevent_set(struct fast_task_info *task, struct nio_thread_data *pThread,
                     __LINE__, sock, result, STRERROR(result));
             return result;
         }
-#else
-        logError("file: "__FILE__", line: %d, "
-                "some mistakes happen!", __LINE__);
-        return EBUSY;
-#endif
     } else {
+#endif
         if (ioevent_attach(&pThread->ev_puller, sock, event, task) < 0) {
             result = errno != 0 ? errno : ENOENT;
             logError("file: "__FILE__", line: %d, "
@@ -283,7 +294,9 @@ int ioevent_set(struct fast_task_info *task, struct nio_thread_data *pThread,
                     __LINE__, sock, result, STRERROR(result));
             return result;
         }
+#if IOEVENT_USE_URING
     }
+#endif
 
 	task->event.timer.expires = g_current_time + timeout;
 	fast_timer_add(&pThread->timer, &task->event.timer);

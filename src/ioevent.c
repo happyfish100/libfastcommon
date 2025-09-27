@@ -72,7 +72,8 @@ int ioevent_init(IOEventPoller *ioevent, const int size,
         return -result;
     }
     ioevent->cqe = NULL;
-    ioevent->submmit_count = 0;
+    ioevent->submit_count = 0;
+    ioevent->send_zc_logged = false;
 #elif IOEVENT_USE_KQUEUE
     ioevent->poll_fd = kqueue();
     if (ioevent->poll_fd < 0) {
@@ -134,8 +135,8 @@ int ioevent_attach(IOEventPoller *ioevent, const int fd,
   if (sqe == NULL) {
       return ENOSPC;
   }
-  sqe->user_data = (long)data;
   io_uring_prep_poll_multishot(sqe, fd, e | ioevent->extra_events);
+  sqe->user_data = (long)data;
   return ioevent_uring_submit(ioevent);
 #elif IOEVENT_USE_KQUEUE
   struct kevent ev[2];
@@ -169,9 +170,9 @@ int ioevent_modify(IOEventPoller *ioevent, const int fd,
   if (sqe == NULL) {
       return ENOSPC;
   }
-  sqe->user_data = (long)data;
   io_uring_prep_poll_update(sqe, sqe->user_data, sqe->user_data,
           e | ioevent->extra_events, IORING_POLL_UPDATE_EVENTS);
+  sqe->user_data = (long)data;
   return ioevent_uring_submit(ioevent);
 #elif IOEVENT_USE_KQUEUE
   struct kevent ev[2];
@@ -214,11 +215,10 @@ int ioevent_detach(IOEventPoller *ioevent, const int fd)
   if (sqe == NULL) {
       return ENOSPC;
   }
-  sqe->flags |= IOSQE_CQE_SKIP_SUCCESS;
-  sqe->user_data = 0;
   io_uring_prep_cancel_fd(sqe, fd, 0);
-  ioevent->submmit_count++;
-  return 0;
+  /* set sqe->flags MUST after io_uring_prep_xxx */
+  sqe->flags = IOSQE_CQE_SKIP_SUCCESS;
+  return ioevent_uring_submit(ioevent);
 #elif IOEVENT_USE_KQUEUE
   struct kevent ev[1];
   int r, w;
@@ -256,7 +256,7 @@ int ioevent_poll(IOEventPoller *ioevent)
   int result;
   int retval;
   unsigned int nget = 1;
-  if((retval = port_getn(ioevent->poll_fd, ioevent->events,
+  if((retval=port_getn(ioevent->poll_fd, ioevent->events,
           ioevent->size, &nget, &ioevent->timeout)) == 0)
   {
     result = (int)nget;
@@ -282,4 +282,3 @@ int ioevent_poll(IOEventPoller *ioevent)
 #error port me
 #endif
 }
-

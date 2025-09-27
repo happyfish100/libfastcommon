@@ -1,4 +1,7 @@
 
+Version 1.81  2025-09-27
+  * support Linux io_uring
+
 Version 1.80  2025-09-10
   * getIpaddrByNameEx: IPv4 has priority over IPv6
   * shared_func.[hc]: add function fc_ftoa

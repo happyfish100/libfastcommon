@@ -76,7 +76,8 @@ typedef struct ioevent_puller {
     int extra_events;
 #if IOEVENT_USE_URING
     struct io_uring ring;
-    int submmit_count;
+    int submit_count;
+    bool send_zc_logged;
 #else
     int poll_fd;
     struct {
@@ -191,6 +192,8 @@ static inline int ioevent_poll_ex(IOEventPoller *ioevent, const int timeout_ms)
 static inline int ioevent_uring_submit(IOEventPoller *ioevent)
 {
     int result;
+
+    ioevent->submit_count = 0;
     while (1) {
         result = io_uring_submit(&ioevent->ring);
         if (result < 0) {
@@ -212,9 +215,9 @@ static inline int ioevent_uring_prep_recv(IOEventPoller *ioevent,
                 "io_uring_get_sqe fail", __LINE__);
         return ENOSPC;
     }
-    sqe->user_data = (long)user_data;
     io_uring_prep_recv(sqe, sockfd, buf, size, 0);
-    ioevent->submmit_count++;
+    sqe->user_data = (long)user_data;
+    ioevent->submit_count++;
     return 0;
 }
 
@@ -227,9 +230,9 @@ static inline int ioevent_uring_prep_send(IOEventPoller *ioevent,
                 "io_uring_get_sqe fail", __LINE__);
         return ENOSPC;
     }
-    sqe->user_data = (long)user_data;
     io_uring_prep_send(sqe, sockfd, buf, len, 0);
-    ioevent->submmit_count++;
+    sqe->user_data = (long)user_data;
+    ioevent->submit_count++;
     return 0;
 }
 
@@ -244,9 +247,9 @@ static inline int ioevent_uring_prep_writev(IOEventPoller *ioevent,
         return ENOSPC;
     }
 
-    sqe->user_data = (long)user_data;
     io_uring_prep_writev(sqe, sockfd, iovecs, nr_vecs, 0);
-    ioevent->submmit_count++;
+    sqe->user_data = (long)user_data;
+    ioevent->submit_count++;
     return 0;
 }
 
@@ -259,14 +262,20 @@ static inline int ioevent_uring_prep_send_zc(IOEventPoller *ioevent,
                 "io_uring_get_sqe fail", __LINE__);
         return ENOSPC;
     }
-    sqe->user_data = (long)user_data;
     io_uring_prep_send_zc(sqe, sockfd, buf, len, 0,
-            IORING_SEND_ZC_REPORT_USAGE);
-    ioevent->submmit_count++;
+#ifdef IORING_SEND_ZC_REPORT_USAGE
+            IORING_SEND_ZC_REPORT_USAGE
+#else
+            0
+#endif
+            );
+    sqe->user_data = (long)user_data;
+    ioevent->submit_count++;
     return 0;
 }
 
-static inline int ioevent_uring_prep_close(IOEventPoller *ioevent, int fd)
+static inline int ioevent_uring_prep_close(IOEventPoller *ioevent,
+        int fd, void *user_data)
 {
     struct io_uring_sqe *sqe = io_uring_get_sqe(&ioevent->ring);
     if (sqe == NULL) {
@@ -274,9 +283,30 @@ static inline int ioevent_uring_prep_close(IOEventPoller *ioevent, int fd)
                 "io_uring_get_sqe fail", __LINE__);
         return ENOSPC;
     }
-    sqe->user_data = 0;
     io_uring_prep_close(sqe, fd);
-    ioevent->submmit_count++;
+    if (user_data == NULL) {
+        /* set sqe->flags MUST after io_uring_prep_xxx */
+        sqe->flags = IOSQE_CQE_SKIP_SUCCESS;
+    } else {
+        sqe->user_data = (long)user_data;
+    }
+    ioevent->submit_count++;
+    return 0;
+}
+
+static inline int ioevent_uring_prep_cancel(IOEventPoller *ioevent,
+        void *user_data)
+{
+    struct io_uring_sqe *sqe = io_uring_get_sqe(&ioevent->ring);
+    if (sqe == NULL) {
+        logError("file: "__FILE__", line: %d, "
+                "io_uring_get_sqe fail", __LINE__);
+        return ENOSPC;
+    }
+
+    io_uring_prep_cancel(sqe, user_data, 0);
+    sqe->user_data = (long)user_data;
+    ioevent->submit_count++;
     return 0;
 }
 #endif
