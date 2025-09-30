@@ -206,62 +206,47 @@ static inline int ioevent_uring_submit(IOEventPoller *ioevent)
     }
 }
 
-static inline int ioevent_uring_prep_recv(IOEventPoller *ioevent,
-        int sockfd, void *buf, size_t size, void *user_data)
+static inline struct io_uring_sqe *ioevent_uring_get_sqe(IOEventPoller *ioevent)
 {
     struct io_uring_sqe *sqe = io_uring_get_sqe(&ioevent->ring);
     if (sqe == NULL) {
         logError("file: "__FILE__", line: %d, "
                 "io_uring_get_sqe fail", __LINE__);
-        return ENOSPC;
     }
+    return sqe;
+}
+
+static inline void ioevent_uring_prep_recv(IOEventPoller *ioevent,
+        struct io_uring_sqe *sqe, int sockfd,
+        void *buf, size_t size, void *user_data)
+{
     io_uring_prep_recv(sqe, sockfd, buf, size, 0);
     sqe->user_data = (long)user_data;
     ioevent->submit_count++;
-    return 0;
 }
 
-static inline int ioevent_uring_prep_send(IOEventPoller *ioevent,
-        int sockfd, void *buf, size_t len, void *user_data)
+static inline void ioevent_uring_prep_send(IOEventPoller *ioevent,
+        struct io_uring_sqe *sqe, int sockfd,
+        void *buf, size_t len, void *user_data)
 {
-    struct io_uring_sqe *sqe = io_uring_get_sqe(&ioevent->ring);
-    if (sqe == NULL) {
-        logError("file: "__FILE__", line: %d, "
-                "io_uring_get_sqe fail", __LINE__);
-        return ENOSPC;
-    }
     io_uring_prep_send(sqe, sockfd, buf, len, 0);
     sqe->user_data = (long)user_data;
     ioevent->submit_count++;
-    return 0;
 }
 
-static inline int ioevent_uring_prep_writev(IOEventPoller *ioevent,
-        int sockfd, const struct iovec *iovecs, unsigned nr_vecs,
-        void *user_data)
+static inline void ioevent_uring_prep_writev(IOEventPoller *ioevent,
+        struct io_uring_sqe *sqe, int sockfd, const struct iovec *iovecs,
+        unsigned nr_vecs, void *user_data)
 {
-    struct io_uring_sqe *sqe = io_uring_get_sqe(&ioevent->ring);
-    if (sqe == NULL) {
-        logError("file: "__FILE__", line: %d, "
-                "io_uring_get_sqe fail", __LINE__);
-        return ENOSPC;
-    }
-
     io_uring_prep_writev(sqe, sockfd, iovecs, nr_vecs, 0);
     sqe->user_data = (long)user_data;
     ioevent->submit_count++;
-    return 0;
 }
 
-static inline int ioevent_uring_prep_send_zc(IOEventPoller *ioevent,
-        int sockfd, void *buf, size_t len, void *user_data)
+static inline void ioevent_uring_prep_send_zc(IOEventPoller *ioevent,
+        struct io_uring_sqe *sqe, int sockfd,
+        void *buf, size_t len, void *user_data)
 {
-    struct io_uring_sqe *sqe = io_uring_get_sqe(&ioevent->ring);
-    if (sqe == NULL) {
-        logError("file: "__FILE__", line: %d, "
-                "io_uring_get_sqe fail", __LINE__);
-        return ENOSPC;
-    }
     io_uring_prep_send_zc(sqe, sockfd, buf, len, 0,
 #ifdef IORING_SEND_ZC_REPORT_USAGE
             IORING_SEND_ZC_REPORT_USAGE
@@ -271,18 +256,11 @@ static inline int ioevent_uring_prep_send_zc(IOEventPoller *ioevent,
             );
     sqe->user_data = (long)user_data;
     ioevent->submit_count++;
-    return 0;
 }
 
-static inline int ioevent_uring_prep_close(IOEventPoller *ioevent,
-        int fd, void *user_data)
+static inline void ioevent_uring_prep_close(IOEventPoller *ioevent,
+        struct io_uring_sqe *sqe, int fd, void *user_data)
 {
-    struct io_uring_sqe *sqe = io_uring_get_sqe(&ioevent->ring);
-    if (sqe == NULL) {
-        logError("file: "__FILE__", line: %d, "
-                "io_uring_get_sqe fail", __LINE__);
-        return ENOSPC;
-    }
     io_uring_prep_close(sqe, fd);
     if (user_data == NULL) {
         /* set sqe->flags MUST after io_uring_prep_xxx */
@@ -291,24 +269,25 @@ static inline int ioevent_uring_prep_close(IOEventPoller *ioevent,
         sqe->user_data = (long)user_data;
     }
     ioevent->submit_count++;
-    return 0;
 }
 
-static inline int ioevent_uring_prep_cancel(IOEventPoller *ioevent,
-        void *user_data)
+static inline void ioevent_uring_prep_cancel(IOEventPoller *ioevent,
+        struct io_uring_sqe *sqe, void *user_data)
 {
-    struct io_uring_sqe *sqe = io_uring_get_sqe(&ioevent->ring);
-    if (sqe == NULL) {
-        logError("file: "__FILE__", line: %d, "
-                "io_uring_get_sqe fail", __LINE__);
-        return ENOSPC;
-    }
-
     io_uring_prep_cancel(sqe, user_data, 0);
     sqe->user_data = (long)user_data;
     ioevent->submit_count++;
-    return 0;
 }
+
+static inline void ioevent_uring_prep_connect(IOEventPoller *ioevent,
+        struct io_uring_sqe *sqe, int fd, const struct sockaddr *addr,
+        socklen_t addrlen, void *user_data)
+{
+    io_uring_prep_connect(sqe, fd, addr, addrlen);
+    sqe->user_data = (long)user_data;
+    ioevent->submit_count++;
+}
+
 #endif
 
 #ifdef __cplusplus

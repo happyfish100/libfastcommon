@@ -133,7 +133,8 @@ static void deal_timeouts(FastTimerEntry *head)
 		current = entry;
 		entry = entry->next;
 
-        current->prev = current->next = NULL; //must set NULL because NOT in time wheel
+        /* must set NULL because NOT in time wheel */
+        current->prev = current->next = NULL;
 		pEventEntry = (IOEventEntry *)current;
 		if (pEventEntry != NULL)
 		{
@@ -277,12 +278,14 @@ int ioevent_set(struct fast_task_info *task, struct nio_thread_data *pThread,
 	task->event.callback = callback;
 #if IOEVENT_USE_URING
     if (use_iouring) {
-        if ((result=uring_prep_first_recv(task)) != 0) {
-            logError("file: "__FILE__", line: %d, "
-                    "uring_prep_recv fail, fd: %d, "
-                    "errno: %d, error info: %s",
-                    __LINE__, sock, result, STRERROR(result));
-            return result;
+        if (FC_URING_OP_TYPE(task) == IORING_OP_NOP) {
+            if ((result=uring_prep_first_recv(task)) != 0) {
+                logError("file: "__FILE__", line: %d, "
+                        "uring_prep_recv fail, fd: %d, "
+                        "errno: %d, error info: %s",
+                        __LINE__, sock, result, STRERROR(result));
+                return result;
+            }
         }
     } else {
 #endif
