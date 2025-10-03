@@ -59,11 +59,11 @@ static int task_alloc_init(struct fast_task_info *task,
 }
 
 int free_queue_init_ex2(struct fast_task_queue *queue, const char *name,
-        const bool double_buffers, const int max_connections,
-        const int alloc_task_once, const int min_buff_size,
-        const int max_buff_size, const int padding_size,
-        const int arg_size, TaskInitCallback init_callback,
-        void *init_arg)
+        const bool double_buffers, const bool need_shrink,
+        const int max_connections, const int alloc_task_once,
+        const int min_buff_size, const int max_buff_size,
+        const int padding_size, const int arg_size,
+        TaskInitCallback init_callback, void *init_arg)
 {
 #define MAX_DATA_SIZE  (256 * 1024 * 1024)
     int alloc_once;
@@ -123,6 +123,7 @@ int free_queue_init_ex2(struct fast_task_queue *queue, const char *name,
     }
 
     queue->double_buffers = double_buffers;
+    queue->need_shrink = need_shrink;
 	queue->min_buff_size = aligned_min_size;
 	queue->max_buff_size = aligned_max_size;
 	queue->padding_size = aligned_padding_size;
@@ -183,16 +184,23 @@ void free_queue_push(struct fast_task_info *task)
     task->send.ptr->length = 0;
     task->send.ptr->offset = 0;
     task->req_count = 0;
-    if (task->send.ptr->size > task->free_queue->min_buff_size) {//need thrink
-        _realloc_buffer(task->send.ptr, task->free_queue->min_buff_size, false);
+    if (task->free_queue->need_shrink && task->send.
+            ptr->size > task->free_queue->min_buff_size)
+    {   //need thrink
+        _realloc_buffer(task->send.ptr, task->free_queue->
+                min_buff_size, false);
+        task->shrinked = true;
     }
 
     if (task->free_queue->double_buffers) {
         task->recv.ptr->length = 0;
         task->recv.ptr->offset = 0;
-        if (task->recv.ptr->size > task->free_queue->min_buff_size) {
+        if (task->free_queue->need_shrink && task->recv.
+                ptr->size > task->free_queue->min_buff_size)
+        {
             _realloc_buffer(task->recv.ptr, task->free_queue->
                     min_buff_size, false);
+            task->shrinked = true;
         }
     }
 
