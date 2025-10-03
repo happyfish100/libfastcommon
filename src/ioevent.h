@@ -33,6 +33,7 @@
 #define IOEVENT_ERROR (EPOLLERR | EPOLLPRI | EPOLLHUP)
 
 #elif IOEVENT_USE_URING
+#include <sys/mount.h>
 #include <liburing.h>
 #define IOEVENT_READ  POLLIN
 #define IOEVENT_WRITE POLLOUT

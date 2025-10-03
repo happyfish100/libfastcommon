@@ -23,6 +23,7 @@
 
 #define fc_hold_task_ex(task, inc_count) __sync_add_and_fetch( \
         &task->reffer_count, inc_count)
+
 #define fc_hold_task(task)  fc_hold_task_ex(task, 1)
 
 #ifdef __cplusplus

@@ -119,6 +119,7 @@ if [ "$uname" = "Linux" ]; then
     out=$(grep -F IORING_OP_SEND_ZC /usr/include/liburing/io_uring.h)
     if [ -n "$out" ]; then
       IOEVENT_USE=IOEVENT_USE_URING
+      LIBS="$LIBS -luring"
     else
       IOEVENT_USE=IOEVENT_USE_EPOLL
     fi
@@ -275,4 +276,13 @@ make $1 $2 $3
 
 if [ "$1" = "clean" ]; then
   /bin/rm -f Makefile _os_define.h
+fi
+
+cd tests
+cp Makefile.in Makefile
+sed_replace "s#\\\$(CC)#gcc#g" Makefile
+sed_replace "s#\\\$(INCS)#$INCS#g" Makefile
+sed_replace "s#\\\$(LIBS)#$LIBS#g" Makefile
+if [ "$1" = "clean" ]; then
+  /bin/rm -f Makefile
 fi

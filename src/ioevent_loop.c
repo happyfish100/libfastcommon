@@ -286,6 +286,10 @@ int ioevent_set(struct fast_task_info *task, struct nio_thread_data *pThread,
                         __LINE__, sock, result, STRERROR(result));
                 return result;
             }
+        } else {
+            logInfo("file: "__FILE__", line: %d, "
+                    "skip uring_prep_recv, fd: %d, port: %d, in progress op type: %d, timeout: %"PRId64,
+                    __LINE__, sock, task->port, FC_URING_OP_TYPE(task), task->event.timer.expires);
         }
     } else {
 #endif

@@ -27,9 +27,6 @@ typedef struct fast_timer_entry {
     struct fast_timer_entry *next;
     int slot_index;
     bool rehash;
-#if IOEVENT_USE_URING
-    short op_type;
-#endif
 } FastTimerEntry;
 
 typedef struct fast_timer_slot {

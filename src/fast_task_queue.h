@@ -49,7 +49,8 @@ struct sf_network_handler;
 struct fast_task_info;
 
 #if IOEVENT_USE_URING
-#define FC_URING_OP_TYPE(task)  (task)->event.timer.op_type
+#define FC_URING_OP_TYPE(task)  (task)->uring.op_type
+#define FC_URING_IS_CLIENT(task)  (task)->uring.is_client
 #endif
 
 typedef struct ioevent_entry
@@ -126,12 +127,20 @@ struct fast_task_info
     struct fast_net_buffer_wrapper recv;  //recv buffer
 
     uint16_t port; //peer port
+
+#if IOEVENT_USE_URING
+    struct {
+        int8_t  is_client;
+        uint8_t op_type;
+    } uring;  //since v1.0.81
+#endif
+
     struct {
         uint8_t current;
         volatile uint8_t notify;
     } nio_stages; //stages for network IO
-    volatile int8_t reffer_count;
     volatile int8_t canceled;  //if task canceled
+    volatile int reffer_count;
     int pending_send_count;
     int64_t req_count; //request count
     struct {
