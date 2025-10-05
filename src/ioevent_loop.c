@@ -65,7 +65,7 @@ static int ioevent_process(IOEventPoller *ioevent)
             }
         } else {
             logWarning("file: "__FILE__", line: %d, "
-                    "unexpected flags: %d, result: %u", __LINE__,
+                    "io_uring unexpected flags: %d, result: %d", __LINE__,
                     ioevent->cqe->flags, ioevent->cqe->res);
         }
     }
@@ -287,9 +287,13 @@ int ioevent_set(struct fast_task_info *task, struct nio_thread_data *pThread,
                 return result;
             }
         } else {
-            logInfo("file: "__FILE__", line: %d, "
-                    "skip uring_prep_recv, fd: %d, port: %d, in progress op type: %d, timeout: %"PRId64,
-                    __LINE__, sock, task->port, FC_URING_OP_TYPE(task), task->event.timer.expires);
+            /*
+            logWarning("file: "__FILE__", line: %d, "
+                    "skip uring_prep_recv, fd: %d, port: %d, "
+                    "in progress op type: %d, timeout: %"PRId64,
+                    __LINE__, sock, task->port, FC_URING_OP_TYPE(task),
+                    task->event.timer.expires);
+                    */
         }
     } else {
 #endif

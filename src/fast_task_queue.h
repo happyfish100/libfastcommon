@@ -42,7 +42,7 @@ typedef void (*TaskCleanUpCallback) (struct fast_task_info *task);
 typedef int (*TaskInitCallback)(struct fast_task_info *task, void *arg);
 typedef void (*TaskReleaseCallback)(struct fast_task_info *task);
 
-typedef void (*IOEventCallback) (int sock, short event, void *arg);
+typedef void (*IOEventCallback) (int sock, const int event, void *arg);
 typedef int (*TaskContinueCallback)(struct fast_task_info *task);
 
 struct sf_network_handler;
@@ -57,9 +57,7 @@ typedef struct ioevent_entry
 {
     FastTimerEntry timer; //must first
     int fd;
-#if IOEVENT_USE_URING
-    int res;
-#endif
+    int res;  //just for io_uring, since v1.0.81
     IOEventCallback callback;
 } IOEventEntry;
 
@@ -128,12 +126,10 @@ struct fast_task_info
 
     uint16_t port; //peer port
 
-#if IOEVENT_USE_URING
     struct {
         int8_t  is_client;
         uint8_t op_type;
-    } uring;  //since v1.0.81
-#endif
+    } uring;  //just for io_uring, since v1.0.81
 
     struct {
         uint8_t current;

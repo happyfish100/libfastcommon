@@ -22,7 +22,7 @@
 #include "_os_define.h"
 #include "logger.h"
 
-#define IOEVENT_TIMEOUT  0x8000
+#define IOEVENT_TIMEOUT  (1 << 20)
 
 #if IOEVENT_USE_EPOLL
 #include <sys/epoll.h>

@@ -185,6 +185,7 @@ int fast_timer_timeouts_get(FastTimer *timer, const int64_t current_time,
                     } else {
                         last->rehash = false;
                     }
+
                     continue;
                 }
             } else {  //expired
