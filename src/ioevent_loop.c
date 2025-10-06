@@ -48,14 +48,21 @@ static int ioevent_process(IOEventPoller *ioevent)
             if (ioevent->cqe->flags & IORING_CQE_F_NOTIF) {
 #ifdef IORING_NOTIF_USAGE_ZC_COPIED
                 if (!ioevent->send_zc_logged) {
+                    struct fast_task_info *task;
+
+                    task = (struct fast_task_info *)pEntry;
                     ioevent->send_zc_logged = true;
                     if (ioevent->cqe->res & IORING_NOTIF_USAGE_ZC_COPIED) {
-                        logWarning("file: "__FILE__", line: %d, "
-                                "io_uring send_zc: memory copy "
-                                "instead of zero copy!", __LINE__);
+                        logWarning("file: "__FILE__", line: %d, %s "
+                                "client %s:%u, io_uring send_zc: memory "
+                                "copy instead of zero copy!", __LINE__,
+                                ioevent->service_name, task->client_ip,
+                                task->port);
                     } else {
-                        logInfo("file: "__FILE__", line: %d, "
-                                "io_uring send_zc: zero copy OK.", __LINE__);
+                        logInfo("file: "__FILE__", line: %d, %s "
+                                "client %s:%u, io_uring send_zc: zero "
+                                "copy OK.", __LINE__, ioevent->service_name,
+                                task->client_ip, task->port);
                     }
                 }
 #endif

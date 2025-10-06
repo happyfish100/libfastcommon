@@ -45,8 +45,8 @@ int kqueue_ev_convert(int16_t event, uint16_t flags)
 }
 #endif
 
-int ioevent_init(IOEventPoller *ioevent, const int size,
-    const int timeout_ms, const int extra_events)
+int ioevent_init(IOEventPoller *ioevent, const char *service_name,
+        const int size, const int timeout_ms, const int extra_events)
 {
 #if IOEVENT_USE_URING
     int result;
@@ -57,6 +57,7 @@ int ioevent_init(IOEventPoller *ioevent, const int size,
     ioevent->iterator.count = 0;
 #endif
 
+    ioevent->service_name = service_name;
     ioevent->size = size;
     ioevent->extra_events = extra_events;
 

@@ -73,6 +73,7 @@ int kqueue_ev_convert(int16_t event, uint16_t flags);
 #endif
 
 typedef struct ioevent_puller {
+    const char *service_name;
     int size;  //max events (fd)
     int extra_events;
 #if IOEVENT_USE_URING
@@ -156,8 +157,8 @@ typedef struct ioevent_puller {
 extern "C" {
 #endif
 
-int ioevent_init(IOEventPoller *ioevent, const int size,
-    const int timeout_ms, const int extra_events);
+int ioevent_init(IOEventPoller *ioevent, const char *service_name,
+        const int size, const int timeout_ms, const int extra_events);
 void ioevent_destroy(IOEventPoller *ioevent);
 
 int ioevent_attach(IOEventPoller *ioevent, const int fd,

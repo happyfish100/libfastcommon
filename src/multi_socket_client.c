@@ -65,8 +65,8 @@ int fast_multi_sock_client_init_ex(FastMultiSockClient *client,
         return EINVAL;
     }
 
-    if ((result=ioevent_init(&client->ioevent, entry_count,
-                    timeout_ms, 0)) != 0)
+    if ((result=ioevent_init(&client->ioevent, "client",
+                    entry_count, timeout_ms, 0)) != 0)
     {
         logError("file: "__FILE__", line: %d, "
                 "ioevent_init fail, errno: %d, error info: %s",

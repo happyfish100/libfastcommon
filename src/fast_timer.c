@@ -105,6 +105,7 @@ int fast_timer_modify(FastTimer *timer, FastTimerEntry *entry,
         if ((result=fast_timer_remove(timer, entry)) == 0) {
             fast_timer_add_ex(timer, entry, new_expires, true);
         }
+
         return result;
     }
     return 0;
