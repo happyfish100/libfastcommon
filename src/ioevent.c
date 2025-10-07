@@ -138,7 +138,8 @@ int ioevent_attach(IOEventPoller *ioevent, const int fd,
   }
   io_uring_prep_poll_multishot(sqe, fd, e | ioevent->extra_events);
   sqe->user_data = (long)data;
-  return ioevent_uring_submit(ioevent);
+  ioevent->submit_count++;
+  return 0;
 #elif IOEVENT_USE_KQUEUE
   struct kevent ev[2];
   int n = 0;
@@ -174,7 +175,8 @@ int ioevent_modify(IOEventPoller *ioevent, const int fd,
   io_uring_prep_poll_update(sqe, sqe->user_data, sqe->user_data,
           e | ioevent->extra_events, IORING_POLL_UPDATE_EVENTS);
   sqe->user_data = (long)data;
-  return ioevent_uring_submit(ioevent);
+  ioevent->submit_count++;
+  return 0;
 #elif IOEVENT_USE_KQUEUE
   struct kevent ev[2];
   int result;
@@ -219,7 +221,8 @@ int ioevent_detach(IOEventPoller *ioevent, const int fd)
   io_uring_prep_cancel_fd(sqe, fd, 0);
   /* set sqe->flags MUST after io_uring_prep_xxx */
   sqe->flags = IOSQE_CQE_SKIP_SUCCESS;
-  return ioevent_uring_submit(ioevent);
+  ioevent->submit_count++;
+  return 0;
 #elif IOEVENT_USE_KQUEUE
   struct kevent ev[1];
   int r, w;

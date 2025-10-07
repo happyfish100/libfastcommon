@@ -201,6 +201,17 @@ int ioevent_loop(struct nio_thread_data *thread_data,
         sched_pull = true;
 #endif
 
+#if IOEVENT_USE_URING
+        if (thread_data->ev_puller.submit_count > 0) {
+            if ((result=ioevent_uring_submit(&thread_data->ev_puller)) != 0) {
+                logError("file: "__FILE__", line: %d, "
+                        "io_uring_submit fail, errno: %d, error info: %s",
+                        __LINE__, result, STRERROR(result));
+                return result;
+            }
+        }
+#endif
+
         if (sched_pull) {
             if ((result=ioevent_process(&thread_data->ev_puller)) != 0) {
                 return result;
@@ -258,17 +269,6 @@ int ioevent_loop(struct nio_thread_data *thread_data,
         if (thread_data->thread_loop_callback != NULL) {
             thread_data->thread_loop_callback(thread_data);
         }
-
-#if IOEVENT_USE_URING
-        if (thread_data->ev_puller.submit_count > 0) {
-            if ((result=ioevent_uring_submit(&thread_data->ev_puller)) != 0) {
-                logError("file: "__FILE__", line: %d, "
-                        "io_uring_submit fail, errno: %d, error info: %s",
-                        __LINE__, result, STRERROR(result));
-                return result;
-            }
-        }
-#endif
 	}
 
 	return 0;
