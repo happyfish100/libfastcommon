@@ -49,8 +49,9 @@ struct sf_network_handler;
 struct fast_task_info;
 
 #if IOEVENT_USE_URING
-#define FC_URING_OP_TYPE(task)  (task)->uring.op_type
-#define FC_URING_IS_CLIENT(task)  (task)->uring.is_client
+#define FC_URING_OP_TYPE(task)     (task)->uring.op_type
+#define FC_URING_IS_CLIENT(task)   (task)->uring.is_client
+#define FC_URING_IS_SEND_ZC(task)  ((task)->uring.op_type == IORING_OP_SEND_ZC)
 #endif
 
 typedef struct ioevent_entry

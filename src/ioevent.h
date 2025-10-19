@@ -23,6 +23,7 @@
 #include "logger.h"
 
 #define IOEVENT_TIMEOUT  (1 << 20)
+#define IOEVENT_NOTIFY   (1 << 21)  //for io_uring send_zc done callback
 
 #if IOEVENT_USE_EPOLL
 #include <sys/epoll.h>
@@ -80,6 +81,7 @@ typedef struct ioevent_puller {
     struct io_uring ring;
     int submit_count;
     bool send_zc_logged;
+    bool send_zc_done_notify; //if callback when send_zc done
 #else
     int poll_fd;
     struct {
@@ -191,6 +193,12 @@ static inline int ioevent_poll_ex(IOEventPoller *ioevent, const int timeout_ms)
 }
 
 #if IOEVENT_USE_URING
+static inline void ioevent_set_send_zc_done_notify(
+        IOEventPoller *ioevent, const bool need_notify)
+{
+    ioevent->send_zc_done_notify = need_notify;
+}
+
 static inline int ioevent_uring_submit(IOEventPoller *ioevent)
 {
     int result;

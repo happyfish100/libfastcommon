@@ -158,6 +158,11 @@ static inline int uring_prep_first_send_zc(struct fast_task_info *task)
                 sqe, task->event.fd, task->iovec_array.iovs,
                 FC_MIN(task->iovec_array.count, IOV_MAX),
                 task);
+    } else if (task->send.ptr->length < 4096) {
+        SET_OP_TYPE_AND_HOLD_TASK(task, IORING_OP_SEND);
+        ioevent_uring_prep_send(&task->thread_data->ev_puller,
+                sqe, task->event.fd, task->send.ptr->data,
+                task->send.ptr->length, task);
     } else {
         SET_OP_TYPE_AND_HOLD_TASK(task, IORING_OP_SEND_ZC);
         ioevent_uring_prep_send_zc(&task->thread_data->ev_puller,
@@ -175,6 +180,11 @@ static inline int uring_prep_next_send_zc(struct fast_task_info *task)
                 sqe, task->event.fd, task->iovec_array.iovs,
                 FC_MIN(task->iovec_array.count, IOV_MAX),
                 task);
+    } else if (task->send.ptr->length - task->send.ptr->offset < 4096) {
+        SET_OP_TYPE_AND_HOLD_TASK(task, IORING_OP_SEND);
+        ioevent_uring_prep_send(&task->thread_data->ev_puller, sqe,
+                task->event.fd, task->send.ptr->data + task->send.ptr->offset,
+                task->send.ptr->length - task->send.ptr->offset, task);
     } else {
         SET_OP_TYPE_AND_HOLD_TASK(task, IORING_OP_SEND_ZC);
         ioevent_uring_prep_send_zc(&task->thread_data->ev_puller, sqe,

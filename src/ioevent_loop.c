@@ -46,6 +46,10 @@ static int ioevent_process(IOEventPoller *ioevent)
         pEntry = (IOEventEntry *)ioevent->cqe->user_data;
         if (pEntry != NULL) {
             if (ioevent->cqe->flags & IORING_CQE_F_NOTIF) {
+                if (ioevent->send_zc_done_notify) {
+                    pEntry->callback(pEntry->fd, IOEVENT_NOTIFY, pEntry);
+                }
+
 #ifdef IORING_NOTIF_USAGE_ZC_COPIED
                 if (!ioevent->send_zc_logged) {
                     struct fast_task_info *task;

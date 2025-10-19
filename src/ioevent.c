@@ -75,6 +75,7 @@ int ioevent_init(IOEventPoller *ioevent, const char *service_name,
     ioevent->cqe = NULL;
     ioevent->submit_count = 0;
     ioevent->send_zc_logged = false;
+    ioevent->send_zc_done_notify = false;
 #elif IOEVENT_USE_KQUEUE
     ioevent->poll_fd = kqueue();
     if (ioevent->poll_fd < 0) {
