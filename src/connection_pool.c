@@ -25,10 +25,20 @@
 #include "server_id_func.h"
 #include "connection_pool.h"
 
+static void conn_pool_disconnect_server_cb(ConnectionInfo *conn)
+{
+    conn_pool_disconnect_server(conn);
+}
+
+static bool conn_pool_is_connected_cb(ConnectionInfo *conn)
+{
+    return conn_pool_is_connected(conn);
+}
+
 ConnectionCallbacks g_connection_callbacks = {
     false, {{conn_pool_connect_server_ex1,
-        conn_pool_disconnect_server,
-        conn_pool_is_connected},
+        conn_pool_disconnect_server_cb,
+        conn_pool_is_connected_cb},
     {NULL, NULL, NULL}}, {NULL}
 };
 
@@ -409,20 +419,6 @@ void conn_pool_destroy(ConnectionPool *cp)
 
     fast_mblock_destroy(&cp->manager_allocator);
     fast_mblock_destroy(&cp->node_allocator);
-}
-
-void conn_pool_disconnect_server(ConnectionInfo *conn)
-{
-    if (conn->sock >= 0)
-    {
-        close(conn->sock);
-        conn->sock = -1;
-    }
-}
-
-bool conn_pool_is_connected(ConnectionInfo *conn)
-{
-    return (conn->sock >= 0);
 }
 
 int conn_pool_connect_server_ex1(ConnectionInfo *conn,

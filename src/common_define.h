@@ -455,6 +455,14 @@ static inline int fc_string_compare(const string_t *s1, const string_t *s2)
     }
 }
 
+static inline bool fc_string_equal_ex(const char *str1,
+        const int len1, const char *str2, const int len2)
+{
+    return (len1 == len2) && (memcmp(str1, str2, len1) == 0);
+}
+#define fc_string_equals_ex(str1, len1, str2, len2) \
+    fc_string_equal_ex(str1, len1, str2, len2)
+
 static inline bool fc_string_equal(const string_t *s1, const string_t *s2)
 {
     return (s1->len == s2->len) && (memcmp(s1->str, s2->str, s1->len) == 0);
