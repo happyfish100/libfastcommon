@@ -20,8 +20,10 @@
 #include <poll.h>
 #include <sys/time.h>
 #include "_os_define.h"
+#include "logger.h"
 
-#define IOEVENT_TIMEOUT  0x8000
+#define IOEVENT_TIMEOUT  (1 << 20)
+#define IOEVENT_NOTIFY   (1 << 21)  //for io_uring send_zc done callback
 
 #if IOEVENT_USE_EPOLL
 #include <sys/epoll.h>
@@ -30,6 +32,13 @@
 #define IOEVENT_READ  EPOLLIN
 #define IOEVENT_WRITE EPOLLOUT
 #define IOEVENT_ERROR (EPOLLERR | EPOLLPRI | EPOLLHUP)
+
+#elif IOEVENT_USE_URING
+#include <sys/mount.h>
+#include <liburing.h>
+#define IOEVENT_READ  POLLIN
+#define IOEVENT_WRITE POLLOUT
+#define IOEVENT_ERROR (POLLERR | POLLPRI | POLLHUP)
 
 #elif IOEVENT_USE_KQUEUE
 #include <sys/event.h>
@@ -65,18 +74,28 @@ int kqueue_ev_convert(int16_t event, uint16_t flags);
 #endif
 
 typedef struct ioevent_puller {
+    const char *service_name;
     int size;  //max events (fd)
     int extra_events;
+#if IOEVENT_USE_URING
+    struct io_uring ring;
+    int submit_count;
+    bool send_zc_logged;
+    bool send_zc_done_notify; //if callback when send_zc done
+#else
     int poll_fd;
-
     struct {
         int index;
         int count;
     } iterator;  //for deal event loop
+#endif
 
 #if IOEVENT_USE_EPOLL
     struct epoll_event *events;
-    int timeout;
+    int timeout;  //in milliseconds
+#elif IOEVENT_USE_URING
+    struct io_uring_cqe *cqe;
+    struct __kernel_timespec timeout;
 #elif IOEVENT_USE_KQUEUE
     struct kevent *events;
     struct timespec timeout;
@@ -84,11 +103,18 @@ typedef struct ioevent_puller {
     port_event_t *events;
     timespec_t timeout;
 #endif
+
+#ifdef OS_LINUX
+    bool zero_timeout;
+#endif
+
 } IOEventPoller;
 
 #if IOEVENT_USE_EPOLL
   #define IOEVENT_GET_EVENTS(ioevent, index) \
       (ioevent)->events[index].events
+#elif IOEVENT_USE_URING
+
 #elif IOEVENT_USE_KQUEUE
   #define IOEVENT_GET_EVENTS(ioevent, index)  kqueue_ev_convert( \
       (ioevent)->events[index].filter, (ioevent)->events[index].flags)
@@ -102,6 +128,8 @@ typedef struct ioevent_puller {
 #if IOEVENT_USE_EPOLL
   #define IOEVENT_GET_DATA(ioevent, index)  \
       (ioevent)->events[index].data.ptr
+#elif IOEVENT_USE_URING
+
 #elif IOEVENT_USE_KQUEUE
   #define IOEVENT_GET_DATA(ioevent, index)  \
       (ioevent)->events[index].udata
@@ -115,6 +143,8 @@ typedef struct ioevent_puller {
 #if IOEVENT_USE_EPOLL
   #define IOEVENT_CLEAR_DATA(ioevent, index)  \
       (ioevent)->events[index].data.ptr = NULL
+#elif IOEVENT_USE_URING
+
 #elif IOEVENT_USE_KQUEUE
   #define IOEVENT_CLEAR_DATA(ioevent, index)  \
       (ioevent)->events[index].udata = NULL
@@ -129,18 +159,19 @@ typedef struct ioevent_puller {
 extern "C" {
 #endif
 
-int ioevent_init(IOEventPoller *ioevent, const int size,
-    const int timeout_ms, const int extra_events);
+int ioevent_init(IOEventPoller *ioevent, const char *service_name,
+        const int size, const int timeout_ms, const int extra_events);
 void ioevent_destroy(IOEventPoller *ioevent);
 
-int ioevent_attach(IOEventPoller *ioevent, const int fd, const int e,
-    void *data);
-int ioevent_modify(IOEventPoller *ioevent, const int fd, const int e,
-    void *data);
+int ioevent_attach(IOEventPoller *ioevent, const int fd,
+        const int e, void *data);
+int ioevent_modify(IOEventPoller *ioevent, const int fd,
+        const int e, void *data);
 int ioevent_detach(IOEventPoller *ioevent, const int fd);
 int ioevent_poll(IOEventPoller *ioevent);
 
-static inline void ioevent_set_timeout(IOEventPoller *ioevent, const int timeout_ms)
+static inline void ioevent_set_timeout(IOEventPoller *ioevent,
+        const int timeout_ms)
 {
 #if IOEVENT_USE_EPOLL
   ioevent->timeout = timeout_ms;
@@ -148,6 +179,11 @@ static inline void ioevent_set_timeout(IOEventPoller *ioevent, const int timeout
   ioevent->timeout.tv_sec = timeout_ms / 1000;
   ioevent->timeout.tv_nsec = 1000000 * (timeout_ms % 1000);
 #endif
+
+#ifdef OS_LINUX
+    ioevent->zero_timeout = (timeout_ms == 0);
+#endif
+
 }
 
 static inline int ioevent_poll_ex(IOEventPoller *ioevent, const int timeout_ms)
@@ -155,6 +191,114 @@ static inline int ioevent_poll_ex(IOEventPoller *ioevent, const int timeout_ms)
   ioevent_set_timeout(ioevent, timeout_ms);
   return ioevent_poll(ioevent);
 }
+
+#if IOEVENT_USE_URING
+static inline void ioevent_set_send_zc_done_notify(
+        IOEventPoller *ioevent, const bool need_notify)
+{
+    ioevent->send_zc_done_notify = need_notify;
+}
+
+static inline int ioevent_uring_submit(IOEventPoller *ioevent)
+{
+    int result;
+
+    ioevent->submit_count = 0;
+    while (1) {
+        result = io_uring_submit(&ioevent->ring);
+        if (result < 0) {
+            if (result != -EINTR) {
+                return -result;
+            }
+        } else {
+            return 0;
+        }
+    }
+}
+
+static inline struct io_uring_sqe *ioevent_uring_get_sqe(IOEventPoller *ioevent)
+{
+    struct io_uring_sqe *sqe = io_uring_get_sqe(&ioevent->ring);
+    if (sqe == NULL) {
+        logError("file: "__FILE__", line: %d, "
+                "io_uring_get_sqe fail", __LINE__);
+    }
+    return sqe;
+}
+
+static inline void ioevent_uring_prep_recv(IOEventPoller *ioevent,
+        struct io_uring_sqe *sqe, int sockfd,
+        void *buf, size_t size, void *user_data)
+{
+    io_uring_prep_recv(sqe, sockfd, buf, size, 0);
+    sqe->user_data = (long)user_data;
+    ioevent->submit_count++;
+}
+
+static inline void ioevent_uring_prep_send(IOEventPoller *ioevent,
+        struct io_uring_sqe *sqe, int sockfd,
+        void *buf, size_t len, void *user_data)
+{
+    io_uring_prep_send(sqe, sockfd, buf, len, 0);
+    sqe->user_data = (long)user_data;
+    ioevent->submit_count++;
+}
+
+static inline void ioevent_uring_prep_writev(IOEventPoller *ioevent,
+        struct io_uring_sqe *sqe, int sockfd, const struct iovec *iovecs,
+        unsigned nr_vecs, void *user_data)
+{
+    io_uring_prep_writev(sqe, sockfd, iovecs, nr_vecs, 0);
+    sqe->user_data = (long)user_data;
+    ioevent->submit_count++;
+}
+
+static inline void ioevent_uring_prep_send_zc(IOEventPoller *ioevent,
+        struct io_uring_sqe *sqe, int sockfd,
+        void *buf, size_t len, void *user_data)
+{
+    io_uring_prep_send_zc(sqe, sockfd, buf, len, 0,
+#ifdef IORING_SEND_ZC_REPORT_USAGE
+            IORING_SEND_ZC_REPORT_USAGE
+#else
+            0
+#endif
+            );
+    sqe->user_data = (long)user_data;
+    ioevent->submit_count++;
+}
+
+static inline void ioevent_uring_prep_close(IOEventPoller *ioevent,
+        struct io_uring_sqe *sqe, int fd, void *user_data)
+{
+    io_uring_prep_close(sqe, fd);
+    if (user_data == NULL) {
+        /* set sqe->flags MUST after io_uring_prep_xxx */
+        sqe->flags = IOSQE_CQE_SKIP_SUCCESS;
+    } else {
+        sqe->user_data = (long)user_data;
+    }
+    ioevent->submit_count++;
+}
+
+static inline void ioevent_uring_prep_cancel(IOEventPoller *ioevent,
+        struct io_uring_sqe *sqe, void *user_data)
+{
+    io_uring_prep_cancel(sqe, user_data, 0);
+    sqe->user_data = (long)user_data;
+    ioevent->submit_count++;
+}
+
+static inline void ioevent_uring_prep_connect(IOEventPoller *ioevent,
+        struct io_uring_sqe *sqe, int fd, const struct sockaddr *addr,
+        socklen_t addrlen, void *user_data)
+{
+    io_uring_prep_connect(sqe, fd, addr, addrlen);
+    sqe->user_data = (long)user_data;
+    ioevent->submit_count++;
+}
+
+#endif
 
 #ifdef __cplusplus
 }

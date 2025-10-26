@@ -17,6 +17,14 @@ BuildRequires: libcurl-devel
 Requires: libcurl
 Requires: %__cp %__mv %__chmod %__grep %__mkdir %__install %__id
 
+%define kernel_major %(uname -r | cut -d'.' -f1)
+%define kernel_minor %(uname -r | cut -d'.' -f2)
+%define kernel_ver_int %(expr %{kernel_major} \* 100 + %{kernel_minor})
+%if %{kernel_ver_int} >= 514
+BuildRequires: liburing-devel >= 2.5
+Requires: liburing >= 2.5
+%endif
+
 %description
 c common functions library extracted from my open source projects FastDFS.
 this library is very simple and stable. functions including: string, logger,

@@ -125,7 +125,8 @@ extern int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int kind);
 #define FC_IOV_BATCH_SIZE  IOV_MAX
 #endif
 
-// 由于要支持IPv6，所以将IP_ADDRESS_SIZE的值由16修改为46
+#define IPV4_ADDRESS_SIZE   INET_ADDRSTRLEN   //16
+#define IPV6_ADDRESS_SIZE   INET6_ADDRSTRLEN  //46
 #define IP_ADDRESS_SIZE     INET6_ADDRSTRLEN  //46
 #define FORMATTED_IP_SIZE   (IP_ADDRESS_SIZE + 2)
 #define INFINITE_FILE_SIZE (256 * 1024LL * 1024 * 1024 * 1024 * 1024LL)
@@ -453,6 +454,14 @@ static inline int fc_string_compare(const string_t *s1, const string_t *s2)
         return result == 0 ? 1 : result;
     }
 }
+
+static inline bool fc_string_equal_ex(const char *str1,
+        const int len1, const char *str2, const int len2)
+{
+    return (len1 == len2) && (memcmp(str1, str2, len1) == 0);
+}
+#define fc_string_equals_ex(str1, len1, str2, len2) \
+    fc_string_equal_ex(str1, len1, str2, len2)
 
 static inline bool fc_string_equal(const string_t *s1, const string_t *s2)
 {

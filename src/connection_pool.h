@@ -331,9 +331,19 @@ int conn_pool_close_connection_ex(ConnectionPool *cp,
 *      conn: the connection
 *   return 0 for success, != 0 for error
 */
-void conn_pool_disconnect_server(ConnectionInfo *conn);
+static inline void conn_pool_disconnect_server(ConnectionInfo *conn)
+{
+    if (conn->sock >= 0)
+    {
+        close(conn->sock);
+        conn->sock = -1;
+    }
+}
 
-bool conn_pool_is_connected(ConnectionInfo *conn);
+static inline bool conn_pool_is_connected(ConnectionInfo *conn)
+{
+    return (conn->sock >= 0);
+}
 
 /**
 *   connect to the server

@@ -17,6 +17,76 @@
 #include "logger.h"
 #include "ioevent_loop.h"
 
+#if IOEVENT_USE_URING
+static int ioevent_process(IOEventPoller *ioevent)
+{
+    int result;
+    unsigned head;
+    unsigned count = 0;
+	IOEventEntry *pEntry;
+
+    result = io_uring_wait_cqe_timeout(&ioevent->ring,
+            &ioevent->cqe, &ioevent->timeout);
+    switch (result) {
+        case 0:
+            break;
+        case -ETIME:
+        case -EINTR:
+            return 0;
+        default:
+            result *= -1;
+            logError("file: "__FILE__", line: %d, "
+                    "io_uring_wait_cqe fail, errno: %d, error info: %s",
+                    __LINE__, result, STRERROR(result));
+            return result;
+    }
+
+    io_uring_for_each_cqe(&ioevent->ring, head, ioevent->cqe) {
+        count++;
+        pEntry = (IOEventEntry *)ioevent->cqe->user_data;
+        if (pEntry != NULL) {
+            if (ioevent->cqe->flags & IORING_CQE_F_NOTIF) {
+                if (ioevent->send_zc_done_notify) {
+                    pEntry->callback(pEntry->fd, IOEVENT_NOTIFY, pEntry);
+                }
+
+#ifdef IORING_NOTIF_USAGE_ZC_COPIED
+                if (!ioevent->send_zc_logged) {
+                    struct fast_task_info *task;
+
+                    task = (struct fast_task_info *)pEntry;
+                    ioevent->send_zc_logged = true;
+                    if (ioevent->cqe->res & IORING_NOTIF_USAGE_ZC_COPIED) {
+                        logWarning("file: "__FILE__", line: %d, %s "
+                                "client %s:%u, io_uring send_zc: memory "
+                                "copy instead of zero copy!", __LINE__,
+                                ioevent->service_name, task->client_ip,
+                                task->port);
+                    } else {
+                        logInfo("file: "__FILE__", line: %d, %s "
+                                "client %s:%u, io_uring send_zc: zero "
+                                "copy OK.", __LINE__, ioevent->service_name,
+                                task->client_ip, task->port);
+                    }
+                }
+#endif
+            } else {
+                pEntry->res = ioevent->cqe->res;
+                pEntry->callback(pEntry->fd, 0, pEntry);
+            }
+        } else {
+            logWarning("file: "__FILE__", line: %d, "
+                    "io_uring unexpected flags: %d, result: %d", __LINE__,
+                    ioevent->cqe->flags, ioevent->cqe->res);
+        }
+    }
+
+    io_uring_cq_advance(&ioevent->ring, count);
+    return 0;
+}
+
+#else
+
 static void deal_ioevents(IOEventPoller *ioevent)
 {
 	int event;
@@ -39,36 +109,28 @@ static void deal_ioevents(IOEventPoller *ioevent)
 	}
 }
 
-int ioevent_remove(IOEventPoller *ioevent, void *data)
+static int ioevent_process(IOEventPoller *ioevent)
 {
-	IOEventEntry *pEntry;
-    int index;
+    int result;
 
-    if (ioevent->iterator.index >= ioevent->iterator.count)
-    {
-        return ENOENT;
+    ioevent->iterator.count = ioevent_poll(ioevent);
+    if (ioevent->iterator.count > 0) {
+        deal_ioevents(ioevent);
     }
-
-    pEntry = (IOEventEntry *)IOEVENT_GET_DATA(ioevent,
-            ioevent->iterator.index);
-    if (pEntry != NULL && (void *)pEntry == data) {
-        return 0;  //do NOT clear current entry
-    }
-
-    for (index=ioevent->iterator.index + 1; index < ioevent->iterator.count;
-            index++)
-    {
-        pEntry = (IOEventEntry *)IOEVENT_GET_DATA(ioevent, index);
-        if (pEntry != NULL && (void *)pEntry == data) {
-            logDebug("file: "__FILE__", line: %d, "
-                    "clear ioevent data: %p", __LINE__, data);
-            IOEVENT_CLEAR_DATA(ioevent, index);
-            return 0;
+    else if (ioevent->iterator.count < 0) {
+        result = errno != 0 ? errno : EINVAL;
+        if (result != EINTR) {
+            logError("file: "__FILE__", line: %d, "
+                    "ioevent_poll fail, errno: %d, error info: %s",
+                    __LINE__, result, STRERROR(result));
+            return result;
         }
     }
 
-    return ENOENT;
+    return 0;
 }
+
+#endif
 
 static void deal_timeouts(FastTimerEntry *head)
 {
@@ -82,7 +144,8 @@ static void deal_timeouts(FastTimerEntry *head)
 		current = entry;
 		entry = entry->next;
 
-        current->prev = current->next = NULL; //must set NULL because NOT in time wheel
+        /* must set NULL because NOT in time wheel */
+        current->prev = current->next = NULL;
 		pEventEntry = (IOEventEntry *)current;
 		if (pEventEntry != NULL)
 		{
@@ -131,10 +194,9 @@ int ioevent_loop(struct nio_thread_data *thread_data,
 
     thread_data->deleted_list = NULL;
 	last_check_time = g_current_time;
-	while (*continue_flag)
-	{
+	while (*continue_flag) {
 #ifdef OS_LINUX
-        if (thread_data->ev_puller.timeout == 0) {
+        if (thread_data->ev_puller.zero_timeout) {
             sched_pull = (sched_counter++ & 8) != 0;
         } else {
             sched_pull = true;
@@ -143,43 +205,34 @@ int ioevent_loop(struct nio_thread_data *thread_data,
         sched_pull = true;
 #endif
 
-        if (sched_pull)
-        {
-            thread_data->ev_puller.iterator.count = ioevent_poll(
-                    &thread_data->ev_puller);
-            if (thread_data->ev_puller.iterator.count > 0)
-            {
-                deal_ioevents(&thread_data->ev_puller);
+#if IOEVENT_USE_URING
+        if (thread_data->ev_puller.submit_count > 0) {
+            if ((result=ioevent_uring_submit(&thread_data->ev_puller)) != 0) {
+                logError("file: "__FILE__", line: %d, "
+                        "io_uring_submit fail, errno: %d, error info: %s",
+                        __LINE__, result, STRERROR(result));
+                return result;
             }
-            else if (thread_data->ev_puller.iterator.count < 0)
-            {
-                result = errno != 0 ? errno : EINVAL;
-                if (result != EINTR)
-                {
-                    logError("file: "__FILE__", line: %d, " \
-                            "ioevent_poll fail, " \
-                            "errno: %d, error info: %s", \
-                            __LINE__, result, STRERROR(result));
-                    return result;
-                }
+        }
+#endif
+
+        if (sched_pull) {
+            if ((result=ioevent_process(&thread_data->ev_puller)) != 0) {
+                return result;
             }
         }
 
-        if (thread_data->busy_polling_callback != NULL)
-        {
+        if (thread_data->busy_polling_callback != NULL) {
             thread_data->busy_polling_callback(thread_data);
         }
 
-		if (thread_data->deleted_list != NULL)
-		{
+		if (thread_data->deleted_list != NULL) {
 			count = 0;
-			while (thread_data->deleted_list != NULL)
-			{
+			while (thread_data->deleted_list != NULL) {
 				task = thread_data->deleted_list;
 				thread_data->deleted_list = task->next;
 
-                if (task->polling.in_queue)
-                {
+                if (task->polling.in_queue) {
                     fc_list_del_init(&task->polling.dlink);
                     task->polling.in_queue = false;
                     if (fc_list_empty(&task->thread_data->polling_queue)) {
@@ -193,8 +246,7 @@ int ioevent_loop(struct nio_thread_data *thread_data,
 			//logInfo("cleanup task count: %d", count);
 		}
 
-		if (g_current_time - last_check_time > 0)
-		{
+		if (g_current_time - last_check_time > 0) {
 			last_check_time = g_current_time;
 			count = fast_timer_timeouts_get(
 				&thread_data->timer, g_current_time, &head);
@@ -204,8 +256,7 @@ int ioevent_loop(struct nio_thread_data *thread_data,
 			}
 		}
 
-        if (thread_data->notify.enabled)
-        {
+        if (thread_data->notify.enabled) {
             int64_t n;
             if ((n=__sync_fetch_and_add(&thread_data->notify.counter, 0)) != 0)
             {
@@ -219,8 +270,7 @@ int ioevent_loop(struct nio_thread_data *thread_data,
             }
         }
 
-        if (thread_data->thread_loop_callback != NULL)
-        {
+        if (thread_data->thread_loop_callback != NULL) {
             thread_data->thread_loop_callback(thread_data);
         }
 	}
@@ -229,40 +279,48 @@ int ioevent_loop(struct nio_thread_data *thread_data,
 }
 
 int ioevent_set(struct fast_task_info *task, struct nio_thread_data *pThread,
-	int sock, short event, IOEventCallback callback, const int timeout)
+        int sock, short event, IOEventCallback callback,
+        const int timeout, const bool use_iouring)
 {
 	int result;
 
 	task->thread_data = pThread;
 	task->event.fd = sock;
 	task->event.callback = callback;
-	if (ioevent_attach(&pThread->ev_puller, sock, event, task) < 0)
-	{
-		result = errno != 0 ? errno : ENOENT;
-		logError("file: "__FILE__", line: %d, "
-			"ioevent_attach fail, fd: %d, "
-			"errno: %d, error info: %s",
-			__LINE__, sock, result, STRERROR(result));
-		return result;
-	}
+#if IOEVENT_USE_URING
+    if (use_iouring) {
+        if (FC_URING_OP_TYPE(task) == IORING_OP_NOP) {
+            if ((result=uring_prep_first_recv(task)) != 0) {
+                logError("file: "__FILE__", line: %d, "
+                        "uring_prep_recv fail, fd: %d, "
+                        "errno: %d, error info: %s",
+                        __LINE__, sock, result, STRERROR(result));
+                return result;
+            }
+        } else {
+            /*
+            logWarning("file: "__FILE__", line: %d, "
+                    "skip uring_prep_recv, fd: %d, port: %d, "
+                    "in progress op type: %d, timeout: %"PRId64,
+                    __LINE__, sock, task->port, FC_URING_OP_TYPE(task),
+                    task->event.timer.expires);
+                    */
+        }
+    } else {
+#endif
+        if (ioevent_attach(&pThread->ev_puller, sock, event, task) < 0) {
+            result = errno != 0 ? errno : ENOENT;
+            logError("file: "__FILE__", line: %d, "
+                    "ioevent_attach fail, fd: %d, "
+                    "errno: %d, error info: %s",
+                    __LINE__, sock, result, STRERROR(result));
+            return result;
+        }
+#if IOEVENT_USE_URING
+    }
+#endif
 
 	task->event.timer.expires = g_current_time + timeout;
 	fast_timer_add(&pThread->timer, &task->event.timer);
 	return 0;
-}
-
-int ioevent_reset(struct fast_task_info *task, int new_fd, short event)
-{
-    if (task->event.fd == new_fd)
-    {
-        return 0;
-    }
-
-    if (task->event.fd >= 0)
-    {
-        ioevent_detach(&task->thread_data->ev_puller, task->event.fd);
-    }
-
-    task->event.fd = new_fd;
-    return ioevent_attach(&task->thread_data->ev_puller, new_fd, event, task);
 }

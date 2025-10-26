@@ -1,5 +1,6 @@
 # Makefile.in
 src/Makefile
+src/tests/Makefile
 
 # Prerequisites
 *.d

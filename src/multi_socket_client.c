@@ -65,8 +65,8 @@ int fast_multi_sock_client_init_ex(FastMultiSockClient *client,
         return EINVAL;
     }
 
-    if ((result=ioevent_init(&client->ioevent, entry_count,
-                    timeout_ms, 0)) != 0)
+    if ((result=ioevent_init(&client->ioevent, "client",
+                    entry_count, timeout_ms, 0)) != 0)
     {
         logError("file: "__FILE__", line: %d, "
                 "ioevent_init fail, errno: %d, error info: %s",
@@ -316,9 +316,13 @@ static int fast_multi_sock_client_do_recv(FastMultiSockClient *client,
 static int fast_multi_sock_client_deal_io(FastMultiSockClient *client)
 {
     int result;
-	int event;
     int count;
+#if IOEVENT_USE_URING
+    unsigned head;
+#else
+	int event;
     int index;
+#endif
     int remain_timeout;
     FastMultiSockEntry *entry;
     char formatted_ip[FORMATTED_IP_SIZE];
@@ -330,6 +334,37 @@ static int fast_multi_sock_client_deal_io(FastMultiSockClient *client)
             break;
         }
 
+#if IOEVENT_USE_URING
+        result = io_uring_wait_cqe_timeout(&client->ioevent.ring,
+                &client->ioevent.cqe, &client->ioevent.timeout);
+        switch (result) {
+            case 0:
+                break;
+            case -ETIME:
+            case -EAGAIN:
+            case -EINTR:
+                continue;
+            default:
+                result *= -1;
+                logError("file: "__FILE__", line: %d, "
+                        "io_uring_wait_cqe fail, errno: %d, error info: %s",
+                        __LINE__, result, STRERROR(result));
+                return result;
+        }
+
+        count = 0;
+        io_uring_for_each_cqe(&client->ioevent.ring, head, client->ioevent.cqe) {
+            count++;
+            entry = (FastMultiSockEntry *)client->ioevent.cqe->user_data;
+            //logInfo("sock: %d, event: %d", entry->conn->sock, event);
+            result = entry->io_callback(client, entry);
+            if (result != 0 || entry->remain == 0) {
+                fast_multi_sock_client_finish(client, entry, result);
+            }
+        }
+        io_uring_cq_advance(&client->ioevent.ring, count);
+
+#else
         count = ioevent_poll_ex(&client->ioevent, remain_timeout);
         //logInfo("poll count: %d\n", count);
         for (index=0; index<count; index++) {
@@ -354,6 +389,7 @@ static int fast_multi_sock_client_deal_io(FastMultiSockClient *client)
                 fast_multi_sock_client_finish(client, entry, result);
             }
         }
+#endif
     }
 
 /*

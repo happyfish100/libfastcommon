@@ -42,16 +42,23 @@ typedef void (*TaskCleanUpCallback) (struct fast_task_info *task);
 typedef int (*TaskInitCallback)(struct fast_task_info *task, void *arg);
 typedef void (*TaskReleaseCallback)(struct fast_task_info *task);
 
-typedef void (*IOEventCallback) (int sock, short event, void *arg);
+typedef void (*IOEventCallback) (int sock, const int event, void *arg);
 typedef int (*TaskContinueCallback)(struct fast_task_info *task);
 
 struct sf_network_handler;
 struct fast_task_info;
 
+#if IOEVENT_USE_URING
+#define FC_URING_OP_TYPE(task)     (task)->uring.op_type
+#define FC_URING_IS_CLIENT(task)   (task)->uring.is_client
+#define FC_URING_IS_SEND_ZC(task)  ((task)->uring.op_type == IORING_OP_SEND_ZC)
+#endif
+
 typedef struct ioevent_entry
 {
     FastTimerEntry timer; //must first
     int fd;
+    int res;  //just for io_uring, since v1.0.81
     IOEventCallback callback;
 } IOEventEntry;
 
@@ -119,12 +126,19 @@ struct fast_task_info
     struct fast_net_buffer_wrapper recv;  //recv buffer
 
     uint16_t port; //peer port
+
+    struct {
+        int8_t  is_client;
+        uint8_t op_type;
+    } uring;  //just for io_uring, since v1.0.81
+
     struct {
         uint8_t current;
         volatile uint8_t notify;
     } nio_stages; //stages for network IO
-    volatile int8_t reffer_count;
     volatile int8_t canceled;  //if task canceled
+    volatile int8_t shrinked;  //if task shrinked, since V1.0.81
+    volatile int reffer_count;
     int pending_send_count;
     int64_t req_count; //request count
     struct {
@@ -153,6 +167,7 @@ struct fast_task_queue
     int block_size;
     bool malloc_whole_block;
     bool double_buffers;  //if send buffer and recv buffer are independent
+    bool need_shrink;
     struct fast_mblock_man allocator;
     TaskInitCallback init_callback;
     void *init_arg;
@@ -164,22 +179,22 @@ extern "C" {
 #endif
 
 int free_queue_init_ex2(struct fast_task_queue *queue, const char *name,
-        const bool double_buffers, const int max_connections,
-        const int alloc_task_once, const int min_buff_size,
-        const int max_buff_size, const int padding_size,
-        const int arg_size, TaskInitCallback init_callback,
-        void *init_arg);
+        const bool double_buffers, const bool need_shrink,
+        const int max_connections, const int alloc_task_once,
+        const int min_buff_size, const int max_buff_size,
+        const int padding_size, const int arg_size,
+        TaskInitCallback init_callback, void *init_arg);
 
 static inline int free_queue_init_ex(struct fast_task_queue *queue,
         const char *name, const bool double_buffers,
-        const int max_connections, const int alloc_task_once,
-        const int min_buff_size, const int max_buff_size,
-        const int arg_size)
+        const bool need_shrink, const int max_connections,
+        const int alloc_task_once, const int min_buff_size,
+        const int max_buff_size, const int arg_size)
 {
     const int padding_size = 0;
-    return free_queue_init_ex2(queue, name, double_buffers, max_connections,
-            alloc_task_once, min_buff_size, max_buff_size, padding_size,
-            arg_size, NULL, NULL);
+    return free_queue_init_ex2(queue, name, double_buffers, need_shrink,
+            max_connections, alloc_task_once, min_buff_size, max_buff_size,
+            padding_size, arg_size, NULL, NULL);
 }
 
 static inline int free_queue_init(struct fast_task_queue *queue,
@@ -188,9 +203,11 @@ static inline int free_queue_init(struct fast_task_queue *queue,
 {
     const char *name = "";
     const bool double_buffers = false;
+    const bool need_shrink = true;
     const int arg_size = 0;
-    return free_queue_init_ex(queue, name, double_buffers, max_connections,
-            alloc_task_once, min_buff_size, max_buff_size, arg_size);
+    return free_queue_init_ex(queue, name, double_buffers,
+            need_shrink, max_connections, alloc_task_once,
+            min_buff_size, max_buff_size, arg_size);
 }
 
 static inline void free_queue_set_release_callback(

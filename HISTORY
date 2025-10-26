@@ -1,4 +1,9 @@
 
+Version 1.81  2025-10-05
+  * support Linux io_uring
+  * free_queue support parameter: need_shrink and set task->shrinked
+  * IOEventCallback: change event type from short to int
+
 Version 1.80  2025-09-10
   * getIpaddrByNameEx: IPv4 has priority over IPv6
   * shared_func.[hc]: add function fc_ftoa

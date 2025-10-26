@@ -45,51 +45,72 @@ int kqueue_ev_convert(int16_t event, uint16_t flags)
 }
 #endif
 
-int ioevent_init(IOEventPoller *ioevent, const int size,
-    const int timeout_ms, const int extra_events)
+int ioevent_init(IOEventPoller *ioevent, const char *service_name,
+        const int size, const int timeout_ms, const int extra_events)
 {
-  int bytes;
+#if IOEVENT_USE_URING
+    int result;
+#else
+    int bytes;
 
-  ioevent->size = size;
-  ioevent->extra_events = extra_events;
-  ioevent->iterator.index = 0;
-  ioevent->iterator.count = 0;
-
-#if IOEVENT_USE_EPOLL
-  ioevent->poll_fd = epoll_create(ioevent->size);
-  if (ioevent->poll_fd < 0) {
-    return errno != 0 ? errno : ENOMEM;
-  }
-  bytes = sizeof(struct epoll_event) * size;
-  ioevent->events = (struct epoll_event *)fc_malloc(bytes);
-#elif IOEVENT_USE_KQUEUE
-  ioevent->poll_fd = kqueue();
-  if (ioevent->poll_fd < 0) {
-    return errno != 0 ? errno : ENOMEM;
-  }
-  bytes = sizeof(struct kevent) * size;
-  ioevent->events = (struct kevent *)fc_malloc(bytes);
-#elif IOEVENT_USE_PORT
-  ioevent->poll_fd = port_create();
-  if (ioevent->poll_fd < 0) {
-    return errno != 0 ? errno : ENOMEM;
-  }
-  bytes = sizeof(port_event_t) * size;
-  ioevent->events = (port_event_t *)fc_malloc(bytes);
+    ioevent->iterator.index = 0;
+    ioevent->iterator.count = 0;
 #endif
 
-  if (ioevent->events == NULL) {
-    close(ioevent->poll_fd);
-    ioevent->poll_fd = -1;
-    return ENOMEM;
-  }
-  ioevent_set_timeout(ioevent, timeout_ms);
+    ioevent->service_name = service_name;
+    ioevent->size = size;
+    ioevent->extra_events = extra_events;
 
-  return 0;
+#if IOEVENT_USE_EPOLL
+    ioevent->poll_fd = epoll_create(ioevent->size);
+    if (ioevent->poll_fd < 0) {
+        return errno != 0 ? errno : ENOMEM;
+    }
+    bytes = sizeof(struct epoll_event) * size;
+    ioevent->events = (struct epoll_event *)fc_malloc(bytes);
+#elif IOEVENT_USE_URING
+    if ((result=io_uring_queue_init(size, &ioevent->ring, 0)) < 0) {
+        return -result;
+    }
+    ioevent->cqe = NULL;
+    ioevent->submit_count = 0;
+    ioevent->send_zc_logged = false;
+    ioevent->send_zc_done_notify = false;
+#elif IOEVENT_USE_KQUEUE
+    ioevent->poll_fd = kqueue();
+    if (ioevent->poll_fd < 0) {
+        return errno != 0 ? errno : ENOMEM;
+    }
+    bytes = sizeof(struct kevent) * size;
+    ioevent->events = (struct kevent *)fc_malloc(bytes);
+#elif IOEVENT_USE_PORT
+    ioevent->poll_fd = port_create();
+    if (ioevent->poll_fd < 0) {
+        return errno != 0 ? errno : ENOMEM;
+    }
+    bytes = sizeof(port_event_t) * size;
+    ioevent->events = (port_event_t *)fc_malloc(bytes);
+#endif
+
+#if IOEVENT_USE_URING
+
+#else
+    if (ioevent->events == NULL) {
+        close(ioevent->poll_fd);
+        ioevent->poll_fd = -1;
+        return ENOMEM;
+    }
+#endif
+
+    ioevent_set_timeout(ioevent, timeout_ms);
+    return 0;
 }
 
 void ioevent_destroy(IOEventPoller *ioevent)
 {
+#if IOEVENT_USE_URING
+    io_uring_queue_exit(&ioevent->ring);
+#else
   if (ioevent->events != NULL) {
     free(ioevent->events);
     ioevent->events = NULL;
@@ -99,10 +120,11 @@ void ioevent_destroy(IOEventPoller *ioevent)
     close(ioevent->poll_fd);
     ioevent->poll_fd = -1;
   }
+#endif
 }
 
-int ioevent_attach(IOEventPoller *ioevent, const int fd, const int e,
-    void *data)
+int ioevent_attach(IOEventPoller *ioevent, const int fd,
+        const int e, void *data)
 {
 #if IOEVENT_USE_EPOLL
   struct epoll_event ev;
@@ -110,6 +132,15 @@ int ioevent_attach(IOEventPoller *ioevent, const int fd, const int e,
   ev.events = e | ioevent->extra_events;
   ev.data.ptr = data;
   return epoll_ctl(ioevent->poll_fd, EPOLL_CTL_ADD, fd, &ev);
+#elif IOEVENT_USE_URING
+  struct io_uring_sqe *sqe = io_uring_get_sqe(&ioevent->ring);
+  if (sqe == NULL) {
+      return ENOSPC;
+  }
+  io_uring_prep_poll_multishot(sqe, fd, e | ioevent->extra_events);
+  sqe->user_data = (long)data;
+  ioevent->submit_count++;
+  return 0;
 #elif IOEVENT_USE_KQUEUE
   struct kevent ev[2];
   int n = 0;
@@ -128,8 +159,8 @@ int ioevent_attach(IOEventPoller *ioevent, const int fd, const int e,
 #endif
 }
 
-int ioevent_modify(IOEventPoller *ioevent, const int fd, const int e,
-    void *data)
+int ioevent_modify(IOEventPoller *ioevent, const int fd,
+        const int e, void *data)
 {
 #if IOEVENT_USE_EPOLL
   struct epoll_event ev;
@@ -137,6 +168,16 @@ int ioevent_modify(IOEventPoller *ioevent, const int fd, const int e,
   ev.events = e | ioevent->extra_events;
   ev.data.ptr = data;
   return epoll_ctl(ioevent->poll_fd, EPOLL_CTL_MOD, fd, &ev);
+#elif IOEVENT_USE_URING
+  struct io_uring_sqe *sqe = io_uring_get_sqe(&ioevent->ring);
+  if (sqe == NULL) {
+      return ENOSPC;
+  }
+  io_uring_prep_poll_update(sqe, sqe->user_data, sqe->user_data,
+          e | ioevent->extra_events, IORING_POLL_UPDATE_EVENTS);
+  sqe->user_data = (long)data;
+  ioevent->submit_count++;
+  return 0;
 #elif IOEVENT_USE_KQUEUE
   struct kevent ev[2];
   int result;
@@ -173,6 +214,16 @@ int ioevent_detach(IOEventPoller *ioevent, const int fd)
 {
 #if IOEVENT_USE_EPOLL
   return epoll_ctl(ioevent->poll_fd, EPOLL_CTL_DEL, fd, NULL);
+#elif IOEVENT_USE_URING
+  struct io_uring_sqe *sqe = io_uring_get_sqe(&ioevent->ring);
+  if (sqe == NULL) {
+      return ENOSPC;
+  }
+  io_uring_prep_cancel_fd(sqe, fd, 0);
+  /* set sqe->flags MUST after io_uring_prep_xxx */
+  sqe->flags = IOSQE_CQE_SKIP_SUCCESS;
+  ioevent->submit_count++;
+  return 0;
 #elif IOEVENT_USE_KQUEUE
   struct kevent ev[1];
   int r, w;
@@ -192,14 +243,25 @@ int ioevent_detach(IOEventPoller *ioevent, const int fd)
 int ioevent_poll(IOEventPoller *ioevent)
 {
 #if IOEVENT_USE_EPOLL
-  return epoll_wait(ioevent->poll_fd, ioevent->events, ioevent->size, ioevent->timeout);
+  return epoll_wait(ioevent->poll_fd, ioevent->events,
+          ioevent->size, ioevent->timeout);
+#elif IOEVENT_USE_URING
+  int result;
+  result = io_uring_wait_cqe_timeout(&ioevent->ring,
+          &ioevent->cqe, &ioevent->timeout);
+  if (result < 0) {
+      errno = -result;
+      return -1;
+  }
+  return 0;
 #elif IOEVENT_USE_KQUEUE
-  return kevent(ioevent->poll_fd, NULL, 0, ioevent->events, ioevent->size, &ioevent->timeout);
+  return kevent(ioevent->poll_fd, NULL, 0, ioevent->events,
+          ioevent->size, &ioevent->timeout);
 #elif IOEVENT_USE_PORT
   int result;
   int retval;
   unsigned int nget = 1;
-  if((retval = port_getn(ioevent->poll_fd, ioevent->events,
+  if((retval=port_getn(ioevent->poll_fd, ioevent->events,
           ioevent->size, &nget, &ioevent->timeout)) == 0)
   {
     result = (int)nget;
@@ -225,4 +287,3 @@ int ioevent_poll(IOEventPoller *ioevent)
 #error port me
 #endif
 }
-
