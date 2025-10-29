@@ -324,3 +324,19 @@ int ioevent_set(struct fast_task_info *task, struct nio_thread_data *pThread,
 	fast_timer_add(&pThread->timer, &task->event.timer);
 	return 0;
 }
+
+int ioevent_reset(struct fast_task_info *task, int new_fd, short event)
+{
+    if (task->event.fd == new_fd)
+    {
+        return 0;
+    }
+
+    if (task->event.fd >= 0)
+    {
+        ioevent_detach(&task->thread_data->ev_puller, task->event.fd);
+    }
+
+    task->event.fd = new_fd;
+    return ioevent_attach(&task->thread_data->ev_puller, new_fd, event, task);
+}
