@@ -6,11 +6,20 @@ Please visit the libfastcommon Home Page for more detail.
 English language: https://github.com/happyfish100/libfastcommon
 Chinese language: http://www.fastken.com/
 
+[Optional Step]
+You can enable io_uring for higher performance when Linux kernel version >= 6.2,
+CentOS, RockyLinux, AlmaLinux, RHEL etc.:
+   sudo yum install liburing-devel -y
+
+Debian, Ubuntu etc.:
+   sudo apt install liburing-dev -y
+
+
 # download libfastcommon source codes and install it,
 #   github address:  https://github.com/happyfish100/libfastcommon.git
 #   gitee address:   https://gitee.com/fastdfs100/libfastcommon.git
 # the command lines as:
 
    git clone https://github.com/happyfish100/libfastcommon.git
-   cd libfastcommon; git checkout V1.0.72
-   ./make.sh clean && ./make.sh && ./make.sh install
+   cd libfastcommon; git checkout V1.0.81
+   ./make.sh clean && ./make.sh && sudo ./make.sh install
