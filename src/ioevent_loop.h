@@ -36,7 +36,7 @@ int ioevent_loop(struct nio_thread_data *thread_data,
 
 int ioevent_set(struct fast_task_info *task, struct nio_thread_data *pThread,
         int sock, short event, IOEventCallback callback,
-        const int timeout, const bool use_iouring);
+        const int timeout);
 
 int ioevent_reset(struct fast_task_info *task, int new_fd, short event);
 

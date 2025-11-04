@@ -18,7 +18,7 @@
 #include "ioevent_loop.h"
 
 #if IOEVENT_USE_URING
-static int ioevent_process(IOEventPoller *ioevent)
+static int ioevent_process_by_uring(IOEventPoller *ioevent)
 {
     int result;
     unsigned head;
@@ -85,7 +85,7 @@ static int ioevent_process(IOEventPoller *ioevent)
     return 0;
 }
 
-#else
+#endif
 
 static void deal_ioevents(IOEventPoller *ioevent)
 {
@@ -109,7 +109,7 @@ static void deal_ioevents(IOEventPoller *ioevent)
 	}
 }
 
-static int ioevent_process(IOEventPoller *ioevent)
+static int ioevent_process_by_poll(IOEventPoller *ioevent)
 {
     int result;
 
@@ -129,8 +129,6 @@ static int ioevent_process(IOEventPoller *ioevent)
 
     return 0;
 }
-
-#endif
 
 static void deal_timeouts(FastTimerEntry *head)
 {
@@ -206,20 +204,38 @@ int ioevent_loop(struct nio_thread_data *thread_data,
 #endif
 
 #if IOEVENT_USE_URING
-        if (thread_data->ev_puller.submit_count > 0) {
-            if ((result=ioevent_uring_submit(&thread_data->ev_puller)) != 0) {
-                logError("file: "__FILE__", line: %d, "
-                        "io_uring_submit fail, errno: %d, error info: %s",
-                        __LINE__, result, STRERROR(result));
-                return result;
+        if (thread_data->ev_puller.use_io_uring) {
+            if (thread_data->ev_puller.submit_count > 0) {
+                if ((result=ioevent_uring_submit(&thread_data->
+                                ev_puller)) != 0)
+                {
+                    logError("file: "__FILE__", line: %d, "
+                            "io_uring_submit fail, errno: %d, error info: %s",
+                            __LINE__, result, STRERROR(result));
+                    return result;
+                }
             }
         }
 #endif
 
         if (sched_pull) {
-            if ((result=ioevent_process(&thread_data->ev_puller)) != 0) {
-                return result;
+#if IOEVENT_USE_URING
+            if (thread_data->ev_puller.use_io_uring) {
+                if ((result=ioevent_process_by_uring(&thread_data->
+                                ev_puller)) != 0)
+                {
+                    return result;
+                }
+            } else {
+#endif
+                if ((result=ioevent_process_by_poll(&thread_data->
+                                ev_puller)) != 0)
+                {
+                    return result;
+                }
+#if IOEVENT_USE_URING
             }
+#endif
         }
 
         if (thread_data->busy_polling_callback != NULL) {
@@ -280,7 +296,7 @@ int ioevent_loop(struct nio_thread_data *thread_data,
 
 int ioevent_set(struct fast_task_info *task, struct nio_thread_data *pThread,
         int sock, short event, IOEventCallback callback,
-        const int timeout, const bool use_iouring)
+        const int timeout)
 {
 	int result;
 
@@ -288,7 +304,7 @@ int ioevent_set(struct fast_task_info *task, struct nio_thread_data *pThread,
 	task->event.fd = sock;
 	task->event.callback = callback;
 #if IOEVENT_USE_URING
-    if (use_iouring) {
+    if (pThread->ev_puller.use_io_uring) {
         if (FC_URING_OP_TYPE(task) == IORING_OP_NOP) {
             if ((result=uring_prep_first_recv(task)) != 0) {
                 logError("file: "__FILE__", line: %d, "

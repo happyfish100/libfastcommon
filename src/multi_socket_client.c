@@ -46,6 +46,7 @@ int fast_multi_sock_client_init_ex(FastMultiSockClient *client,
         fms_client_get_current_time_ms_func get_current_time_ms_func,
         const int init_recv_buffer_size, const int timeout_ms)
 {
+    const bool use_io_uring = false;
     int result;
     int new_init_recv_buffer_size;
     int i;
@@ -66,7 +67,7 @@ int fast_multi_sock_client_init_ex(FastMultiSockClient *client,
     }
 
     if ((result=ioevent_init(&client->ioevent, "client",
-                    entry_count, timeout_ms, 0)) != 0)
+                    use_io_uring, entry_count, timeout_ms, 0)) != 0)
     {
         logError("file: "__FILE__", line: %d, "
                 "ioevent_init fail, errno: %d, error info: %s",

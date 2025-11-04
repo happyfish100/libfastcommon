@@ -25,10 +25,12 @@
 #define IOEVENT_TIMEOUT  (1 << 20)
 #define IOEVENT_NOTIFY   (1 << 21)  //for io_uring send_zc done callback
 
-#if IOEVENT_USE_EPOLL
+#ifdef OS_LINUX
 #include <sys/epoll.h>
 #define IOEVENT_EDGE_TRIGGER EPOLLET
+#endif
 
+#if IOEVENT_USE_EPOLL
 #define IOEVENT_READ  EPOLLIN
 #define IOEVENT_WRITE EPOLLOUT
 #define IOEVENT_ERROR (EPOLLERR | EPOLLPRI | EPOLLHUP)
@@ -77,25 +79,30 @@ typedef struct ioevent_puller {
     const char *service_name;
     int size;  //max events (fd)
     int extra_events;
+
 #if IOEVENT_USE_URING
     struct io_uring ring;
     int submit_count;
     bool send_zc_logged;
     bool send_zc_done_notify; //if callback when send_zc done
-#else
+    bool use_io_uring;
+#endif
+
     int poll_fd;
     struct {
         int index;
         int count;
     } iterator;  //for deal event loop
-#endif
 
-#if IOEVENT_USE_EPOLL
+#ifdef OS_LINUX
     struct epoll_event *events;
-    int timeout;  //in milliseconds
-#elif IOEVENT_USE_URING
+    int timeout_ms;   //for epoll
+#if IOEVENT_USE_URING
     struct io_uring_cqe *cqe;
     struct __kernel_timespec timeout;
+#endif
+    bool zero_timeout;
+
 #elif IOEVENT_USE_KQUEUE
     struct kevent *events;
     struct timespec timeout;
@@ -104,17 +111,11 @@ typedef struct ioevent_puller {
     timespec_t timeout;
 #endif
 
-#ifdef OS_LINUX
-    bool zero_timeout;
-#endif
-
 } IOEventPoller;
 
-#if IOEVENT_USE_EPOLL
+#if OS_LINUX
   #define IOEVENT_GET_EVENTS(ioevent, index) \
       (ioevent)->events[index].events
-#elif IOEVENT_USE_URING
-
 #elif IOEVENT_USE_KQUEUE
   #define IOEVENT_GET_EVENTS(ioevent, index)  kqueue_ev_convert( \
       (ioevent)->events[index].filter, (ioevent)->events[index].flags)
@@ -125,11 +126,9 @@ typedef struct ioevent_puller {
 #error port me
 #endif
 
-#if IOEVENT_USE_EPOLL
+#ifdef OS_LINUX
   #define IOEVENT_GET_DATA(ioevent, index)  \
       (ioevent)->events[index].data.ptr
-#elif IOEVENT_USE_URING
-
 #elif IOEVENT_USE_KQUEUE
   #define IOEVENT_GET_DATA(ioevent, index)  \
       (ioevent)->events[index].udata
@@ -140,11 +139,9 @@ typedef struct ioevent_puller {
 #error port me
 #endif
 
-#if IOEVENT_USE_EPOLL
+#ifdef OS_LINUX
   #define IOEVENT_CLEAR_DATA(ioevent, index)  \
       (ioevent)->events[index].data.ptr = NULL
-#elif IOEVENT_USE_URING
-
 #elif IOEVENT_USE_KQUEUE
   #define IOEVENT_CLEAR_DATA(ioevent, index)  \
       (ioevent)->events[index].udata = NULL
@@ -160,7 +157,8 @@ extern "C" {
 #endif
 
 int ioevent_init(IOEventPoller *ioevent, const char *service_name,
-        const int size, const int timeout_ms, const int extra_events);
+        const bool use_io_uring, const int size, const int timeout_ms,
+        const int extra_events);
 void ioevent_destroy(IOEventPoller *ioevent);
 
 int ioevent_attach(IOEventPoller *ioevent, const int fd,
@@ -174,16 +172,24 @@ static inline void ioevent_set_timeout(IOEventPoller *ioevent,
         const int timeout_ms)
 {
 #if IOEVENT_USE_EPOLL
-  ioevent->timeout = timeout_ms;
+    ioevent->timeout_ms = timeout_ms;
 #else
-  ioevent->timeout.tv_sec = timeout_ms / 1000;
-  ioevent->timeout.tv_nsec = 1000000 * (timeout_ms % 1000);
+#if IOEVENT_USE_URING
+    if (!ioevent->use_io_uring) {
+        ioevent->timeout_ms = timeout_ms;
+    } else {
+#endif
+        ioevent->timeout.tv_sec = timeout_ms / 1000;
+        ioevent->timeout.tv_nsec = 1000000 * (timeout_ms % 1000);
+
+#if IOEVENT_USE_URING
+    }
+#endif
 #endif
 
 #ifdef OS_LINUX
     ioevent->zero_timeout = (timeout_ms == 0);
 #endif
-
 }
 
 static inline int ioevent_poll_ex(IOEventPoller *ioevent, const int timeout_ms)
