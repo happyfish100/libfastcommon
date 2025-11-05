@@ -50,9 +50,6 @@ int ioevent_init(IOEventPoller *ioevent, const char *service_name,
         const int extra_events)
 {
     int bytes;
-#ifdef OS_LINUX
-    int result;
-#endif
 
     ioevent->iterator.index = 0;
     ioevent->iterator.count = 0;
@@ -64,6 +61,7 @@ int ioevent_init(IOEventPoller *ioevent, const char *service_name,
 #if IOEVENT_USE_URING
     ioevent->use_io_uring = use_io_uring;
     if (use_io_uring) {
+        int result;
         if ((result=io_uring_queue_init(size, &ioevent->ring, 0)) < 0) {
             return -result;
         }
