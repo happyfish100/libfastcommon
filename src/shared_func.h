@@ -1636,16 +1636,29 @@ static inline int fc_ltostr_ex(int64_t n, char *buff, const int padding_len)
         return len;
     }
 
+#if defined(OS_LINUX) && defined(__GNUC__) && __GNUC__ >= 8
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
+#endif
+
     fill_len = padding_len - len;
     memmove(buff + fill_len, buff, len + 1);
     memset(buff, '0', fill_len);
+
+#if defined(OS_LINUX) && defined(__GNUC__) && __GNUC__ >= 8
+#pragma GCC diagnostic pop
+#endif
+
     return padding_len;
 }
 
 static inline int fc_ltostr(int64_t n, char *buff)
 {
-    const int padding_len = 0;
-    return fc_ltostr_ex(n, buff, padding_len);
+    int len;
+
+    len = fc_itoa(n, buff);
+    *(buff + len) = '\0';
+    return len;
 }
 
 static inline size_t fc_strlcpy(char *dest, const char *src, const size_t size)
