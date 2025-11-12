@@ -19,7 +19,7 @@ Requires: %__cp %__mv %__chmod %__grep %__mkdir %__install %__id
 
 %define kernel_major %(uname -r | cut -d'.' -f1)
 %define kernel_minor %(uname -r | cut -d'.' -f2)
-%define kernel_ver_int %(expr %{kernel_major} \* 100 + %{kernel_minor})
+%define kernel_ver_int %(expr %{kernel_major} \\* 100 + %{kernel_minor})
 %if %{kernel_ver_int} >= 514
 BuildRequires: liburing-devel >= 2.4
 Requires: liburing >= 2.4
