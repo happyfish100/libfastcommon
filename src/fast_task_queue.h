@@ -37,7 +37,6 @@ struct nio_thread_data;
 struct fast_task_info;
 
 typedef int (*ThreadLoopCallback) (struct nio_thread_data *pThreadData);
-typedef int (*TaskFinishCallback) (struct fast_task_info *task);
 typedef void (*TaskCleanUpCallback) (struct fast_task_info *task);
 typedef int (*TaskInitCallback)(struct fast_task_info *task, void *arg);
 typedef void (*TaskReleaseCallback)(struct fast_task_info *task);
@@ -149,7 +148,6 @@ struct fast_task_info
         struct fc_list_head dlink;  //for polling queue
     } polling;  //for RDMA busy polling
     TaskContinueCallback continue_callback; //for continue stage
-    TaskFinishCallback finish_callback;
     struct nio_thread_data *thread_data;
     struct sf_network_handler *handler; //network handler for libserverframe nio
     struct fast_task_info *next;        //for free queue and deleted list

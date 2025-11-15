@@ -145,10 +145,7 @@ static void deal_timeouts(FastTimerEntry *head)
         /* must set NULL because NOT in time wheel */
         current->prev = current->next = NULL;
 		pEventEntry = (IOEventEntry *)current;
-		if (pEventEntry != NULL)
-		{
-			pEventEntry->callback(pEventEntry->fd, IOEVENT_TIMEOUT, current);
-		}
+        pEventEntry->callback(pEventEntry->fd, IOEVENT_TIMEOUT, current);
 	}
 }
 

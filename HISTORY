@@ -1,4 +1,7 @@
 
+Version 1.83  2025-11-15
+  * fast_task_queue.h: remove field finish_callback
+
 Version 1.82  2025-11-04
   * set use_io_uring explicitly
 
