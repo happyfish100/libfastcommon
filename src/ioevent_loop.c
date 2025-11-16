@@ -240,7 +240,7 @@ int ioevent_loop(struct nio_thread_data *thread_data,
         }
 
 		if (thread_data->deleted_list != NULL) {
-			count = 0;
+			//count = 0;
 			while (thread_data->deleted_list != NULL) {
 				task = thread_data->deleted_list;
 				thread_data->deleted_list = task->next;
@@ -254,7 +254,7 @@ int ioevent_loop(struct nio_thread_data *thread_data,
                     }
                 }
 				clean_up_callback(task);
-				count++;
+				//count++;
 			}
 			//logInfo("cleanup task count: %d", count);
 		}
