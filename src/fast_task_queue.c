@@ -28,7 +28,7 @@
 static int task_alloc_init(struct fast_task_info *task,
         struct fast_task_queue *queue)
 {
-    task->arg = (char *)task + ALIGNED_TASK_INFO_SIZE + queue->padding_size;
+    task->arg = (char *)task + free_queue_task_arg_offset(queue);
     task->send.ptr = &task->send.holder;
     task->send.ptr->size = queue->min_buff_size;
     if (queue->malloc_whole_block) {

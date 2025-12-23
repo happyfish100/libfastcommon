@@ -236,6 +236,11 @@ static inline int free_queue_alloc_connections(struct fast_task_queue *queue)
     return queue->allocator.info.element_total_count;
 }
 
+static inline int free_queue_task_arg_offset(struct fast_task_queue *queue)
+{
+    return ALIGNED_TASK_INFO_SIZE + queue->padding_size;
+}
+
 int free_queue_get_new_buffer_size(const int min_buff_size,
         const int max_buff_size, const int expect_size, int *new_size);
 
