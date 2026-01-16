@@ -1191,6 +1191,23 @@ static inline const char *long_to_comma_str(const int64_t n, char *buff)
     return long2str(n, buff, true);
 }
 
+/** convert double to string
+ *  parameters:
+ *  	d: the double number
+ *      scale: number of decimal places (round off)
+ *      buff: output buffer
+ *      thousands_separator: if add thousands separator
+ *  return: string buffer
+*/
+const char *double2str(const double d, const int scale,
+        char *buff, const bool thousands_separator);
+
+static inline const char *double_to_comma_str(const double d,
+        const int scale, char *buff)
+{
+    return double2str(d, scale, buff, true);
+}
+
 const char *bytes_to_human_str(const int64_t bytes, char *buff);
 
 /** if the string starts with the needle string

@@ -3178,7 +3178,7 @@ key_t fc_ftok(const char *path, const int proj_id)
     return (((proj_id & 0xFF) << 24) | (hash_code & 0xFFFFFF));
 }
 
-static void add_thousands_separator(char *str, const int len)
+static int add_thousands_separator(char *str, const int len)
 {
     int new_len;
     int addings;
@@ -3191,7 +3191,7 @@ static void add_thousands_separator(char *str, const int len)
 
     if (len <= 3)
     {
-        return;
+        return len;
     }
 
     if (*str == '-')
@@ -3227,6 +3227,8 @@ static void add_thousands_separator(char *str, const int len)
             add_count++;
         }
     }
+
+    return new_len;
 }
 
 const char *int2str(const int n, char *buff, const bool thousands_separator)
@@ -4522,4 +4524,34 @@ int fc_ftoa(double d, const int scale, char *buff)
 int fc_compare_int64_ptr(const int64_t *n1, const int64_t *n2)
 {
     return fc_compare_int64(*n1, *n2);
+}
+
+const char *double2str(const double d, const int scale,
+        char *buff, const bool thousands_separator)
+{
+    int len;
+    int front_len;
+    int tail_len;
+    int new_len;
+    char *point;
+    char fragment[32];
+
+    len = fc_ftoa(d, scale, buff);
+    *(buff + len) = '\0';
+    if (!thousands_separator) {
+        return buff;
+    }
+
+    if (scale <= 0) {
+        add_thousands_separator(buff, len);
+        return buff;
+    }
+
+    tail_len = 1 + scale;
+    front_len = len - tail_len;
+    point = buff + front_len;
+    memcpy(fragment, point, tail_len + 1);
+    new_len = add_thousands_separator(buff, front_len);
+    memcpy(buff + new_len, fragment, tail_len + 1);
+    return buff;
 }
