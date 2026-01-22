@@ -297,9 +297,7 @@ char *base64_decode_auto(struct base64_context *context, const char *src, \
 
 	memcpy(pBuff, src, nSrcLen);
 	memset(pBuff + nSrcLen, context->pad_ch, nPadLen);
-
 	base64_decode(context, pBuff, nNewLen, dest, dest_len);
-
 	if (pBuff != tmpBuff)
 	{
 		free(pBuff);
@@ -385,16 +383,23 @@ char *base64_decode(struct base64_context *context, const char *src, \
 
       if (cycle != 0)
       {
-         *dest = '\0';
-         *dest_len = 0;
-         fprintf(stderr, "Input to decode not an even multiple of " \
-		"4 characters; pad with %c\n", context->pad_ch);
-         return dest;
+          *dest = '\0';
+          *dest_len = 0;
+          fprintf(stderr, "Input to decode not an even multiple of "
+                  "4 characters; pad with %c\n", context->pad_ch);
+          return dest;
+      }
+
+      if (dummies > 2)
+      {
+          *dest = '\0';
+          *dest_len = 0;
+          fprintf(stderr, "pad char: %c count %d exceeds 2\n",
+                  context->pad_ch, dummies);
+          return dest;
       }
 
       *dest_len = (pDest - dest) - dummies;
       *(dest + (*dest_len)) = '\0';
-
       return dest;
 }
-
