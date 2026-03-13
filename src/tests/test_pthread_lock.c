@@ -28,16 +28,68 @@
 #include "fastcommon/fast_allocator.h"
 
 #define LOOP_COUNT (30 * 1000 * 1000)
+#define THREAD_COUNT  2
 #define barrier()  __asm__ __volatile__("" ::: "memory")
+
+static volatile int64_t sum;
+static pthread_mutex_t lock;
+
+static void *atomic_thread_func(void *arg)
+{
+	int k;
+	for (k=1; k<=LOOP_COUNT; k++) {
+        //__sync_synchronize();
+        //barrier();
+        __sync_add_and_fetch(&sum, k);
+	}
+
+    return NULL;
+}
+
+static void *mutex_thread_func(void *arg)
+{
+	int k;
+	for (k=1; k<=LOOP_COUNT; k++) {
+        pthread_mutex_lock(&lock);
+        sum += k;
+        pthread_mutex_unlock(&lock);
+	}
+
+    return NULL;
+}
+
+typedef void *(*thread_func)(void *arg);
+
+static int test(const char *caption, thread_func thread_run)
+{
+	int64_t start_time;
+    char time_buff[32];
+    pthread_t tids[THREAD_COUNT];
+    int i;
+	int result;
+
+    start_time = get_current_time_ms();
+    sum = 0;
+
+    for (i=0; i<THREAD_COUNT; i++) {
+        if ((result=pthread_create(tids + i, NULL, thread_run, NULL)) != 0) {
+            return result;
+        }
+    }
+
+    for (i=0; i<THREAD_COUNT; i++) {
+        pthread_join(tids[i], NULL);
+    }
+
+	printf("%s add, LOOP_COUNT: %s, sum: %"PRId64", time used: "
+            "%"PRId64" ms\n", caption, int_to_comma_str(LOOP_COUNT, time_buff),
+            sum, get_current_time_ms() - start_time);
+    return 0;
+}
 
 int main(int argc, char *argv[])
 {
 	int result;
-	int k;
-    int64_t sum;
-	int64_t start_time;
-    char time_buff[32];
-    pthread_mutex_t lock;
 
 	log_init();
 	srand(time(NULL));
@@ -49,33 +101,13 @@ int main(int argc, char *argv[])
         return result;
     }
 
-	start_time = get_current_time_ms();
-    sum = 0;
-	for (k=1; k<=LOOP_COUNT; k++) {
-        //__sync_synchronize();
-        //barrier();
-        __sync_add_and_fetch(&sum, k);
-	}
-
-	printf("atom add, LOOP_COUNT: %s, sum: %"PRId64", time used: "
-            "%"PRId64" ms\n", int_to_comma_str(LOOP_COUNT, time_buff),
-            sum, get_current_time_ms() - start_time);
-
     printf("lock 1: %d\n", pthread_mutex_lock(&lock));
     printf("lock 2: %d\n", pthread_mutex_lock(&lock));
     printf("unlock 1: %d\n", pthread_mutex_unlock(&lock));
     printf("unlock 2: %d\n", pthread_mutex_unlock(&lock));
 
-	start_time = get_current_time_ms();
-    sum = 0;
-	for (k=1; k<=LOOP_COUNT; k++) {
-        pthread_mutex_lock(&lock);
-        sum += k;
-        pthread_mutex_unlock(&lock);
-	}
+    test("atom", atomic_thread_func);
+    test("lock", mutex_thread_func);
 
-	printf("locked add, LOOP_COUNT: %s, sum: %"PRId64", time used: "
-            "%"PRId64" ms\n", int_to_comma_str(LOOP_COUNT, time_buff),
-            sum, get_current_time_ms() - start_time);
 	return 0;
 }
