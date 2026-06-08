@@ -4558,7 +4558,7 @@ const char *double2str(const double d, const int scale,
 #define __NR_getrandom 318
 #endif
 
-void fc_srand()
+void fc_safe_srand()
 {
     uint32_t seed;
 
@@ -4569,7 +4569,7 @@ void fc_srand()
     }
 }
 
-int fc_rand()
+int fc_safe_rand()
 {
     uint32_t n;
 

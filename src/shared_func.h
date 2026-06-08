@@ -1868,11 +1868,11 @@ static inline size_t fc_iov_get_bytes(const
 }
 
 #ifdef OS_LINUX
-void fc_srand();
-int fc_rand();
+void fc_safe_srand();
+int fc_safe_rand();
 #else
-#define fc_srand() set_rand_seed()
-#define fc_rand() rand()
+#define fc_safe_srand() set_rand_seed()
+#define fc_safe_rand() rand()
 #endif
 
 #ifdef __cplusplus

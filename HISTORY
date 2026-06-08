@@ -1,6 +1,6 @@
 
 Version 1.85  2026-06-08
-  * add functions fc_srand and fc_rand for more security under Linux
+  * add functions fc_safe_srand and fc_safe_rand for more security under Linux
 
 Version 1.84  2026-01-16
   * fast_task_queue.h: add function free_queue_task_arg_offset
