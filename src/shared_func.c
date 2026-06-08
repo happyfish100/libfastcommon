@@ -2486,19 +2486,15 @@ int parse_bytes(const char *pStr, const int default_unit_bytes, int64_t *bytes)
 
 int set_rand_seed()
 {
-	struct timeval tv;
+    time_t ts;
+    int64_t ns;
+    uint32_t seed;
 
-	if (gettimeofday(&tv, NULL) != 0)
-	{
-		logError("file: "__FILE__", line: %d, " \
-			 "call gettimeofday fail, " \
-			 "errno=%d, error info: %s", \
-			 __LINE__, errno, STRERROR(errno));
-		return errno != 0 ? errno : EPERM;
-	}
-
-	srand(tv.tv_sec ^ tv.tv_usec);
-	return 0;
+    ns = get_current_time_ns();
+    time(&ts);
+    seed = ts ^ (ns & 0xFFFFFFFF);
+    srand(seed);
+    return 0;
 }
 
 int get_time_item_from_conf_ex(IniFullContext *ini_ctx,
@@ -4555,3 +4551,32 @@ const char *double2str(const double d, const int scale,
     memcpy(buff + new_len, fragment, tail_len + 1);
     return buff;
 }
+
+#ifdef OS_LINUX
+
+#ifndef __NR_getrandom
+#define __NR_getrandom 318
+#endif
+
+void fc_srand()
+{
+    uint32_t seed;
+
+    if (syscall(__NR_getrandom, &seed, sizeof(seed), 0) != sizeof(seed)) {
+        set_rand_seed();
+    } else {
+        srand(seed);
+    }
+}
+
+int fc_rand()
+{
+    uint32_t n;
+
+    if (syscall(__NR_getrandom, &n, sizeof(n), 0) != sizeof(n)) {
+        return rand();
+    }
+
+    return (n & RAND_MAX);
+}
+#endif

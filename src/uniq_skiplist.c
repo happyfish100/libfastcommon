@@ -21,6 +21,7 @@
 #include <string.h>
 #include <errno.h>
 #include "logger.h"
+#include "shared_func.h"
 #include "fc_memory.h"
 #include "uniq_skiplist.h"
 
@@ -138,7 +139,7 @@ int uniq_skiplist_init_ex2(UniqSkiplistFactory *factory,
     factory->delay_free_seconds = delay_free_seconds;
     factory->arg = arg;
 
-    srand(time(NULL));
+    set_rand_seed();
     return 0;
 }
 

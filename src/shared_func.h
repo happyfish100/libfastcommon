@@ -1867,6 +1867,14 @@ static inline size_t fc_iov_get_bytes(const
     }
 }
 
+#ifdef OS_LINUX
+void fc_srand();
+int fc_rand();
+#else
+#define fc_srand() set_rand_seed()
+#define fc_rand() rand()
+#endif
+
 #ifdef __cplusplus
 }
 #endif

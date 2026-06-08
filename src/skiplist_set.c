@@ -22,6 +22,7 @@
 #include <errno.h>
 #include <assert.h>
 #include "logger.h"
+#include "shared_func.h"
 #include "fc_memory.h"
 #include "skiplist_set.h"
 
@@ -110,7 +111,7 @@ int skiplist_set_init_ex(SkiplistSet *sl, const int level_count,
     sl->compare_func = compare_func;
     sl->free_func = free_func;
 
-    srand(time(NULL));
+    set_rand_seed();
     return 0;
 }
 

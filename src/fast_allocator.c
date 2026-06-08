@@ -238,7 +238,7 @@ int fast_allocator_init_ex(struct fast_allocator_context *acontext,
 	struct fast_region_info *pRegion;
 	struct fast_region_info *region_end;
 
-	srand(time(NULL));
+	set_rand_seed();
 	memset(acontext, 0, sizeof(*acontext));
 	if (region_count <= 0)
 	{
