@@ -3353,6 +3353,117 @@ const char *bytes_to_human_str(const int64_t bytes, char *buff)
     return buff;
 }
 
+static int format_number_with_unit(const int n, const char *unit_str,
+        const int unit_len, char *buff, const bool add_leading_space)
+{
+    char *p;
+
+    if (n <= 0)
+    {
+        return 0;
+    }
+
+    p = buff;
+    if (add_leading_space)
+    {
+        *p++ = ' ';
+    }
+    if (n == 1)
+    {
+        *p++ = '1';
+        *p++ = ' ';
+        memcpy(p, unit_str, unit_len);
+        p += unit_len;
+    }
+    else
+    {
+        p += fc_itoa(n, p);
+        *p++ = ' ';
+        memcpy(p, unit_str, unit_len);
+        p += unit_len;
+        *p++ = 's';
+    }
+
+    return p - buff;
+}
+
+static inline int format_number_unit_first(const int n, const char *unit_str,
+        const int unit_len, char *buff)
+{
+    const bool add_leading_space = false;
+    return format_number_with_unit(n, unit_str,
+            unit_len, buff, add_leading_space);
+}
+
+static inline int format_number_unit_next(const int n, const char *unit_str,
+        const int unit_len, char *buff)
+{
+    const bool add_leading_space = true;
+    return format_number_with_unit(n, unit_str,
+            unit_len, buff, add_leading_space);
+}
+
+
+const char *seconds_to_human_str(const int64_t seconds, char *buff)
+{
+    int64_t remains;
+    int day;
+    int hour;
+    int minute;
+    int second;
+    char *p;
+
+    if (seconds > 0)
+    {
+        remains = seconds;
+    }
+    else
+    {
+        remains = 0;
+    }
+
+    day = remains / (24 * 3600);
+    remains %= (24 * 3600);
+    hour = remains / 3600;
+    remains %= 3600;
+    minute = remains / 60;
+    second = remains % 60;
+
+    p = buff;
+    if (day > 0)
+    {
+        p += format_number_unit_first(day, "day", 3, p);
+        p += format_number_unit_next(hour, "hour", 4, p);
+        p += format_number_unit_next(minute, "minute", 6, p);
+        p += format_number_unit_next(second, "second", 6, p);
+    }
+    else if (hour > 0)
+    {
+        p += format_number_unit_first(hour, "hour", 4, p);
+        p += format_number_unit_next(minute, "minute", 6, p);
+        p += format_number_unit_next(second, "second", 6, p);
+    }
+    else if (minute > 0)
+    {
+        p += format_number_unit_first(minute, "minute", 6, p);
+        p += format_number_unit_next(second, "second", 6, p);
+    }
+    else if (second > 0)
+    {
+        p += format_number_unit_first(second, "second", 6, p);
+    }
+    else
+    {
+        *p++ = '0';
+        *p++ = ' ';
+        memcpy(p, "second", 6);
+        p += 6;
+    }
+
+    *p = '\0';
+    return buff;
+}
+
 bool starts_with(const char *str, const char *needle)
 {
     int str_len;

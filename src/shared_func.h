@@ -1210,6 +1210,8 @@ static inline const char *double_to_comma_str(const double d,
 
 const char *bytes_to_human_str(const int64_t bytes, char *buff);
 
+const char *seconds_to_human_str(const int64_t seconds, char *buff);
+
 /** if the string starts with the needle string
  *  parameters:
  *  	str: the string to detect
