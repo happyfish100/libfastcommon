@@ -1,7 +1,8 @@
 
-Version 1.85  2026-06-22
+Version 1.85  2026-06-23
   * add functions fc_safe_srand and fc_safe_rand for more security under Linux
   * add function seconds_to_human_str
+  * add function fc_version by new files fc_version.h and fc_version.c
 
 Version 1.84  2026-01-16
   * fast_task_queue.h: add function free_queue_task_arg_offset
