@@ -23,7 +23,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <time.h>
-#include "common_define.h"
+#include "fc_version.h"
 #include "local_ip_func.h"
 #include "logger.h"
 #include "hash.h"
@@ -32,10 +32,6 @@
 #include "id_generator.h"
 #include "system_info.h"
 #include "fastcommon.h"
-
-#define MAJOR_VERSION  1
-#define MINOR_VERSION  0
-#define PATCH_VERSION  8
 
 #define IDG_FLAGS_EXTRA_DATA_BY_MOD   1
 
@@ -311,13 +307,13 @@ PHP_RSHUTDOWN_FUNCTION(fastcommon)
 
 PHP_MINFO_FUNCTION(fastcommon)
 {
-	char mc_info[64];
-	sprintf(mc_info, "fastcommon v%d.%02d support", 
-		MAJOR_VERSION, MINOR_VERSION);
+    char mc_info[64];
+    sprintf(mc_info, "fastcommon v%d.%d.%d supported",
+            FC_MAJOR_VERSION, FC_MINOR_VERSION, FC_PATCH_VERSION);
 
-	php_info_print_table_start();
-	php_info_print_table_header(2, mc_info, "enabled");
-	php_info_print_table_end();
+    php_info_print_table_start();
+    php_info_print_table_header(2, mc_info, "enabled");
+    php_info_print_table_end();
 }
 
 /*
@@ -326,13 +322,14 @@ return client library version
 */
 ZEND_FUNCTION(fastcommon_version)
 {
-	char szVersion[16];
-	int len;
+    Version version;
+    char szVersion[16];
+    int len;
 
-	len = sprintf(szVersion, "%d.%d.%d",
-		MAJOR_VERSION, MINOR_VERSION, PATCH_VERSION);
-
-	ZEND_RETURN_STRINGL(szVersion, len, 1);
+    fc_version(&version);
+    len = sprintf(szVersion, "%d.%d.%d", version.major,
+            version.minor, version.patch);
+    ZEND_RETURN_STRINGL(szVersion, len, 1);
 }
 
 /*
