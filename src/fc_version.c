@@ -15,9 +15,10 @@
 
 #include "fc_version.h"
 
-void fc_version(Version *version)
+int fc_version(Version *version)
 {
     version->major = FC_MAJOR_VERSION;
     version->minor = FC_MINOR_VERSION;
     version->patch = FC_PATCH_VERSION;
+    return FC_VERSION_TO_INT1(*version);
 }

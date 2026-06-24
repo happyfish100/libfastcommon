@@ -372,6 +372,16 @@ typedef void* (*MallocFunc)(size_t size);
 #define FC_SET_CHAIN_TAIL_NEXT(chain, type, ptr) \
     ((type *)(chain).tail)->next = ptr
 
+#define FC_VERSION_TO_INT(major, minor, patch) \
+    (major * 1000 * 1000 + minor * 1000 + patch)
+
+#define FC_VERSION_TO_INT1(version)    \
+    FC_VERSION_TO_INT((version).major, \
+            (version).minor, (version).patch)
+
+#define FC_COMPARE_INT_VERSIONS_TO_OPERATOR_STR(v1, v2) \
+    (v1 < v2 ? "<" : (v1 == v2 ? "==" : ">"))
+
 #ifdef WIN32
 #define strcasecmp	_stricmp
 #endif

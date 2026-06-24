@@ -24,11 +24,14 @@
 #define FC_MINOR_VERSION   0
 #define FC_PATCH_VERSION  85
 
+#define FC_VERSION_INT  FC_VERSION_TO_INT(FC_MAJOR_VERSION, \
+        FC_MINOR_VERSION, FC_PATCH_VERSION)
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-    void fc_version(Version *version);
+    int fc_version(Version *version);
 
 #ifdef __cplusplus
 }
