@@ -4691,3 +4691,27 @@ int fc_safe_rand()
     return (n & RAND_MAX);
 }
 #endif
+
+int fc_parse_version(const char *src, Version *version)
+{
+    const char *p;
+    int numbers[2];
+    int i;
+
+    numbers[0] = numbers[1] = 0;
+    p = src;
+    for (i=0; i<2; i++) {
+        p = strchr(p, '.');
+        if (p == NULL) {
+            break;
+        }
+
+        p++;
+        numbers[i] = strtol(p, NULL, 10);
+    }
+
+    version->major = strtol(src, NULL, 10);
+    version->minor = numbers[0];
+    version->patch = numbers[1];
+    return FC_VERSION_TO_INT1(*version);
+}

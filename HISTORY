@@ -1,4 +1,7 @@
 
+Version 1.86  2026-06-25
+  * add function fc_parse_version
+
 Version 1.85  2026-06-23
   * add functions fc_safe_srand and fc_safe_rand for more security under Linux
   * add function seconds_to_human_str

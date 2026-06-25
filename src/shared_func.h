@@ -1877,6 +1877,8 @@ int fc_safe_rand();
 #define fc_safe_rand() rand()
 #endif
 
+int fc_parse_version(const char *src, Version *version);
+
 #ifdef __cplusplus
 }
 #endif
