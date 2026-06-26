@@ -140,26 +140,27 @@ static int fast_multi_sock_client_do_send(FastMultiSockClient *client,
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 break;
             } else if (errno == EINTR) {  //should retry
+                format_ip_address(entry->conn->ip_addr, formatted_ip);
                 logDebug("file: "__FILE__", line: %d, "
                         "server: %s:%u, ignore interupt signal", __LINE__,
-                        format_ip_address(entry->conn->ip_addr, formatted_ip),
-                        entry->conn->port);
+                        formatted_ip, entry->conn->port);
                 continue;
             } else {
                 result = errno != 0 ? errno : ECONNRESET;
+                format_ip_address(entry->conn->ip_addr, formatted_ip);
                 logError("file: "__FILE__", line: %d, "
                         "send to server %s:%u fail, "
                         "errno: %d, error info: %s", __LINE__,
-                        format_ip_address(entry->conn->ip_addr, formatted_ip),
-                        entry->conn->port, result, strerror(result));
+                        formatted_ip, entry->conn->port,
+                        result, strerror(result));
 
                 break;
             }
         } else if (bytes == 0) {
+            format_ip_address(entry->conn->ip_addr, formatted_ip);
             logError("file: "__FILE__", line: %d, "
                     "send to server %s:%u, sock: %d fail, "
-                    "connection disconnected", __LINE__,
-                    format_ip_address(entry->conn->ip_addr, formatted_ip),
+                    "connection disconnected", __LINE__, formatted_ip,
                     entry->conn->port, entry->conn->sock);
 
             result = ECONNRESET;
@@ -203,10 +204,10 @@ static int fast_multi_sock_client_send_data(FastMultiSockClient *client,
         if (client->entries[i].conn->sock < 0) {
             client->entries[i].error_no = ENOTCONN;
             client->entries[i].done = true;
+            format_ip_address(client->entries[i].conn->ip_addr, formatted_ip);
             logError("file: "__FILE__", line: %d, "
                     "NOT connected to %s:%u", __LINE__,
-                    format_ip_address(client->entries[i].conn->ip_addr,
-                        formatted_ip), client->entries[i].conn->port);
+                    formatted_ip, client->entries[i].conn->port);
             continue;
         }
 
@@ -256,26 +257,27 @@ static int fast_multi_sock_client_do_recv(FastMultiSockClient *client,
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 break;
             } else if (errno == EINTR) {  //should retry
+                format_ip_address(entry->conn->ip_addr, formatted_ip);
                 logDebug("file: "__FILE__", line: %d, "
                         "server: %s:%u, ignore interupt signal", __LINE__,
-                        format_ip_address(entry->conn->ip_addr, formatted_ip),
-                        entry->conn->port);
+                        formatted_ip, entry->conn->port);
                 continue;
             } else {
                 result = errno != 0 ? errno : ECONNRESET;
+                format_ip_address(entry->conn->ip_addr, formatted_ip);
                 logError("file: "__FILE__", line: %d, "
                         "server: %s:%u, recv failed, "
                         "errno: %d, error info: %s", __LINE__,
-                        format_ip_address(entry->conn->ip_addr, formatted_ip),
-                        entry->conn->port, result, strerror(result));
+                        formatted_ip, entry->conn->port,
+                        result, strerror(result));
 
                 break;
             }
         } else if (bytes == 0) {
+            format_ip_address(entry->conn->ip_addr, formatted_ip);
             logError("file: "__FILE__", line: %d, "
                     "server: %s:%u, sock: %d, recv failed, "
-                    "connection disconnected", __LINE__,
-                    format_ip_address(entry->conn->ip_addr, formatted_ip),
+                    "connection disconnected", __LINE__, formatted_ip,
                     entry->conn->port, entry->conn->sock);
 
             result = ECONNRESET;
@@ -290,10 +292,10 @@ static int fast_multi_sock_client_do_recv(FastMultiSockClient *client,
             entry->recv_stage = fms_stage_recv_body;
             body_length = client->get_body_length_func(&entry->recv_buffer);
             if (body_length < 0) {
+                format_ip_address(entry->conn->ip_addr, formatted_ip);
                 logError("file: "__FILE__", line: %d, "
                         "server: %s:%u, body_length: %d < 0", __LINE__,
-                        format_ip_address(entry->conn->ip_addr, formatted_ip),
-                        entry->conn->port, body_length);
+                        formatted_ip, entry->conn->port, body_length);
                 result = EPIPE;
                 break;
             } else if (body_length == 0) {
@@ -374,10 +376,10 @@ static int fast_multi_sock_client_deal_io(FastMultiSockClient *client)
                     &client->ioevent, index);
 
             if (event & IOEVENT_ERROR) {
+                format_ip_address(entry->conn->ip_addr, formatted_ip);
                 logError("file: "__FILE__", line: %d, "
-                        "server: %s:%u, recv error event: %d, connection "
-                        "reset", __LINE__, format_ip_address(entry->conn->
-                            ip_addr, formatted_ip), entry->conn->port, event);
+                        "server: %s:%u, recv error event: %d, connection reset",
+                        __LINE__, formatted_ip, entry->conn->port, event);
 
                 fast_multi_sock_client_finish(client, entry, ECONNRESET);
                 continue;
@@ -404,10 +406,10 @@ static int fast_multi_sock_client_deal_io(FastMultiSockClient *client)
             if (!client->entries[i].done) {
                 fast_multi_sock_client_finish(client,
                         client->entries + i, ETIMEDOUT);
+                format_ip_address(client->entries[i].conn->ip_addr, formatted_ip);
                 logError("file: "__FILE__", line: %d, "
                         "recv from %s:%u timedout", __LINE__,
-                        format_ip_address(client->entries[i].conn->ip_addr,
-                            formatted_ip), client->entries[i].conn->port);
+                        formatted_ip, client->entries[i].conn->port);
             }
         }
     }

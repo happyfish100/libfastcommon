@@ -706,11 +706,11 @@ static inline bool is_ipv6_addr(const char *ip)
     return (*ip == ':' || strchr(ip, ':') != NULL); //ipv6
 }
 
-static inline const char *format_ip_address(const char *ip, char *buff)
+static inline int format_ip_address(const char *ip, char *buff)
 {
+    int ip_len;
     if (is_ipv6_addr(ip))
     {
-        int ip_len;
         char *p;
 
         ip_len = strlen(ip);
@@ -720,17 +720,17 @@ static inline const char *format_ip_address(const char *ip, char *buff)
         p += ip_len;
         *p++ = ']';
         *p = '\0';
+        return p - buff;
     }
     else
     {
-        strcpy(buff, ip);
+        ip_len = strlen(ip);
+        memcpy(buff, ip, ip_len + 1);
+        return ip_len;
     }
-
-    return buff;
 }
 
-static inline const char *format_ip_port(const char *ip,
-        const int port, char *buff)
+static inline int format_ip_port(const char *ip, const int port, char *buff)
 {
     int ip_len;
     bool is_ipv6;
@@ -753,7 +753,7 @@ static inline const char *format_ip_port(const char *ip,
     p += fc_itoa(port, p);
     *p = '\0';
 
-    return buff;
+    return p - buff;
 }
 
 void tcp_set_try_again_when_interrupt(const bool value);

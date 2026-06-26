@@ -259,11 +259,11 @@ static int fc_server_check_ip_port(FCServerConfig *ctx,
                 id1 = current->server->id;
                 id2 = previous->server->id;
             }
+            format_ip_address(previous->ip_addr.str, formatted_ip);
             logError("file: "__FILE__", line: %d, "
                     "config file: %s, duplicate ip:port %s:%u, "
-                    "the server ids: %d, %d", __LINE__,
-                    config_filename, format_ip_address(previous->ip_addr.str,
-                        formatted_ip), previous->port, id1, id2);
+                    "the server ids: %d, %d", __LINE__, config_filename,
+                    formatted_ip, previous->port, id1, id2);
             return EEXIST;
         }
 
@@ -714,14 +714,14 @@ static int check_addresses_duplicate(FCServerConfig *ctx,
     ppend = group_addr->address_array.addrs + group_addr->address_array.count;
     for (ppaddr=group_addr->address_array.addrs+1; ppaddr<ppend; ppaddr++) {
         if (fc_server_cmp_address_ptr(ppaddr, pprevious) == 0) {
+            format_ip_address((*ppaddr)->conn.ip_addr, formatted_ip),
             logError("file: "__FILE__", line: %d, "
                     "config filename: %s, section: %s, group: %.*s, "
                     "duplicate ip and port: %s:%u", __LINE__,
                     config_filename, section_name,
                     group_addr->server_group->group_name.len,
                     group_addr->server_group->group_name.str,
-                    format_ip_address((*ppaddr)->conn.ip_addr, formatted_ip),
-                    (*ppaddr)->conn.port);
+                    formatted_ip, (*ppaddr)->conn.port);
             return EEXIST;
         }
         pprevious = ppaddr;
@@ -967,12 +967,12 @@ static int fc_server_set_host(FCServerConfig *ctx, FCServerInfo *server,
     }
 
     if (!ctx->share_between_groups && (count > 1 && addr->conn.port > 0)) {
+        format_ip_address(addr->conn.ip_addr, formatted_ip),
         logError("file: "__FILE__", line: %d, "
                 "config filename: %s, section: %s, "
                 "host %s:%u belongs to %d groups",
                 __LINE__, config_filename, section_name,
-                format_ip_address(addr->conn.ip_addr, formatted_ip),
-                addr->conn.port, count);
+                formatted_ip, addr->conn.port, count);
         return EEXIST;
     }
 
@@ -1544,9 +1544,10 @@ static void fc_group_servers_to_string(FCServerConfig *ctx,
                     gaddr->server_group->group_name.str,
                     SERVER_ITEM_HOST_AFFIX_STR);
         }
+
+        format_ip_address((*addr)->conn.ip_addr, formatted_ip),
         fast_buffer_append(buffer, " = %s:%u\n",
-                format_ip_address((*addr)->conn.ip_addr, formatted_ip),
-                (*addr)->conn.port);
+                formatted_ip, (*addr)->conn.port);
     }
 }
 
@@ -1655,9 +1656,9 @@ static void fc_server_log_group_servers(FCGroupAddresses *gaddr)
 
     end = gaddr->address_array.addrs + gaddr->address_array.count;
     for (addr=gaddr->address_array.addrs; addr<end; addr++) {
+        format_ip_address((*addr)->conn.ip_addr, formatted_ip),
         logInfo("    %d. %s:%u", (int)(addr - gaddr->address_array.addrs + 1),
-                format_ip_address((*addr)->conn.ip_addr, formatted_ip),
-                (*addr)->conn.port);
+                formatted_ip, (*addr)->conn.port);
     }
 }
 
