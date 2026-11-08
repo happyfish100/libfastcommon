@@ -49,6 +49,8 @@ static inline int process_stop(const char *pidFilename)
     return process_stop_ex(pidFilename, bShowError, &force);
 }
 
+int process_reload(const char *pidFilename);
+
 int process_restart(const char *pidFilename);
 
 int process_exist(const char *pidFilename, pid_t *pid);

@@ -75,8 +75,7 @@ const char *local_host_ip_addrs_to_string(char *buff, const int size)
         return buff;
     }
 
-	pEnd = g_local_host_ip_addrs +
-		IP_ADDRESS_SIZE * g_local_host_ip_count;
+	pEnd = g_local_host_ip_addrs + IP_ADDRESS_SIZE * g_local_host_ip_count;
 	for (p=g_local_host_ip_addrs; p<pEnd; p+=IP_ADDRESS_SIZE)
     {
         len += snprintf(buff + len, size - len, "  %s", p);

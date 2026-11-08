@@ -81,7 +81,8 @@ int delete_pid_file(const char *pidFilename)
   }
 }
 
-static int do_stop(const char *pidFilename, const bool bShowError, pid_t *pid)
+static int do_kill(const char *pidFilename, int sig,
+        const bool bShowError, pid_t *pid)
 {
   int result;
 
@@ -91,7 +92,7 @@ static int do_stop(const char *pidFilename, const bool bShowError, pid_t *pid)
         fprintf(stderr, "pid file: %s not exist!\n", pidFilename);
       }
       else {
-        fprintf(stderr, "get pid from file: %s fail, " \
+        fprintf(stderr, "get pid from file: %s fail, "
             "errno: %d, error info: %s\n",
             pidFilename, result, strerror(result));
       }
@@ -100,7 +101,7 @@ static int do_stop(const char *pidFilename, const bool bShowError, pid_t *pid)
     return result;
   }
 
-  if (kill(*pid, SIGTERM) == 0) {
+  if (kill(*pid, sig) == 0) {
     return 0;
   }
   else {
@@ -111,6 +112,11 @@ static int do_stop(const char *pidFilename, const bool bShowError, pid_t *pid)
     }
     return result;
   }
+}
+
+static inline int do_stop(const char *pidFilename, const bool bShowError, pid_t *pid)
+{
+    return do_kill(pidFilename, SIGTERM, bShowError, pid);
 }
 
 int process_stop_ex(const char *pidFilename,
@@ -148,6 +154,18 @@ int process_stop_ex(const char *pidFilename,
 
   fprintf(stderr, "pid [%d] exit.\n\n", (int)pid);
   return 0;
+}
+
+int process_reload(const char *pidFilename)
+{
+    const bool bShowError = true;
+    int result;
+    pid_t pid = 0;
+
+    if ((result=do_kill(pidFilename, SIGHUP, bShowError, &pid)) == ESRCH) {
+        fprintf(stderr, "process of pid: %d not exist\n", pid);
+    }
+    return result;
 }
 
 int process_restart(const char *pidFilename)
@@ -355,6 +373,11 @@ int process_action(const char *pidFilename, const char *action, bool *stop)
 		*stop = true;
 		return process_stop(pidFilename);
 	}
+    else if (strcmp(action, "reload") == 0)
+	{
+		*stop = true;
+		return process_reload(pidFilename);
+	}
     else if (strcmp(action, "status") == 0)
 	{
 		*stop = true;
@@ -386,4 +409,3 @@ int process_action(const char *pidFilename, const char *action, bool *stop)
 		return EINVAL;
 	}
 }
-
