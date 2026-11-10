@@ -726,6 +726,20 @@ void load_log_level(IniContext *pIniContext);
 */
 int load_log_level_ex(const char *conf_filename);
 
+/** reload log_level from config context
+ *  parameters:
+ *  	pIniContext: the config context
+ *  return: none
+*/
+void reload_log_level(IniContext *pIniContext);
+
+/** reload log_level from config file
+ *  parameters:
+ *  	conf_filename: the config filename
+ *  return: none
+*/
+int reload_log_level_ex(const char *conf_filename);
+
 /** set global log level
  *  parameters:
  *  	pLogLevel: the log level string value

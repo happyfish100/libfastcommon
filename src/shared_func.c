@@ -1784,6 +1784,46 @@ int load_log_level_ex(const char *conf_filename)
 	return 0;
 }
 
+void reload_log_level(IniContext *pIniContext)
+{
+    char *pLogLevel;
+    int log_level;
+
+    pLogLevel = iniGetStrValue(NULL, "log_level", pIniContext);
+    log_level = get_log_level(pLogLevel, LOG_NOTHING);
+    if (log_level != LOG_NOTHING)
+    {
+        if (g_log_context.log_level != log_level)
+        {
+            logInfo("file: "__FILE__", line: %d, "
+                    "set log_level from %s to %s",
+                    __LINE__, get_log_level_caption(g_log_context.log_level),
+                    get_log_level_caption(log_level));
+            g_log_context.log_level = log_level;
+        }
+    }
+}
+
+int reload_log_level_ex(const char *conf_filename)
+{
+	int result;
+	IniContext iniContext;
+
+	if ((result=iniLoadFromFileEx(conf_filename, &iniContext,
+                    FAST_INI_ANNOTATION_DISABLE, NULL, 0,
+                    FAST_INI_FLAGS_NONE)) != 0)
+	{
+		logError("file: "__FILE__", line: %d, "
+			"load conf file \"%s\" fail, ret code: %d",
+			__LINE__, conf_filename, result);
+		return result;
+	}
+
+	reload_log_level(&iniContext);
+	iniFreeContext(&iniContext);
+	return 0;
+}
+
 int get_log_level(char *pLogLevel, const int default_value)
 {
     if (pLogLevel == NULL || *pLogLevel == '\0')
