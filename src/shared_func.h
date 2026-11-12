@@ -729,16 +729,18 @@ int load_log_level_ex(const char *conf_filename);
 /** reload log_level from config context
  *  parameters:
  *  	pIniContext: the config context
+ *      changed: if log_level changed
  *  return: none
 */
-void reload_log_level(IniContext *pIniContext);
+void reload_log_level(IniContext *pIniContext, bool *changed);
 
 /** reload log_level from config file
  *  parameters:
  *  	conf_filename: the config filename
+ *      changed: if log_level changed
  *  return: none
 */
-int reload_log_level_ex(const char *conf_filename);
+int reload_log_level_ex(const char *conf_filename, bool *changed);
 
 /** set global log level
  *  parameters:

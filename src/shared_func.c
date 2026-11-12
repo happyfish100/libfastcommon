@@ -1784,11 +1784,12 @@ int load_log_level_ex(const char *conf_filename)
 	return 0;
 }
 
-void reload_log_level(IniContext *pIniContext)
+void reload_log_level(IniContext *pIniContext, bool *changed)
 {
     char *pLogLevel;
     int log_level;
 
+    *changed = false;
     pLogLevel = iniGetStrValue(NULL, "log_level", pIniContext);
     log_level = get_log_level(pLogLevel, LOG_NOTHING);
     if (log_level != LOG_NOTHING)
@@ -1800,11 +1801,12 @@ void reload_log_level(IniContext *pIniContext)
                     __LINE__, get_log_level_caption(g_log_context.log_level),
                     get_log_level_caption(log_level));
             g_log_context.log_level = log_level;
+            *changed = true;
         }
     }
 }
 
-int reload_log_level_ex(const char *conf_filename)
+int reload_log_level_ex(const char *conf_filename, bool *changed)
 {
 	int result;
 	IniContext iniContext;
@@ -1812,14 +1814,15 @@ int reload_log_level_ex(const char *conf_filename)
 	if ((result=iniLoadFromFileEx(conf_filename, &iniContext,
                     FAST_INI_ANNOTATION_DISABLE, NULL, 0,
                     FAST_INI_FLAGS_NONE)) != 0)
-	{
-		logError("file: "__FILE__", line: %d, "
-			"load conf file \"%s\" fail, ret code: %d",
-			__LINE__, conf_filename, result);
-		return result;
-	}
+    {
+        logError("file: "__FILE__", line: %d, "
+                "load conf file \"%s\" fail, ret code: %d",
+                __LINE__, conf_filename, result);
+        *changed = false;
+        return result;
+    }
 
-	reload_log_level(&iniContext);
+	reload_log_level(&iniContext, changed);
 	iniFreeContext(&iniContext);
 	return 0;
 }
